@@ -13,7 +13,9 @@ bool CoordinatorFebruus::PreAccept() {
 
   for (auto par_id : tx_data().GetPartitionIds()) {
     auto cmds = tx_data().GetCmdsByPartition(par_id);
+    //add a hash map here or add a function in get config
     auto n_replica = Config::GetConfig()->GetPartitionSize(par_id);
+    auto list = Config::GetConfig()->SitesByPartitionId(par_id);
     auto n_quorum = n_replica;
     map_up_quorum_event[par_id].reset(new QuorumEvent(n_replica, n_quorum));
     commo()->BroadcastPreAccept(*map_up_quorum_event[par_id],
