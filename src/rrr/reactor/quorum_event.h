@@ -18,9 +18,13 @@ class QuorumEvent : public Event {
   bool timeouted_ = false;
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
+  vector<int> sites_{}; // not sure if SiteInfo or int
+  unordered_map<int, unordered_set<int>> deps{}; //not sure if SiteInfo or int
 
   QuorumEvent() = delete;
 
+  //add the third parameter here
+  //i don't want to mess things up
   QuorumEvent(int n_total,
               int quorum) : Event(),
                             n_total_(n_total),
