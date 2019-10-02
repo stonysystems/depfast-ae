@@ -812,6 +812,8 @@ std::vector<Config::SiteInfo> Config::SitesByPartitionId(
   verify(0);
 }
 
+//add another method here that gets a vector of id's
+
 int Config::GetPartitionSize(parid_t partition_id) {
   auto it = find_if(replica_groups_.begin(), replica_groups_.end(),
                     [partition_id](const ReplicaGroup& g) {
