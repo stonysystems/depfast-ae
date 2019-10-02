@@ -33,10 +33,27 @@ class QuorumEvent : public Event {
 
   QuorumEvent() = delete;
 
+  //add the third parameter here
+  //i don't want to mess things up
   QuorumEvent(int n_total,
               int quorum) : Event(),
                             n_total_(n_total),
                             quorum_(quorum) {
+  }
+
+  void update_deps(int source){
+    int srcId = source.get_site_id();
+    unordered_set<int> tgtIds{};
+    for(auto site: sites_){
+      if(!deps.(contains(site.get_site_id())){
+        tgtIds.insert(site.get_site_id());
+      }
+      else{
+        unordered_set<SiteInfo>::const_iterator index = deps[site].find(source);
+        if(index != deps[site].end()) deps[site].erase(source);
+      }
+    }
+    deps[source] = targets;
   }
 
   bool Yes() {
