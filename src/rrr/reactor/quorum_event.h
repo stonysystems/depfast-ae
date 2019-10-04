@@ -41,19 +41,33 @@ class QuorumEvent : public Event {
                             quorum_(quorum) {
   }
 
-  void update_deps(int source){
-    int srcId = source.get_site_id();
+  void update_deps(int srcId){
     unordered_set<int> tgtIds{};
     for(auto site: sites_){
-      if(!deps.(contains(site.get_site_id())){
-        tgtIds.insert(site.get_site_id());
+      if(!deps.contains(site) && site != srcId){
+        tgtIds.insert(site);
       }
-      else{
-        unordered_set<SiteInfo>::const_iterator index = deps[site].find(source);
-        if(index != deps[site].end()) deps[site].erase(source);
+      unordered_set<int>::const_iterator index = deps[site].find(source);
+      if(index != deps[site].end()) deps[site].erase(source);
+    }
+    deps[srcId] = tgtIds;
+  }
+
+
+  //update_deps separated into two parts for finer control
+  void add_dep(int srcId){
+    unordered_set<int> tgtIds();
+    for(auto site: sites_){
+      if(!deps.contains(site) && site != srcId){
+        tgtIds.insert(site);
       }
     }
-    deps[source] = targets;
+    deps[srcId] = tgtIds;
+  }
+
+  void erase_dep(int srcId){
+    unordered_set<int>::const_iterator index = deps[site].find(source);
+    if(index != deps[site].end()) deps[site].erase(source);
   }
 
   bool Yes() {
