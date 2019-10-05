@@ -51,6 +51,7 @@ void CoordinatorMultiPaxos::Prepare() {
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
   auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
   sp_quorum->Wait();
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     verify(!sp_quorum->HasAcceptedValue());
     // TODO use the previously accepted value.
@@ -103,7 +104,9 @@ void CoordinatorMultiPaxos::Accept() {
                 "par_id_: %lx, slot_id: %llx",
             par_id_, slot_id_);
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
+  sp_quorum->id_ = dep_id_;
   sp_quorum->Wait();
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     committed_ = true;
   } else if (sp_quorum->No()) {
