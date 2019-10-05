@@ -22,6 +22,8 @@ void Event::Wait() {
     auto sp_coro = Coroutine::CurrentCoroutine();
 //    verify(_dbg_p_scheduler_ == nullptr);
 //    _dbg_p_scheduler_ = Reactor::GetReactor().get();
+//
+//    somewhere here, we should output the logs
     verify(sp_coro);
     wp_coro_ = sp_coro;
     status_ = WAIT;

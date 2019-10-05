@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 #include "event.h"
 
 using rrr::Event;
@@ -17,26 +19,29 @@ class QuorumEvent : public Event {
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{}; // not sure if SiteInfo or int
-  unordered_map<int, unordered_set<int>> deps{}; //not sure if SiteInfo or int
+  std::unordered_map<int, std::unordered_set<int>> deps{}; //not sure if SiteInfo or int
 
   QuorumEvent() = delete;
 
   //add the third parameter here
   //i don't want to mess things up
   QuorumEvent(int n_total,
-              int quorum,
-              vector<SiteInfo> sites) : Event(),
-                                        quorum_(quorum){
+              int quorum) : Event(),
+                            quorum_(quorum){
   }
 
+  void set_sites(vector<int> sites){
+    sites_ = sites;
+  }
   void update_deps(int srcId){
-    unordered_set<int> tgtIds{};
+    std::unordered_set<int> tgtIds = {};
     for(auto site: sites_){
-      if(!deps.contains(site) && site != srcId){
+      auto index = deps.find(site);
+      if(index == deps.end() && site != srcId){
         tgtIds.insert(site);
       }
-      unordered_set<int>::const_iterator index = deps[site].find(source);
-      if(index != deps[site].end()) deps[site].erase(source);
+      auto index2 = deps[site].find(srcId);
+      if(index2 != deps[site].end()) deps[site].erase(index2);
     }
     deps[srcId] = tgtIds;
   }
@@ -44,9 +49,10 @@ class QuorumEvent : public Event {
 
   //update_deps separated into two parts for finer control
   void add_dep(int srcId){
-    unordered_set<int> tgtIds();
+    std::unordered_set<int> tgtIds = {};
     for(auto site: sites_){
-      if(!deps.contains(site) && site != srcId){
+      auto index = deps.find(site);
+      if(index == deps.end() && site != srcId){
         tgtIds.insert(site);
       }
     }
@@ -54,8 +60,10 @@ class QuorumEvent : public Event {
   }
 
   void erase_dep(int srcId){
-    unordered_set<int>::const_iterator index = deps[site].find(source);
-    if(index != deps[site].end()) deps[site].erase(source);
+    for(auto site: sites_){
+      auto index = deps[site].find(srcId);
+      if(index != deps[site].end()) deps[site].erase(index);
+    }
   }
 
   bool IsReady() override {

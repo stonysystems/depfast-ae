@@ -49,7 +49,9 @@ void CoordinatorMultiPaxos::Prepare() {
             slot_id_);
   verify(n_prepare_ack_ == 0);
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
+  auto list = Config::GetConfig()->SiteIdsByPartitionId(par_id_);
   auto sp_quorum_event = Reactor::CreateSpEvent<QuorumEvent>(n_replica, n_replica / 2 + 1);
+  sp_quorum_event->set_sites(list);
   commo()->BroadcastPrepare(sp_quorum_event, par_id_, slot_id_, curr_ballot_);
   sp_quorum_event->Wait();
 //  commo()->BroadcastPrepare(par_id_,
@@ -94,8 +96,8 @@ void CoordinatorMultiPaxos::Accept() {
             par_id_, slot_id_);
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
   auto sp_quorum_event = Reactor::CreateSpEvent<QuorumEvent>(n_replica, n_replica / 2 + 1);
-  commo()->BroadcastAccept(sp_quorum_event, par_id_, slot_id_, curr_ballot_, cmd_);
-  sp_quorum_event->Wait();
+  commo()->BroadcastAccept(sp_quorum_event, par_id_, slot_id_, curr_ballot_, cmd_); //update the dependency before the RPC
+  sp_quorum_event->Wait(); // output the dependency here
   // TODO process the case where failed to get a majority.
   committed_ = true;
 //  commo()->BroadcastAccept(par_id_,
