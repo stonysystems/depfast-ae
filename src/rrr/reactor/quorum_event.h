@@ -41,14 +41,18 @@ class QuorumEvent : public Event {
                             quorum_(quorum) {
   }
 
+  void set_sites(vector<int> sites){
+    sites_ = sites;
+  }
   void update_deps(int srcId){
-    unordered_set<int> tgtIds{};
+    std::unordered_set<int> tgtIds = {};
     for(auto site: sites_){
-      if(!deps.contains(site) && site != srcId){
+      auto index = deps.find(site);
+      if(index == deps.end() && site != srcId){
         tgtIds.insert(site);
       }
-      unordered_set<int>::const_iterator index = deps[site].find(source);
-      if(index != deps[site].end()) deps[site].erase(source);
+      auto index2 = deps[site].find(srcId);
+      if(index2 != deps[site].end()) deps[site].erase(index2);
     }
     deps[srcId] = tgtIds;
   }
@@ -56,9 +60,10 @@ class QuorumEvent : public Event {
 
   //update_deps separated into two parts for finer control
   void add_dep(int srcId){
-    unordered_set<int> tgtIds();
+    std::unordered_set<int> tgtIds = {};
     for(auto site: sites_){
-      if(!deps.contains(site) && site != srcId){
+      auto index = deps.find(site);
+      if(index == deps.end() && site != srcId){
         tgtIds.insert(site);
       }
     }
@@ -66,8 +71,10 @@ class QuorumEvent : public Event {
   }
 
   void erase_dep(int srcId){
-    unordered_set<int>::const_iterator index = deps[site].find(source);
-    if(index != deps[site].end()) deps[site].erase(source);
+    for(auto site: sites_){
+      auto index = deps[site].find(srcId);
+      if(index != deps[site].end()) deps[site].erase(index);
+    }
   }
 
   bool Yes() {
