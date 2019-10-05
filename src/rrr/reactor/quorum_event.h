@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 #include "event.h"
 
 using rrr::Event;
@@ -19,7 +21,7 @@ class QuorumEvent : public Event {
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{}; // not sure if SiteInfo or int
-  unordered_map<int, unordered_set<int>> deps{}; //not sure if SiteInfo or int
+  std::unordered_map<int, std::unordered_set<int>> deps{}; //not sure if SiteInfo or int
 
   QuorumEvent() = delete;
 
@@ -43,12 +45,23 @@ class QuorumEvent : public Event {
   void VoteYes() {
     n_voted_yes_++;
     Test();
-
   }
 
   void VoteNo() {
     n_voted_no_++;
     Test();
+  }
+
+  //update_deps separated into two parts for finer control
+  void add_dep(int srcId){
+    std::unordered_set<int> tgtIds = {};
+    for(auto site: sites_){
+      auto index = deps.find(site);
+      if(index == deps.end() && site != srcId){
+        tgtIds.insert(site);
+      }
+    }
+    deps[srcId] = tgtIds;
   }
 
   bool IsReady() override {
