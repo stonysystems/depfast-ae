@@ -72,7 +72,6 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
 
   WAN_WAIT;
   auto leader_id = LeaderProxyForPartition(par_id).first;
-
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
@@ -90,6 +89,7 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
       // TODO add max accepted value.
     };
     Future::safe_release(proxy->async_Prepare(slot_id, ballot, fuattr));
+    sp_quorum_event->add_dep(leader_id, p.first);
   }
   return e;
 }
@@ -104,7 +104,11 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
 //  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n);
   auto src_coroid = e->GetCoroId();
   auto proxies = rpc_par_proxies_[par_id];
+<<<<<<< HEAD
   auto leader_id = LeaderProxyForPartition(par_id).first; // might need to be changed to coordinator's id
+=======
+  auto leader_id = LeaderProxyForPartition(par_id).first;
+>>>>>>> added logging
   vector<Future*> fus;
   WAN_WAIT;
   for (auto& p : proxies) {
@@ -122,6 +126,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     };
     MarshallDeputy md(cmd);
     auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);
+    sp_quorum_event->add_dep(leader_id, p.first);
     Future::safe_release(f);
   }
   return e;
