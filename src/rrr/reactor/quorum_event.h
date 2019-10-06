@@ -72,14 +72,14 @@ class QuorumEvent : public Event {
       std::unordered_set<int> temp = {};
       deps[srcId] = temp;
     }
+    // commented part is for testing
+    /*
     std::ofstream of(log_file, std::fstream::app);
     of << srcId << ", " << tgtId << "\n";
     of.close();
+    */
     auto tgtIndex = deps[srcId].find(tgtId);
     if(tgtIndex == deps[srcId].end() && srcId != tgtId){
-      std::ofstream of(log_file, std::fstream::app);
-      of << "hello\n";
-      of.close();
       deps[srcId].insert(tgtId);
     }
   }
