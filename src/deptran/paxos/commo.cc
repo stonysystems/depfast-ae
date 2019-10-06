@@ -19,6 +19,7 @@ void MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
                                        const function<void(Future*)>& cb) {
   verify(0); // deprecated function
   auto proxies = rpc_par_proxies_[par_id];
+  auto leader_id = LeaderProxyForPartition(par_id).first;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     FutureAttr fuattr;
@@ -35,8 +36,10 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
   auto e = Reactor::CreateSpEvent<PaxosPrepareQuorumEvent>(n, n/2+1);
   auto proxies = rpc_par_proxies_[par_id];
   WAN_WAIT;
+  auto leader_id = LeaderProxyForPartition(par_id).first;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
+    int id = p.first;
     FutureAttr fuattr;
     fuattr.callback = [e, ballot](Future* fu) {
       ballot_t b = 0;
@@ -45,6 +48,7 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
       // TODO add max accepted value.
     };
     Future::safe_release(proxy->async_Prepare(slot_id, ballot, fuattr));
+    sp_quorum_event->add_dep(leader_id, p.first);
   }
   return e;
 }
@@ -58,6 +62,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
 //  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n/2+1);
   auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n);
   auto proxies = rpc_par_proxies_[par_id];
+  auto leader_id = LeaderProxyForPartition(par_id).first;
   vector<Future*> fus;
   WAN_WAIT;
   for (auto& p : proxies) {
@@ -70,6 +75,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     };
     MarshallDeputy md(cmd);
     auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);
+    sp_quorum_event->add_dep(leader_id, p.first);
     Future::safe_release(f);
   }
   return e;
@@ -82,6 +88,7 @@ void MultiPaxosCommo::BroadcastAccept(parid_t par_id,
                                       const function<void(Future*)>& cb) {
   verify(0); // deprecated function
   auto proxies = rpc_par_proxies_[par_id];
+  auto leader_id = LeaderProxyForPartition(par_id).first;
   vector<Future*> fus;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
@@ -99,6 +106,7 @@ void MultiPaxosCommo::BroadcastDecide(const parid_t par_id,
                                       const ballot_t ballot,
                                       const shared_ptr<Marshallable> cmd) {
   auto proxies = rpc_par_proxies_[par_id];
+  auto leader_id = LeaderProxyForPartition(par_id).first;
   vector<Future*> fus;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
@@ -106,6 +114,7 @@ void MultiPaxosCommo::BroadcastDecide(const parid_t par_id,
     fuattr.callback = [](Future* fu) {};
     MarshallDeputy md(cmd);
     auto f = proxy->async_Decide(slot_id, ballot, md, fuattr);
+    //sp_quorum_event->add_dep(leader_id, p.first);
     Future::safe_release(f);
   }
 }

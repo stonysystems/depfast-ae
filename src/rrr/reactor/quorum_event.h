@@ -3,6 +3,8 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <fstream>
+#include <iostream>
 #include "event.h"
 
 using rrr::Event;
@@ -22,6 +24,7 @@ class QuorumEvent : public Event {
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{}; // not sure if SiteInfo or int
   std::unordered_map<int, std::unordered_set<int>> deps{}; //not sure if SiteInfo or int
+  std::string log_file = "logs.txt";
 
   QuorumEvent() = delete;
 
@@ -36,6 +39,8 @@ class QuorumEvent : public Event {
   void set_sites(vector<int> sites){
     sites_ = sites;
   }
+
+  //seems pretty useless, but we can maybe keep it??
   void update_deps(int srcId){
     std::unordered_set<int> tgtIds = {};
     for(auto site: sites_){
@@ -50,23 +55,39 @@ class QuorumEvent : public Event {
   }
 
 
-  //update_deps separated into two parts for finer control
-  void add_dep(int srcId){
-    std::unordered_set<int> tgtIds = {};
-    for(auto site: sites_){
-      auto index = deps.find(site);
-      if(index == deps.end() && site != srcId){
-        tgtIds.insert(site);
-      }
+  void add_dep(int srcId, int tgtId){
+    auto srcIndex = deps.find(srcId);
+    if(srcIndex == deps.end()){
+      std::unordered_set<int> temp = {};
+      deps[srcId] = temp;
     }
-    deps[srcId] = tgtIds;
+    auto tgtIndex = deps[srcId].find(tgtId);
+    if(tgtIndex == deps[srcId].end() && srcId != tgtId){
+      deps[srcId].insert(tgtId);
+    }
   }
 
-  void erase_dep(int srcId){
-    for(auto site: sites_){
-      auto index = deps[site].find(srcId);
-      if(index != deps[site].end()) deps[site].erase(index);
+  void remove_dep(int srcId, int tgtId){
+    auto srcIndex = deps.find(srcId);
+    if(srcIndex != deps.end()){
+      auto tgtIndex = deps[srcId].find(tgtId);
+      if(tgtIndex != deps[srcId].end()){
+        deps[srcId].erase(tgtId);
+      }
     }
+  }
+
+  void log(){
+    std::ofstream of(log_file, std::fstream::app);
+    of << "hello\n";
+    for(auto it = deps.begin(); it != deps.end(); it++){
+      of << "{ " << it->first << ": ";
+      for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
+        of << *it2 << " ";
+      }
+      of << "}\n";
+    }
+    of.close();
   }
 
   bool Yes() {
@@ -88,6 +109,7 @@ class QuorumEvent : public Event {
     n_voted_no_++;
     Test();
   }
+
 
   bool IsReady() override {
     if (timeouted_) {
