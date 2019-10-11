@@ -274,6 +274,7 @@ class DispatchEvent: public Event{
 
 };
 
+
 class SingleRPCEvent: public Event{
   public:
     uint32_t cli_id_;

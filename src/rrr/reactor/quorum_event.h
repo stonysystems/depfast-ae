@@ -2,13 +2,8 @@
 
 #include <vector>
 #include <unordered_map>
-<<<<<<< HEAD
 //#include <unordered_set>
 //#include <fstream>
-=======
-#include <unordered_set>
-#include <fstream>
->>>>>>> added logging
 #include <iostream>
 #include "event.h"
 
@@ -189,8 +184,7 @@ class QuorumEvent : public Event {
     log();
     Event::Wait();
   }
-=======
->>>>>>> added logging
+
 
   bool IsReady() override {
     if (timeouted_) {
