@@ -53,7 +53,6 @@ void CoordinatorMultiPaxos::Prepare() {
   auto sp_quorum_event = Reactor::CreateSpEvent<QuorumEvent>(n_replica, n_replica / 2 + 1);
   sp_quorum_event->set_sites(list);
   commo()->BroadcastPrepare(sp_quorum_event, par_id_, slot_id_, curr_ballot_);
-  std::cout << "waiting\n";
   sp_quorum_event->Wait();
 //  commo()->BroadcastPrepare(par_id_,
 //                            slot_id_,

@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <algorithm>
+#include <fstream>
+#include <unordered_set>
 #include "../base/all.hpp"
 
 namespace rrr {
@@ -83,5 +85,23 @@ class SharedIntEvent {
   void Wait(function<bool(int)> f);
 };
 
+class SingleRPCEvent: public Event{
+  public:
+    uint32_t cli_id_;
+    uint32_t coo_id_;
+    std::string log_file = "logs.txt";
+    std::unordered_set<int> dep{};
+    SingleRPCEvent(uint32_t cli_id, uint32_t coo_id): Event(),
+                                                      cli_id_(cli_id),
+                                                      coo_id_(coo_id){
+    }
+    void log(){
+      std::ofstream of(log_file, std::fstream::app);
+      of << "{ " << cli_id_ << ": " << coo_id_ << " }\n";
+    }
+    void Wait() override{
+      log();
+    }
+};
 
 }

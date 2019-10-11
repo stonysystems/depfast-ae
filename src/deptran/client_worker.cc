@@ -238,6 +238,9 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
                               std::placeholders::_1);
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
     coo->DoTxAsync(req);
+    //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
+    auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
+    sp_rpc_event->Wait();
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -257,6 +260,9 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               coo,
                               std::placeholders::_1);
     coo->DoTxAsync(req);
+    //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
+    auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
+    sp_rpc_event->Wait();
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
