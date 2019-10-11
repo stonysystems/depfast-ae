@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_set>
+//#include "../../deptran/client_worker.h"
 #include "../base/all.hpp"
 
 namespace rrr {
@@ -120,7 +121,6 @@ class SharedIntEvent {
   void Wait(function<bool(int)> f);
   void WaitUntilGreaterOrEqualThan(int x);
 };
-
 
 class NeverEvent: public Event {
  public:
