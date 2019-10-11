@@ -240,8 +240,8 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
     coo->DoTxAsync(req);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
-    auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
-    sp_rpc_event->Wait();
+    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->coo_id_);
+    //sp_rpc_event->Wait();
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -261,10 +261,9 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               coo,
                               std::placeholders::_1);
     coo->DoTxAsync(req);
-    Log_info("Partition id of coo: %d", coo->par_id_);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
-    auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
-    sp_rpc_event->Wait();
+    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->coo_id_);
+    //sp_rpc_event->Wait();
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -297,7 +296,7 @@ ClientWorker::ClientWorker(
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
                                                                          : false;
-  Log_debug("client %d created; forward %d",
+  Log_info("client %d created; forward %d",
             cli_id_,
             forward_requests_to_leader_);
 }

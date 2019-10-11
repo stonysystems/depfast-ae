@@ -205,6 +205,7 @@ Coordinator *TxLogServer::CreateRepCoord() {
                                         id++,
                                         txn_reg_);
   coord->par_id_ = partition_id_;
+  //Log_info("Partition id set: %d", partition_id_);
   coord->loc_id_ = this->loc_id_;
   return coord;
 }
