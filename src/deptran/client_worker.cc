@@ -276,7 +276,6 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
     tx_data->reply_.res_ = 10;
     auto rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, tx_data->reply_.res_);
     //n_event->AddEvent(rpc_event);
-
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -327,11 +326,15 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
 =======
                               std::placeholders::_1);
     coo->DoTxAsync(req);
-    Log_info("Partition id of coo: %d", coo->par_id_);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
+<<<<<<< HEAD
     auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
     sp_rpc_event->Wait();
 >>>>>>> client showing in logs, not server
+=======
+    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->coo_id_);
+    //sp_rpc_event->Wait();
+>>>>>>> logging when we prepare
   };
   task();
   TxData* tx_data = (TxData*) coo->cmd_;
