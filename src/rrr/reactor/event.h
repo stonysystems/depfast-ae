@@ -95,9 +95,20 @@ class SingleRPCEvent: public Event{
                                                       cli_id_(cli_id),
                                                       coo_id_(coo_id){
     }
+    void add_dep(int tgtId){
+      auto index = dep.find(tgtId);
+      if(index == dep.end()) dep.insert(tgtId);
+      Log_info("size of dependencies: %d", dep.size());
+    }
     void log(){
       std::ofstream of(log_file, std::fstream::app);
-      of << "{ " << cli_id_ << ": " << coo_id_ << " }\n";
+      //of << "hello\n";
+      of << "{ " << cli_id_ << ": ";
+      for(auto it = dep.begin(); it != dep.end(); it++){
+        of << *it << " ";
+      }
+      of << "}\n";
+      of.close();
     }
     void Wait() override{
       log();
