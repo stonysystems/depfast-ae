@@ -121,6 +121,7 @@ class SharedIntEvent {
   void WaitUntilGreaterOrEqualThan(int x);
 };
 
+
 class NeverEvent: public Event {
  public:
   bool IsReady() override {
