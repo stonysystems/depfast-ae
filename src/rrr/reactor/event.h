@@ -85,7 +85,6 @@ class SharedIntEvent {
   void Wait(function<bool(int)> f);
 };
 
-<<<<<<< HEAD
 class SingleRPCEvent: public Event{
   public:
     uint32_t cli_id_;
