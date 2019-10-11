@@ -328,11 +328,15 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     coo->DoTxAsync(req);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
 <<<<<<< HEAD
+<<<<<<< HEAD
     auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
     sp_rpc_event->Wait();
 >>>>>>> client showing in logs, not server
 =======
     coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->coo_id_);
+=======
+    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
+>>>>>>> SingleRpc??
     //sp_rpc_event->Wait();
 >>>>>>> logging when we prepare
   };

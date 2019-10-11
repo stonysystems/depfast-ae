@@ -129,6 +129,7 @@ class SharedIntEvent {
   void WaitUntilGreaterOrEqualThan(int x);
 };
 
+<<<<<<< HEAD
 
 class NeverEvent: public Event {
  public:
