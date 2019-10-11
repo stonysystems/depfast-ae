@@ -261,6 +261,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               coo,
                               std::placeholders::_1);
     coo->DoTxAsync(req);
+    Log_info("Partition id of coo: %d", coo->par_id_);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
     auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
     sp_rpc_event->Wait();
