@@ -222,7 +222,7 @@ class AndEvent : public Event {
   AndEvent(Args&&... args) {
     AddEvent(args...);
   }
-  
+
   void log() {
     for(int i = 0; i < events_.size(); i++){
       events_[i]->log();
@@ -337,6 +337,10 @@ class SingleRPCEvent: public Event{
       //Log_info("READY");
       return res_ == SUCCESS || res_ == REJECT;
     }
+    return false;
+    
+    //return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
+  }
 };
 
 }
