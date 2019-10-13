@@ -164,6 +164,7 @@ class OrEvent : public Event {
   }
 };
 
+<<<<<<< HEAD
 class SingleRPCEvent: public Event{
   public:
     uint32_t cli_id_;
@@ -181,6 +182,66 @@ class SingleRPCEvent: public Event{
     void Wait() override{
       log();
     }
+};
+
+class AndEvent : public Event {
+ public:
+  vector<shared_ptr<Event>> events_;
+
+  void AddEvent() {
+    // empty func for recursive variadic parameters
+  }
+
+  template<typename X, typename... Args>
+  void AddEvent(X& x, Args&... rest) {
+    events_.push_back(std::dynamic_pointer_cast<Event>(x));
+    AddEvent(rest...);
+  }
+
+  template<typename... Args>
+  AndEvent(Args&&... args) {
+    AddEvent(args...);
+  }
+
+  bool IsReady() {
+    return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
+  }
+};
+
+class NEvent : public Event {
+ public:
+  vector<shared_ptr<Event>> events_;
+  int number;
+
+  void AddEvent() {
+    // empty func for recursive variadic parameters
+  }
+
+  template<typename X, typename... Args>
+  void AddEvent(X& x, Args&... rest) {
+    events_.push_back(std::dynamic_pointer_cast<Event>(x));
+    AddEvent(rest...);
+  }
+
+  template<typename... Args>
+  NEvent(Args&&... args) {
+    AddEvent(args...);
+  }
+
+  bool IsReady() {
+    int count = 0;
+    for(auto index = events_.begin(); index != events_.end(); index++){
+      if(index->IsReady()){
+        count++;
+        if(count == number){
+          return true;
+        }
+      }
+    }
+    return false;
+    
+    //return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
+  }
 };
 
 }

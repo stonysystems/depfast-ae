@@ -56,8 +56,18 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     success++;
   num_txn++;
   num_try.fetch_add(txn_reply.n_try_);
-
-  bool have_more_time = timer_->elapsed() < duration;
+  
+  if (and_event->Test()){
+    finish_mutex.lock();
+    finish_cond.signal();
+    finish_mutex.unlock();
+  } else if (config->client_type_ == Config::Open){
+    std::lock_guard<std::mutex> lock(coordinator_mutex);
+    free_coordinators_.push_back(coo);
+  } else if (config->client_type_ == Config::Closed){
+    DispatchRequest(coo);
+  }
+  /*bool have_more_time = timer_->elapsed() < duration;
   Log_debug("received callback from tx_id %" PRIx64, txn_reply.tx_id_);
   Log_debug("elapsed: %2.2f; duration: %d", timer_->elapsed(), duration);
   if (have_more_time && config_->client_type_ == Config::Open) {
@@ -66,6 +76,7 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
   } else if (have_more_time && config_->client_type_ == Config::Closed) {
     Log_debug("there is still time to issue another request. continue.");
     DispatchRequest(coo);
+    //add event here
   } else if (!have_more_time) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
@@ -88,7 +99,7 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
 //    finish_mutex.unlock();
   } else {
     verify(0);
-  }
+  }*/
 }
 
 Coordinator* ClientWorker::FindOrCreateCoordinator() {
@@ -144,9 +155,16 @@ void ClientWorker::Work() {
     ccsi->wait_for_start(id);
   }
   Log_debug("after wait for start");
+  //timer_ = new Timer();
+  //timer_->start();
 
-  timer_ = new Timer();
-  timer_->start();
+  and_event = Reactor::CreateSpEvent<AndEvent>();
+  n_event = Reactor::CreateSpEvent<NEvent>();
+  n_event->number = n_concurrent;
+  timeout_event = Reactor::CreateSpEvent<TimeoutEvent>(duration);
+  and_event.AddEvent(timeout_event);
+  and_event.AddEvent(n_event);
+  //add timeoutevent to AndEvent
 
   if (config_->client_type_ == Config::Closed) {
     Log_info("closed loop clients.");
@@ -193,6 +211,7 @@ void ClientWorker::Work() {
     Log_debug("exit client dispatch loop...");
   }
 
+
 //  finish_mutex.lock();
   while (n_concurrent_ > 0) {
     Log_debug("wait for finish... %d", n_concurrent_);
@@ -200,6 +219,7 @@ void ClientWorker::Work() {
 //    finish_cond.wait(finish_mutex);
   }
 //  finish_mutex.unlock();
+
 
   Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
            num_txn.load(),
@@ -241,7 +261,7 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
     coo->DoTxAsync(req);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
     coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
-    coo->rpc_event->Wait();
+    n_event->AddEvent(coo->rpc_event);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -264,6 +284,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
     coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
     //sp_rpc_event->Wait();
+    n_event->AddEvent(coo->rpc_event);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
