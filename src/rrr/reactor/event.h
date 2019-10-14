@@ -242,7 +242,7 @@ class NEvent : public Event {
   bool IsReady() {
     int count = 0;
     for(auto index = events_.begin(); index != events_.end(); index++){
-      if(index->IsReady()){
+      if((*index)->IsReady()){
         count++;
         if(count == number){
           return true;

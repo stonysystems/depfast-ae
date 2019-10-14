@@ -43,7 +43,7 @@ class SingleRPCEvent: public Event{
     }
     bool IsReady() override{
       TxData* tx_data = (TxData*) data_;
-      return tx_data->reply_.res_ == SUCCESS;
+      return tx_data->reply_.res_ == SUCCESS || tx_data->reply_.res_ == FAILURE;
     }
 };
 
@@ -70,6 +70,10 @@ class ClientWorker {
   vector<Coordinator*> free_coordinators_{};
   vector<Coordinator*> created_coordinators_{};
 //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
+
+  std::shared_ptr<TimeoutEvent> timeout_event;
+  std::shared_ptr<NEvent> n_event;
+  std::shared_ptr<AndEvent> and_event;
 
   std::atomic<uint32_t> num_txn, success, num_try;
   Workload * tx_generator_{nullptr};
