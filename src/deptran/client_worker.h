@@ -43,7 +43,7 @@ class SingleRPCEvent: public Event{
     }
     bool IsReady() override{
       TxData* tx_data = (TxData*) data_;
-      return tx_data->reply_.res_ == SUCCESS;
+      return tx_data->reply_.res_ == SUCCESS || tx_data->reply_.res_ == FAILURE;
     }
 };
 

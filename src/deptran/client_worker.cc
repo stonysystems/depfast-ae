@@ -57,7 +57,6 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
   num_txn++;
   num_try.fetch_add(txn_reply.n_try_);
   
-<<<<<<< HEAD
   bool have_more_time = timer_->elapsed() < duration;
   if (have_more_time){
     //n_event->number++; //this one doesn't count
@@ -75,18 +74,6 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
     }
     finish_mutex.unlock();
   }*/
-=======
-  if (and_event->Test()){
-    finish_mutex.lock();
-    finish_cond.signal();
-    finish_mutex.unlock();
-  } else if (config->client_type_ == Config::Open){
-    std::lock_guard<std::mutex> lock(coordinator_mutex);
-    free_coordinators_.push_back(coo);
-  } else if (config->client_type_ == Config::Closed){
-    DispatchRequest(coo);
-  }
->>>>>>> does not compile yet
   /*bool have_more_time = timer_->elapsed() < duration;
   Log_debug("received callback from tx_id %" PRIx64, txn_reply.tx_id_);
   Log_debug("elapsed: %2.2f; duration: %d", timer_->elapsed(), duration);
@@ -105,15 +92,7 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
     verify(n_concurrent_ >= 0);
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
-<<<<<<< HEAD
 //      finish_cond.signal();
-<<<<<<< HEAD
-
-=======
-=======
-      finish_cond.signal();-
->>>>>>> does not compile yet
->>>>>>> does not compile yet
     } else {
       Log_debug("waiting for %d more coordinators to finish", n_concurrent_);
       Log_debug("transactions they are processing:");
@@ -127,13 +106,8 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
 //    finish_mutex.unlock();
   } else {
     verify(0);
-<<<<<<< HEAD
   }
 }*/
-=======
-  }*/
-}
->>>>>>> does not compile yet
 
 Coordinator* ClientWorker::FindOrCreateCoordinator() {
   std::lock_guard<std::mutex> lock(coordinator_mutex);
@@ -342,29 +316,8 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     /*req.callback_ = std::bind(&ClientWorker::RequestDone,
                               this,
                               coo,
-<<<<<<< HEAD
                               std::placeholders::_1);*/
     coo->DoTxAsync(poll_mgr_, req);
-=======
-                              std::placeholders::_1);
-    coo->DoTxAsync(req);
-    //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
-<<<<<<< HEAD
-<<<<<<< HEAD
-    auto sp_rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->loc_id_);
-    sp_rpc_event->Wait();
->>>>>>> client showing in logs, not server
-=======
-    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->coo_id_);
-=======
-    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
->>>>>>> SingleRpc??
-    //sp_rpc_event->Wait();
-<<<<<<< HEAD
->>>>>>> logging when we prepare
-=======
-    n_event->AddEvent(coo->rpc_event);
->>>>>>> does not compile yet
   };
   task();
   TxData* tx_data = (TxData*) coo->cmd_;
