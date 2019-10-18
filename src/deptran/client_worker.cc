@@ -327,10 +327,10 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
   TxData* tx_data = (TxData*) coo->cmd_;
   //Log_info("What is the reply at the beginning? %d", tx_data->reply_.res_);
   tx_data->reply_.res_ = 10;
-  auto rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
+  coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
   //sp_rpc_event->Wait();
   //n_event->AddEvent(rpc_event);
-  rpc_event->Wait();
+  coo->rpc_event->Wait();
 //  dispatch_pool_->run_async(task); // this causes bug
 }
 
