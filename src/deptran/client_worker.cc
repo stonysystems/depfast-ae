@@ -65,11 +65,11 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     } else if (config_->client_type_ == Config::Closed){
       DispatchRequest(coo);
     }
-  } else if(and_event->Test()){
-    finish_mutex.lock();
-    finish_cond.signal();
-    finish_mutex.unlock();
-  }
+  } //else if(and_event->Test()){
+    //finish_mutex.lock();
+    //finish_cond.signal();
+    //finish_mutex.unlock();
+  //}
   /*bool have_more_time = timer_->elapsed() < duration;
   Log_debug("received callback from tx_id %" PRIx64, txn_reply.tx_id_);
   Log_debug("elapsed: %2.2f; duration: %d", timer_->elapsed(), duration);
@@ -88,7 +88,11 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     verify(n_concurrent_ >= 0);
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
+<<<<<<< HEAD
 //      finish_cond.signal();
+=======
+      finish_cond.signal();
+>>>>>>> some changes
     } else {
       Log_debug("waiting for %d more coordinators to finish", n_concurrent_);
       Log_debug("transactions they are processing:");
@@ -264,8 +268,8 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
     coo->DoTxAsync(req);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
-    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
-    n_event->AddEvent(coo->rpc_event);
+    auto rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
+    n_event->AddEvent(rpc_event);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -286,9 +290,9 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               std::placeholders::_1);
     coo->DoTxAsync(req);
     //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
-    coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
+    auto rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
     //sp_rpc_event->Wait();
-    n_event->AddEvent(coo->rpc_event);
+    n_event->AddEvent(rpc_event);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
