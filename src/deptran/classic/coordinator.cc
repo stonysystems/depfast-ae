@@ -266,8 +266,8 @@ void CoordinatorClassic::Prepare() {
     Log_debug("send prepare tid: %ld; partition_id %d",
               cmd_->id_,
               partition_id);
-    rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
-    rpc_event->log();
+    //rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
+    //rpc_event->log();
     commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
