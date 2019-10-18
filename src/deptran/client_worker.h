@@ -42,8 +42,9 @@ class SingleRPCEvent: public Event{
       of.close();
     }
     bool IsReady() override{
+      //Log_info("READY");
       TxData* tx_data = (TxData*) data_;
-      return tx_data->reply_.res_ == SUCCESS || tx_data->reply_.res_ == FAILURE;
+      return tx_data->reply_.res_ == SUCCESS || tx_data->reply_.res_ == REJECT;
     }
 };
 

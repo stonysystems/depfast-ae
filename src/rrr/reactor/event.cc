@@ -14,6 +14,7 @@ void Event::Wait() {
     status_ = DONE; // does not need to wait.
     return;
   } else {
+    Log_info("Waiting with status: %d", status_);
     verify(status_ == INIT);
     status_= DEBUG;
     // the event may be created in a different coroutine.
