@@ -313,7 +313,8 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
           if (this->n_concurrent_ == 0){
             this->finish_cond.signal();
           }
-        this->finish_mutex.unlock();
+          this->finish_mutex.unlock();
+        }
       }
 
     };

@@ -280,46 +280,6 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
   } else if (AllDispatchAcked()) {
     GotoNextPhase();
   }
-<<<<<<< HEAD
-  /*std::lock_guard<std::recursive_mutex> lock(this->mtx_);
-  if (phase != phase_) return;
-  TxData* txn = (TxData*) cmd_;
-  if (res == REJECT) {
-    Log_debug("got REJECT reply for cmd_id: %llx NOT COMMITING",
-              txn->root_id_);
-    aborted_ = true;
-    txn->commit_.store(false);
-  }
-  n_dispatch_ack_ += outputs.size();
-//  if (aborted_) {
-//    if (n_dispatch_ack_ == n_dispatch_) {
-//      // wait until all ongoing dispatch to finish before aborting.
-//      Log_debug("received all start acks (at least one is REJECT);"
-//                    "tx_id: %"
-//                    PRIx64, txn->root_id_);
-//      GotoNextPhase();
-//      return;
-//    }
-//  }
-
-  for (auto& pair : outputs) {
-    const innid_t& inn_id = pair.first;
-    verify(!dispatch_acks_.at(inn_id));
-    dispatch_acks_[inn_id] = true;
-    Log_debug("get start ack %ld/%ld for cmd_id: %lx, inn_id: %d",
-              n_dispatch_ack_, n_dispatch_, cmd_->id_, inn_id);
-    txn->Merge(pair.first, pair.second);
-  }
-  if (txn->HasMoreUnsentPiece()) {
-    Log_debug("command has more sub-cmd, cmd_id: %llx,"
-                  " n_started_: %d, n_pieces: %d",
-              txn->id_, txn->n_pieces_dispatched_, txn->GetNPieceAll());
-    DispatchAsync();
-  } else if (AllDispatchAcked()) {
-    Log_debug("receive all start acks, txn_id: %llx; START PREPARE",
-              txn->id_);
-    GotoNextPhase();
-  }*/
 }
 
 /** caller should be thread_safe */

@@ -24,12 +24,19 @@ void Event::Wait(uint64_t timeout) {
     status_ = DONE; // no need to wait.
     return;
   } else {
+<<<<<<< HEAD
 //    if (status_ == WAIT) {
 //      // this does not look right, fix later
 //      Log_fatal("multiple waits on the same event; no support at the moment");
 //    }
 //    verify(status_ == INIT); // does not support multiple wait so far. maybe we can support it in the future.
 //    status_= DEBUG;
+=======
+    //Log_info("Waiting with status: %d", status_);
+    verify(status_ == INIT);
+    status_= DEBUG;
+    //Log_info("Waiting with status2: %d", status_);
+>>>>>>> fixed some stuff
     // the event may be created in a different coroutine.
     // this value is set when wait is called.
     // for now only one coroutine can wait on an event.
