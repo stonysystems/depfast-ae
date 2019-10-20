@@ -304,14 +304,14 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
           free_coordinators_.push_back(coo);
         } else if (config_->client_type_ == Config::Closed){
           Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
-        }
         } else{
           this->finish_mutex.lock();
           this->n_concurrent_--;
           if (this->n_concurrent_ == 0){
-          this->finish_cond.signal();
+            this->finish_cond.signal();
+          }
+          this->finish_mutex.unlock();
         }
-        this->finish_mutex.unlock();
       }
 
     };
@@ -322,13 +322,9 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     coo->DoTxAsync(req);
   };
   task();
-  //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
   TxData* tx_data = (TxData*) coo->cmd_;
-  //Log_info("What is the reply at the beginning? %d", tx_data->reply_.res_);
   tx_data->reply_.res_ = 10;
   coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, coo->cmd_);
-  //sp_rpc_event->Wait();
-  //n_event->AddEvent(rpc_event);
   coo->rpc_event->Wait();
 //  dispatch_pool_->run_async(task); // this causes bug
 }
