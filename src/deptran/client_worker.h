@@ -29,7 +29,7 @@ class SingleRPCEvent: public Event{
     void add_dep(int tgtId){
       auto index = dep.find(tgtId);
       if(index == dep.end()) dep.insert(tgtId);
-      Log_info("size of dependencies: %d", dep.size());
+      //Log_info("size of dependencies: %d", dep.size());
     }
     void log(){
       std::ofstream of(log_file, std::fstream::app);

@@ -77,7 +77,7 @@ void MultiPaxosCommo::BroadcastAccept(shared_ptr<QuorumEvent> sp_quorum_event,
     sp_quorum_event->add_dep(leader_id, p.first);
     Future::safe_release(f);
   }
-//  verify(0);
+  //verify(0);
 }
 
 void MultiPaxosCommo::BroadcastAccept(parid_t par_id,
