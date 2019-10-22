@@ -173,7 +173,7 @@ void CoordinatorClassic::DispatchAsync() {
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
   n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd);
-  Log_info("Dispatch for tx_id: %" PRIx64, txn->root_id_);
+  Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par) {
     const parid_t& par_id = pair.first;
     auto& cmds = pair.second;
