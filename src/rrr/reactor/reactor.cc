@@ -28,6 +28,7 @@ Coroutine::CreateRun(std::function<void()> func) {
   auto coro = reactor.CreateRunCoroutine(func);
   // some events might be triggered in the last coroutine.
   verify(reactor.coros_.size() > 0);
+  Log_info("Looping looping looping");
   reactor.Loop();
   return coro;
 }
@@ -68,13 +69,15 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
 
 //  be careful this could be called from different coroutines.
 void Reactor::Loop(bool infinite) {
-  looping_ = infinite;
+  looping_ = infinite; 
   do {
     std::vector<shared_ptr<Event>> ready_events;
     for (auto it = events_.begin(); it != events_.end();) {
       Event& event = **it;
       event.Test();
+      Log_info("checking: %p %d", *it, event.status_);
       if (event.status_ == Event::READY) {
+        Log_info("Ready up");
         ready_events.push_back(std::move(*it));
         it = events_.erase(it);
       } else if (event.status_ == Event::DONE) {

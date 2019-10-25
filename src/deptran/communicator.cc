@@ -228,6 +228,60 @@ void Communicator::BroadcastDispatch(
   }
 }
 
+void Communicator::BroadcastDispatch(
+    shared_ptr<DispatchEvent> disp_event,
+    shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
+    Coordinator* coo,
+    TxData* txn) {
+  cmdid_t cmd_id = sp_vec_piece->at(0)->root_id_;
+  verify(sp_vec_piece->size() > 0);
+  auto par_id = sp_vec_piece->at(0)->PartitionId();
+  rrr::FutureAttr fuattr;
+  fuattr.callback =
+      [coo, this, disp_event, txn](Future* fu) {
+        int32_t ret;
+        TxnOutput outputs;
+        fu->get_reply() >> ret >> outputs;
+        if(ret == REJECT){
+          disp_event->aborted_ = true;
+          txn->commit_.store(false);
+        }
+        for(auto& pair: outputs){
+          const uint32_t& inn_id = pair.first;
+          disp_event->dispatch_acks_[inn_id] = true;
+          txn->Merge(pair.first, pair.second);
+        }
+        if(txn->HasMoreUnsentPiece()){
+          disp_event->more = true;
+        }
+        disp_event->n_dispatch_ack_ += outputs.size();
+        disp_event->Test();
+      };
+  auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+  Log_debug("send dispatch to site %ld",
+            pair_leader_proxy.first);
+  auto proxy = pair_leader_proxy.second;
+  shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
+  sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
+  MarshallDeputy md(sp_vpd); // ????
+  auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
+  Future::safe_release(future);
+  for (auto& pair : rpc_par_proxies_[par_id]) {
+    if (pair.first != pair_leader_proxy.first) {
+      rrr::FutureAttr fuattr;
+      fuattr.callback =
+          [coo, this](Future* fu) {
+            int32_t ret;
+            TxnOutput outputs;
+            fu->get_reply() >> ret >> outputs;
+            // do nothing
+          };
+      Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+    }
+  }
+}
+
+
 void Communicator::SendStart(SimpleCommand& cmd,
                              int32_t output_size,
                              std::function<void(Future* fu)>& callback) {

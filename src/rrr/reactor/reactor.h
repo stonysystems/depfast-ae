@@ -50,6 +50,7 @@ class Reactor {
     sp_ev->__debug_creator = 1;
     // TODO push them into a wait queue when they actually wait.
     events.push_back(sp_ev);
+    Log_info("ADDING %p", *sp_ev);
     return sp_ev;
   }
 

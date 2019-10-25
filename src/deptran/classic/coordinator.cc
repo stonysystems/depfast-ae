@@ -174,10 +174,16 @@ void CoordinatorClassic::DispatchAsync() {
   n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd);
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
+  for (auto& pair: cmds_by_par){
+    auto& cmds = pair.second;
+    n_dispatch_ += cmds.size();
+  }
+  auto disp_event = Reactor::CreateSpEvent<DispatchEvent>();
+  disp_event->n_dispatch_ = n_dispatch_;
+  disp_event->n_dispatch_ack_ = n_dispatch_ack_;
   for (auto& pair: cmds_by_par) {
     const parid_t& par_id = pair.first;
     auto& cmds = pair.second;
-    n_dispatch_ += cmds.size();
     cnt += cmds.size();
     auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
     for (auto c: cmds) {
@@ -185,14 +191,14 @@ void CoordinatorClassic::DispatchAsync() {
       dispatch_acks_[c->inn_id_] = false;
       sp_vec_piece->push_back(c);
     }
-    commo()->BroadcastDispatch(sp_vec_piece,
-                               this,
-                               std::bind(&CoordinatorClassic::DispatchAck,
-                                         this,
-                                         phase_,
-                                         std::placeholders::_1,
-                                         std::placeholders::_2));
+    commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }
+  disp_event->Wait();
+  n_dispatch_ack_ = disp_event->n_dispatch_ack_;
+  aborted_ = disp_event->aborted_;
+  Log_info("Hello");
+  if(disp_event->more) DispatchAsync();
+  GotoNextPhase();
   Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
@@ -211,6 +217,31 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
                                      int res,
                                      TxnOutput& outputs) {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
+  if (phase != phase_) return;
+  TxData* txn = (TxData*) cmd_;
+  if (res == REJECT) {
+    aborted_ = true;
+    txn->commit_.store(false);
+  }
+  n_dispatch_ack_ += outputs.size();
+  if (aborted_) {
+    if (n_dispatch_ack_ == n_dispatch_) {
+      GotoNextPhase();
+      return;
+    }
+  }
+
+  for (auto& pair : outputs) {
+    const innid_t& inn_id = pair.first;
+    dispatch_acks_[inn_id] = true;
+    txn->Merge(pair.first, pair.second);
+  }
+  if (txn->HasMoreUnsentPiece()) {
+    DispatchAsync();
+  } else if (AllDispatchAcked()) {
+    GotoNextPhase();
+  }
+  /*std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   TxData* txn = (TxData*) cmd_;
   if (res == REJECT) {
@@ -248,7 +279,7 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
     Log_debug("receive all start acks, txn_id: %llx; START PREPARE",
               txn->id_);
     GotoNextPhase();
-  }
+  }*/
 }
 
 /** caller should be thread_safe */
