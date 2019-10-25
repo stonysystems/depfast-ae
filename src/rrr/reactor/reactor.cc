@@ -81,8 +81,12 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
 
 //  be careful this could be called from different coroutines.
 void Reactor::Loop(bool infinite) {
+<<<<<<< HEAD
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
+=======
+  looping_ = infinite; 
+>>>>>>> frustrated
   do {
     std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
     verify(ready_events_.empty());
@@ -93,6 +97,7 @@ void Reactor::Loop(bool infinite) {
     auto time_now = Time::now();
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
+<<<<<<< HEAD
       auto status = event.status_;
       switch (status) {
         case Event::INIT:
@@ -121,6 +126,18 @@ void Reactor::Loop(bool infinite) {
           break;
         default:
           verify(0);
+=======
+      event.Test();
+      Log_info("checking: %p %d", *it, event.status_);
+      if (event.status_ == Event::READY) {
+        Log_info("Ready up");
+        ready_events.push_back(std::move(*it));
+        it = events_.erase(it);
+      } else if (event.status_ == Event::DONE) {
+        it = events_.erase(it);
+      } else {
+        it ++;
+>>>>>>> frustrated
       }
     }
     for (auto it = ready_events.begin(); it != ready_events.end(); it++) {

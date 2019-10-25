@@ -57,6 +57,7 @@ void Event::Wait(uint64_t timeout) {
 //      events.insert(it, shared_from_this());
 
     wp_coro_ = sp_coro;
+    Log_info("waiting");
     status_ = WAIT;
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
