@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_set>
+#include <map>
 //#include "../../deptran/client_worker.h"
 #include "../base/all.hpp"
 
@@ -253,6 +254,42 @@ class NEvent : public Event {
     
     //return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
   }
+};
+
+class DispatchEvent: public Event{
+  public:
+    uint32_t n_dispatch_;
+    uint32_t n_dispatch_ack_ = 0;
+    std::map<uint32_t, bool> dispatch_acks_ = {};
+    bool aborted_ = false;
+    bool more = false;
+
+    DispatchEvent() : Event(){
+    
+    }
+    bool IsReady() override{
+      if(n_dispatch_ == n_dispatch_ack_){
+        if(aborted_){
+          Log_info("aborted");
+          return true;
+        }
+        else{
+          Log_info("DONE DONE: %p", this);
+          return std::all_of(dispatch_acks_.begin(),
+                             dispatch_acks_.end(),
+                             [](std::pair<uint32_t, bool> pair) {
+                             return pair.second;
+                             });
+        }
+      }
+      else if(more){
+        Log_info("more");
+        return true;
+      }
+      Log_info("FALSE");
+      return false;
+    }
+
 };
 
 }

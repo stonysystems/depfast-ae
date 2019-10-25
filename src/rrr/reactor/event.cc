@@ -54,6 +54,7 @@ void Event::Wait(uint64_t timeout) {
 //
 //    somewhere here, we should output the logs
     wp_coro_ = sp_coro;
+    Log_info("waiting");
     status_ = WAIT;
     sp_coro->Yield();
 //    if (status_ == TIMEOUT) {
@@ -77,7 +78,7 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
-      Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
+      Log_info("READY: %p", this);
     } else if (status_ == READY) {
       // This could happen for a quorum event.
 //      Log_debug("event status ready, triggered?");

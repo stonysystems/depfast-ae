@@ -57,9 +57,9 @@ class Reactor {
   static shared_ptr<Ev> CreateSpEvent(Args&&... args) {
     auto sp_ev = make_shared<Ev>(args...);
     sp_ev->__debug_creator = 1;
-    // push them into a wait queue when they actually wait.
-//    auto& events = GetReactor()->all_events_;
-//    events.push_back(sp_ev);
+    // TODO push them into a wait queue when they actually wait.
+    events.push_back(sp_ev);
+    Log_info("ADDING %p", *sp_ev);
     return sp_ev;
   }
 
