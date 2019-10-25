@@ -223,8 +223,7 @@ void CoordinatorClassic::DispatchAsync() {
   n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
-  for (auto& pair: cmds_by_par){
-    auto& cmds = pair.second;
+  for (auto& pair: cmds_by_par){    auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
   // need to create a vector of quorum events or a different data structure

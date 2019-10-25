@@ -323,6 +323,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   }
   //probably should modify the data structure here.
   return e;
+
 }
 
 

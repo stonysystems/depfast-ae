@@ -24,19 +24,12 @@ void Event::Wait(uint64_t timeout) {
     status_ = DONE; // no need to wait.
     return;
   } else {
-<<<<<<< HEAD
 //    if (status_ == WAIT) {
 //      // this does not look right, fix later
 //      Log_fatal("multiple waits on the same event; no support at the moment");
 //    }
 //    verify(status_ == INIT); // does not support multiple wait so far. maybe we can support it in the future.
 //    status_= DEBUG;
-=======
-    //Log_info("Waiting with status: %d", status_);
-    verify(status_ == INIT);
-    status_= DEBUG;
-    //Log_info("Waiting with status2: %d", status_);
->>>>>>> fixed some stuff
     // the event may be created in a different coroutine.
     // this value is set when wait is called.
     // for now only one coroutine can wait on an event.
@@ -70,7 +63,6 @@ void Event::Wait(uint64_t timeout) {
 //      events.insert(it, shared_from_this());
 
     wp_coro_ = sp_coro;
-    //Log_info("waiting");
     status_ = WAIT;
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
@@ -96,7 +88,7 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
-      Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
+      Log_info("READY: %p", this);
     } else if (status_ == READY) {
       // This could happen for a quorum event.
 //      Log_debug("event status ready, triggered?");
