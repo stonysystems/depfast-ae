@@ -32,6 +32,7 @@ class Event {
 
   virtual void Wait();
   virtual bool Test();
+  virtual uint64_t GetCoroId();
   virtual bool IsReady() {return false;}
 
   friend Reactor;

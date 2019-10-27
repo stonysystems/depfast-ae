@@ -51,8 +51,16 @@ void CoordinatorMultiPaxos::Prepare() {
             slot_id_);
   verify(n_prepare_ack_ == 0);
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
-  auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
+  parid_t leader_id;
+  std::vector<parid_t> follower_ids{};
+  auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_, leader_id, follower_ids);
+  uint64_t src_coroid = sp_quorum->GetCoroId();
   sp_quorum->Wait();
+  uint64_t tgt_coroid = sp_quorum->GetCoroId();
+  for(int i = 0; i < follower_ids.size(); i++){
+    sp_quorum->add_dep(leader_id, src_coroid, follower_ids.at(i), tgt_coroid);
+  }
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     verify(!sp_quorum->HasAcceptedValue());
     // TODO use the previously accepted value.
@@ -104,8 +112,16 @@ void CoordinatorMultiPaxos::Accept() {
   Log_debug("multi-paxos coordinator broadcasts accept, "
                 "par_id_: %lx, slot_id: %llx",
             par_id_, slot_id_);
-  auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
+  parid_t leader_id;
+  std::vector<parid_t> follower_ids{};
+  auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_, leader_id, follower_ids);
+  uint64_t src_coroid = sp_quorum->GetCoroId();
   sp_quorum->Wait();
+  uint64_t tgt_coroid = sp_quorum->GetCoroId();
+  for(int i = 0; i < follower_ids.size(); i++){
+    sp_quorum->add_dep(leader_id, src_coroid, follower_ids.at(i), tgt_coroid);
+  }
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     committed_ = true;
   } else if (sp_quorum->No()) {
