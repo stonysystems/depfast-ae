@@ -46,6 +46,7 @@ class Event : public std::enable_shared_from_this<Event> {
     verify(test_);
     return test_(0);
   }
+  virtual uint64_t GetCoroId();
 
   friend Reactor;
 // protected:
