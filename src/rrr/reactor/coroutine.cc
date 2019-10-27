@@ -8,11 +8,9 @@
 
 namespace rrr {
 
-
 uint64_t Coroutine::global_id = 0;
 
 Coroutine::Coroutine(std::function<void()> func) : func_(func), status_(INIT), id(Coroutine::global_id++) {
-
 }
 
 Coroutine::~Coroutine() {

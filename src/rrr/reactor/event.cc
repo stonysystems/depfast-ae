@@ -14,7 +14,6 @@ uint64_t Event::GetCoroId(){
   return sp_coro->id;
 }
 
-
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
