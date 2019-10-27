@@ -122,8 +122,6 @@ class SharedIntEvent {
   void Wait(function<bool(int)> f);
 };
 
-<<<<<<< HEAD
-
 class NeverEvent: public Event {
  public:
   bool IsReady() override {
