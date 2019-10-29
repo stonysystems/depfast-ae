@@ -73,7 +73,8 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     *res = ret ? SUCCESS : REJECT;
     defer->reply();
   };
-  Coroutine::CreateRun(func);
+  auto coro = Coroutine::CreateRun(func);
+  //Log_info("coro id on service side: %d", coro->id);
 // TODO move the stat to somewhere else.
 #ifdef PIECE_COUNT
   std::map<piece_count_key_t, uint64_t>::iterator pc_it;

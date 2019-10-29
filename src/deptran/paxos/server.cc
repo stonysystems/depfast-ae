@@ -9,6 +9,7 @@ namespace janus {
 void PaxosServer::OnPrepare(slotid_t slot_id,
                             ballot_t ballot,
                             ballot_t *max_ballot,
+                            uint64_t* coro_id,
                             const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler receives prepare for slot_id: %llx",
@@ -26,10 +27,12 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
   cb();
 }
 
+
 void PaxosServer::OnAccept(const slotid_t slot_id,
                            const ballot_t ballot,
                            shared_ptr<Marshallable> &cmd,
                            ballot_t *max_ballot,
+                           uint64_t* coro_id,
                            const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
@@ -42,6 +45,7 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
     // TODO
     verify(0);
   }
+  *coro_id = Coroutine::CurrentCoroutine()->id;
   *max_ballot = instance->max_ballot_seen_;
   n_accept_++;
   cb();
