@@ -31,12 +31,14 @@ class SchedulerMultiPaxos : public Scheduler {
   void OnPrepare(slotid_t slot_id,
                  ballot_t ballot,
                  ballot_t *max_ballot,
+                 uint64_t* coro_id,
                  const function<void()> &cb);
 
   void OnAccept(const slotid_t slot_id,
                 const ballot_t ballot,
                 shared_ptr<Marshallable> &cmd,
                 ballot_t *max_ballot,
+                uint64_t* coro_id,
                 const function<void()> &cb);
 
   void OnCommit(const slotid_t slot_id,
