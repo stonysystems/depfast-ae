@@ -46,9 +46,7 @@ class MultiPaxosCommo : public Communicator {
   shared_ptr<PaxosPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    slotid_t slot_id,
-                   ballot_t ballot,
-                   parid_t& leader_id,
-                   std::vector<parid_t>& follower_ids);
+                   ballot_t ballot);
   void BroadcastPrepare(parid_t par_id,
                         slotid_t slot_id,
                         ballot_t ballot,
@@ -57,9 +55,7 @@ class MultiPaxosCommo : public Communicator {
   BroadcastAccept(parid_t par_id,
                   slotid_t slot_id,
                   ballot_t ballot,
-                  shared_ptr<Marshallable> cmd,
-                  parid_t& leader_id,
-                  std::vector<parid_t>& follower_ids);
+                  shared_ptr<Marshallable> cmd);
   void BroadcastAccept(parid_t par_id,
                        slotid_t slot_id,
                        ballot_t ballot,

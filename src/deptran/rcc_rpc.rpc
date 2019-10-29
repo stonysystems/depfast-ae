@@ -6,12 +6,14 @@ abstract service MultiPaxos {
 
   defer Prepare(uint64_t slot,
                 ballot_t ballot |
-                ballot_t max_ballot);
+                ballot_t max_ballot,
+                uint64_t coro_id);
 
   defer Accept(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd |
-               ballot_t max_ballot);
+               ballot_t max_ballot,
+               uint64_t coro_id);
 
   defer Decide(uint64_t slot,
                ballot_t ballot,
