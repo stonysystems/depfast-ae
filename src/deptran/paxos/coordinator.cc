@@ -72,10 +72,7 @@ void CoordinatorMultiPaxos::Prepare() {
             slot_id_);
   verify(n_prepare_ack_ == 0);
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
-  parid_t leader_id;
-  std::vector<parid_t> follower_ids{};
-  auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_, leader_id, follower_ids);
-  uint64_t src_coroid = sp_quorum->GetCoroId();
+  auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
   sp_quorum->Wait();
   sp_quorum->log();
   if (sp_quorum->Yes()) {

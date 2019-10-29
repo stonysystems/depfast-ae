@@ -72,7 +72,7 @@ class QuorumEvent : public Event {
     }
 
     auto tgtCoroIndex = deps[srcId][srcCoro][tgtId].find(tgtCoro);
-    if(tgtCoroIndex == deps[srcId][srcCoro][tgtId].end() && srcId != tgtId){
+    if(tgtCoroIndex == deps[srcId][srcCoro][tgtId].end()){
       deps[srcId][srcCoro][tgtId].insert(tgtCoro);
     }
   }

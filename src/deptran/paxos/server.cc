@@ -56,8 +56,6 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
   cb();
 }
 
-
-
 void PaxosServer::OnAccept(const slotid_t slot_id,
                            const ballot_t ballot,
                            shared_ptr<Marshallable> &cmd,
