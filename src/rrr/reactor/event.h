@@ -200,7 +200,7 @@ class DispatchEvent: public Event{
           return true;
         }
         else{
-          Log_info("DONE DONE: %p", this);
+          Log_info("DONE DONE: %x", *this);
           return std::all_of(dispatch_acks_.begin(),
                              dispatch_acks_.end(),
                              [](std::pair<uint32_t, bool> pair) {

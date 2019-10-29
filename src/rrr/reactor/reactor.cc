@@ -72,18 +72,21 @@ void Reactor::Loop(bool infinite) {
   looping_ = infinite; 
   do {
     std::vector<shared_ptr<Event>> ready_events;
+    int i = 0;
     for (auto it = events_.begin(); it != events_.end();) {
       Event& event = **it;
       event.Test();
-      Log_info("checking: %p %d", *it, event.status_);
+      Log_info("checking: %s %d", typeid(event).name(), i);
       if (event.status_ == Event::READY) {
         Log_info("Ready up");
         ready_events.push_back(std::move(*it));
         it = events_.erase(it);
       } else if (event.status_ == Event::DONE) {
+        Log_info("deleting %s", typeid(event).name());
         it = events_.erase(it);
       } else {
         it ++;
+        i++;
       }
     }
     for (auto& up_ev: ready_events) {

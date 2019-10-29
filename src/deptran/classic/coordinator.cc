@@ -96,6 +96,7 @@ void CoordinatorClassic::GotoNextPhase() {
       verify(phase_ % n_phase == Phase::DISPATCH);
       break;
     case Phase::DISPATCH:
+      Log_info("Preparing for some reason");
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
@@ -178,7 +179,8 @@ void CoordinatorClassic::DispatchAsync() {
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-  auto disp_event = Reactor::CreateSpEvent<DispatchEvent>();
+  std::shared_ptr<DispatchEvent> disp_event = Reactor::CreateSpEvent<DispatchEvent>();
+  Log_info("Added DispatchEvent: %x", *disp_event);
   disp_event->n_dispatch_ = n_dispatch_;
   disp_event->n_dispatch_ack_ = n_dispatch_ack_;
   for (auto& pair: cmds_by_par) {
@@ -193,6 +195,7 @@ void CoordinatorClassic::DispatchAsync() {
     }
     commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }
+  Log_info("Waiting DispatchEvent: %x", *disp_event);
   disp_event->Wait();
   n_dispatch_ack_ = disp_event->n_dispatch_ack_;
   aborted_ = disp_event->aborted_;
@@ -318,6 +321,7 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
   TxData* cmd = (TxData*) cmd_;
   n_prepare_ack_++;
 
+  verify(res == SUCCESS || res == REJECT);
   if (res == REJECT) {
     cmd->commit_.store(false);
     aborted_ = true;

@@ -49,7 +49,7 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
-      Log_info("READY: %p", this);
+      Log_info("READY: %x", *this);
     } else if (status_ == READY) {
       // This could happen for a quorum event.
       Log_debug("event status ready, triggered?");

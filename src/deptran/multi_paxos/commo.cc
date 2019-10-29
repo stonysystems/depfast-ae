@@ -28,56 +28,55 @@ void MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
   }
 }
 
-void MultiPaxosCommo::BroadcastPrepare(shared_ptr<QuorumEvent> sp_quorum_event,
-                                       parid_t par_id,
-                                       slotid_t slot_id,
-                                       ballot_t ballot) {
+shared_ptr<PaxosPrepareQuorumEvent>
+MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
+                                  slotid_t slot_id,
+                                  ballot_t ballot) {
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+  auto e = Reactor::CreateSpEvent<PaxosPrepareQuorumEvent>(n, n/2+1);
   auto proxies = rpc_par_proxies_[par_id];
   auto leader_id = LeaderProxyForPartition(par_id).first;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     int id = p.first;
     FutureAttr fuattr;
-    fuattr.callback = [sp_quorum_event, ballot](Future* fu) {
+    fuattr.callback = [e, ballot](Future* fu) {
       ballot_t b = 0;
       fu->get_reply() >> b;
-      if (b == ballot) {
-        sp_quorum_event->n_voted_++;
-        sp_quorum_event->Test();
-      }
-      // TODO process the case if all prepares are rejected.
+      e->FeedResponse(b==ballot);
+      // TODO add max accepted value.
     };
     Future::safe_release(proxy->async_Prepare(slot_id, ballot, fuattr));
-    sp_quorum_event->add_dep(leader_id, p.first);
+    e->add_dep(leader_id, p.first);
   }
-
+  return e;
 }
 
-void MultiPaxosCommo::BroadcastAccept(shared_ptr<QuorumEvent> sp_quorum_event,
-                                      parid_t par_id,
-                                      slotid_t slot_id,
-                                      ballot_t ballot,
-                                      shared_ptr<Marshallable> cmd) {
+shared_ptr<PaxosAcceptQuorumEvent>
+MultiPaxosCommo::BroadcastAccept(parid_t par_id,
+                                 slotid_t slot_id,
+                                 ballot_t ballot,
+                                 shared_ptr<Marshallable> cmd) {
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+//  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n/2+1);
+  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n);
   auto proxies = rpc_par_proxies_[par_id];
   auto leader_id = LeaderProxyForPartition(par_id).first;
   vector<Future*> fus;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     FutureAttr fuattr;
-    fuattr.callback = [sp_quorum_event, ballot] (Future* fu) {
+    fuattr.callback = [e, ballot] (Future* fu) {
       ballot_t b = 0;
       fu->get_reply() >> b;
-      if (b == ballot) {
-        sp_quorum_event->n_voted_++;
-        sp_quorum_event->Test();
-      }
+      e->FeedResponse(b==ballot);
     };
     MarshallDeputy md(cmd);
     auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);
-    sp_quorum_event->add_dep(leader_id, p.first);
+    e->add_dep(leader_id, p.first);
     Future::safe_release(f);
   }
-  //verify(0);
+  return e;
 }
 
 void MultiPaxosCommo::BroadcastAccept(parid_t par_id,

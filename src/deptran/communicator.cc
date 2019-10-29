@@ -7,6 +7,7 @@
 #include "command_marshaler.h"
 #include "procedure.h"
 #include "rcc_rpc.h"
+#include <typeinfo>
 
 namespace janus {
 
@@ -213,6 +214,7 @@ void Communicator::BroadcastDispatch(
   MarshallDeputy md(sp_vpd); // ????
   auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
   Future::safe_release(future);
+  // FIXME fix this, this cause occ and perhaps 2pl to fail
   for (auto& pair : rpc_par_proxies_[par_id]) {
     if (pair.first != pair_leader_proxy.first) {
       rrr::FutureAttr fuattr;
@@ -229,16 +231,19 @@ void Communicator::BroadcastDispatch(
 }
 
 void Communicator::BroadcastDispatch(
-    shared_ptr<DispatchEvent> disp_event,
+    shared_ptr<DispatchEvent>& disp_event,
     shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
     Coordinator* coo,
     TxData* txn) {
+  Log_info("Pre-testing DispatchEvent %x: ", *disp_event);
   cmdid_t cmd_id = sp_vec_piece->at(0)->root_id_;
   verify(sp_vec_piece->size() > 0);
   auto par_id = sp_vec_piece->at(0)->PartitionId();
   rrr::FutureAttr fuattr;
   fuattr.callback =
-      [coo, this, disp_event, txn](Future* fu) {
+      [disp_event, coo, this, txn](Future* fu) {
+        //auto disp_ptr = &disp_event;
+        Log_info("Testing DispatchEvent %x: ", *disp_event);
         int32_t ret;
         TxnOutput outputs;
         fu->get_reply() >> ret >> outputs;

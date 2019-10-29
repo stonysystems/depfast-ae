@@ -74,7 +74,7 @@ class Communicator {
   void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
- void BroadcastDispatch(shared_ptr<DispatchEvent> disp_event,
+ void BroadcastDispatch(shared_ptr<DispatchEvent>& disp_event,
                         shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
                         Coordinator* coo,
                         TxData* txn);

@@ -1,7 +1,9 @@
 #pragma once
 #include <set>
+#include <algorithm>
 #include <unordered_map>
 #include <list>
+#include <typeinfo>
 #include "base/misc.hpp"
 #include "event.h"
 #include "quorum_event.h"
@@ -44,13 +46,11 @@ class Reactor {
   template <typename Ev, typename... Args>
   static shared_ptr<Ev> CreateSpEvent(Args&&... args) {
     auto& events = GetReactor()->events_;
-//    auto sp_ev = make_shared<Ev>(args...);
-    shared_ptr<Ev> sp_ev;
-    sp_ev.reset(new Ev(args...));
+    auto sp_ev = make_shared<Ev>(args...);
     sp_ev->__debug_creator = 1;
     // TODO push them into a wait queue when they actually wait.
     events.push_back(sp_ev);
-    Log_info("ADDING %p", *sp_ev);
+    Log_info("ADDING %s %d", typeid(sp_ev).name(), events.size());
     return sp_ev;
   }
 
