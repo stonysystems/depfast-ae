@@ -123,9 +123,10 @@ void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
 
 void CoordinatorClassic::GotoNextPhase() {
   int n_phase = 4;
-  auto current_phase = phase_ % n_phase;
-  phase_++;
-  switch (current_phase) {
+  int current_phase = phase_ % n_phase;
+  Log_info("Current phase is %d", current_phase);
+  Log_info("aborted and committed: %d, %d", aborted_, committed_);
+  switch (phase_++ % n_phase) {
     case Phase::INIT_END:
       //Log_info("Dispatching for some reason: %x", this);
       verify(phase_ % n_phase == Phase::DISPATCH);
@@ -288,18 +289,47 @@ void CoordinatorClassic::Prepare() {
     sids.push_back(site);
   }
 
+<<<<<<< HEAD
   //Log_info("send prepare tid: %ld; partition_id %d",
             //cmd_->id_,
             //partition_id);
   auto phase = phase_;
   
   /*commo()->SendPrepare(partition_id,
+=======
+  for (auto& partition_id : cmd->partition_ids_) {
+    Log_info("send prepare tid: %ld; partition_id %d",
+              cmd_->id_,
+              partition_id);
+    rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
+    rpc_event->log();
+    auto phase = phase_;
+    //moving this to communicator might be easier and add a hack for GotoNextPhase
+    //also add this to the call to SendPrepare
+    auto callback = [this, phase](int32_t res){
+      if(this->phase_ != phase) return;
+      TxData* cmd = (TxData*) this->cmd_;
+      if(res == REJECT){
+        cmd->commit_.store(false);
+        this->aborted_ = true;
+      }
+      if(this->n_prepare_ack_ = cmd->partition_ids_.size()){
+        if(!this->aborted_){
+          cmd->commit_.store(true);
+          this->committed_=true;
+        }
+        this->GotoNextPhase();
+      }
+    };
+    /*commo()->SendPrepare(partition_id,
+>>>>>>> WIP
                          cmd_->id_,
                          sids,
                          std::bind(&CoordinatorClassic::PrepareAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));*/
+<<<<<<< HEAD
   auto quorum_event = commo()->SendPrepare(this,
                                           cmd_->id_,
                                           sids);
@@ -310,6 +340,16 @@ void CoordinatorClassic::Prepare() {
   if(!aborted_){
     cmd->commit_.store(true);
     committed_ = true;
+=======
+    auto sp_rpc_event = commo()->SendPrepare(partition_id,
+                                            cmd_->id_,
+                                            sids,
+                                            callback);
+    //sp_rpc_event->Wait();
+    verify(site_prepare_[partition_id] == 0);
+    site_prepare_[partition_id]++;
+    verify(site_prepare_[partition_id] == 1);
+>>>>>>> WIP
   }
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;

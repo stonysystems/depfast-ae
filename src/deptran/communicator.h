@@ -104,10 +104,12 @@ class Communicator {
                                      txnid_t tid);
   shared_ptr<AndEvent> SendAbort(Coordinator* coo,
                                     txnid_t tid);
+
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
                    const std::function<void(int)> &callback) ;*/
+
   /*void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;
