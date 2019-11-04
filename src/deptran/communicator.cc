@@ -235,7 +235,33 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
-void Communicator::SendPrepare(groupid_t gid,
+shared_ptr<SingleRPCEvent>
+Communicator::SendPrepare(groupid_t gid,
+                          txnid_t tid,
+                          std::vector<int32_t>& sids,
+                          const function<void(int)>& callback){
+  int32_t res_ = 10;
+  auto e = Reactor::CreateSpEvent<SingleRPCEvent>(-1, res_);
+  FutureAttr fuattr;
+  std::function<void(Future*)> cb =
+      [e, this, callback, &res_](Future* fu) {
+        int32_t res;
+        fu->get_reply() >> res;
+        callback(res);
+        //res_ = res;
+        e->Test();
+      };
+  fuattr.callback = cb;
+  ClassicProxy* proxy = LeaderProxyForPartition(gid).second;
+  Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
+            sids.size(),
+            gid,
+            tid);
+  Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
+  return e;
+}
+
+/*void Communicator::SendPrepare(groupid_t gid,
                                txnid_t tid,
                                std::vector<int32_t>& sids,
                                const function<void(int)>& callback) {
@@ -253,7 +279,7 @@ void Communicator::SendPrepare(groupid_t gid,
             gid,
             tid);
   Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
-}
+}*/
 
 void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   auto value = std::make_pair(pid, tid);

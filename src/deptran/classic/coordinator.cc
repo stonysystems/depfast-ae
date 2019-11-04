@@ -90,6 +90,8 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
 void CoordinatorClassic::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
+  Log_info("Current phase is %d", current_phase);
+  Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:
       DispatchAsync();
@@ -268,13 +270,36 @@ void CoordinatorClassic::Prepare() {
               partition_id);
     rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
     rpc_event->log();
-    commo()->SendPrepare(partition_id,
+    auto phase = phase_;
+    //moving this to communicator might be easier and add a hack for GotoNextPhase
+    //also add this to the call to SendPrepare
+    auto callback = [this, phase](int32_t res){
+      if(this->phase_ != phase) return;
+      TxData* cmd = (TxData*) this->cmd_;
+      if(res == REJECT){
+        cmd->commit_.store(false);
+        this->aborted_ = true;
+      }
+      if(this->n_prepare_ack_ = cmd->partition_ids_.size()){
+        if(!this->aborted_){
+          cmd->commit_.store(true);
+          this->committed_=true;
+        }
+        this->GotoNextPhase();
+      }
+    };
+    /*commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
                          std::bind(&CoordinatorClassic::PrepareAck,
                                    this,
                                    phase_,
-                                   std::placeholders::_1));
+                                   std::placeholders::_1));*/
+    auto sp_rpc_event = commo()->SendPrepare(partition_id,
+                                            cmd_->id_,
+                                            sids,
+                                            callback);
+    //sp_rpc_event->Wait();
     verify(site_prepare_[partition_id] == 0);
     site_prepare_[partition_id]++;
     verify(site_prepare_[partition_id] == 1);
