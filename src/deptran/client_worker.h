@@ -15,39 +15,6 @@ class Coordinator;
 class TxnRegistry;
 class TxReply;
 
-class SingleRPCEvent: public Event{
-  public:
-    uint32_t cli_id_;
-    uint32_t coo_id_;
-    CmdData* data_;
-    std::string log_file = "logs.txt";
-    std::unordered_set<int> dep{};
-    SingleRPCEvent(uint32_t cli_id, CmdData* data): Event(),
-                                                   cli_id_(cli_id),
-                                                   data_(data){
-    }
-    void add_dep(int tgtId){
-      auto index = dep.find(tgtId);
-      if(index == dep.end()) dep.insert(tgtId);
-      //Log_info("size of dependencies: %d", dep.size());
-    }
-    void log(){
-      std::ofstream of(log_file, std::fstream::app);
-      //of << "hello\n";
-      of << "{ " << cli_id_ << ": ";
-      for(auto it = dep.begin(); it != dep.end(); it++){
-        of << *it << " ";
-      }
-      of << "}\n";
-      of.close();
-    }
-    bool IsReady() override{
-      //Log_info("READY");
-      TxData* tx_data = (TxData*) data_;
-      return tx_data->reply_.res_ == SUCCESS || tx_data->reply_.res_ == REJECT;
-    }
-};
-
 class ClientWorker {
  public:
   PollMgr* poll_mgr_{nullptr};

@@ -90,14 +90,15 @@ class Communicator {
   void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
- void BroadcastDispatch(shared_ptr<DispatchEvent> disp_event,
-                        shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
-                        Coordinator* coo,
-                        TxData* txn);
-  void SendPrepare(parid_t gid,
+
+  shared_ptr<SingleRPCEvent> SendPrepare(parid_t gid,
+                                         txnid_t tid,
+                                         std::vector<int32_t>& sids,
+                                         const std::function<void(int)>& callback);
+  /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
-                   const std::function<void(int)> &callback) ;
+                   const std::function<void(int)> &callback) ;*/
   void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;
