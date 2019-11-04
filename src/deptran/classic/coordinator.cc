@@ -122,7 +122,6 @@ void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
 }
 
 void CoordinatorClassic::GotoNextPhase() {
-  //Log_info("We're moving along: %d", phase_ % 4);
   int n_phase = 4;
   auto current_phase = phase_ % n_phase;
   phase_++;
@@ -137,12 +136,10 @@ void CoordinatorClassic::GotoNextPhase() {
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
-        //Log_info("Oh no, we are aborting: %x", this);
         phase_++;
         phase_++;
         Commit();
       } else {
-        //Log_info("Oh yes, we are preparing: %x", this);
         phase_++;
         Prepare();
       }
@@ -253,7 +250,6 @@ bool CoordinatorClassic::AllDispatchAcked() {
 void CoordinatorClassic::DispatchAck(phase_t phase,
                                      int res,
                                      TxnOutput& outputs) {
-  //Log_info("Is this being called");
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   auto* txn = (TxData*) cmd_;
@@ -332,10 +328,10 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
     aborted_ = true;
 //    Log_fatal("2PL prepare failed due to error %d", e);
   }
-  Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
+  Log_info("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
   if (n_prepare_ack_ == cmd->partition_ids_.size()) {
-    Log_debug("2PL prepare finished for %ld", cmd->root_id_);
+    Log_info("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
       committed_ = true;
@@ -418,12 +414,12 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
   verify(cmd->GetPartitionIds().size() == n_finish_req_);
   // Perhaps a bug here?
   if (n_finish_ack_ == cmd->GetPartitionIds().size()) {
-//    if (cmd->reply_.res_ == REJECT) {
-//      aborted_ = true;
-//    } else {
-//      committed_ = true;
-//    }
-    GotoNextPhase();
+    if (cmd->reply_.res_ == REJECT) {
+      aborted_ = true;
+    } else {
+      committed_ = true;
+    }
+    //GotoNextPhase();
   }
   Log_debug("callback: %s, retry: %s",
             committed_ ? "True" : "False",
