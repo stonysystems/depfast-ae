@@ -81,15 +81,16 @@ class OneTimeJob : public Job {
   OneTimeJob(std::function<void()> func) : func_(func) {
   }
   bool done_{false};
+  bool ready_{true};
   std::function<void()> func_{};
   bool Ready() override {
-    return true;
+    return ready_;
   }
   bool Done() override {
     return done_;
   }
   void Work() override {
-    verify(func_);
+    ready_ = false;
     func_();
     done_ = true;
     func_ = {};

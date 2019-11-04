@@ -86,29 +86,73 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
   }
 }
 
+void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
+  std::lock_guard<std::recursive_mutex> lock(this->mtx_);
+  TxData* cmd = frame_->CreateTxnCommand(req, txn_reg_);
+  verify(txn_reg_ != nullptr);
+  cmd->root_id_ = this->next_txn_id();
+  cmd->id_ = cmd->root_id_;
+  ongoing_tx_id_ = cmd->id_;
+  Log_debug("assigning tx id: %"
+                PRIx64, ongoing_tx_id_);
+  cmd->timestamp_ = GenerateTimestamp();
+  cmd_ = cmd;
+  n_retry_ = 0;
+  Reset(); // In case of reuse.
+
+  Log_debug("do one request txn_id: %d", cmd_->id_);
+  auto config = Config::GetConfig();
+  bool not_forwarding = forward_status_ != PROCESS_FORWARD_REQUEST;
+
+  if (ccsi_ && not_forwarding) {
+    ccsi_->txn_start_one(thread_id_, cmd->type_);
+  }
+  if (config->forwarding_enabled_ && forward_status_ == FORWARD_TO_LEADER) {
+    Log_info("forward to leader: %d; cooid: %d",
+             forward_status_,
+             this->coo_id_);
+    ForwardTxnRequest(req);
+  } else {
+    Log_info("start txn!!! (One time): %d", forward_status_);
+    //Coroutine::CreateRun([this]() { GotoNextPhase(); });
+    auto p_job = (Job*)new OneTimeJob([this](){this->GotoNextPhase();});
+    shared_ptr<Job> sp_job(p_job);
+    poll_mgr_->add(sp_job);
+  }
+}
+
 void CoordinatorClassic::GotoNextPhase() {
+  Log_info("We're moving along: %d", phase_ % 4);
   int n_phase = 4;
   auto current_phase = phase_ % n_phase;
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:
+      Log_info("Dispatching for some reason");
       DispatchAsync();
-      verify(phase_ % n_phase == Phase::DISPATCH);
-      break;
+      //verify(phase_ % n_phase == Phase::DISPATCH);
+      //phase_++;
+      //break;
     case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
-//      if (aborted_) {
-//        phase_++;
-//        Commit();
-//      } else {
+      if (aborted_) {
+        Log_info("Oh no, we are aborting");
+        phase_++;
+        phase_++;
+        Commit();
+      } else {
+        Log_info("Oh yes, we are preparing");
+        phase_++;
         Prepare();
-//      }
-      break;
+      }
+      //break;
     case Phase::PREPARE:
+      Log_info("Committing for some reason");
       verify(phase_ % n_phase == Phase::COMMIT);
+      phase_++;
       Commit();
-      break;
+      //break;
     case Phase::COMMIT:
       verify(phase_ % n_phase == Phase::INIT_END);
       verify(committed_ != aborted_);
@@ -158,7 +202,7 @@ void CoordinatorClassic::Restart() {
       ccsi_->txn_give_up_one(this->thread_id_, txn->type_);
     End();
   } else {
-    // Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
+    Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
     Reset();
     txn->Reset();
     GotoNextPhase();
@@ -216,6 +260,7 @@ bool CoordinatorClassic::AllDispatchAcked() {
 void CoordinatorClassic::DispatchAck(phase_t phase,
                                      int res,
                                      TxnOutput& outputs) {
+  Log_info("Is this being called");
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   auto* txn = (TxData*) cmd_;
@@ -294,7 +339,7 @@ void CoordinatorClassic::Prepare() {
   }
 
   for (auto& partition_id : cmd->partition_ids_) {
-    Log_debug("send prepare tid: %ld; partition_id %d",
+    Log_info("send prepare tid: %ld; partition_id %d",
               cmd_->id_,
               partition_id);
     rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
@@ -347,15 +392,15 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
     aborted_ = true;
 //    Log_fatal("2PL prepare failed due to error %d", e);
   }
-  Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
+  Log_info("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
   if (n_prepare_ack_ == cmd->partition_ids_.size()) {
-    Log_debug("2PL prepare finished for %ld", cmd->root_id_);
+    Log_info("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
       committed_ = true;
     }
-    GotoNextPhase();
+    //GotoNextPhase();
   } else {
     // Do nothing.
   }
@@ -412,17 +457,26 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
   if (phase != phase_) return;
   TxData* cmd = (TxData*) cmd_;
   n_finish_ack_++;
-  Log_debug("finish cmd_id_: %ld; n_finish_ack_: %ld; n_finish_req_: %ld",
+  Log_info("finish cmd_id_: %ld; n_finish_ack_: %ld; n_finish_req_: %ld",
             cmd_->id_, n_finish_ack_, n_finish_req_);
   verify(cmd->GetPartitionIds().size() == n_finish_req_);
   // Perhaps a bug here?
   if (n_finish_ack_ == cmd->GetPartitionIds().size()) {
+<<<<<<< HEAD
 //    if (cmd->reply_.res_ == REJECT) {
 //      aborted_ = true;
 //    } else {
 //      committed_ = true;
 //    }
     GotoNextPhase();
+=======
+    if (cmd->reply_.res_ == REJECT) {
+      aborted_ = true;
+    } else {
+      committed_ = true;
+    }
+    //GotoNextPhase();
+>>>>>>> bug seems to be fixed
   }
   Log_debug("callback: %s, retry: %s",
             committed_ ? "True" : "False",
