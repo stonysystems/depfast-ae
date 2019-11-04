@@ -30,7 +30,7 @@ Coroutine::CreateRun(std::function<void()> func) {
 <<<<<<< HEAD
 =======
   verify(reactor.coros_.size() > 0);
-  Log_info("Looping looping looping");
+  //Log_info("Looping looping looping");
   reactor.Loop();
 >>>>>>> frustrated
   return coro;
@@ -98,39 +98,16 @@ void Reactor::Loop(bool infinite) {
     auto time_now = Time::now();
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
-<<<<<<< HEAD
-      auto status = event.status_;
-      switch (status) {
-        case Event::INIT:
-        case Event::WAIT: {
-          const auto &wakeup_time = event.wakeup_time_;
-          if (wakeup_time > 0 && time_now > wakeup_time) {
-            event.status_ = Event::TIMEOUT;
-            ready_events.push_back(*it);
-            it = timeout_events_.erase(it);
-          } else {
-            it++;
-          }
-          break;
-        }
-        case Event::DONE:
-        case Event::READY:
-          it = timeout_events_.erase(it);
-          break;
-        default:
-          verify(0);
-=======
       event.Test();
-      Log_info("checking: %p %d", *it, event.status_);
+      //Log_info("checking: %s %d", typeid(event).name(), i);
       if (event.status_ == Event::READY) {
-        Log_info("Ready up");
+        //Log_info("Ready up");
         ready_events.push_back(std::move(*it));
         it = events_.erase(it);
       } else if (event.status_ == Event::DONE) {
         it = events_.erase(it);
       } else {
         it ++;
->>>>>>> frustrated
       }
     }
     for (auto it = ready_events.begin(); it != ready_events.end(); it++) {
@@ -218,16 +195,14 @@ class PollMgr::PollThread {
     while (it != set_sp_jobs_.end()) {
       auto sp_job = *it;
       if (sp_job->Ready()) {
-        Coroutine::CreateRun([sp_job]() {
-          sp_job->Work();
-        });
+        Log_info("Could be right before GotoNextPhase()");
+        Coroutine::CreateRun([sp_job]() {sp_job->Work();});
       }
-      it = set_sp_jobs_.erase(it);
-//      if (sp_job->Done()) {
-//        it = set_sp_jobs_.erase(it);
-//      } else {
-//        it++;
-//      }
+      if (sp_job->Done()) {
+        it = set_sp_jobs_.erase(it);
+      } else {
+        it++;
+      }
     }
     lock_job_.unlock();
   }

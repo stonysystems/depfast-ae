@@ -270,7 +270,7 @@ class DispatchEvent: public Event{
     bool IsReady() override{
       if(n_dispatch_ == n_dispatch_ack_){
         if(aborted_){
-          Log_info("aborted");
+          //Log_info("aborted");
           return true;
         }
         else{
@@ -283,7 +283,7 @@ class DispatchEvent: public Event{
         }
       }
       else if(more){
-        Log_info("more");
+        //Log_info("more");
         return true;
       }
       Log_info("FALSE");

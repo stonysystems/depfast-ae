@@ -319,7 +319,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               this,
                               coo,
                               std::placeholders::_1);*/
-    coo->DoTxAsync(req);
+    coo->DoTxAsync(poll_mgr_, req);
   };
   task();
   TxData* tx_data = (TxData*) coo->cmd_;
