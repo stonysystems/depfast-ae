@@ -72,6 +72,7 @@ class CoordinatorClassic : public Coordinator {
 
   /** do it asynchronously, thread safe. */
   virtual void DoTxAsync(TxRequest&) override;
+  virtual void DoTxAsync(PollMgr*, TxRequest&) override;
   virtual void Reset() override;
   void Restart() override;
 

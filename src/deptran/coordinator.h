@@ -128,6 +128,7 @@ class Coordinator {
   }
 
   virtual void DoTxAsync(TxRequest &) = 0;
+  virtual void DoTxAsync(PollMgr*, TxRequest &) = 0;
   virtual void Submit(shared_ptr<Marshallable>& cmd,
                       const std::function<void()>& commit_callback = [](){},
                       const std::function<void()>& exe_callback = [](){}) {

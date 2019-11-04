@@ -28,7 +28,7 @@ Coroutine::CreateRun(std::function<void()> func) {
   auto coro = reactor.CreateRunCoroutine(func);
   // some events might be triggered in the last coroutine.
   verify(reactor.coros_.size() > 0);
-  Log_info("Looping looping looping");
+  //Log_info("Looping looping looping");
   reactor.Loop();
   return coro;
 }
@@ -76,13 +76,13 @@ void Reactor::Loop(bool infinite) {
     for (auto it = events_.begin(); it != events_.end();) {
       Event& event = **it;
       event.Test();
-      Log_info("checking: %s %d", typeid(event).name(), i);
+      //Log_info("checking: %s %d", typeid(event).name(), i);
       if (event.status_ == Event::READY) {
-        Log_info("Ready up");
+        //Log_info("Ready up");
         ready_events.push_back(std::move(*it));
         it = events_.erase(it);
       } else if (event.status_ == Event::DONE) {
-        Log_info("deleting %s", typeid(event).name());
+        //Log_info("deleting %s", typeid(event).name());
         it = events_.erase(it);
       } else {
         it ++;
@@ -152,6 +152,7 @@ class PollMgr::PollThread {
     while (it != set_sp_jobs_.end()) {
       auto sp_job = *it;
       if (sp_job->Ready()) {
+        Log_info("Could be right before GotoNextPhase()");
         Coroutine::CreateRun([sp_job]() {sp_job->Work();});
       }
       if (sp_job->Done()) {

@@ -54,6 +54,7 @@ class CoordinatorMultiPaxos : public Coordinator {
   }
 
   void DoTxAsync(TxRequest &req) override {}
+  void DoTxAsync(PollMgr* poll_mgr_, TxRequest &req) override {}
   void Submit(shared_ptr<Marshallable> &cmd,
               const std::function<void()> &func = []() {},
               const std::function<void()> &exe_callback = []() {}) override;
