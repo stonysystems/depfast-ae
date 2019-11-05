@@ -365,7 +365,6 @@ Communicator::SendPrepare(Coordinator* coo,
       if(phase != coo->phase_){
         return;
       }
-
       if(res == REJECT){
         cmd->commit_.store(false);
         coo->aborted_ = true;
