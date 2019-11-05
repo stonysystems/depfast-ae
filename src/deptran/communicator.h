@@ -96,10 +96,9 @@ class Communicator {
                         Coordinator* coo,
                         TxData* txn);
 
-  shared_ptr<SingleRPCEvent> SendPrepare(parid_t gid,
+  shared_ptr<QuorumEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
-                                         std::vector<int32_t>& sids,
-                                         const std::function<void(int)>& callback);
+                                         std::vector<int32_t>& sids);
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,

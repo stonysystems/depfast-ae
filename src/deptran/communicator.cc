@@ -291,29 +291,45 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
-shared_ptr<SingleRPCEvent>
-Communicator::SendPrepare(groupid_t gid,
+shared_ptr<QuorumEvent>
+Communicator::SendPrepare(Coordinator* coo,
                           txnid_t tid,
-                          std::vector<int32_t>& sids,
-                          const function<void(int)>& callback){
+                          std::vector<int32_t>& sids){
   int32_t res_ = 10;
-  auto e = Reactor::CreateSpEvent<SingleRPCEvent>(-1, res_);
-  FutureAttr fuattr;
-  std::function<void(Future*)> cb =
-      [e, this, callback, &res_](Future* fu) {
-        int32_t res;
-        fu->get_reply() >> res;
-        callback(res);
-        //res_ = res;
-        e->Test();
-      };
-  fuattr.callback = cb;
-  ClassicProxy* proxy = LeaderProxyForPartition(gid).second;
-  Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
+  TxData* cmd = (TxData*) coo->cmd_;
+  auto n = cmd->partition_ids_.size();
+  shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(n, n);
+  auto phase = coo->phase_;
+  for(auto& partition_id : cmd->partition_ids_){
+    FutureAttr fuattr;
+    fuattr.callback = [e, coo, phase, cmd](Future* fu) {
+      int32_t res;
+      fu->get_reply() >> res;
+
+      if(phase == coo->phase_) return;
+
+      if(res == REJECT){
+        cmd->commit_.store(false);
+        coo->aborted_ = true;
+      }
+
+      if(e->n_voted_yes_+1 == e->quorum_){
+        if(!coo->aborted_){
+          cmd->commit_.store(true);
+          coo->committed_ = true;
+        }
+      }
+      
+      e->n_voted_yes_++;
+      e->Test();
+    };
+    ClassicProxy* proxy = LeaderProxyForPartition(partition_id).second;
+    Log_info("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
             sids.size(),
-            gid,
+            partition_id,
             tid);
-  Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
+    Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
+  }
   return e;
 }
 
