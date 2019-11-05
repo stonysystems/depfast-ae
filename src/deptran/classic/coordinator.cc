@@ -132,7 +132,7 @@ void CoordinatorClassic::GotoNextPhase() {
       Log_info("Dispatching for some reason");
       DispatchAsync();
       //verify(phase_ % n_phase == Phase::DISPATCH);
-      //phase_++;
+      phase_++;
       //break;
     case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
@@ -157,8 +157,9 @@ void CoordinatorClassic::GotoNextPhase() {
     case Phase::COMMIT:
       verify(phase_ % n_phase == Phase::INIT_END);
       verify(committed_ != aborted_);
-      if (committed_)
+      if (committed_){
         End();
+      }
       else if (aborted_) {
         Restart();
       } else
@@ -243,7 +244,7 @@ void CoordinatorClassic::DispatchAsync() {
   aborted_ = disp_event->aborted_;
   Log_info("Hello");
   if(disp_event->more) DispatchAsync();
-  GotoNextPhase();
+  //GotoNextPhase();
   Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
@@ -333,52 +334,35 @@ void CoordinatorClassic::Prepare() {
   TxData* cmd = (TxData*) cmd_;
   auto mode = Config::GetConfig()->tx_proto_;
   verify(mode == MODE_OCC || mode == MODE_2PL);
-
+   
   std::vector<i32> sids;
   for (auto& site : cmd->partition_ids_) {
     sids.push_back(site);
   }
 
-  for (auto& partition_id : cmd->partition_ids_) {
-    Log_info("send prepare tid: %ld; partition_id %d",
-              cmd_->id_,
-              partition_id);
-    rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
-    rpc_event->log();
-    auto phase = phase_;
-    //moving this to communicator might be easier and add a hack for GotoNextPhase
-    //also add this to the call to SendPrepare
-    auto callback = [this, phase](int32_t res){
-      if(this->phase_ != phase) return;
-      TxData* cmd = (TxData*) this->cmd_;
-      if(res == REJECT){
-        cmd->commit_.store(false);
-        this->aborted_ = true;
-      }
-      if(this->n_prepare_ack_ = cmd->partition_ids_.size()){
-        if(!this->aborted_){
-          cmd->commit_.store(true);
-          this->committed_=true;
-        }
-        this->GotoNextPhase();
-      }
-    };
-    /*commo()->SendPrepare(partition_id,
+  //Log_info("send prepare tid: %ld; partition_id %d",
+            //cmd_->id_,
+            //partition_id);
+  //rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
+  //rpc_event->log();
+  auto phase = phase_;
+  //moving this to communicator might be easier and add a hack for GotoNextPhase
+  //also add this to the call to SendPrepare
+  //this needs to be changed to quorum event
+  /*commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
                          std::bind(&CoordinatorClassic::PrepareAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));*/
-    auto sp_rpc_event = commo()->SendPrepare(partition_id,
-                                            cmd_->id_,
-                                            sids,
-                                            callback);
-    //sp_rpc_event->Wait();
-    verify(site_prepare_[partition_id] == 0);
-    site_prepare_[partition_id]++;
-    verify(site_prepare_[partition_id] == 1);
-  }
+  auto quorum_event = commo()->SendPrepare(this,
+                                          cmd_->id_,
+                                          sids);
+  quorum_event->Wait();
+    //verify(site_prepare_[partition_id] == 0);
+    //site_prepare_[partition_id]++;
+    //verify(site_prepare_[partition_id] == 1);
 }
 
 void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
@@ -431,7 +415,7 @@ void CoordinatorClassic::Commit() {
                           std::bind(&CoordinatorClassic::CommitAck,
                                     this,
                                     phase_));
-      site_commit_[rp]++;
+      //site_commit_[rp]++;
     }
   } else if (aborted_) {
     tx_data().reply_.res_ = REJECT;
@@ -445,7 +429,7 @@ void CoordinatorClassic::Commit() {
                          std::bind(&CoordinatorClassic::CommitAck,
                                    this,
                                    phase_));
-      site_abort_[rp]++;
+      //site_abort_[rp]++;
     }
   } else {
     verify(0);
