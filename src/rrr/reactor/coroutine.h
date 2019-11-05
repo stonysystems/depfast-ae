@@ -37,6 +37,8 @@ class Coroutine {
   static std::shared_ptr<Coroutine> CurrentCoroutine();
   // the argument cannot be a reference because it could be declared on stack.
   static std::shared_ptr<Coroutine> CreateRun(std::function<void()> func);
+  static uint64_t global_id;
+  uint64_t id;
 
   enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED};
 

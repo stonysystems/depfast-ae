@@ -9,6 +9,8 @@
 
 using rrr::Event;
 using std::vector;
+using std::unordered_map;
+using std::unordered_set;
 
 namespace janus {
 
@@ -22,7 +24,7 @@ class QuorumEvent : public Event {
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{}; // not sure if SiteInfo or int
-  std::unordered_map<int, std::unordered_set<int>> deps{}; //not sure if SiteInfo or int
+  std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> deps{}; //not sure if SiteInfo or int
   std::string log_file = "logs.txt";
 
   QuorumEvent() = delete;
@@ -38,26 +40,18 @@ class QuorumEvent : public Event {
     sites_ = sites;
   }
 
-  //seems pretty useless, but we can maybe keep it??
-  void update_deps(int srcId){
-    std::unordered_set<int> tgtIds = {};
-    for(auto site: sites_){
-      auto index = deps.find(site);
-      if(index == deps.end() && site != srcId){
-        tgtIds.insert(site);
-      }
-      auto index2 = deps[site].find(srcId);
-      if(index2 != deps[site].end()) deps[site].erase(index2);
-    }
-    deps[srcId] = tgtIds;
-  }
 
-
-  void add_dep(int srcId, int tgtId){
+  void add_dep(int srcId, int srcCoro, int tgtId, int tgtCoro){
     auto srcIndex = deps.find(srcId);
     if(srcIndex == deps.end()){
-      std::unordered_set<int> temp = {};
+      unordered_map<int, unordered_map<int, unordered_set<int>>> temp = {};
       deps[srcId] = temp;
+    }
+
+    auto srcCoroIndex = deps[srcId].find(srcCoro);
+    if(srcCoroIndex == deps[srcId].end()){
+      unordered_map<int, unordered_set<int>> temp = {};
+      deps[srcId][srcCoro] = temp; 
     }
     // commented part is for testing
     /*
@@ -65,13 +59,19 @@ class QuorumEvent : public Event {
     of << srcId << ", " << tgtId << "\n";
     of.close();
     */
-    auto tgtIndex = deps[srcId].find(tgtId);
-    if(tgtIndex == deps[srcId].end() && srcId != tgtId){
-      deps[srcId].insert(tgtId);
+    auto tgtIndex = deps[srcId][srcCoro].find(tgtId);
+    if(tgtIndex == deps[srcId][srcCoro].end()){
+      unordered_set<int> temp = {};
+      deps[srcId][srcCoro][tgtId] = temp;
+    }
+
+    auto tgtCoroIndex = deps[srcId][srcCoro][tgtId].find(tgtCoro);
+    if(tgtCoroIndex == deps[srcId][srcCoro][tgtId].end()){
+      deps[srcId][srcCoro][tgtId].insert(tgtCoro);
     }
   }
 
-  void remove_dep(int srcId, int tgtId){
+  /*void remove_dep(int srcId, int tgtId){
     auto srcIndex = deps.find(srcId);
     if(srcIndex != deps.end()){
       auto tgtIndex = deps[srcId].find(tgtId);
@@ -79,24 +79,22 @@ class QuorumEvent : public Event {
         deps[srcId].erase(tgtId);
       }
     }
-  }
+  }*/
 
   void log(){
     std::ofstream of(log_file, std::fstream::app);
     //of << "hello\n";
+    // Maybe this part can be more efficient
     for(auto it = deps.begin(); it != deps.end(); it++){
-      of << "{ " << it->first << ": ";
       for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
-        of << *it2 << " ";
+        for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
+          for(auto it4 = it3->second.begin(); it4 != it3->second.end(); it4++){
+            of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << " }\n";
+          }
+        }
       }
-      of << "}\n";
     }
     of.close();
-  }
-
-  void Wait() override{
-    log();
-    Event::Wait();
   }
 
   bool Yes() {
