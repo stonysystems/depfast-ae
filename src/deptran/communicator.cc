@@ -374,7 +374,41 @@ void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   }
 }
 
-void Communicator::SendCommit(parid_t pid,
+shared_ptr<QuorumEvent>
+Communicator::SendCommit(Coordinator* coo,
+                              txnid_t tid) {
+#ifdef LOG_LEVEL_AS_DEBUG
+  ___LogSent(pid, tid);
+#endif
+  TxData* cmd = (TxData*) coo->cmd_;
+  auto n = cmd->GetPartitionIds().size();
+  auto e = Reactor::CreateSpEvent<QuorumEvent>(n, n);
+  for(auto& rp : cmd->partition_ids_){
+    coo->n_finish_req_++;
+    FutureAttr fuattr;
+    auto phase = coo->phase_;
+    fuattr.callback = [e, coo, phase, cmd](Future*) {
+      if(coo->phase_ != phase) return;
+      if(e->n_voted_yes_+1 == e->quorum_){
+        if(cmd->reply_.res_ == REJECT){
+          coo->aborted_ = true;
+        }
+        else{
+          coo->committed_ = true;
+        }
+      }
+      e->n_voted_yes_++;
+      e->Test();
+    };
+    ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
+    Log_debug("SendCommit to %ld tid:%ld\n", rp, tid);
+    Future::safe_release(proxy->async_Commit(tid, fuattr));
+    coo->site_commit_[rp]++;
+  }
+  return e;
+}
+
+/*void Communicator::SendCommit(parid_t pid,
                               txnid_t tid,
                               const function<void()>& callback) {
 #ifdef LOG_LEVEL_AS_DEBUG
@@ -385,9 +419,42 @@ void Communicator::SendCommit(parid_t pid,
   ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
   Log_debug("SendCommit to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Commit(tid, fuattr));
+}*/
+shared_ptr<QuorumEvent>
+Communicator::SendAbort(Coordinator* coo,
+                              txnid_t tid) {
+#ifdef LOG_LEVEL_AS_DEBUG
+  ___LogSent(pid, tid);
+#endif
+  TxData* cmd = (TxData*) coo->cmd_;
+  auto n = cmd->GetPartitionIds().size();
+  auto e = Reactor::CreateSpEvent<QuorumEvent>(n, n);
+  for(auto& rp : cmd->partition_ids_){
+    coo->n_finish_req_++;
+    FutureAttr fuattr;
+    auto phase = coo->phase_;
+    fuattr.callback = [e, coo, phase, cmd](Future*) {
+      if(coo->phase_ != phase) return;
+      if(e->n_voted_yes_+1 == e->quorum_){
+        if(cmd->reply_.res_ == REJECT){
+          coo->aborted_ = true;
+        }
+        else{
+          coo->committed_ = true;
+        }
+      }
+      e->n_voted_yes_++;
+      e->Test();
+    };
+    ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
+    Log_debug("SendAbort to %ld tid:%ld\n", rp, tid);
+    Future::safe_release(proxy->async_Abort(tid, fuattr));
+    coo->site_abort_[rp]++;
+  }
+  return e;
 }
 
-void Communicator::SendAbort(parid_t pid, txnid_t tid,
+/*void Communicator::SendAbort(parid_t pid, txnid_t tid,
                              const function<void()>& callback) {
 #ifdef LOG_LEVEL_AS_DEBUG
   ___LogSent(pid, tid);
@@ -397,7 +464,7 @@ void Communicator::SendAbort(parid_t pid, txnid_t tid,
   ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
   Log_debug("SendAbort to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Abort(tid, fuattr));
-}
+}*/
 
 void Communicator::SendUpgradeEpoch(epoch_t curr_epoch,
                                     const function<void(parid_t,
