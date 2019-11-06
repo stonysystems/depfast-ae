@@ -301,12 +301,20 @@ Communicator::SendPrepare(Coordinator* coo,
   shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(n, n);
   auto phase = coo->phase_;
   for(auto& partition_id : cmd->partition_ids_){
+    coo->rpc_event->add_dep(LeaderProxyForPartition(partition_id).first);
+    coo->rpc_event->log();
     FutureAttr fuattr;
     fuattr.callback = [e, coo, phase, cmd](Future* fu) {
       int32_t res;
       fu->get_reply() >> res;
-
-      if(phase == coo->phase_) return;
+      
+      Log_info("before e");
+      verify(e);
+      verify(coo);
+      Log_info("after e");
+      if(phase != coo->phase_){
+        return;
+      }
 
       if(res == REJECT){
         cmd->commit_.store(false);
@@ -316,11 +324,13 @@ Communicator::SendPrepare(Coordinator* coo,
       if(e->n_voted_yes_+1 == e->quorum_){
         if(!coo->aborted_){
           cmd->commit_.store(true);
+          Log_info("storing true");
           coo->committed_ = true;
         }
       }
       
       e->n_voted_yes_++;
+      Log_info("Testing Event for Prepare");
       e->Test();
     };
     ClassicProxy* proxy = LeaderProxyForPartition(partition_id).second;
