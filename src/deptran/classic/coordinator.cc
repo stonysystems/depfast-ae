@@ -122,33 +122,33 @@ void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
 }
 
 void CoordinatorClassic::GotoNextPhase() {
-  Log_info("We're moving along: %d", phase_ % 4);
+  //Log_info("We're moving along: %d", phase_ % 4);
   int n_phase = 4;
   auto current_phase = phase_ % n_phase;
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:
-      Log_info("Dispatching for some reason");
-      DispatchAsync();
-      //verify(phase_ % n_phase == Phase::DISPATCH);
+      //Log_info("Dispatching for some reason: %x", this);
+      verify(phase_ % n_phase == Phase::DISPATCH);
       phase_++;
+      DispatchAsync();
       //break;
     case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
-        Log_info("Oh no, we are aborting");
+        //Log_info("Oh no, we are aborting: %x", this);
         phase_++;
         phase_++;
         Commit();
       } else {
-        Log_info("Oh yes, we are preparing");
+        //Log_info("Oh yes, we are preparing: %x", this);
         phase_++;
         Prepare();
       }
       //break;
     case Phase::PREPARE:
-      Log_info("Committing for some reason");
+      //Log_info("Committing for some reason: %x", this);
       verify(phase_ % n_phase == Phase::COMMIT);
       phase_++;
       Commit();
@@ -156,13 +156,13 @@ void CoordinatorClassic::GotoNextPhase() {
     case Phase::COMMIT:
       verify(phase_ % n_phase == Phase::INIT_END);
       if (committed_){
-        Log_info("Finishing for some reason");
-        phase_++;
+        //Log_info("Finishing for some reason");
+        //phase_++;
         End();
       }
       else if (aborted_) {
-        Log_info("Restarting for some reason");
-        phase_++;
+        //Log_info("Restarting for some reason");
+        //phase_++;
         Restart();
       } else
         verify(0);
@@ -244,7 +244,7 @@ void CoordinatorClassic::DispatchAsync() {
   disp_event->Wait();
   n_dispatch_ack_ = disp_event->n_dispatch_ack_;
   aborted_ = disp_event->aborted_;
-  Log_info("Hello");
+  //Log_info("Hello");
   if(disp_event->more) DispatchAsync();
   //GotoNextPhase();
   Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
@@ -264,7 +264,7 @@ bool CoordinatorClassic::AllDispatchAcked() {
 void CoordinatorClassic::DispatchAck(phase_t phase,
                                      int res,
                                      TxnOutput& outputs) {
-  Log_info("Is this being called");
+  //Log_info("Is this being called");
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   auto* txn = (TxData*) cmd_;
@@ -379,10 +379,10 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
     aborted_ = true;
 //    Log_fatal("2PL prepare failed due to error %d", e);
   }
-  Log_info("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
+  Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
   if (n_prepare_ack_ == cmd->partition_ids_.size()) {
-    Log_info("2PL prepare finished for %ld", cmd->root_id_);
+    Log_debug("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
       committed_ = true;
