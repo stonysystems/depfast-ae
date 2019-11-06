@@ -94,16 +94,20 @@ class Communicator {
   shared_ptr<QuorumEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
+  shared_ptr<QuorumEvent> SendCommit(Coordinator* coo,
+                                     txnid_t tid);
+  shared_ptr<QuorumEvent> SendAbort(Coordinator* coo,
+                                    txnid_t tid);
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
                    const std::function<void(int)> &callback) ;*/
-  void SendCommit(parid_t pid,
+  /*void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;
   void SendAbort(parid_t pid,
                  txnid_t tid,
-                 const std::function<void()> &callback) ;
+                 const std::function<void()> &callback) ;*/
 
   // for debug
   std::set<std::pair<parid_t, txnid_t>> phase_three_sent_;

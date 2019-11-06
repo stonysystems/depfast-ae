@@ -349,8 +349,6 @@ void CoordinatorClassic::Prepare() {
   //Log_info("send prepare tid: %ld; partition_id %d",
             //cmd_->id_,
             //partition_id);
-  //rpc_event->add_dep(commo()->LeaderProxyForPartition(partition_id).first);
-  //rpc_event->log();
   auto phase = phase_;
   //moving this to communicator might be easier and add a hack for GotoNextPhase
   //also add this to the call to SendPrepare
@@ -411,7 +409,10 @@ void CoordinatorClassic::Commit() {
   verify(committed_ != aborted_);
   if (committed_) {
     tx_data().reply_.res_ = SUCCESS;
-    for (auto& rp : tx_data().partition_ids_) {
+    auto quorum_event = commo()->SendCommit(this,
+                                            tx_data().id_);
+    quorum_event->Wait();
+    /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send commit for txn_id %"
                     PRIx64
@@ -422,10 +423,13 @@ void CoordinatorClassic::Commit() {
                                     this,
                                     phase_));
       //site_commit_[rp]++;
-    }
+    }*/
   } else if (aborted_) {
     tx_data().reply_.res_ = REJECT;
-    for (auto& rp : tx_data().partition_ids_) {
+    auto quorum_event = commo()->SendAbort(this,
+                                           tx_data().id_);
+    quorum_event->Wait();
+    /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send abort for txn_id %"
                     PRIx64
@@ -436,7 +440,7 @@ void CoordinatorClassic::Commit() {
                                    this,
                                    phase_));
       //site_abort_[rp]++;
-    }
+    }*/
   } else {
     verify(0);
   }
