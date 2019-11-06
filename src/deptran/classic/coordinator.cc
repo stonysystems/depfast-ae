@@ -124,8 +124,8 @@ void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
 void CoordinatorClassic::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
-  Log_info("Current phase is %d", current_phase);
-  Log_info("aborted and committed: %d, %d", aborted_, committed_);
+  //Log_info("Current phase is %d", current_phase);
+  //Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:
       //Log_info("Dispatching for some reason: %x", this);
@@ -134,6 +134,7 @@ void CoordinatorClassic::GotoNextPhase() {
       DispatchAsync();
       //break;
     case Phase::DISPATCH:
+      //Log_info("Preparing for some reason: %x", this);
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
@@ -330,10 +331,10 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
     aborted_ = true;
 //    Log_fatal("2PL prepare failed due to error %d", e);
   }
-  Log_info("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
+  Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
   if (n_prepare_ack_ == cmd->partition_ids_.size()) {
-    Log_info("2PL prepare finished for %ld", cmd->root_id_);
+    Log_debug("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
       committed_ = true;

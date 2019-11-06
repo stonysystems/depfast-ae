@@ -369,7 +369,7 @@ Communicator::SendPrepare(Coordinator* coo,
         cmd->commit_.store(false);
         coo->aborted_ = true;
       }
-      
+
       qe->n_voted_yes_++;
       e->Test();
     };
