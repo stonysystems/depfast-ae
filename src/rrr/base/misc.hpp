@@ -92,7 +92,6 @@ class OneTimeJob : Job {
   void Work() override {
     ready_ = false;
     func_();
-    ready_ = true;
     done_ = true;
   }
 };
