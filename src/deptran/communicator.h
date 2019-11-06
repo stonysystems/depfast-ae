@@ -100,16 +100,26 @@ class Communicator {
   shared_ptr<AndEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
+<<<<<<< HEAD
   shared_ptr<AndEvent> SendCommit(Coordinator* coo,
                                      txnid_t tid);
   shared_ptr<AndEvent> SendAbort(Coordinator* coo,
                                     txnid_t tid);
 
+=======
+  shared_ptr<QuorumEvent> SendCommit(Coordinator* coo,
+                                     txnid_t tid);
+  shared_ptr<QuorumEvent> SendAbort(Coordinator* coo,
+                                    txnid_t tid);
+>>>>>>> commit seems to work
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
                    const std::function<void(int)> &callback) ;*/
+<<<<<<< HEAD
 
+=======
+>>>>>>> commit seems to work
   /*void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;

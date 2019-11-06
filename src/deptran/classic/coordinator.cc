@@ -364,10 +364,13 @@ void CoordinatorClassic::Commit() {
     auto quorum_event = commo()->SendCommit(this,
                                             tx_data().id_);
     quorum_event->Wait();
+<<<<<<< HEAD
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
     else committed_ = true;
+=======
+>>>>>>> commit seems to work
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send commit for txn_id %"
@@ -385,10 +388,13 @@ void CoordinatorClassic::Commit() {
     auto quorum_event = commo()->SendAbort(this,
                                            tx_data().id_);
     quorum_event->Wait();
+<<<<<<< HEAD
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
     else committed_ = true;
+=======
+>>>>>>> commit seems to work
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send abort for txn_id %"

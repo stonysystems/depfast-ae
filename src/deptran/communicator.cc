@@ -430,6 +430,7 @@ Communicator::SendCommit(Coordinator* coo,
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
   auto n = cmd->GetPartitionIds().size();
+<<<<<<< HEAD
   auto e = Reactor::CreateSpEvent<AndEvent>();
   
   for(auto& rp : cmd->partition_ids_){
@@ -470,7 +471,6 @@ Communicator::SendCommit(Coordinator* coo,
     }
 
     coo->site_commit_[rp]++;
-
   }
   return e;
 }
@@ -547,7 +547,6 @@ Communicator::SendAbort(Coordinator* coo,
         Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
       }
     }
-
     coo->site_abort_[rp]++;
   }
   return e;
