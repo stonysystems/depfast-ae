@@ -230,60 +230,77 @@ void Communicator::BroadcastDispatch(
   }
 }
 
-void Communicator::BroadcastDispatch(
-    shared_ptr<DispatchEvent>& disp_event,
-    shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
+shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
+    ReadyPiecesData cmds_by_par,
     Coordinator* coo,
     TxData* txn) {
-  Log_info("Pre-testing DispatchEvent %x: ", *disp_event);
-  cmdid_t cmd_id = sp_vec_piece->at(0)->root_id_;
-  verify(sp_vec_piece->size() > 0);
-  auto par_id = sp_vec_piece->at(0)->PartitionId();
-  rrr::FutureAttr fuattr;
-  fuattr.callback =
-      [disp_event, coo, this, txn](Future* fu) {
-        //auto disp_ptr = &disp_event;
-        Log_info("Testing DispatchEvent %x: ", *disp_event);
-        int32_t ret;
-        TxnOutput outputs;
-        fu->get_reply() >> ret >> outputs;
-        if(ret == REJECT){
-          disp_event->aborted_ = true;
-          txn->commit_.store(false);
-        }
-        for(auto& pair: outputs){
-          const uint32_t& inn_id = pair.first;
-          disp_event->dispatch_acks_[inn_id] = true;
-          txn->Merge(pair.first, pair.second);
-        }
-        if(txn->HasMoreUnsentPiece()){
-          disp_event->more = true;
-        }
-        disp_event->n_dispatch_ack_ += outputs.size();
-        disp_event->Test();
-      };
-  auto pair_leader_proxy = LeaderProxyForPartition(par_id);
-  Log_debug("send dispatch to site %ld",
-            pair_leader_proxy.first);
-  auto proxy = pair_leader_proxy.second;
-  shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
-  sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
-  MarshallDeputy md(sp_vpd); // ????
-  auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
-  Future::safe_release(future);
-  for (auto& pair : rpc_par_proxies_[par_id]) {
-    if (pair.first != pair_leader_proxy.first) {
-      rrr::FutureAttr fuattr;
-      fuattr.callback =
-          [coo, this](Future* fu) {
-            int32_t ret;
-            TxnOutput outputs;
-            fu->get_reply() >> ret >> outputs;
-            // do nothing
-          };
-      Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+  int total = coo->n_dispatch_;
+  std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
+  e->n_voted_yes_ = coo->n_dispatch_ack_;
+
+  for(auto& pair: cmds_by_par){
+    auto& cmds = pair.second;
+    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
+    for(auto c: cmds){
+      c->id_ = coo->next_pie_id();
+      coo->dispatch_acks_[c->inn_id_] = false;
+      sp_vec_piece->push_back(c);
+    }
+    cmdid_t cmd_id = sp_vec_piece->at(0)->root_id_;
+    verify(sp_vec_piece->size() > 0);
+    auto par_id = sp_vec_piece->at(0)->PartitionId();
+    
+    rrr::FutureAttr fuattr;
+    fuattr.callback =
+        [e, coo, this, txn](Future* fu) {
+          int32_t ret;
+          TxnOutput outputs;
+          fu->get_reply() >> ret >> outputs;
+          if(ret == REJECT){
+            coo->aborted_ = true;
+            txn->commit_.store(false);
+          }
+          e->n_voted_yes_ += outputs.size();
+          coo->n_dispatch_ack_ += outputs.size();
+          if(coo->aborted_){
+            e->Test();
+          }
+          else{
+            for(auto& pair: outputs){
+              const uint32_t& inn_id = pair.first;
+              coo->dispatch_acks_[inn_id] = true;
+              txn->Merge(pair.first, pair.second);
+            }
+            if(txn->HasMoreUnsentPiece()){
+              e->n_voted_yes_ = coo->n_dispatch_;
+            }
+            e->Test();
+          }
+        };
+    auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+    Log_debug("send dispatch to site %ld",
+              pair_leader_proxy.first);
+    auto proxy = pair_leader_proxy.second;
+    shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
+    sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
+    MarshallDeputy md(sp_vpd); // ????
+    auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
+    Future::safe_release(future);
+    for (auto& pair : rpc_par_proxies_[par_id]) {
+      if (pair.first != pair_leader_proxy.first) {
+        rrr::FutureAttr fuattr;
+        fuattr.callback =
+            [coo, this](Future* fu) {
+              int32_t ret;
+              TxnOutput outputs;
+              fu->get_reply() >> ret >> outputs;
+              // do nothing
+            };
+        Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+      }
     }
   }
+  return e;
 }
 
 

@@ -75,8 +75,7 @@ class Communicator {
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
 
-  void BroadcastDispatch(shared_ptr<DispatchEvent>& disp_event,
-                        shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
+  shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
                         Coordinator* coo,
                         TxData* txn);
   shared_ptr<QuorumEvent> SendPrepare(Coordinator* coo,
