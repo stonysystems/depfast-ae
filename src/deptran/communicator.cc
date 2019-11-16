@@ -323,7 +323,6 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   }
   //probably should modify the data structure here.
   return e;
-
 }
 
 
@@ -430,7 +429,6 @@ Communicator::SendCommit(Coordinator* coo,
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
   auto n = cmd->GetPartitionIds().size();
-<<<<<<< HEAD
   auto e = Reactor::CreateSpEvent<AndEvent>();
   
   for(auto& rp : cmd->partition_ids_){
