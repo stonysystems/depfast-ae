@@ -91,6 +91,10 @@ class Communicator {
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
 
+
+  shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
+                        Coordinator* coo,
+                        TxData* txn);
   shared_ptr<QuorumEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
