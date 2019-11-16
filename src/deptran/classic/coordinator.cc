@@ -209,6 +209,7 @@ void CoordinatorClassic::Restart() {
     Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
     Reset();
     txn->Reset();
+    //could be a problem or maybe not???
     GotoNextPhase();
   }
 }
@@ -226,28 +227,15 @@ void CoordinatorClassic::DispatchAsync() {
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-  auto disp_event = Reactor::CreateSpEvent<DispatchEvent>();
-  disp_event->n_dispatch_ = n_dispatch_;
-  disp_event->n_dispatch_ack_ = n_dispatch_ack_;
-  for (auto& pair: cmds_by_par) {
-    const parid_t& par_id = pair.first;
-    auto& cmds = pair.second;
-    cnt += cmds.size();
-    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
-    for (auto c: cmds) {
-      c->id_ = next_pie_id();
-      dispatch_acks_[c->inn_id_] = false;
-      sp_vec_piece->push_back(c);
-    }
-    commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
+
+  auto quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
+  //Log_info("Waiting DispatchEvent: %x", *disp_event);
+  quorum_event->Wait();
+  if(txn->HasMoreUnsentPiece()){
+    DispatchAsync();
   }
-  disp_event->Wait();
-  n_dispatch_ack_ = disp_event->n_dispatch_ack_;
-  aborted_ = disp_event->aborted_;
-  //Log_info("Hello");
-  if(disp_event->more) DispatchAsync();
-  //GotoNextPhase();
-  Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+  //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+
 }
 
 bool CoordinatorClassic::AllDispatchAcked() {
