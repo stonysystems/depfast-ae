@@ -31,6 +31,7 @@ class Coordinator {
   uint32_t n_start_ = 0;
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
+  uint32_t cli_id_;
   parid_t par_id_ = -1;
   std::shared_ptr<SingleRPCEvent> rpc_event;
   int benchmark_;

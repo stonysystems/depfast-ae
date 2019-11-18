@@ -247,6 +247,7 @@ void CoordinatorClassic::DispatchAsync() {
   auto quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   quorum_event->Wait();
+  quorum_event->log();
   if(txn->HasMoreUnsentPiece()){
     DispatchAsync();
   }

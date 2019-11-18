@@ -41,6 +41,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   const MarshallDeputy& md,
                                   int32_t* res,
                                   TxnOutput* output,
+                                  uint64_t* coro_id,
                                   rrr::DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
 
@@ -61,16 +62,17 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   // find stored procedure, and run it
   shared_ptr<Marshallable> sp = md.sp_data_;
 //  sp->__debug_ = 20;
-//  auto func = [cmd_id, sp, output, res, this, defer]() {
+  auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
 //    XXX xxx;
     *res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
     }
+    *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
 //    sp->__debug_ = 10;
 //    xxx.x_ = 1;
-//  };
+  });
 //  Coroutine::CreateRun(func);
 //  func();
 }

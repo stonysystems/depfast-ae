@@ -237,6 +237,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   int total = coo->n_dispatch_;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
   e->n_voted_yes_ = coo->n_dispatch_ack_;
+  auto src_coroid = e->GetCoroId();
 
   for(auto& pair: cmds_by_par){
     auto& cmds = pair.second;
@@ -249,13 +250,19 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     cmdid_t cmd_id = sp_vec_piece->at(0)->root_id_;
     verify(sp_vec_piece->size() > 0);
     auto par_id = sp_vec_piece->at(0)->PartitionId();
+    auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+    auto leader_id = pair_leader_proxy.first;
+
+    //this is kind of a hack. it might be broken
     
+
     rrr::FutureAttr fuattr;
     fuattr.callback =
-        [e, coo, this, txn](Future* fu) {
+        [e, coo, this, txn, src_coroid, leader_id](Future* fu) {
           int32_t ret;
           TxnOutput outputs;
-          fu->get_reply() >> ret >> outputs;
+          uint64_t coro_id = 0;
+          fu->get_reply() >> ret >> outputs >> coro_id;
           if(ret == REJECT){
             coo->aborted_ = true;
             txn->commit_.store(false);
@@ -274,10 +281,11 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
             if(txn->HasMoreUnsentPiece()){
               e->n_voted_yes_ = coo->n_dispatch_;
             }
+            e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
             e->Test();
           }
         };
-    auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+    
     Log_debug("send dispatch to site %ld",
               pair_leader_proxy.first);
     auto proxy = pair_leader_proxy.second;
@@ -288,12 +296,15 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     Future::safe_release(future);
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
+        auto follower_id = pair.first;
         rrr::FutureAttr fuattr;
         fuattr.callback =
-            [coo, this](Future* fu) {
+            [e, coo, this, src_coroid, follower_id](Future* fu) {
               int32_t ret;
               TxnOutput outputs;
-              fu->get_reply() >> ret >> outputs;
+              uint64_t coro_id = 0;
+              fu->get_reply() >> ret >> outputs >> coro_id;
+              e->add_dep(coo->cli_id_, src_coroid, follower_id, coro_id);
               // do nothing
             };
         Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
@@ -320,8 +331,8 @@ Communicator::SendPrepare(Coordinator* coo,
   shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(n, n);
   auto phase = coo->phase_;
   for(auto& partition_id : cmd->partition_ids_){
-    coo->rpc_event->add_dep(LeaderProxyForPartition(partition_id).first);
-    coo->rpc_event->log();
+    //coo->rpc_event->add_dep(LeaderProxyForPartition(partition_id).first);
+    //coo->rpc_event->log();
     FutureAttr fuattr;
     fuattr.callback = [e, coo, phase, cmd](Future* fu) {
       int32_t res;
