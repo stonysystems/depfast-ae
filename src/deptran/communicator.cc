@@ -245,7 +245,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
-  Log_info("The size of cmds_by_par is %d", cmds_by_par.size());
+
 
   for(auto& pair: cmds_by_par){
     bool first = false;
@@ -304,7 +304,6 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     Future::safe_release(future);
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
-        //if(first) curr->n_total_++;
         auto follower_id = pair.first;
         rrr::FutureAttr fuattr;
         fuattr.callback =
@@ -352,7 +351,7 @@ Communicator::SendPrepare(Coordinator* coo,
       
     qe->id_ = Communicator::global_id;
     qe->par_id_ = quorum_id++;
-    
+
     FutureAttr fuattr;
     fuattr.callback = [e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
