@@ -41,6 +41,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   const MarshallDeputy& md,
                                   int32_t* res,
                                   TxnOutput* output,
+                                  uint64_t* coro_id,
                                   rrr::DeferredReply* defer) {
 #ifdef PIECE_COUNT
   piece_count_key_t piece_count_key =
@@ -55,11 +56,14 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-  *res = SUCCESS;
-  if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
-    *res = REJECT;
-  }
-  defer->reply();
+  auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
+    *res = SUCCESS;
+    if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
+      *res = REJECT;
+    }
+    *coro_id = Coroutine::CurrentCoroutine()->id;
+    defer->reply();
+  });
 }
 
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,

@@ -41,6 +41,7 @@ class ClassicServiceImpl : public ClassicService {
                 const MarshallDeputy& cmd,
                 int32_t* res,
                 TxnOutput* output,
+                uint64_t* coro_id,
                 DeferredReply* defer_reply) override;
 
   void Prepare(const i64& tid,

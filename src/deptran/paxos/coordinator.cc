@@ -43,8 +43,8 @@ void CoordinatorMultiPaxos::Prepare() {
   in_prepare_ = true;
   curr_ballot_ = PickBallot();
   verify(slot_id_ > 0);
-  rpc_event->add_dep(commo()->LeaderProxyForPartition(par_id_).first);
-  rpc_event->log();
+  //rpc_event->add_dep(commo()->LeaderProxyForPartition(par_id_).first);
+  //rpc_event->log();
   Log_debug("multi-paxos coordinator broadcasts prepare, "
                 "par_id_: %lx, slot_id: %llx",
             par_id_,
