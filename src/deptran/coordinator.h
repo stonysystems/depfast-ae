@@ -31,8 +31,11 @@ class Coordinator {
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
   uint32_t cli_id_;
+  uint32_t coro_id_;
+  std::vector<int> ids_;
   parid_t par_id_ = -1;
   std::shared_ptr<SingleRPCEvent> rpc_event;
+  std::shared_ptr<QuorumEvent> sp_quorum_event;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;
   uint32_t thread_id_;

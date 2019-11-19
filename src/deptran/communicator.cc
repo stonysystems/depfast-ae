@@ -240,6 +240,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
   e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
+  coo->coro_id_ = src_coroid;
 
   for(auto& pair: cmds_by_par){
     auto& cmds = pair.second;
@@ -283,7 +284,8 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
             if(txn->HasMoreUnsentPiece()){
               e->n_voted_yes_ = coo->n_dispatch_;
             }
-            e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
+            //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
+            coo->ids_.push_back(leader_id);
             e->Test();
           }
         };
@@ -306,7 +308,8 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
               TxnOutput outputs;
               uint64_t coro_id = 0;
               fu->get_reply() >> ret >> outputs >> coro_id;
-              e->add_dep(coo->cli_id_, src_coroid, follower_id, coro_id);
+              //e->add_dep(coo->cli_id_, src_coroid, follower_id, coro_id);
+              coo->ids_.push_back(follower_id);
               // do nothing
             };
         Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
