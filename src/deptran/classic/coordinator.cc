@@ -244,10 +244,10 @@ void CoordinatorClassic::DispatchAsync() {
     commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }*/
 
-  auto quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
+  sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
-  quorum_event->Wait();
-  quorum_event->log();
+  sp_quorum_event->Wait();
+  //quorum_event->log();
   if(txn->HasMoreUnsentPiece()){
     DispatchAsync();
   }
@@ -469,27 +469,35 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
 }
 
 void CoordinatorClassic::End() {
-  TxData* tx_data = (TxData*) cmd_;
-  TxReply& tx_reply_buf = tx_data->get_reply();
-  double last_latency = tx_data->last_attempt_latency();
-  if (committed_) {
-    tx_data->reply_.res_ = SUCCESS;
-    this->Report(tx_reply_buf, last_latency
-#ifdef TXN_STAT
-        , txn
-#endif // ifdef TXN_STAT
-    );
-  } else if (aborted_) {
-    tx_data->reply_.res_ = REJECT;
-  } else {
-    verify(0);
-  }
-  tx_reply_buf.tx_id_ = ongoing_tx_id_;
-  Log_debug("call reply for tx_id: %"
-                PRIx64, ongoing_tx_id_);
-  tx_data->callback_(tx_reply_buf);
-  ongoing_tx_id_ = 0;
-  delete tx_data;
+  Coroutine::CreateRun([this]() {
+    TxData* tx_data = (TxData*) this->cmd_;
+    TxReply& tx_reply_buf = tx_data->get_reply();
+    double last_latency = tx_data->last_attempt_latency();
+    if (committed_) {
+      tx_data->reply_.res_ = SUCCESS;
+      this->Report(tx_reply_buf, last_latency
+  #ifdef TXN_STAT
+          , this->txn
+  #endif // ifdef TXN_STAT
+      );
+    } else if (aborted_) {
+      tx_data->reply_.res_ = REJECT;
+    } else {
+      verify(0);
+    }
+    tx_reply_buf.tx_id_ = this->ongoing_tx_id_;
+    Log_debug("call reply for tx_id: %"
+                  PRIx64, this->ongoing_tx_id_);
+    tx_data->callback_(tx_reply_buf);
+    //quorum event created for the sole purpose of logging
+    auto curr_id = Coroutine::CurrentCoroutine()->id;
+    for(int i = 0; i < ids_.size(); i++){
+      sp_quorum_event->add_dep(cli_id_, coro_id_, ids_.at(i), curr_id);
+    }
+    sp_quorum_event->log();
+    this->ongoing_tx_id_ = 0;
+    delete tx_data;
+  });
 }
 
 void CoordinatorClassic::Report(TxReply& txn_reply,
