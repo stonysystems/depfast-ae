@@ -245,7 +245,10 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
+<<<<<<< HEAD
 
+=======
+>>>>>>> changed everything quorum code
 
   for(auto& pair: cmds_by_par){
     bool first = false;

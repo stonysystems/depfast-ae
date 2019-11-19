@@ -225,8 +225,24 @@ void CoordinatorClassic::DispatchAsync() {
   for (auto& pair: cmds_by_par){    auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
+<<<<<<< HEAD
   // need to create a vector of quorum events or a different data structure
   // probably need a quorum event for each partition
+=======
+  /*for (auto& pair: cmds_by_par) {
+    const parid_t& par_id = pair.first;
+    auto& cmds = pair.second;
+    cnt += cmds.size();
+    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
+    for (auto c: cmds) {
+      c->id_ = next_pie_id();
+      dispatch_acks_[c->inn_id_] = false;
+      sp_vec_piece->push_back(c);
+    }
+    commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
+  }*/
+
+>>>>>>> changed everything quorum code
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   sp_quorum_event->Wait();
@@ -451,7 +467,6 @@ void CoordinatorClassic::End() {
                   PRIx64, this->ongoing_tx_id_);
     tx_data->callback_(tx_reply_buf);
     //quorum event created for the sole purpose of logging
-    
 
     /*auto curr_id = Coroutine::CurrentCoroutine()->id;
     for(auto i = 0; i < sp_quorum_events.size(); i++){
