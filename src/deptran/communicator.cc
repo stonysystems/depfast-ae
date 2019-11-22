@@ -231,7 +231,6 @@ void Communicator::BroadcastDispatch(
   }
 }
 
-
 shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     ReadyPiecesData cmds_by_par,
     Coordinator* coo,
@@ -243,6 +242,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   coo->coro_id_ = src_coroid;
 
   for(auto& pair: cmds_by_par){
+    bool first = false;
     auto& cmds = pair.second;
     auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
     for(auto c: cmds){
@@ -257,7 +257,13 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto leader_id = pair_leader_proxy.first;
 
     //this is kind of a hack. it might be broken
-    
+    auto it = coo->sp_quorum_events.find(par_id);
+    if(it == coo->sp_quorum_events.end()){
+      auto qe = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
+      coo->sp_quorum_events.insert({par_id, qe});
+      first = true;
+    }
+    auto curr = coo->sp_quorum_events[par_id];
 
     rrr::FutureAttr fuattr;
     fuattr.callback =
@@ -300,6 +306,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     Future::safe_release(future);
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
+        if(first) curr->n_total_++;
         auto follower_id = pair.first;
         rrr::FutureAttr fuattr;
         fuattr.callback =
@@ -316,6 +323,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
       }
     }
   }
+  //probably should modify the data structure here.
   return e;
 }
 

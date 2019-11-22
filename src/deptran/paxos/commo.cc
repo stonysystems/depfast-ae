@@ -63,8 +63,8 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
                                  ballot_t ballot,
                                  shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-//  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n/2+1);
-  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n);
+  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n/2+1);
+//  auto e = Reactor::CreateSpEvent<PaxosAcceptQuorumEvent>(n, n);
   auto src_coroid = e->GetCoroId();
   auto proxies = rpc_par_proxies_[par_id];
   auto leader_id = LeaderProxyForPartition(par_id).first; // might need to be changed to coordinator's id
