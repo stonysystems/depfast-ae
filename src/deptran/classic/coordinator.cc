@@ -242,7 +242,12 @@ void CoordinatorClassic::DispatchAsync() {
     commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }*/
 
+<<<<<<< HEAD
 >>>>>>> changed everything quorum code
+=======
+  // need to create a vector of quorum events or a different data structure
+  // probably need a quorum event for each partition
+>>>>>>> code to fall back on
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   sp_quorum_event->Wait();

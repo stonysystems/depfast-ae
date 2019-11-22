@@ -234,6 +234,8 @@ void Communicator::BroadcastDispatch(
 }
 
 
+//need to change this code to solve the quorum info in the graphs
+//either create another event here or inside the coordinator.
 shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     ReadyPiecesData cmds_by_par,
     Coordinator* coo,
@@ -245,10 +247,6 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
-<<<<<<< HEAD
-
-=======
->>>>>>> changed everything quorum code
 
   for(auto& pair: cmds_by_par){
     bool first = false;
@@ -264,7 +262,6 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto par_id = sp_vec_piece->at(0)->PartitionId();
     auto pair_leader_proxy = LeaderProxyForPartition(par_id);
     auto leader_id = pair_leader_proxy.first;
-    Log_info("The leader id is %d", leader_id);
 
     rrr::FutureAttr fuattr;
     fuattr.callback =
@@ -307,6 +304,7 @@ shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     Future::safe_release(future);
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
+        if(first) curr->n_total_++;
         auto follower_id = pair.first;
         rrr::FutureAttr fuattr;
         fuattr.callback =
