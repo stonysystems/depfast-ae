@@ -33,6 +33,7 @@ class QuorumEvent : public Event {
   //i don't want to mess things up
   QuorumEvent(int n_total,
               int quorum) : Event(),
+                            n_total_(n_total),
                             quorum_(quorum){
   }
 
@@ -89,7 +90,7 @@ class QuorumEvent : public Event {
       for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
         for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
           for(auto it4 = it3->second.begin(); it4 != it3->second.end(); it4++){
-            of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << " }\n";
+            of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << ", " << quorum_ << "/" << n_total_ << " }\n";
           }
         }
       }

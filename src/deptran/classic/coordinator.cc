@@ -244,6 +244,8 @@ void CoordinatorClassic::DispatchAsync() {
     commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }*/
 
+  // need to create a vector of quorum events or a different data structure
+  // probably need a quorum event for each partition
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   sp_quorum_event->Wait();
@@ -491,10 +493,14 @@ void CoordinatorClassic::End() {
     tx_data->callback_(tx_reply_buf);
     //quorum event created for the sole purpose of logging
     auto curr_id = Coroutine::CurrentCoroutine()->id;
-    for(int i = 0; i < ids_.size(); i++){
-      sp_quorum_event->add_dep(cli_id_, coro_id_, ids_.at(i), curr_id);
+    for(auto it = sp_quorum_events.begin(); it != sp_quorum_events.end(); it++){
+      for(int i = 0; i < ids_.size(); i++){
+        it->second->add_dep(cli_id_, coro_id_, ids_.at(i), curr_id);
+      }
+      it->second->log();
+      it->second.reset();
     }
-    sp_quorum_event->log();
+    sp_quorum_events.clear();
     this->ongoing_tx_id_ = 0;
     delete tx_data;
   });
