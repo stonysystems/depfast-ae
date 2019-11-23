@@ -218,19 +218,9 @@ class PollMgr::PollThread {
     while (it != set_sp_jobs_.end()) {
       auto sp_job = *it;
       if (sp_job->Ready()) {
-<<<<<<< HEAD
         Coroutine::CreateRun([sp_job]() {
           sp_job->Work();
         });
-=======
-        Log_info("Could be right before GotoNextPhase()");
-        Coroutine::CreateRun([sp_job]() {sp_job->Work();});
-      }
-      if (sp_job->Done()) {
-        it = set_sp_jobs_.erase(it);
-      } else {
-        it++;
->>>>>>> bug seems to be fixed
       }
       it = set_sp_jobs_.erase(it);
 //      if (sp_job->Done()) {

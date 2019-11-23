@@ -17,7 +17,8 @@ void CoordinatorMultiPaxos::Submit(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
   if (!IsLeader()) {
-    Log_fatal("i am not the leader; site %d; locale %d",
+    //change back to fatal
+    Log_info("i am not the leader; site %d; locale %d",
               frame_->site_info_->id, loc_id_);
   }
 
@@ -106,6 +107,7 @@ void CoordinatorMultiPaxos::Accept() {
                 "par_id_: %lx, slot_id: %llx",
             par_id_, slot_id_);
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
+  Log_info("Accept()");
   sp_quorum->Wait();
   sp_quorum->log();
   if (sp_quorum->Yes()) {
@@ -164,7 +166,7 @@ void CoordinatorMultiPaxos::Commit() {
 void CoordinatorMultiPaxos::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
-  Log_info("Current phase is %d", current_phase);
+  //Log_info("Current phase is %d", current_phase);
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:
@@ -176,14 +178,21 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
-        verify(0);
+        
+        //Log_info("Follower logic");
+        //For now, do nothing
+        phase_++;
+        verify(phase_ % n_phase == Phase::ACCEPT);
+        phase_++;
+        verify(phase_ % n_phase == Phase::COMMIT);
       }
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
         Commit();
       } else {
-        verify(0);
+        Log_info("Follower Logic");
+        break;
       }
       break;
     case Phase::PREPARE:

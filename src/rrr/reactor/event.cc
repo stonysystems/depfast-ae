@@ -14,6 +14,7 @@ uint64_t Event::GetCoroId(){
   return sp_coro->id;
 }
 
+
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
@@ -62,7 +63,7 @@ void Event::Wait(uint64_t timeout) {
 //      events.insert(it, shared_from_this());
 
     wp_coro_ = sp_coro;
-    Log_info("waiting");
+    //Log_info("waiting");
     status_ = WAIT;
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
@@ -98,6 +99,11 @@ bool Event::Test() {
       verify(0);
     }
     return true;
+  }
+  else{
+    if(status_ == DONE){
+      status_ = INIT;
+    }
   }
   return false;
 }

@@ -227,7 +227,6 @@ void CoordinatorClassic::DispatchAsync() {
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-
   // need to create a vector of quorum events or a different data structure
   // probably need a quorum event for each partition
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
@@ -281,6 +280,7 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
   } else if (AllDispatchAcked()) {
     GotoNextPhase();
   }
+<<<<<<< HEAD
   /*std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   TxData* txn = (TxData*) cmd_;
@@ -337,9 +337,7 @@ void CoordinatorClassic::Prepare() {
             //cmd_->id_,
             //partition_id);
   auto phase = phase_;
-  //moving this to communicator might be easier and add a hack for GotoNextPhase
-  //also add this to the call to SendPrepare
-  //this needs to be changed to quorum event
+  
   /*commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
@@ -350,6 +348,7 @@ void CoordinatorClassic::Prepare() {
   auto quorum_event = commo()->SendPrepare(this,
                                           cmd_->id_,
                                           sids);
+
   quorum_event->Wait();
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;
@@ -444,21 +443,12 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
   verify(cmd->GetPartitionIds().size() == n_finish_req_);
   // Perhaps a bug here?
   if (n_finish_ack_ == cmd->GetPartitionIds().size()) {
-<<<<<<< HEAD
 //    if (cmd->reply_.res_ == REJECT) {
 //      aborted_ = true;
 //    } else {
 //      committed_ = true;
 //    }
     GotoNextPhase();
-=======
-    if (cmd->reply_.res_ == REJECT) {
-      aborted_ = true;
-    } else {
-      committed_ = true;
-    }
-    //GotoNextPhase();
->>>>>>> bug seems to be fixed
   }
   Log_debug("callback: %s, retry: %s",
             committed_ ? "True" : "False",
@@ -489,8 +479,9 @@ void CoordinatorClassic::End() {
     //quorum event created for the sole purpose of logging
     auto curr_id = Coroutine::CurrentCoroutine()->id;
     for(auto it = sp_quorum_events.begin(); it != sp_quorum_events.end(); it++){
+      it->second->coro_id_ = curr_id;
       for(int i = 0; i < ids_.size(); i++){
-        it->second->add_dep(cli_id_, coro_id_, ids_.at(i), curr_id);
+        it->second->add_dep(cli_id_, coro_id_, ids_.at(i));
       }
       it->second->log();
       it->second.reset();
