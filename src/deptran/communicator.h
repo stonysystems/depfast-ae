@@ -100,7 +100,6 @@ class Communicator {
   shared_ptr<AndEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
-
   shared_ptr<AndEvent> SendCommit(Coordinator* coo,
                                      txnid_t tid);
   shared_ptr<AndEvent> SendAbort(Coordinator* coo,

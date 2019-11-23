@@ -128,6 +128,7 @@ void CoordinatorMultiPaxos::Accept() {
             par_id_, slot_id_);
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
   sp_quorum->id_ = dep_id_;
+  Log_info("Accept()");
   sp_quorum->Wait();
   sp_quorum->log();
   if (sp_quorum->Yes()) {
@@ -197,8 +198,9 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
+	verify(0);
         Log_info("The local id is %d", this->loc_id_);
-        Forward();
+        //Forward();
         //Log_info("Follower logic");
         //For now, do nothing
         //

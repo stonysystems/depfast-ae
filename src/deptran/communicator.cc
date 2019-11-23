@@ -236,7 +236,7 @@ void Communicator::BroadcastDispatch(
 
 //need to change this code to solve the quorum info in the graphs
 //either create another event here or inside the coordinator.
-shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
+std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     ReadyPiecesData cmds_by_par,
     Coordinator* coo,
     TxData* txn) {
@@ -470,6 +470,10 @@ Communicator::SendCommit(Coordinator* coo,
 
     coo->site_commit_[rp]++;
   }
+  shared_ptr<AndEvent> e = Reactor::CreateSpEvent<AndEvent>();
+  for(int i = 0; i < temp.size(); i++){
+    e->AddEvent(temp[i]);
+  }
   return e;
 }
 
@@ -544,8 +548,13 @@ Communicator::SendAbort(Coordinator* coo,
         proxy = pair.second;
         Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
       }
+
     }
     coo->site_abort_[rp]++;
+  }
+  auto e = Reactor::CreateSpEvent<AndEvent>();
+  for(int i = 0; i < temp.size(); i++){
+    e->AddEvent(temp[i]);
   }
   return e;
 }

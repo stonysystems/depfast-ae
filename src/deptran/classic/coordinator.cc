@@ -225,10 +225,6 @@ void CoordinatorClassic::DispatchAsync() {
   for (auto& pair: cmds_by_par){    auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-<<<<<<< HEAD
-  // need to create a vector of quorum events or a different data structure
-  // probably need a quorum event for each partition
-=======
   /*for (auto& pair: cmds_by_par) {
     const parid_t& par_id = pair.first;
     auto& cmds = pair.second;
@@ -242,12 +238,6 @@ void CoordinatorClassic::DispatchAsync() {
     commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
   }*/
 
-<<<<<<< HEAD
->>>>>>> changed everything quorum code
-=======
-  // need to create a vector of quorum events or a different data structure
-  // probably need a quorum event for each partition
->>>>>>> code to fall back on
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   sp_quorum_event->Wait();
