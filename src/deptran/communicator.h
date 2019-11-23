@@ -95,12 +95,12 @@ class Communicator {
   shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
                         Coordinator* coo,
                         TxData* txn);
-  shared_ptr<QuorumEvent> SendPrepare(Coordinator* coo,
+  shared_ptr<AndEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
-  shared_ptr<QuorumEvent> SendCommit(Coordinator* coo,
+  shared_ptr<AndEvent> SendCommit(Coordinator* coo,
                                      txnid_t tid);
-  shared_ptr<QuorumEvent> SendAbort(Coordinator* coo,
+  shared_ptr<AndEvent> SendAbort(Coordinator* coo,
                                     txnid_t tid);
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,

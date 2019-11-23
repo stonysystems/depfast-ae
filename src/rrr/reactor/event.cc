@@ -60,7 +60,7 @@ void Event::Wait(uint64_t timeout) {
 //
 //    somewhere here, we should output the logs
     wp_coro_ = sp_coro;
-    Log_info("waiting");
+    //Log_info("waiting");
     status_ = WAIT;
     sp_coro->Yield();
 //    if (status_ == TIMEOUT) {
@@ -94,6 +94,11 @@ bool Event::Test() {
       verify(0);
     }
     return true;
+  }
+  else{
+    if(status_ == DONE){
+      status_ = INIT;
+    }
   }
   return false;
 }

@@ -98,6 +98,7 @@ void Reactor::Loop(bool infinite) {
     auto time_now = Time::now();
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
+      //Log_info("HAS TO BE HERE RIGHT?"); 
       event.Test();
       //Log_info("checking: %s %d", typeid(event).name(), i);
       if (event.status_ == Event::READY) {
