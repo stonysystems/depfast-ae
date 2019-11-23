@@ -15,6 +15,7 @@ uint64_t Event::GetCoroId(){
 
 void Event::Wait() {
   verify(__debug_creator); // if this fails, the event is not created by reactor.
+  //Log_info("Waiting with status1: %d", status_);
   if (IsReady()) {
     status_ = DONE; // does not need to wait.
     return;
@@ -33,7 +34,7 @@ void Event::Wait() {
 //    somewhere here, we should output the logs
     verify(sp_coro);
     wp_coro_ = sp_coro;
-    Log_info("waiting");
+    //Log_info("waiting");
     status_ = WAIT;
     sp_coro->Yield();
   }
@@ -64,6 +65,11 @@ bool Event::Test() {
       verify(0);
     }
     return true;
+  }
+  else{
+    if(status_ == DONE){
+      status_ = INIT;
+    }
   }
   return false;
 }

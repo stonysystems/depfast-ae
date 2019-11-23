@@ -75,6 +75,7 @@ void Reactor::Loop(bool infinite) {
     int i = 0;
     for (auto it = events_.begin(); it != events_.end();) {
       Event& event = **it;
+      //Log_info("HAS TO BE HERE RIGHT?"); 
       event.Test();
       //Log_info("checking: %s %d", typeid(event).name(), i);
       if (event.status_ == Event::READY) {

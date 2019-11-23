@@ -231,19 +231,6 @@ void CoordinatorClassic::DispatchAsync() {
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-  /*for (auto& pair: cmds_by_par) {
-    const parid_t& par_id = pair.first;
-    auto& cmds = pair.second;
-    cnt += cmds.size();
-    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
-    for (auto c: cmds) {
-      c->id_ = next_pie_id();
-      dispatch_acks_[c->inn_id_] = false;
-      sp_vec_piece->push_back(c);
-    }
-    commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
-  }*/
-
   // need to create a vector of quorum events or a different data structure
   // probably need a quorum event for each partition
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
@@ -296,45 +283,6 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
   } else if (AllDispatchAcked()) {
     GotoNextPhase();
   }
-  /*std::lock_guard<std::recursive_mutex> lock(this->mtx_);
-  if (phase != phase_) return;
-  TxData* txn = (TxData*) cmd_;
-  if (res == REJECT) {
-    Log_debug("got REJECT reply for cmd_id: %llx NOT COMMITING",
-              txn->root_id_);
-    aborted_ = true;
-    txn->commit_.store(false);
-  }
-  n_dispatch_ack_ += outputs.size();
-  if (aborted_) {
-    if (n_dispatch_ack_ == n_dispatch_) {
-      // wait until all ongoing dispatch to finish before aborting.
-      Log_debug("received all start acks (at least one is REJECT);"
-                    "tx_id: %"
-                    PRIx64, txn->root_id_);
-      GotoNextPhase();
-      return;
-    }
-  }
-
-  for (auto& pair : outputs) {
-    const innid_t& inn_id = pair.first;
-    verify(dispatch_acks_.at(inn_id) == false);
-    dispatch_acks_[inn_id] = true;
-    Log_debug("get start ack %ld/%ld for cmd_id: %lx, inn_id: %d",
-              n_dispatch_ack_, n_dispatch_, cmd_->id_, inn_id);
-    txn->Merge(pair.first, pair.second);
-  }
-  if (txn->HasMoreUnsentPiece()) {
-    Log_debug("command has more sub-cmd, cmd_id: %llx,"
-                  " n_started_: %d, n_pieces: %d",
-              txn->id_, txn->n_pieces_dispatched_, txn->GetNPieceAll());
-    DispatchAsync();
-  } else if (AllDispatchAcked()) {
-    Log_debug("receive all start acks, txn_id: %llx; START PREPARE",
-              txn->id_);
-    GotoNextPhase();
-  }*/
 }
 
 /** caller should be thread_safe */
@@ -352,9 +300,7 @@ void CoordinatorClassic::Prepare() {
             //cmd_->id_,
             //partition_id);
   auto phase = phase_;
-  //moving this to communicator might be easier and add a hack for GotoNextPhase
-  //also add this to the call to SendPrepare
-  //this needs to be changed to quorum event
+  
   /*commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
@@ -365,6 +311,7 @@ void CoordinatorClassic::Prepare() {
   auto quorum_event = commo()->SendPrepare(this,
                                           cmd_->id_,
                                           sids);
+
   quorum_event->Wait();
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;
@@ -494,8 +441,9 @@ void CoordinatorClassic::End() {
     //quorum event created for the sole purpose of logging
     auto curr_id = Coroutine::CurrentCoroutine()->id;
     for(auto it = sp_quorum_events.begin(); it != sp_quorum_events.end(); it++){
+      it->second->coro_id_ = curr_id;
       for(int i = 0; i < ids_.size(); i++){
-        it->second->add_dep(cli_id_, coro_id_, ids_.at(i), curr_id);
+        it->second->add_dep(cli_id_, coro_id_, ids_.at(i));
       }
       it->second->log();
       it->second.reset();

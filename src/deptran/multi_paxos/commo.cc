@@ -36,17 +36,19 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
   auto e = Reactor::CreateSpEvent<PaxosPrepareQuorumEvent>(n, n/2+1);
   auto src_coroid = e->GetCoroId();
   auto proxies = rpc_par_proxies_[par_id];
+  
   auto leader_id = LeaderProxyForPartition(par_id).first; //might need to be changed to coordinator's id
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
+    e->add_dep(leader_id, src_coroid, follower_id);
     FutureAttr fuattr;
     fuattr.callback = [e, ballot, leader_id, src_coroid, follower_id](Future* fu) {
       ballot_t b = 0;
       uint64_t coro_id = 0;
       fu->get_reply() >> b >> coro_id;
       e->FeedResponse(b==ballot);
-      e->add_dep(leader_id, src_coroid, follower_id, coro_id);
+      e->coro_id_ = coro_id;
       // TODO add max accepted value.
     };
     Future::safe_release(proxy->async_Prepare(slot_id, ballot, fuattr));
@@ -69,13 +71,14 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
+    e->add_dep(leader_id, src_coroid, follower_id);
     FutureAttr fuattr;
     fuattr.callback = [e, ballot, leader_id, src_coroid, follower_id] (Future* fu) {
       ballot_t b = 0;
       uint64_t coro_id = 0;
       fu->get_reply() >> b >> coro_id;
       e->FeedResponse(b==ballot);
-      e->add_dep(leader_id, src_coroid, follower_id, coro_id);
+      e->coro_id_ = coro_id;
     };
     MarshallDeputy md(cmd);
     auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);

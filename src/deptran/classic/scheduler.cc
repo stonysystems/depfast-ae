@@ -209,6 +209,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     CreateRepCoord()->Submit(sp_m);
+    Log_info("Before failing verify");
     sp_tx->ev_commit_.Wait();
   } else {
 //    verify(exec->phase_ < 3);
