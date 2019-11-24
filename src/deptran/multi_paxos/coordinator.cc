@@ -181,6 +181,7 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         
         //Log_info("Follower logic");
         //For now, do nothing
+        // MAYBE DELETE THIS CODE TO GET WORKING CODE
         phase_++;
         verify(phase_ % n_phase == Phase::ACCEPT);
         phase_++;

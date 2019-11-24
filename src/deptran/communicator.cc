@@ -426,6 +426,11 @@ void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   }
 }
 
+/*
+ * IMPORTANT!!
+ * REVERT THIS CODE BACK TO THE ORIGINAL IF YOU WANT WORKING CODE
+ * !!!
+ */
 shared_ptr<AndEvent>
 Communicator::SendCommit(Coordinator* coo,
                               txnid_t tid) {
