@@ -196,7 +196,6 @@ TxLogServer::TxLogServer() : mtx_() {
   }
 }
 
-
 Coordinator *TxLogServer::CreateRepCoord(const uint64_t& dep_id) {
   Coordinator *coord;
   static cooid_t cid = 0;

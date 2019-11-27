@@ -247,6 +247,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
+  Log_info("The size of cmds_by_par is %d", cmds_by_par.size());
 
   for(auto& pair: cmds_by_par){
     bool first = false;
@@ -262,6 +263,10 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto par_id = sp_vec_piece->at(0)->PartitionId();
     auto pair_leader_proxy = LeaderProxyForPartition(par_id);
     auto leader_id = pair_leader_proxy.first;
+<<<<<<< HEAD
+=======
+    Log_info("The leader id is %d", leader_id);
+>>>>>>> WIP Transitive
 
     rrr::FutureAttr fuattr;
     fuattr.callback =
@@ -304,7 +309,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     Future::safe_release(future);
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
-        if(first) curr->n_total_++;
+        //if(first) curr->n_total_++;
         auto follower_id = pair.first;
         rrr::FutureAttr fuattr;
         fuattr.callback =
@@ -332,7 +337,7 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
-shared_ptr<AndEvent>
+shared_ptr<QuorumEvent>
 Communicator::SendPrepare(Coordinator* coo,
                           txnid_t tid,
                           std::vector<int32_t>& sids){
@@ -421,7 +426,7 @@ void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   }
 }
 
-shared_ptr<AndEvent>
+shared_ptr<QuorumEvent>
 Communicator::SendCommit(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
@@ -470,10 +475,6 @@ Communicator::SendCommit(Coordinator* coo,
 
     coo->site_commit_[rp]++;
   }
-  shared_ptr<AndEvent> e = Reactor::CreateSpEvent<AndEvent>();
-  for(int i = 0; i < temp.size(); i++){
-    e->AddEvent(temp[i]);
-  }
   return e;
 }
 
@@ -489,7 +490,7 @@ Communicator::SendCommit(Coordinator* coo,
   Log_debug("SendCommit to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Commit(tid, fuattr));
 }*/
-shared_ptr<AndEvent>
+shared_ptr<QuorumEvent>
 Communicator::SendAbort(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
@@ -551,10 +552,6 @@ Communicator::SendAbort(Coordinator* coo,
 
     }
     coo->site_abort_[rp]++;
-  }
-  auto e = Reactor::CreateSpEvent<AndEvent>();
-  for(int i = 0; i < temp.size(); i++){
-    e->AddEvent(temp[i]);
   }
   return e;
 }

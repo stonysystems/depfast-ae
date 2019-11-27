@@ -474,7 +474,6 @@ void CoordinatorClassic::End() {
       curr.second.reset();
     }*/
 
-
     sp_quorum_events.clear();
     ids_.clear();
     this->ongoing_tx_id_ = 0;

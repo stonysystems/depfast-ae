@@ -81,13 +81,14 @@ class QuorumEvent : public Event {
 
   void log(){
     std::ofstream of(log_file, std::fstream::app);
-    if(coro_id_ == -1) return;
     //of << "hello\n";
+    if(coro_id_ == -1) return;
+    
     // Maybe this part can be more efficient
     for(auto it = deps.begin(); it != deps.end(); it++){
       for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
         for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
-          of << "{ " << it->first << ", " << it2->first << ", " << *it3 << ", " << coro_id_ << ", " << quorum_ << "/" << n_total_ << " }\n";
+          of << "{ " << it->first << ", " << it2->first << ", " << *it3 << ", " << coro_id_ << ", " << id_ << ": " << quorum_ << "/" << n_total_ << " }\n";
         }
       }
     }
