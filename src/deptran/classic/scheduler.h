@@ -40,7 +40,8 @@ class SchedulerClassic: public TxLogServer {
 
   // PrepareRequest
   virtual bool OnPrepare(txnid_t tx_id,
-                         const std::vector<i32> &sids);
+                         const std::vector<i32> &sids,
+                         const uint64_t& dep_id);
 
   virtual bool DoPrepare(txnid_t tx_id) {
     verify(0);
@@ -48,6 +49,7 @@ class SchedulerClassic: public TxLogServer {
   };
 
   virtual int OnCommit(cmdid_t cmd_id,
+                       const uint64_t& dep_id,
                        int commit_or_abort);
 
   virtual void DoCommit(Tx& tx_box);

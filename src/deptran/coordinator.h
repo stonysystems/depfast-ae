@@ -32,10 +32,11 @@ class Coordinator {
   uint32_t coo_id_;
   uint32_t cli_id_;
   uint32_t coro_id_;
+  uint64_t dep_id_;
   std::vector<int> ids_;
   parid_t par_id_ = -1;
   std::shared_ptr<SingleRPCEvent> rpc_event;
-  map<parid_t, std::shared_ptr<QuorumEvent>> sp_quorum_events{};
+  vector<std::pair<parid_t, std::shared_ptr<QuorumEvent>>> sp_quorum_events{};
   std::shared_ptr<QuorumEvent> sp_quorum_event;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;

@@ -50,6 +50,7 @@ class MessageEvent : public IntEvent {
 
 class Communicator {
  public:
+  static uint64_t global_id;
   const int CONNECT_TIMEOUT_MS = 120*1000;
   const int CONNECT_SLEEP_MS = 1000;
   rrr::PollMgr *rpc_poll_ = nullptr;
@@ -99,9 +100,9 @@ class Communicator {
   shared_ptr<AndEvent> SendPrepare(Coordinator* coo,
                                          txnid_t tid,
                                          std::vector<int32_t>& sids);
-  shared_ptr<AndEvent> SendCommit(Coordinator* coo,
+  shared_ptr<QuorumEvent> SendCommit(Coordinator* coo,
                                      txnid_t tid);
-  shared_ptr<AndEvent> SendAbort(Coordinator* coo,
+  shared_ptr<QuorumEvent> SendAbort(Coordinator* coo,
                                     txnid_t tid);
   /*void SendPrepare(parid_t gid,
                    txnid_t tid,

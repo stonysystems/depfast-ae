@@ -478,15 +478,17 @@ void CoordinatorClassic::End() {
     tx_data->callback_(tx_reply_buf);
     //quorum event created for the sole purpose of logging
     auto curr_id = Coroutine::CurrentCoroutine()->id;
-    for(auto it = sp_quorum_events.begin(); it != sp_quorum_events.end(); it++){
-      it->second->coro_id_ = curr_id;
+    for(auto i = 0; i < sp_quorum_events.size(); i++){
+      auto curr = sp_quorum_events[i];
+      curr.second->coro_id_ = curr_id;
       for(int i = 0; i < ids_.size(); i++){
-        it->second->add_dep(cli_id_, coro_id_, ids_.at(i));
+        curr.second->add_dep(cli_id_, coro_id_, ids_.at(i));
       }
-      it->second->log();
-      it->second.reset();
+      curr.second->log();
+      curr.second.reset();
     }
     sp_quorum_events.clear();
+    ids_.clear();
     this->ongoing_tx_id_ = 0;
     delete tx_data;
   });

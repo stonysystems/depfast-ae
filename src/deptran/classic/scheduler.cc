@@ -133,7 +133,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //   0. an non-optimized version would be.
 //      dispatch the transaction command with paxos instance
 bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
-                                 const std::vector<i32>& sids) {
+                                 const std::vector<i32>& sids,
+                                 const uint64_t& dep_id) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
   Log_debug("%s: at site %d, tx: %"
@@ -144,7 +145,9 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
-    CreateRepCoord()->Submit(sp_m);
+    // here, we need to let the paxos coordinator know what request we are working with
+    // thsi could be the transaction id or we can add a new id
+    CreateRepCoord(dep_id)->Submit(sp_m);
 //    Log_debug("wait for prepare command replicated");
     sp_tx->is_leader_hint_ = true;
     sp_tx->prepare_result->Wait();
@@ -179,7 +182,7 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
   return 0;
 }
 
-int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
+int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit_or_abort) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
