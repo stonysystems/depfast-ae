@@ -34,12 +34,13 @@ abstract service Classic {
                  i32 res, TxnOutput output, uint64_t coro_id);
 
   defer Prepare(i64 tid, 
-                vector<i32> sids | 
+                vector<i32> sids,
+                uint64_t dep_id | 
                 i32 res);
 
-  defer Commit(i64 tid | i32 res);
+  defer Commit(i64 tid, uint64_t dep_id | i32 res);
 
-  defer Abort(i64 tid | i32 res);
+  defer Abort(i64 tid, uint64_t dep_id | i32 res);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
                      int32_t res)

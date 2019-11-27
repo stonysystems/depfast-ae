@@ -46,14 +46,17 @@ class ClassicServiceImpl : public ClassicService {
 
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
+               const uint64_t& dep_id,
                i32* res,
                DeferredReply* defer) override;
 
   void Commit(const i64& tid,
+              const uint64_t& dep_id,
               i32* res,
               DeferredReply* defer) override;
 
   void Abort(const i64& tid,
+             const uint64_t& dep_id,
              i32* res,
              DeferredReply* defer) override;
 

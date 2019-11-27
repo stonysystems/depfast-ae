@@ -193,7 +193,7 @@ Scheduler::Scheduler() : mtx_() {
   }
 }
 
-Coordinator *Scheduler::CreateRepCoord() {
+Coordinator *Scheduler::CreateRepCoord(const uint64_t& dep_id) {
   Coordinator *coord;
   static cooid_t cid = 0;
   int32_t benchmark = 0;
@@ -205,6 +205,7 @@ Coordinator *Scheduler::CreateRepCoord() {
                                         nullptr,
                                         id++,
                                         txn_reg_);
+  coord->dep_id_ = dep_id;
   coord->par_id_ = partition_id_;
   //Log_info("Partition id set: %d", partition_id_);
   coord->loc_id_ = this->loc_id_;
