@@ -74,12 +74,13 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
 
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
+                                 const uint64_t& dep_id,
                                  rrr::i32* res,
                                  rrr::DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [res, defer, tid, sids, this]() {
+  const auto& func = [res, defer, tid, sids, dep_id, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    bool ret = sched->OnPrepare(tid, sids);
+    bool ret = sched->OnPrepare(tid, sids, dep_id);
     *res = ret ? SUCCESS : REJECT;
     defer->reply();
   };
@@ -105,12 +106,13 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 }
 
 void ClassicServiceImpl::Commit(const rrr::i64& tid,
+                                const uint64_t& dep_id,
                                 rrr::i32* res,
                                 rrr::DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
 //  const auto& func = [tid, res, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, SUCCESS);
+    sched->OnCommit(tid, dep_id, SUCCESS);
     *res = SUCCESS;
     defer->reply();
 //  };
@@ -118,13 +120,14 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
 }
 
 void ClassicServiceImpl::Abort(const rrr::i64& tid,
+                               const uint64_t& dep_id,
                                rrr::i32* res,
                                rrr::DeferredReply* defer) {
   Log_debug("get abort_txn: tid: %ld", tid);
 //  std::lock_guard<std::mutex> guard(mtx_);
 //  const auto& func = [tid, res, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, REJECT);
+    sched->OnCommit(tid, dep_id, REJECT);
     *res = SUCCESS;
     defer->reply();
 //  };

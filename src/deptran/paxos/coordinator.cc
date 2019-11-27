@@ -179,21 +179,17 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
-        
+        verify(0);
         //Log_info("Follower logic");
         //For now, do nothing
-        phase_++;
-        verify(phase_ % n_phase == Phase::ACCEPT);
-        phase_++;
-        verify(phase_ % n_phase == Phase::COMMIT);
       }
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
         Commit();
-      } else {
-        Log_info("Follower Logic");
-        break;
+      }
+      else{
+        verify(0);
       }
       break;
     case Phase::PREPARE:
