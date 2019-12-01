@@ -35,6 +35,7 @@ class Event {
   std::weak_ptr<Coroutine> wp_coro_{};
 
   virtual void Wait();
+  virtual void log(){return;}
   virtual bool Test();
   virtual uint64_t GetCoroId();
   virtual bool IsReady() {return false;}
@@ -143,6 +144,12 @@ class AndEvent : public Event {
   template<typename... Args>
   AndEvent(Args&&... args) {
     AddEvent(args...);
+  }
+  
+  void log() {
+    for(int i = 0; i < events_.size(); i++){
+      events_[i]->log();
+    }
   }
 
   bool IsReady() {
