@@ -145,6 +145,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
+    Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
     CreateRepCoord(dep_id)->Submit(sp_m);
@@ -198,6 +199,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
+    Log_info("This is dep_id: %d", dep_id);
     CreateRepCoord(dep_id)->Submit(sp_m);
     Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
