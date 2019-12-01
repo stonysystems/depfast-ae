@@ -202,6 +202,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
+    Log_info("This is dep_id: %d", dep_id);
     CreateRepCoord(dep_id)->Submit(sp_m);
     Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
