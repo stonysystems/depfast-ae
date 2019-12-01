@@ -44,7 +44,6 @@ class Event : public std::enable_shared_from_this<Event> {
     Wait();
   }
 
-
   virtual void log(){return;}
   virtual bool Test();
   virtual bool IsReady() {
@@ -191,6 +190,12 @@ class AndEvent : public Event {
   AndEvent(Args&&... args) {
     AddEvent(args...);
   }
+  
+  void log() {
+    for(int i = 0; i < events_.size(); i++){
+      events_[i]->log();
+    }
+  }
 
   void log() {
     for(int i = 0; i < events_.size(); i++){
@@ -304,5 +309,5 @@ class SingleRPCEvent: public Event{
       return res_ == SUCCESS || res_ == REJECT;
     }
 };
->>>>>>> WIP
+
 }

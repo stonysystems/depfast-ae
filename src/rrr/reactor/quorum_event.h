@@ -45,16 +45,16 @@ class QuorumEvent : public Event {
   }
 
 
-  void add_dep(int srcId, int srcCoro, int tgtId){
+  void add_dep(int srcId, int srcCoro, int tgtId, int tgtCoro){
     auto srcIndex = deps.find(srcId);
     if(srcIndex == deps.end()){
-      unordered_map<int, unordered_set<int>> temp = {};
+      unordered_map<int, unordered_map<int, unordered_set<int>>> temp = {};
       deps[srcId] = temp;
     }
 
     auto srcCoroIndex = deps[srcId].find(srcCoro);
     if(srcCoroIndex == deps[srcId].end()){
-      unordered_set<int> temp = {};
+      unordered_map<int, unordered_set<int>> temp = {};
       deps[srcId][srcCoro] = temp; 
     }
     // commented part is for testing
@@ -65,7 +65,13 @@ class QuorumEvent : public Event {
     */
     auto tgtIndex = deps[srcId][srcCoro].find(tgtId);
     if(tgtIndex == deps[srcId][srcCoro].end()){
-      deps[srcId][srcCoro].insert(tgtId);
+      unordered_set<int> temp = {};
+      deps[srcId][srcCoro][tgtId] = temp;
+    }
+
+    auto tgtCoroIndex = deps[srcId][srcCoro][tgtId].find(tgtCoro);
+    if(tgtCoroIndex == deps[srcId][srcCoro][tgtId].end()){
+      deps[srcId][srcCoro][tgtId].insert(tgtCoro);
     }
   }
 
@@ -82,13 +88,15 @@ class QuorumEvent : public Event {
   void log(){
     std::ofstream of(log_file, std::fstream::app);
     //of << "hello\n";
-    if(coro_id_ == -1) return;
+    //if(coro_id_ == -1) return;
     
     // Maybe this part can be more efficient
     for(auto it = deps.begin(); it != deps.end(); it++){
       for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
         for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
-          of << "{ " << it->first << ", " << it2->first << ", " << *it3 << ", " << coro_id_ << ", " << id_ << ": " << quorum_ << "/" << n_total_ << " }\n";
+          for(auto it4 = it3->second.begin(); it4 != it3->second.end(); it4++){
+            of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << ", " << id_ << ": " << quorum_ << "/" << n_total_ << " }\n";
+          }
         }
       }
     }

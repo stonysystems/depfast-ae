@@ -263,10 +263,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto par_id = sp_vec_piece->at(0)->PartitionId();
     auto pair_leader_proxy = LeaderProxyForPartition(par_id);
     auto leader_id = pair_leader_proxy.first;
-<<<<<<< HEAD
-=======
-    Log_info("The leader id is %d", leader_id);
->>>>>>> WIP Transitive
 
     rrr::FutureAttr fuattr;
     fuattr.callback =
@@ -337,7 +333,7 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
-shared_ptr<QuorumEvent>
+shared_ptr<AndEvent>
 Communicator::SendPrepare(Coordinator* coo,
                           txnid_t tid,
                           std::vector<int32_t>& sids){
@@ -369,6 +365,7 @@ Communicator::SendPrepare(Coordinator* coo,
       if(phase != coo->phase_){
         return;
       }
+
       if(res == REJECT){
         cmd->commit_.store(false);
         coo->aborted_ = true;
@@ -426,7 +423,7 @@ void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   }
 }
 
-shared_ptr<QuorumEvent>
+shared_ptr<AndEvent>
 Communicator::SendCommit(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
@@ -454,7 +451,7 @@ Communicator::SendCommit(Coordinator* coo,
       uint64_t coro_id = 0;
       fu->get_reply() >> res >> coro_id;
 
-      qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id);
+      qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id)
 
       if(coo->phase_ != phase) return;
       qe->n_voted_yes_++;
@@ -490,7 +487,7 @@ Communicator::SendCommit(Coordinator* coo,
   Log_debug("SendCommit to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Commit(tid, fuattr));
 }*/
-shared_ptr<QuorumEvent>
+shared_ptr<AndEvent>
 Communicator::SendAbort(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
