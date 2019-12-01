@@ -350,6 +350,12 @@ void CoordinatorClassic::Prepare() {
                                           sids);
 
   quorum_event->Wait();
+  quorum_event->log();
+
+  if(!aborted_){
+    cmd->commit_.store(true);
+    committed_ = true;
+  }
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;
     //verify(site_prepare_[partition_id] == 1);
@@ -393,11 +399,17 @@ void CoordinatorClassic::Commit() {
 
   verify(tx_data().commit_.load() == committed_);
   verify(committed_ != aborted_);
+
+  TxData* cmd = (TxData*) cmd_;
   if (committed_) {
     tx_data().reply_.res_ = SUCCESS;
     auto quorum_event = commo()->SendCommit(this,
                                             tx_data().id_);
     quorum_event->Wait();
+    quorum_event->log();
+
+    if(cmd->reply_.res_ == REJECT) aborted_ = true;
+    else committed_ = true;
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send commit for txn_id %"
@@ -415,6 +427,10 @@ void CoordinatorClassic::Commit() {
     auto quorum_event = commo()->SendAbort(this,
                                            tx_data().id_);
     quorum_event->Wait();
+    quorum_event->log();
+
+    if(cmd->reply_.res_ == REJECT) aborted_ = true;
+    else committed_ = true;
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send abort for txn_id %"
@@ -477,7 +493,9 @@ void CoordinatorClassic::End() {
                   PRIx64, this->ongoing_tx_id_);
     tx_data->callback_(tx_reply_buf);
     //quorum event created for the sole purpose of logging
-    auto curr_id = Coroutine::CurrentCoroutine()->id;
+    
+
+    /*auto curr_id = Coroutine::CurrentCoroutine()->id;
     for(auto i = 0; i < sp_quorum_events.size(); i++){
       auto curr = sp_quorum_events[i];
       curr.second->coro_id_ = curr_id;
@@ -486,7 +504,9 @@ void CoordinatorClassic::End() {
       }
       curr.second->log();
       curr.second.reset();
-    }
+    }*/
+
+
     sp_quorum_events.clear();
     ids_.clear();
     this->ongoing_tx_id_ = 0;
