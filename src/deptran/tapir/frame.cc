@@ -9,18 +9,14 @@
 
 namespace janus {
 
-static Frame *tapir_frame_s = Frame::RegFrame(MODE_TAPIR,
-                                              {"tapir"},
-                                              []() -> Frame * {
-                                                return new FrameTapir();
-                                              });
+REG_FRAME(MODE_TAPIR, vector<string>({"tapir"}), FrameTapir);
 
 Coordinator *FrameTapir::CreateCoordinator(cooid_t coo_id,
                                            Config *config,
                                            int benchmark,
                                            ClientControlServiceImpl *ccsi,
                                            uint32_t id,
-                                           TxnRegistry *txn_reg) {
+                                           shared_ptr<TxnRegistry> txn_reg) {
   verify(config != nullptr);
   CoordinatorTapir *coord = new CoordinatorTapir(coo_id,
                                                  benchmark,
@@ -33,12 +29,12 @@ Coordinator *FrameTapir::CreateCoordinator(cooid_t coo_id,
 
 Communicator *FrameTapir::CreateCommo(PollMgr *pollmgr) {
   // Default: return null;
-  commo_ = new TapirCommo;
+  commo_ = new TapirCommo(pollmgr);
   return commo_;
 }
 
-Scheduler *FrameTapir::CreateScheduler() {
-  Scheduler *sched = new SchedulerTapir();
+TxLogServer *FrameTapir::CreateScheduler() {
+  TxLogServer *sched = new SchedulerTapir();
   sched->frame_ = this;
   return sched;
 }
@@ -51,7 +47,7 @@ mdb::Row *FrameTapir::CreateRow(const mdb::Schema *schema,
 }
 
 shared_ptr<Tx> FrameTapir::CreateTx(epoch_t epoch, txnid_t tid,
-                                    bool ro, Scheduler *mgr) {
+                                    bool ro, TxLogServer *mgr) {
   shared_ptr<Tx> sp_tx(new TxTapir(epoch, tid, mgr));
   return sp_tx;
 }

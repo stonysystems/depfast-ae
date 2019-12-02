@@ -40,6 +40,7 @@ class Config {
   char *ctrl_key_;
   char *ctrl_init_;
   uint32_t duration_;
+  int tot_req_num_;
   vector<string> config_paths_;
 
   // common configuration
@@ -141,6 +142,8 @@ class Config {
          uint32_t ctrl_timeout,
          char *ctrl_key,
          char *ctrl_init,
+         int32_t tot_req_num,
+         int16_t n_concurrent,
          uint32_t duration,
          bool heart_beat,
          single_server_t single_server,
@@ -227,6 +230,7 @@ class Config {
   bool do_early_return();
   bool do_logging();
   bool IsReplicated();
+  int32_t get_tot_req();
 
   const char *log_path();
 

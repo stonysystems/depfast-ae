@@ -1,5 +1,6 @@
 
 #include <functional>
+#include <thread>
 #include "coroutine.h"
 #include "event.h"
 #include "reactor.h"
@@ -14,8 +15,11 @@ uint64_t Event::GetCoroId(){
 }
 
 void Event::Wait() {
+
   verify(__debug_creator); // if this fails, the event is not created by reactor.
-  //Log_info("Waiting with status1: %d", status_);
+  verify(Reactor::sp_reactor_th_);
+  verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
+
   if (IsReady()) {
     status_ = DONE; // does not need to wait.
     return;
@@ -28,11 +32,15 @@ void Event::Wait() {
     // this value is set when wait is called.
     // for now only one coroutine can wait on an event.
     auto sp_coro = Coroutine::CurrentCoroutine();
+//    verify(sp_coro);
 //    verify(_dbg_p_scheduler_ == nullptr);
 //    _dbg_p_scheduler_ = Reactor::GetReactor().get();
-//
-//    somewhere here, we should output the logs
+
     verify(sp_coro);
+
+    auto& events = Reactor::GetReactor()->waiting_events_;
+    events.push_back(shared_from_this());
+
     wp_coro_ = sp_coro;
     //Log_info("waiting");
     status_ = WAIT;

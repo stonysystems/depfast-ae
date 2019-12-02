@@ -66,7 +66,6 @@ abstract service Classic {
                         i32 res);
   // works as a 2PC commit/abort with a paxos decision
   defer TapirDecide(uint64_t cmd_id, i32 commit);
-  
 
   defer RccDispatch(vector<SimpleCommand> cmd |
                     i32 res,
@@ -84,6 +83,9 @@ abstract service Classic {
   defer RccDispatchRo(SimpleCommand cmd |
                       map<i32, Value> output);
 
+  defer RccInquireValidation(txid_t tx_id | int32_t res);
+
+  defer RccNotifyGlobalValidation(txid_t tx_id, int32_t res |);
 
   defer JanusDispatch(vector<SimpleCommand> cmd |
                       i32 res,
@@ -92,12 +94,14 @@ abstract service Classic {
 
   defer JanusCommit(cmdid_t id,
                     rank_t rank,
+                    int32_t need_validation,
                     MarshallDeputy graph |
                     int32_t res,
                     TxnOutput output);
 
   defer JanusCommitWoGraph(cmdid_t id,
-                           rank_t rank |
+                           rank_t rank,
+                           int32_t need_validation |
                            int32_t res,
                            TxnOutput output);
 
@@ -177,10 +181,10 @@ struct ClientResponse  {
 }
 
 abstract service ServerControl {
-    server_shutdown ( | );
-    server_ready ( | i32 res);
-    server_heart_beat_with_data ( | ServerResponse res);
-    server_heart_beat ( | );
+    defer server_shutdown ( | );
+    defer server_ready ( | i32 res);
+    defer server_heart_beat_with_data ( | ServerResponse res);
+    defer server_heart_beat ( | );
 }
 
 struct TxDispatchRequest {
@@ -193,12 +197,12 @@ struct TxnDispatchResponse {
 }
 
 abstract service ClientControl {
-    client_get_txn_names( | map<i32, string> txn_names);
-    client_shutdown ( | );
-    client_force_stop ( | );
-    client_response ( | ClientResponse res);
-    client_ready ( | i32 res);
+    defer client_get_txn_names( | map<i32, string> txn_names);
+    defer client_shutdown ( | );
+    defer client_force_stop ( | );
+    defer client_response ( | ClientResponse res);
+    defer client_ready ( | i32 res);
     defer client_ready_block ( | i32 res);
-    client_start ( | );
+    defer client_start ( | );
     defer DispatchTxn(TxDispatchRequest req | TxReply result);
 }

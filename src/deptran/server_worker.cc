@@ -14,8 +14,10 @@ void ServerWorker::SetupHeartbeat() {
   auto timeout = Config::GetConfig()->get_ctrl_timeout();
   scsi_ = new ServerControlServiceImpl(timeout);
   int n_io_threads = 1;
-  svr_hb_poll_mgr_g = new rrr::PollMgr(n_io_threads);
-  hb_thread_pool_g = new rrr::ThreadPool(1);
+//  svr_hb_poll_mgr_g = new rrr::PollMgr(n_io_threads);
+  svr_hb_poll_mgr_g = svr_poll_mgr_;
+//  hb_thread_pool_g = new rrr::ThreadPool(1);
+  hb_thread_pool_g = svr_thread_pool_;
   hb_rpc_server_ = new rrr::Server(svr_hb_poll_mgr_g, hb_thread_pool_g);
   hb_rpc_server_->reg(scsi_);
 
@@ -41,7 +43,7 @@ void ServerWorker::SetupBase() {
   sharding_->BuildTableInfoPtr();
 
   verify(tx_reg_ == nullptr);
-  tx_reg_ = new TxnRegistry();
+  tx_reg_ = std::make_shared<TxnRegistry>();
   tx_sched_ = tx_frame_->CreateScheduler();
   tx_sched_->txn_reg_ = tx_reg_;
   tx_sched_->SetPartitionId(site_info_->partition_id_);
@@ -61,7 +63,7 @@ void ServerWorker::SetupBase() {
   }
   // add callbacks to execute commands to rep_sched_
   if (rep_sched_ && tx_sched_) {
-    rep_sched_->RegLearnerAction(std::bind(&Scheduler::Next,
+    rep_sched_->RegLearnerAction(std::bind(&TxLogServer::Next,
                                            tx_sched_,
                                            std::placeholders::_1));
   }
@@ -126,6 +128,7 @@ void ServerWorker::SetupService() {
   // init rrr::PollMgr 1 threads
   int n_io_threads = 1;
   svr_poll_mgr_ = new rrr::PollMgr(n_io_threads);
+//  svr_thread_pool_ = new rrr::ThreadPool(1);
 
   // init service implementation
 
@@ -149,10 +152,10 @@ void ServerWorker::SetupService() {
 //  ServerWorker::svr_poll_mgr_->add(&alarm);
 
   uint32_t num_threads = 1;
-  thread_pool_g = new base::ThreadPool(num_threads);
+//  thread_pool_g = new base::ThreadPool(num_threads);
 
   // init rrr::Server
-  rpc_server_ = new rrr::Server(svr_poll_mgr_, thread_pool_g);
+  rpc_server_ = new rrr::Server(svr_poll_mgr_, svr_thread_pool_);
 
   // reg services
   for (auto service : services_) {
@@ -178,8 +181,10 @@ void ServerWorker::WaitForShutdown() {
     scsi_->wait_for_shutdown();
     delete hb_rpc_server_;
     delete scsi_;
-    svr_hb_poll_mgr_g->release();
-    hb_thread_pool_g->release();
+    if (svr_hb_poll_mgr_g != svr_poll_mgr_)
+      svr_hb_poll_mgr_g->release();
+    if (hb_thread_pool_g != svr_thread_pool_)
+      hb_thread_pool_g->release();
 
     for (auto service : services_) {
 #ifdef CHECK_ISO
@@ -209,14 +214,14 @@ void ServerWorker::WaitForShutdown() {
 void ServerWorker::SetupCommo() {
   verify(svr_poll_mgr_ != nullptr);
   if (tx_frame_) {
-    tx_commo_ = tx_frame_->CreateCommo();
+    tx_commo_ = tx_frame_->CreateCommo(svr_poll_mgr_);
     if (tx_commo_) {
       tx_commo_->loc_id_ = site_info_->locale_id;
     }
     tx_sched_->commo_ = tx_commo_;
   }
   if (rep_frame_) {
-    rep_commo_ = rep_frame_->CreateCommo();
+    rep_commo_ = rep_frame_->CreateCommo(svr_poll_mgr_);
     if (rep_commo_) {
       rep_commo_->loc_id_ = site_info_->locale_id;
     }
@@ -231,7 +236,7 @@ void ServerWorker::ShutDown() {
   for (auto service : services_) {
     delete service;
   }
-  thread_pool_g->release();
+//  thread_pool_g->release();
   svr_poll_mgr_->release();
 }
 } // namespace janus

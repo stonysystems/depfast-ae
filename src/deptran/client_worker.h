@@ -27,7 +27,7 @@ class ClientWorker {
   uint32_t id;
   uint32_t duration;
   ClientControlServiceImpl *ccsi{nullptr};
-  uint32_t n_concurrent_;
+  int32_t n_concurrent_;
   rrr::Mutex finish_mutex{};
   rrr::CondVar finish_cond{};
   bool forward_requests_to_leader_ = false;
@@ -37,7 +37,7 @@ class ClientWorker {
   std::mutex coordinator_mutex{};
   vector<Coordinator*> free_coordinators_{};
   vector<Coordinator*> created_coordinators_{};
-  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
+//  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
 
   std::shared_ptr<TimeoutEvent> timeout_event;
   std::shared_ptr<NEvent> n_event;
@@ -46,7 +46,7 @@ class ClientWorker {
   std::atomic<uint32_t> num_txn, success, num_try;
   Workload * tx_generator_{nullptr};
   Timer *timer_{nullptr};
-  TxnRegistry* txn_reg_ = nullptr;
+  shared_ptr<TxnRegistry> txn_reg_{nullptr};
   Config* config_{nullptr};
   Config::SiteInfo& my_site_;
   vector<string> servers_;
@@ -54,7 +54,8 @@ class ClientWorker {
   ClientWorker(uint32_t id,
                Config::SiteInfo &site_info,
                Config *config,
-               ClientControlServiceImpl *ccsi);
+               ClientControlServiceImpl *ccsi,
+               PollMgr* mgr);
   ClientWorker() = delete;
   ~ClientWorker();
   // This is called from a different thread.

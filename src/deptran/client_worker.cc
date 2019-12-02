@@ -15,7 +15,7 @@ ClientWorker::~ClientWorker() {
   for (auto c : created_coordinators_) {
     delete c;
   }
-  dispatch_pool_->release();
+//  dispatch_pool_->release();
 }
 
 void ClientWorker::ForwardRequestDone(Coordinator* coo,
@@ -35,15 +35,15 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
   } else if (!have_more_time) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
-    finish_mutex.lock();
+//    finish_mutex.lock();
     n_concurrent_--;
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
-      finish_cond.signal();
+//      finish_cond.signal();
     } else {
       Log_debug("waiting for %d more coordinators to finish", n_concurrent_);
     }
-    finish_mutex.unlock();
+//    finish_mutex.unlock();
   }
 
   defer->reply();
@@ -87,23 +87,23 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
   } else if (!have_more_time) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
-    finish_mutex.lock();
+//    finish_mutex.lock();
     n_concurrent_--;
+    verify(n_concurrent_ >= 0);
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
-      finish_cond.signal();
+//      finish_cond.signal();
     } else {
       Log_debug("waiting for %d more coordinators to finish", n_concurrent_);
       Log_debug("transactions they are processing:");
       // for debug purpose, print ongoing transaction ids.
       for (auto c : created_coordinators_) {
         if (c->ongoing_tx_id_ > 0) {
-          Log_debug("\t %"
-                        PRIx64, c->ongoing_tx_id_);
+          Log_debug("\t %" PRIx64, c->ongoing_tx_id_);
         }
       }
     }
-    finish_mutex.unlock();
+//    finish_mutex.unlock();
   } else {
     verify(0);
   }
@@ -142,17 +142,17 @@ Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
   coo->loc_id_ = my_site_.locale_id;
   coo->commo_ = commo_;
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
-  Log_info("coordinator %d created at site %d: forward %d",
-           coo->coo_id_,
-           this->my_site_.id,
-           coo->forward_status_);
+  Log_debug("coordinator %d created at site %d: forward %d",
+            coo->coo_id_,
+            this->my_site_.id,
+            coo->forward_status_);
   created_coordinators_.push_back(coo);
   return coo;
 }
 
 void ClientWorker::Work() {
   Log_debug("%s: %d", __FUNCTION__, this->cli_id_);
-  txn_reg_ = new TxnRegistry();
+  txn_reg_ = std::make_shared<TxnRegistry>();
   verify(config_ != nullptr);
   Workload* workload = Workload::CreateWorkload(config_);
   workload->txn_reg_ = txn_reg_;
@@ -177,6 +177,7 @@ void ClientWorker::Work() {
   if (config_->client_type_ == Config::Closed) {
     Log_info("closed loop clients. %d", n_concurrent_);
     verify(n_concurrent_ > 0);
+
     for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
       auto coo = CreateCoordinator(n_tx);
       Log_debug("create coordinator %d", coo->coo_id_);
@@ -188,6 +189,7 @@ void ClientWorker::Work() {
       shared_ptr<Job> sp_job(p_job);
       poll_mgr_->add(sp_job);*/
     }
+
   } else {
     Log_info("open loop clients.");
     const std::chrono::nanoseconds wait_time
@@ -221,14 +223,14 @@ void ClientWorker::Work() {
     Log_debug("exit client dispatch loop...");
   }
 
-  finish_mutex.lock();
+//  finish_mutex.lock();
   while (n_concurrent_ > 0) {
-    //Log_debug("wait for finish... %d", n_concurrent_);
-  //Log_info("waiting at a wrong time?");
-  //and_event->Wait();
-    finish_cond.wait(finish_mutex);
+
+    Log_debug("wait for finish... %d", n_concurrent_);
+    sleep(1);
+
   }
-  finish_mutex.unlock();
+//  finish_mutex.unlock();
 
   Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
            num_txn.load(),
@@ -282,7 +284,7 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
 void ClientWorker::DispatchRequest(Coordinator* coo) {
   const char* f = __FUNCTION__;
   std::function<void()> task = [=]() {
-    Log_info("%s: %d", f, cli_id_);
+    Log_debug("%s: %d", f, cli_id_);
     TxRequest req;
     {
       std::lock_guard<std::mutex> lock(this->request_gen_mutex);
@@ -334,7 +336,8 @@ ClientWorker::ClientWorker(
     uint32_t id,
     Config::SiteInfo& site_info,
     Config* config,
-    ClientControlServiceImpl* ccsi) :
+    ClientControlServiceImpl* ccsi,
+    PollMgr* poll_mgr) :
     id(id),
     my_site_(site_info),
     config_(config),
@@ -344,7 +347,7 @@ ClientWorker::ClientWorker(
     duration(config->get_duration()),
     ccsi(ccsi),
     n_concurrent_(config->get_concurrent_txn()) {
-  poll_mgr_ = new PollMgr(1);
+  poll_mgr_ = poll_mgr == nullptr ? new PollMgr(1) : poll_mgr;
   frame_ = Frame::GetFrame(config->tx_proto_);
   tx_generator_ = frame_->CreateTxGenerator();
   config->get_all_site_addr(servers_);

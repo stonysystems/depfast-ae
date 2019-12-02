@@ -3,24 +3,20 @@
 #include "frame.h"
 #include "exec.h"
 #include "coordinator.h"
-#include "scheduler.h"
+#include "server.h"
 #include "service.h"
 #include "commo.h"
 #include "config.h"
 
 namespace janus {
 
-static Frame *mpf = Frame::RegFrame(MODE_MULTI_PAXOS,
-                                    []() -> Frame * {
-                                      return new MultiPaxosFrame
-                                          (MODE_MULTI_PAXOS);
-                                    });
+REG_FRAME(MODE_MULTI_PAXOS, vector<string>({"paxos"}), MultiPaxosFrame);
 
 MultiPaxosFrame::MultiPaxosFrame(int mode) : Frame(mode) {
 
 }
 
-Executor *MultiPaxosFrame::CreateExecutor(cmdid_t cmd_id, Scheduler *sched) {
+Executor *MultiPaxosFrame::CreateExecutor(cmdid_t cmd_id, TxLogServer *sched) {
   Executor *exec = new MultiPaxosExecutor(cmd_id, sched);
   return exec;
 }
@@ -30,7 +26,7 @@ Coordinator *MultiPaxosFrame::CreateCoordinator(cooid_t coo_id,
                                                 int benchmark,
                                                 ClientControlServiceImpl *ccsi,
                                                 uint32_t id,
-                                                TxnRegistry *txn_reg) {
+                                                shared_ptr<TxnRegistry> txn_reg) {
   verify(config != nullptr);
   CoordinatorMultiPaxos *coo;
   coo = new CoordinatorMultiPaxos(coo_id,
@@ -45,13 +41,13 @@ Coordinator *MultiPaxosFrame::CreateCoordinator(cooid_t coo_id,
   coo->n_replica_ = config->GetPartitionSize(site_info_->partition_id_);
   coo->loc_id_ = this->site_info_->locale_id;
   verify(coo->n_replica_ != 0); // TODO
-  Log_debug("create new multi-paxos coord, slot_id: %d", (int) coo->slot_id_);
+  Log_debug("create new multi-paxos coord, coo_id: %d", (int) coo->coo_id_);
   return coo;
 }
 
-Scheduler *MultiPaxosFrame::CreateScheduler() {
-  Scheduler *sch = nullptr;
-  sch = new SchedulerMultiPaxos();
+TxLogServer *MultiPaxosFrame::CreateScheduler() {
+  TxLogServer *sch = nullptr;
+  sch = new PaxosServer();
   sch->frame_ = this;
   return sch;
 }
@@ -68,7 +64,7 @@ Communicator *MultiPaxosFrame::CreateCommo(PollMgr *poll) {
 
 vector<rrr::Service *>
 MultiPaxosFrame::CreateRpcServices(uint32_t site_id,
-                                   Scheduler *rep_sched,
+                                   TxLogServer *rep_sched,
                                    rrr::PollMgr *poll_mgr,
                                    ServerControlServiceImpl *scsi) {
   auto config = Config::GetConfig();

@@ -40,7 +40,7 @@ class Coroutine {
   static uint64_t global_id;
   uint64_t id;
 
-  enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED};
+  enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED, RECYCLED};
 
   Status status_ = INIT; //
   std::function<void()> func_{};

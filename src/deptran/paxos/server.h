@@ -15,16 +15,25 @@ struct PaxosData {
   shared_ptr<Marshallable> committed_cmd_{nullptr};
 };
 
-class SchedulerMultiPaxos : public Scheduler {
+class PaxosServer : public TxLogServer {
  public:
+  slotid_t min_active_slot_ = 0; // anything before (lt) this slot is freed
   slotid_t max_executed_slot_ = 0;
   slotid_t max_committed_slot_ = 0;
   map<slotid_t, shared_ptr<PaxosData>> logs_{};
+  int n_prepare_ = 0;
+  int n_accept_ = 0;
+  int n_commit_ = 0;
+
+  ~PaxosServer() {
+    Log_info("site par %d, loc %d: prepare %d, accept %d, commit %d", partition_id_, loc_id_, n_prepare_, n_accept_, n_commit_);
+  }
 
   shared_ptr<PaxosData> GetInstance(slotid_t id) {
+    verify(id >= min_active_slot_);
     auto& sp_instance = logs_[id];
     if(!sp_instance)
-      sp_instance.reset(new PaxosData);
+      sp_instance = std::make_shared<PaxosData>();
     return sp_instance;
   }
 

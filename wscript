@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 APPNAME="janus"
 VERSION="0.0"
 
@@ -20,11 +20,13 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-c', '--use-clang', dest='clang',
                    default=False, action='store_true')
+    opt.add_option('-i', '--use-ipc', dest='ipc',
+                   default=False, action='store_true')
     opt.add_option('-p', '--enable-profiling', dest='prof',
                    default=False, action='store_true')
     opt.add_option('-d', '--debug', dest='debug',
                    default=False, action='store_true')
-    opt.add_option('-t', '--enable-tcmalloc', dest='tcmalloc',
+    opt.add_option('-M', '--enable-tcmalloc', dest='tcmalloc',
                    default=False, action='store_true')
     opt.add_option('-s', '--enable-rpc-statistics', dest='rpc_s',
                    default=False, action='store_true')
@@ -32,11 +34,15 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-C', '--enable-conflict-count', dest='cc',
                    default=False, action='store_true')
+    opt.add_option('-C', '--disable-reuse-coroutine', dest='disable_reuse_coroutine',
+                   default=False, action='store_true')
     opt.add_option('-r', '--enable-logging', dest='log',
                    default=False, action='store_true')
     opt.add_option('-T', '--enable-txn-stat', dest='txn_stat',
                    default=False, action='store_true')
     opt.add_option('-D', '--disable-check-python', dest='disable_check_python',
+                   default=False, action='store_true')
+    opt.add_option('-m', '--enable-mutrace-debug', dest='mutrace',
                    default=False, action='store_true')
     opt.parse_args();
 
@@ -51,12 +57,14 @@ def configure(conf):
     _enable_cxx14(conf)
     _enable_debug(conf)
     _enable_profile(conf)
+    _enable_ipc(conf)
     _enable_rpc_s(conf)
     _enable_piece_count(conf)
     _enable_txn_count(conf)
     _enable_conflict_count(conf)
 #    _enable_snappy(conf)
     #_enable_logging(conf)
+    _enable_reuse_coroutine(conf)
 
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
@@ -104,8 +112,8 @@ def build(bld):
 
     _gen_srpc_headers()
 
-    _depend("old-test/benchmark_service.h", "old-test/benchmark_service.rpc",
-            "bin/rpcgen --cpp old-test/benchmark_service.rpc")
+#     _depend("old-test/benchmark_service.h", "old-test/benchmark_service.rpc",
+#             "bin/rpcgen --cpp old-test/benchmark_service.rpc")
 
     bld.stlib(source=bld.path.ant_glob("extern_interface/scheduler.c"),
               target="externc",
@@ -135,14 +143,35 @@ def build(bld):
               includes="src src/rrr src/rrr/rpc",
               uselib="BOOST",
               use="rrr simplerpc PYTHON")
-    
-    bld.program(source=bld.path.ant_glob("src/deptran/*.cc "
-                                         "src/deptran/*/*.cc "
-                                         "src/bench/*/*.cc"),
-                target="deptran_server",
+
+    bld.objects(source=bld.path.ant_glob("src/deptran/*.cc "
+                                       "src/deptran/*/*.cc "
+                                       "src/bench/*/*.cc",
+                                       excl=['src/deptran/s_main.cc', 'src/deptran/paxos_main_helper.cc']),
+              target="deptran_objects",
+              includes="src src/rrr src/deptran ",
+              uselib="YAML-CPP BOOST",
+              use="externc rrr memdb PTHREAD PROFILER RT")
+
+    bld.shlib(source=bld.path.ant_glob("src/deptran/paxos_main_helper.cc "),
+              target="txlog",
+              includes="src src/rrr src/deptran ",
+              uselib="YAML-CPP BOOST",
+              use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+
+    bld.program(source=bld.path.ant_glob("src/deptran/s_main.cc"),
+              target="deptran_server",
+              includes="src src/rrr src/deptran ",
+              uselib="YAML-CPP BOOST",
+              use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+
+    bld.program(source=bld.path.ant_glob("src/run.cc "
+                                         "src/deptran/paxos_main_helper.cc"),
+                target="microbench",
                 includes="src src/rrr src/deptran ",
                 uselib="YAML-CPP BOOST",
-                use="externc rrr memdb PTHREAD PROFILER RT")
+                use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+
     bld.add_post_fun(post)
 
 def post(conf):
@@ -190,6 +219,13 @@ def _enable_logging(conf):
     conf.env.append_value("LINKFLAGS", "-laio")
     Logs.pprint("PINK", "Logging enabled")
 
+def _enable_reuse_coroutine(conf):
+    if Options.options.disable_reuse_coroutine:
+        Logs.pprint("RED", "Disable reuse coroutine, dangerous to performance!")
+    else:
+        conf.env.append_value("CXXFLAGS", "-DREUSE_CORO")
+        Logs.pprint("PINK", "Reuse coroutine enabled")
+
 def _enable_snappy(conf):
     Logs.pprint("PINK", "google snappy enabled")
     conf.env.append_value("LINKFLAGS", "-Wl,--no-as-needed")
@@ -220,13 +256,23 @@ def _enable_profile(conf):
         conf.env.append_value("CXXFLAGS", "-DCPU_PROFILE")
         conf.env.LIB_PROFILER = 'profiler'
 
+def _enable_ipc(conf):
+    if Options.options.ipc:
+        Logs.pprint("PINK", "Use IPC instead of network socket")
+        conf.env.append_value("CXXFLAGS", "-DUSE_IPC")
+
 def _enable_debug(conf):
     if Options.options.debug:
         Logs.pprint("PINK", "Debug support enabled")
         conf.env.append_value("CXXFLAGS", "-Wall -pthread -O0 -DNDEBUG -g "
                 "-ggdb -DLOG_LEVEL_AS_DEBUG -DLOG_DEBUG -rdynamic -fno-omit-frame-pointer".split())
     else:
-        conf.env.append_value("CXXFLAGS", "-g -pthread -O2 -DNDEBUG -DLOG_INFO".split())
+        if Options.options.mutrace:
+            Logs.pprint("PINK", "mutrace debugging enabled")
+            conf.env.append_value("CXXFLAGS", "-Wall -pthread -O0 -DNDEBUG -g "
+                "-ggdb -DLOG_INFO -rdynamic -fno-omit-frame-pointer".split())
+        else:
+            conf.env.append_value("CXXFLAGS", "-g -pthread -O2 -DNDEBUG -DLOG_INFO".split())
 
 def _properly_split(args):
     if args == None:

@@ -62,8 +62,7 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
   cmd->root_id_ = this->next_txn_id();
   cmd->id_ = cmd->root_id_;
   ongoing_tx_id_ = cmd->id_;
-  Log_debug("assigning tx id: %"
-                PRIx64, ongoing_tx_id_);
+  Log_debug("assigning tx id: %" PRIx64, ongoing_tx_id_);
   cmd->timestamp_ = GenerateTimestamp();
   cmd_ = cmd;
   n_retry_ = 0;
@@ -82,7 +81,7 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
              this->coo_id_);
     ForwardTxnRequest(req);
   } else {
-    Log_info("start txn!!! : %d", forward_status_);
+    Log_debug("start txn!!! : %d", forward_status_);
     Coroutine::CreateRun([this]() { GotoNextPhase(); });
   }
 }
@@ -198,8 +197,7 @@ void CoordinatorClassic::Restart() {
   cmd_->root_id_ = this->next_txn_id();
   cmd_->id_ = cmd_->root_id_;
   ongoing_tx_id_ = cmd_->root_id_;
-  Log_debug("assigning tx_id: %"
-                PRIx64, ongoing_tx_id_);
+  Log_debug("assigning tx_id: %" PRIx64, ongoing_tx_id_);
   TxData* txn = (TxData*) cmd_;
   double last_latency = txn->last_attempt_latency();
   if (ccsi_)
@@ -352,7 +350,7 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
 
 void CoordinatorClassic::Commit() {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
-  ___TestPhaseThree(cmd_->id_);
+//  ___TestPhaseThree(cmd_->id_);
   auto mode = Config::GetConfig()->tx_proto_;
   verify(mode == MODE_OCC || mode == MODE_2PL);
   Log_debug("send out finish request, cmd_id: %"
@@ -505,9 +503,9 @@ void CoordinatorClassic::Report(TxReply& txn_reply,
 }
 
 void CoordinatorClassic::___TestPhaseThree(txnid_t txn_id) {
-  auto it = ___phase_three_tids_.find(txn_id);
+  // auto it = ___phase_three_tids_.find(txn_id);
 //  verify(it == ___phase_three_tids_.end());
-  ___phase_three_tids_.insert(txn_id);
+//  ___phase_three_tids_.insert(txn_id);
 }
 
 void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {

@@ -13,13 +13,13 @@
 
 namespace rrr {
 
-thread_local std::shared_ptr<Reactor> sp_reactor_th_{};
-thread_local std::shared_ptr<Coroutine> sp_running_coro_th_{};
+thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
+thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 
 std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
   // TODO re-enable this verify
 //  verify(sp_running_coro_th_);
-  return sp_running_coro_th_;
+  return Reactor::sp_running_coro_th_;
 }
 
 std::shared_ptr<Coroutine>
@@ -27,9 +27,6 @@ Coroutine::CreateRun(std::function<void()> func) {
   auto& reactor = *Reactor::GetReactor();
   auto coro = reactor.CreateRunCoroutine(func);
   // some events might be triggered in the last coroutine.
-  verify(reactor.coros_.size() > 0);
-  //Log_info("Looping looping looping");
-  reactor.Loop();
   return coro;
 }
 
@@ -38,6 +35,7 @@ Reactor::GetReactor() {
   if (!sp_reactor_th_) {
     Log_debug("create a coroutine scheduler");
     sp_reactor_th_ = std::make_shared<Reactor>();
+    sp_reactor_th_->thread_id_ = std::this_thread::get_id();
   }
   return sp_reactor_th_;
 }
@@ -48,7 +46,18 @@ Reactor::GetReactor() {
  */
 std::shared_ptr<Coroutine>
 Reactor::CreateRunCoroutine(const std::function<void()> func) {
-  std::shared_ptr<Coroutine> sp_coro = std::make_shared<Coroutine>(func);
+  std::shared_ptr<Coroutine> sp_coro;
+  if (REUSING_CORO && available_coros_.size() > 0) {
+    sp_coro = available_coros_.back();
+    available_coros_.pop_back();
+    sp_coro->func_ = func;
+  } else {
+    sp_coro = std::make_shared<Coroutine>(func);
+  }
+  coros_.insert(sp_coro);
+  ContinueCoro(sp_coro);
+  Loop();
+  return sp_coro;
 //  __debug_set_all_coro_.insert(sp_coro.get());
 //  verify(!curr_coro_); // Create a coroutine from another?
 //  verify(!sp_running_coro_th_); // disallows nested coroutines
@@ -62,6 +71,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   if (sp_coro->Finished()) {
     coros_.erase(sp_coro);
   }
+  Loop();
   // yielded or finished, reset to old coro.
   sp_running_coro_th_ = sp_old_coro;
   return sp_coro;
@@ -69,11 +79,16 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
 
 //  be careful this could be called from different coroutines.
 void Reactor::Loop(bool infinite) {
-  looping_ = infinite; 
+
+  verify(std::this_thread::get_id() == thread_id_);
+  looping_ = infinite;
   do {
     std::vector<shared_ptr<Event>> ready_events;
-    int i = 0;
-    for (auto it = events_.begin(); it != events_.end();) {
+//    auto& events = all_events_;
+    auto& events = waiting_events_;
+//    Log_debug("event list size: %d", events.size());
+    for (auto it = events.begin(); it != events.end();) {
+
       Event& event = **it;
       //Log_info("HAS TO BE HERE RIGHT?"); 
       event.Test();
@@ -81,10 +96,9 @@ void Reactor::Loop(bool infinite) {
       if (event.status_ == Event::READY) {
         //Log_info("Ready up");
         ready_events.push_back(std::move(*it));
-        it = events_.erase(it);
+        it = events.erase(it);
       } else if (event.status_ == Event::DONE) {
-        //Log_info("deleting %s", typeid(event).name());
-        it = events_.erase(it);
+        it = events.erase(it);
       } else {
         it ++;
         i++;
@@ -105,8 +119,17 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
   auto sp_old_coro = sp_running_coro_th_;
   sp_running_coro_th_ = sp_coro;
   verify(!sp_running_coro_th_->Finished());
-  sp_running_coro_th_->Continue();
+  if (sp_coro->status_ == Coroutine::INIT) {
+    sp_coro->Run();
+  } else {
+    // PAUSED or RECYCLED
+    sp_running_coro_th_->Continue();
+  }
   if (sp_running_coro_th_->Finished()) {
+    if (REUSING_CORO) {
+      sp_coro->status_ = Coroutine::RECYCLED;
+      available_coros_.push_back(sp_running_coro_th_);
+    }
     coros_.erase(sp_running_coro_th_);
   }
   sp_running_coro_th_ = sp_old_coro;

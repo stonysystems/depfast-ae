@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <list>
-#include <typeinfo>
+#include <thread>
 #include "base/misc.hpp"
 #include "event.h"
 #include "quorum_event.h"
@@ -20,17 +20,24 @@ class Coroutine;
 class Reactor {
  public:
   static std::shared_ptr<Reactor> GetReactor();
+  static thread_local std::shared_ptr<Reactor> sp_reactor_th_;
+  static thread_local std::shared_ptr<Coroutine> sp_running_coro_th_;
   /**
    * A reactor needs to keep reference to all coroutines created,
    * in case it is freed by the caller after a yield.
-   * TODO the lifetime of an event should be independent from a
-   * coroutine? Or should an event belong to a coroutine?
    */
-  std::list<std::shared_ptr<Event>> events_{};
+  std::list<std::shared_ptr<Event>> all_events_{};
+  std::list<std::shared_ptr<Event>> waiting_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
-//  std::set<Coroutine*> __debug_set_all_coro_{};
+  std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
+  std::thread::id thread_id_{};
+#ifdef REUSE_CORO
+#define REUSING_CORO (true)
+#else
+#define REUSING_CORO (false)
+#endif
 
   /**
    * @param ev. is usually allocated on coroutine stack. memory managed by user.
@@ -42,13 +49,14 @@ class Reactor {
   ~Reactor() {
 //    verify(0);
   }
+  friend Event;
 
   template <typename Ev, typename... Args>
   static shared_ptr<Ev> CreateSpEvent(Args&&... args) {
-    auto& events = GetReactor()->events_;
     auto sp_ev = make_shared<Ev>(args...);
     sp_ev->__debug_creator = 1;
     // TODO push them into a wait queue when they actually wait.
+    auto& events = GetReactor()->all_events_;
     events.push_back(sp_ev);
     //Log_info("ADDING %s %d", typeid(sp_ev).name(), events.size());
     return sp_ev;

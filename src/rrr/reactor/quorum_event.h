@@ -106,7 +106,8 @@ class QuorumEvent : public Event {
   }
 
   bool No() {
-    return n_voted_no_ >= quorum_;
+    verify(n_total_ >= quorum_);
+    return n_voted_no_ > (n_total_ - quorum_);
   }
 
   bool IsReady() override {
