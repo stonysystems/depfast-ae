@@ -49,6 +49,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   std::shared_ptr<Coroutine> sp_coro;
   if (REUSING_CORO && available_coros_.size() > 0) {
     sp_coro = available_coros_.back();
+    sp_coro->id = Coroutine::global_id++;
     available_coros_.pop_back();
     sp_coro->func_ = func;
   } else {
@@ -57,23 +58,6 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   coros_.insert(sp_coro);
   ContinueCoro(sp_coro);
   Loop();
-  return sp_coro;
-//  __debug_set_all_coro_.insert(sp_coro.get());
-//  verify(!curr_coro_); // Create a coroutine from another?
-//  verify(!sp_running_coro_th_); // disallows nested coroutines
-  auto sp_old_coro = sp_running_coro_th_;
-  sp_running_coro_th_ = sp_coro;
-  verify(sp_coro);
-  auto pair = coros_.insert(sp_coro);
-  verify(pair.second);
-  verify(coros_.size() > 0);
-  sp_coro->Run();
-  if (sp_coro->Finished()) {
-    coros_.erase(sp_coro);
-  }
-  Loop();
-  // yielded or finished, reset to old coro.
-  sp_running_coro_th_ = sp_old_coro;
   return sp_coro;
 }
 
@@ -101,7 +85,6 @@ void Reactor::Loop(bool infinite) {
         it = events.erase(it);
       } else {
         it ++;
-        i++;
       }
     }
     for (auto& up_ev: ready_events) {
