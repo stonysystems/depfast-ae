@@ -34,6 +34,7 @@ void PaxosServer::OnForward(const uint64_t& tx_id,
   *coro_id = Coroutine::CurrentCoroutine()->id;
   cb();
 }
+
 void PaxosServer::OnPrepare(slotid_t slot_id,
                             ballot_t ballot,
                             ballot_t *max_ballot,
