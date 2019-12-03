@@ -50,6 +50,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
     sp_coro = available_coros_.back();
+    sp_coro->id = Coroutine::global_id++;
     available_coros_.pop_back();
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
