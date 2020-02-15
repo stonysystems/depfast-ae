@@ -90,6 +90,9 @@ public:
     void add(Pollable*);
     void remove(Pollable*);
     void update_mode(Pollable*, int new_mode);
+    void pause();
+    void resume();
+
     
     // Frequent Job
     void add(std::shared_ptr<Job> sp_job);

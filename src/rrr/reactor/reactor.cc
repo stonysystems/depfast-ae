@@ -164,6 +164,7 @@ class PollMgr::PollThread {
 
   pthread_t th_;
   bool stop_flag_;
+  bool pause_flag_ ;
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
@@ -197,7 +198,7 @@ class PollMgr::PollThread {
 
  public:
 
-  PollThread() : stop_flag_(false) {
+  PollThread() : stop_flag_(false), pause_flag_(false) {
   }
 
   ~PollThread() {
@@ -215,6 +216,8 @@ class PollMgr::PollThread {
 
   void add(Pollable*);
   void remove(Pollable*);
+  void pause() { pause_flag_ = true; }
+  void resume() { pause_flag_ = false; }
   void update_mode(Pollable*, int new_mode);
 
   void add(std::shared_ptr<Job>);
@@ -237,6 +240,12 @@ PollMgr::~PollMgr() {
 
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
+
+    while(pause_flag_ && !stop_flag_)
+    {
+        sleep(1) ;
+    }
+    
     TriggerJob();
     poll_.Wait();
     TriggerJob();
@@ -363,6 +372,20 @@ void PollMgr::remove(Pollable* poll) {
     int tid = hash_fd(fd) % n_threads_;
     poll_threads_[tid].remove(poll);
   }
+}
+
+void PollMgr::pause() {
+    for(int idx = 0; idx < n_threads_; idx++)
+    {
+        poll_threads_[idx].pause();
+    }
+}
+
+void PollMgr::resume() {
+    for(int idx = 0; idx < n_threads_; idx++)
+    {
+        poll_threads_[idx].resume();
+    }    
 }
 
 void PollMgr::update_mode(Pollable* poll, int new_mode) {

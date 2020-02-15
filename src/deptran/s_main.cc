@@ -20,6 +20,7 @@ static rrr::Server *cli_hb_server_g = nullptr;
 static vector<ServerWorker> svr_workers_g = {};
 vector<unique_ptr<ClientWorker>> client_workers_g = {};
 static std::vector<std::thread> client_threads_g = {}; // TODO remove this?
+static std::vector<std::thread> failover_threads_g = {};
 
 void client_setup_heartbeat(int num_clients) {
   Log_info("%s", __FUNCTION__);
@@ -131,6 +132,41 @@ void wait_for_clients() {
   }
 }
 
+void server_failover_thread(bool random, bool *quit)
+{
+    int idx = 0 ;
+    int run_int = Config::GetConfig()->get_failover_run_interval() ;
+    int stop_int = Config::GetConfig()->get_failover_stop_interval() ;
+    while(!(*quit))
+    {
+        if(random)
+        {
+            idx = rand() % svr_workers_g.size() ;
+        }
+        sleep(run_int) ;
+        if(*quit)
+        {
+            break ;
+        }
+        svr_workers_g[idx].Pause() ;
+        Log_debug("server %d paused for failover test", idx);
+        sleep(stop_int) ;    
+        svr_workers_g[idx].Resume() ;
+        Log_debug("server %d resumed for failover test", idx);
+    }
+
+}
+
+void server_failover(bool *quit)
+{
+    bool failover = Config::GetConfig()->get_failover();
+    bool random = Config::GetConfig()->get_failover_random() ;
+    if(failover)
+    {
+        failover_threads_g.push_back(std::thread(&server_failover_thread, random, quit)) ;
+    }
+}
+
 int main(int argc, char *argv[]) {
   check_current_path();
   Log_info("starting process %ld", getpid());
@@ -164,14 +200,23 @@ int main(int argc, char *argv[]) {
   if (!client_infos.empty()) {
     //client_setup_heartbeat(client_infos.size());
     client_launch_workers(client_infos);
+    bool quit = false ;
+    server_failover(&quit) ;
     sleep(Config::GetConfig()->duration_);
     wait_for_clients();
+    quit = true ;
     Log_info("all clients have shut down.");
   }
 
   for (auto& worker : svr_workers_g) {
     worker.WaitForShutdown();
   }
+
+  for (auto& ft : failover_threads_g)
+  {
+    ft.join() ;
+  }
+  
 #ifdef CPU_PROFILE
   // stop profiling
   ProfilerStop();

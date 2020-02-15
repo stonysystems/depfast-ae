@@ -230,6 +230,14 @@ void ServerWorker::SetupCommo() {
   }
 }
 
+void ServerWorker::Pause() {
+    svr_poll_mgr_->pause() ;
+}
+
+void ServerWorker::Resume() {
+    svr_poll_mgr_->resume() ;
+}
+
 void ServerWorker::ShutDown() {
   Log_debug("deleting services, num: %d", services_.size());
   delete rpc_server_;
