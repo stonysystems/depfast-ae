@@ -13,6 +13,26 @@ MultiPaxosCommo::MultiPaxosCommo(PollMgr* poll) : Communicator(poll) {
 //  verify(poll != nullptr);
 }
 
+void MultiPaxosCommo::SendForward(parid_t par_id,
+                                  uint64_t follower_id,
+                                  uint64_t dep_id,
+                                  shared_ptr<Marshallable> cmd){
+  auto e = Reactor::CreateSpEvent<PaxosPrepareQuorumEvent>(1, 1);
+  auto src_coroid = e->GetCoroId();
+  auto leader_id = LeaderProxyForPartition(par_id).first;
+  auto leader_proxy = LeaderProxyForPartition(par_id).second;
+
+  FutureAttr fuattr;
+  fuattr.callback = [e, leader_id, src_coroid, follower_id](Future* fu) {
+    uint64_t coro_id = 0;
+    fu->get_reply() >> coro_id;
+
+    e->add_dep(follower_id, src_coroid, leader_id, coro_id);
+  }
+
+  Future::safe_release(leader_proxy->async_Forward(cmd, dep_id));
+}
+
 void MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
                                        slotid_t slot_id,
                                        ballot_t ballot,

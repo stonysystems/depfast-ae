@@ -13,6 +13,17 @@ CoordinatorMultiPaxos::CoordinatorMultiPaxos(uint32_t coo_id,
     : Coordinator(coo_id, benchmark, ccsi, thread_id) {
 }
 
+void CoordinatorMultiPaxos::Forward(){
+  verify(!in_forward);
+  in_forward=true;
+  auto follower_id = frame_->site_info_->id;
+  
+  auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_);
+  sp_quorum->Wait();
+  sp_quorum->log();
+}
+                                    
+
 void CoordinatorMultiPaxos::Submit(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
@@ -61,7 +72,7 @@ void CoordinatorMultiPaxos::Prepare() {
 
   } else if (sp_quorum->No()) {
     // TODO restart prepare?
-    verify(0);
+    verify(0)
   } else {
     // TODO timeout
     verify(0);
@@ -179,9 +190,12 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
-        verify(0);
+        Log_info("The local id is %d", this->loc_id_);
+        Forward();
         //Log_info("Follower logic");
         //For now, do nothing
+        //
+        //Next steps: Find the leader, call submit, wait for the reply
       }
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);

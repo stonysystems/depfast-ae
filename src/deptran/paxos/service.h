@@ -19,6 +19,8 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
   PaxosServer* sched_;
   MultiPaxosServiceImpl(TxLogServer* sched);
   void Forward(const MarshallDeputy& cmd,
+               const uint64_t& dep_id,
+               uint64_t* coro_id,
                rrr::DeferredReply* defer) override;
 
   void Prepare(const uint64_t& slot,

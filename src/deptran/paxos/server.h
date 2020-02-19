@@ -39,6 +39,11 @@ class PaxosServer : public TxLogServer {
     return sp_instance;
   }
 
+  void OnForward(const MarshallDeputy& cmd,
+                 const uint64_t& dep_id,
+                 uint64_t* coro_id,
+                 const function<void() &cb);
+
   void OnPrepare(slotid_t slot_id,
                  ballot_t ballot,
                  ballot_t *max_ballot,
