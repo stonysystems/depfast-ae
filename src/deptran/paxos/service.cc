@@ -9,16 +9,19 @@ MultiPaxosServiceImpl::MultiPaxosServiceImpl(TxLogServer *sched)
 
 }
 
-
 void MultiPaxosServiceImpl::Forward(const MarshallDeputy& cmd,
                                     const uint64_t& dep_id,
                                     uint64_t* coro_id,
                                     rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
   auto coro = Coroutine::CreateRun([&] () {
-    sched->OnForward(cmd,
+    sched_->OnForward(tx_id,
+                     ret,
+                     prepare_or_commit,
+                     dep_id,
                      coro_id,
-                     std::bind(&rrrDeferredReply::reply, defer));
+                     std::bind(&rrr::DeferredReply::reply, defer));
+  });
 }
 
 void MultiPaxosServiceImpl::Prepare(const uint64_t& slot,

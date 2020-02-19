@@ -14,6 +14,7 @@ MultiPaxosCommo::MultiPaxosCommo(PollMgr* poll) : Communicator(poll) {
 }
 
 shared_ptr<PaxosPrepareQuorumEvent>
+<<<<<<< HEAD
 MultiPaxosCommo::SendForward(parid_t par_id,
                                   uint64_t follower_id,
                                   uint64_t dep_id,

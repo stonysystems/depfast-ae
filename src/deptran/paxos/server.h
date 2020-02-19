@@ -46,7 +46,7 @@ class PaxosServer : public TxLogServer {
   void OnForward(const MarshallDeputy& cmd,
                  const uint64_t& dep_id,
                  uint64_t* coro_id,
-                 const function<void() &cb);
+                 const function<void()> &cb);
 
   void OnPrepare(slotid_t slot_id,
                  ballot_t ballot,

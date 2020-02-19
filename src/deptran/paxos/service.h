@@ -18,7 +18,6 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
  public:
   PaxosServer* sched_;
   MultiPaxosServiceImpl(TxLogServer* sched);
-
   void Forward(const MarshallDeputy& cmd,
                const uint64_t& dep_id,
                uint64_t* coro_id,
