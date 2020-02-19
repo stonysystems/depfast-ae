@@ -60,6 +60,7 @@ class CoordinatorMultiPaxos : public Coordinator {
               const std::function<void()> &exe_callback = []() {}) override;
 
   ballot_t PickBallot();
+  void Submit();
   void Prepare();
 //  void PrepareAck(phase_t phase, Future *fu);
   void Accept();

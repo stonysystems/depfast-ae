@@ -2,7 +2,9 @@ namespace janus;
 
 abstract service MultiPaxos {
 
-  defer Forward(MarshallDeputy cmd);
+  defer Forward(MarshallDeputy cmd,
+                uint64_t dep_id |
+                uint64_t coro_id);
 
   defer Prepare(uint64_t slot,
                 ballot_t ballot |

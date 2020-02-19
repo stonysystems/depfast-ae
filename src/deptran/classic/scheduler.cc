@@ -145,7 +145,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
                                  const uint64_t& dep_id) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
-  Log_debug("%s: at site %d, tx: %"
+  Log_info("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
 //  auto exec = dynamic_cast<ClassicExecutor*>(GetExecutor(cmd_id));
@@ -160,7 +160,9 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
-    CreateRepCoord(dep_id)->Submit(sp_m);
+    auto coo = CreateRepCoord(dep_id);
+    Log_info("The locale id: %d", coo->loc_id_);
+    coo->Submit(sp_m);
 //    Log_debug("wait for prepare command replicated");
     sp_tx->is_leader_hint_ = true;
     sp_tx->ev_prepare_.Wait();

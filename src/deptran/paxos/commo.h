@@ -43,6 +43,11 @@ class MultiPaxosCommo : public Communicator {
  public:
   MultiPaxosCommo() = delete;
   MultiPaxosCommo(PollMgr*);
+
+  void SendForward(parid_t par_id,
+                   uint64_t follower_id,
+                   uint64_t dep_id,
+                   shared_ptr<Marshallable> cmd);
   shared_ptr<PaxosPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    slotid_t slot_id,
