@@ -16,7 +16,7 @@ namespace janus {
 
 shared_ptr<Tx> TxLogServer::CreateTx(epoch_t epoch, txnid_t tid, bool
 read_only) {
-  Log_debug("create tid %ld", tid);
+  Log_info("create tid %ld", tid);
   verify(dtxns_.find(tid) == dtxns_.end());
   if (epoch == 0) {
     epoch = epoch_mgr_.curr_epoch_;
@@ -41,7 +41,7 @@ read_only) {
 }
 
 shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
-  Log_debug("create tid %" PRIx64, tx_id);
+  Log_info("create tid %" PRIx64, tx_id);
   verify(dtxns_.find(tx_id) == dtxns_.end());
   auto dtxn = frame_->CreateTx(epoch_mgr_.curr_epoch_, tx_id, ro, this);
   if (dtxn != nullptr) {
@@ -70,6 +70,7 @@ shared_ptr<Tx> TxLogServer::GetOrCreateTx(txnid_t tid, bool ro) {
   } else {
     ret = it->second;
   }
+  Log_info("Tx is %ld", tid);
   verify(ret != nullptr);
   verify(ret->tid_ == tid);
   return ret;

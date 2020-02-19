@@ -7,12 +7,29 @@
 namespace janus {
 
 
-void PaxosServer::OnForward(const MarshallDeputy& cmd,
+void PaxosServer::OnForward(const uint64_t& tx_id,
+                            const int& ret,
+                            const int& prepare_or_commit,
                             const uint64_t& dep_id,
                             uint64_t* coro_id,
                             const function<void()> &cb){
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  CreateRepCoord(dep_id)->Submit(cmd);
+  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  shared_ptr<Marshallable> sp_m;
+  if(prepare_or_commit == 1){
+    auto sp_cmd = std::make_shared<TpcPrepareCommand>();
+    sp_cmd->tx_id_ = tx_id;
+    sp_cmd->cmd_ = sp_tx->cmd_;
+    sp_m = dynamic_pointer_cast<Marshallable>(sp_cmd);
+  }
+  else{
+    auto sp_cmd = std::make_shared<TpcCommitCommand>();
+    sp_cmd->tx_id_ = tx_id;
+    sp_cmd->ret_ = ret;
+    sp_m = dynamic_pointer_cast<Marshallable>(sp_cmd);
+  }
+  
+  CreateRepCoord(dep_id)->Submit(sp_m);
   *coro_id = Coroutine::CurrentCoroutine()->id;
   cb();
 }

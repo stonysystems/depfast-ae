@@ -17,8 +17,17 @@ void CoordinatorMultiPaxos::Forward(){
   verify(!in_forward);
   in_forward=true;
   auto follower_id = frame_->site_info_->id;
-  
-  auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_);
+  shared_ptr<PaxosPrepareQuorumEvent> sp_quorum;
+
+  if(cmd_->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+    auto c = dynamic_pointer_cast<TpcPrepareCommand>(cmd_); 
+    Log_info("the tx id in coordinator is: %ld", c->tx_id_);
+    sp_quorum = commo()->SendForward(c->tx_id_, c->ret_, par_id_, follower_id, dep_id_, cmd_);
+  }
+  else if(cmd_->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
+    auto c = dynamic_pointer_cast<TpcCommitCommand>(cmd_);
+    sp_quorum = commo()->SendForward(c->tx_id_, c->ret_, par_id_, follower_id, dep_id_, cmd_);
+  }
   sp_quorum->Wait();
   sp_quorum->log();
 }
@@ -72,7 +81,7 @@ void CoordinatorMultiPaxos::Prepare() {
 
   } else if (sp_quorum->No()) {
     // TODO restart prepare?
-    verify(0)
+    verify(0);
   } else {
     // TODO timeout
     verify(0);
