@@ -17,6 +17,7 @@ void CoordinatorMultiPaxos::Forward(){
   verify(!in_forward);
   in_forward=true;
   auto follower_id = frame_->site_info_->id;
+<<<<<<< HEAD
   shared_ptr<PaxosPrepareQuorumEvent> sp_quorum;
 
   if(cmd_->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
@@ -28,6 +29,10 @@ void CoordinatorMultiPaxos::Forward(){
     auto c = dynamic_pointer_cast<TpcCommitCommand>(cmd_);
     sp_quorum = commo()->SendForward(c->tx_id_, c->ret_, par_id_, follower_id, dep_id_, cmd_);
   }
+=======
+  
+  auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_);
+>>>>>>> Pushing before compiling. WIP: Follower forwarding
   sp_quorum->Wait();
   sp_quorum->log();
 }
@@ -81,7 +86,7 @@ void CoordinatorMultiPaxos::Prepare() {
 
   } else if (sp_quorum->No()) {
     // TODO restart prepare?
-    verify(0);
+    verify(0)
   } else {
     // TODO timeout
     verify(0);

@@ -451,7 +451,7 @@ Communicator::SendCommit(Coordinator* coo,
       uint64_t coro_id = 0;
       fu->get_reply() >> res >> coro_id;
 
-      qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id)
+      qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id);
 
       if(coo->phase_ != phase) return;
       qe->n_voted_yes_++;
@@ -471,6 +471,7 @@ Communicator::SendCommit(Coordinator* coo,
     }
 
     coo->site_commit_[rp]++;
+
   }
   return e;
 }

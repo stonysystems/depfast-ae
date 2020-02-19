@@ -45,12 +45,11 @@ class MultiPaxosCommo : public Communicator {
   MultiPaxosCommo(PollMgr*);
 
   shared_ptr<PaxosPrepareQuorumEvent>
-  SendForward(uint64_t tx_id,
-                   int ret,
-                   parid_t par_id,
+  SendForward(parid_t par_id,
                    uint64_t follower_id,
                    uint64_t dep_id,
                    shared_ptr<Marshallable> cmd);
+
   shared_ptr<PaxosPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    slotid_t slot_id,
