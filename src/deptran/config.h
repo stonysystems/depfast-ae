@@ -73,6 +73,7 @@ class Config {
   bool failover_soft_;
   bool failover_random_;
   bool failover_leader_;
+  int32_t failover_srv_idx_ ;
   int32_t failover_run_int_ ;
   int32_t failover_stop_int_ ;  
 
@@ -242,8 +243,9 @@ class Config {
   bool get_failover() {return failover_;}
   int32_t get_failover_stop_interval() {return failover_stop_int_;}
   int32_t get_failover_run_interval() {return failover_run_int_;}
+  int32_t get_failover_srv_idx() {return failover_srv_idx_;}
   bool get_failover_random() {return failover_random_;}
-
+  bool get_failover_leader() {return failover_leader_;}
 
   const char *log_path();
 

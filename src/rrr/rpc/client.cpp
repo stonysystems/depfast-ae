@@ -185,7 +185,6 @@ void Client::handle_write() {
     return;
   }
 
-  //Log::debug("in handle write client %d", 1);
   out_l_.lock();
   out_.write_to_fd(sock_);
 
@@ -199,7 +198,7 @@ void Client::handle_read() {
   if (status_ != CONNECTED) {
     return;
   }
-  //Log::debug("in handle read client %d", 1);
+
   int bytes_read = in_.read_from_fd(sock_);
   if (bytes_read == 0) {
     return;

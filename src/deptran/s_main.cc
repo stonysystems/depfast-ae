@@ -132,17 +132,50 @@ void wait_for_clients() {
   }
 }
 
-void server_failover_thread(bool random, bool *quit)
+void server_failover_thread(bool random, bool leader, int srv_idx, bool *quit)
 {
-    int idx = 0 ;
+    int idx = -1 ;
+    int expected_idx = -1 ;
     int run_int = Config::GetConfig()->get_failover_run_interval() ;
     int stop_int = Config::GetConfig()->get_failover_stop_interval() ;
+
+    if (srv_idx != -1)
+    {
+        expected_idx = srv_idx ;
+    }
+    else if(!random)
+    {
+        // temporary solution, assign id 0 as leader, id 1 as follower
+        if(leader)
+        {
+            expected_idx = 0 ;
+        }
+        else
+        {
+            expected_idx = 1 ;
+        }
+    }
+    else
+    {
+        // do nothing
+    }
+
+    for(int i=0;i<svr_workers_g.size();i++)
+    {
+        if(svr_workers_g[i].site_info_->id == expected_idx )
+        {
+            idx = i ;
+            break ;
+        }
+    }    
+    
     while(!(*quit))
     {
         if(random)
         {
             idx = rand() % svr_workers_g.size() ;
         }
+        if(idx == -1) break ;   // quit if no idx has beeen assigned
         sleep(run_int) ;
         if(*quit)
         {
@@ -161,9 +194,12 @@ void server_failover(bool *quit)
 {
     bool failover = Config::GetConfig()->get_failover();
     bool random = Config::GetConfig()->get_failover_random() ;
+    bool leader = Config::GetConfig()->get_failover_leader() ;
+    bool idx = Config::GetConfig()->get_failover_srv_idx() ;
     if(failover)
     {
-        failover_threads_g.push_back(std::thread(&server_failover_thread, random, quit)) ;
+        failover_threads_g.push_back(
+            std::thread(&server_failover_thread, random, leader, idx, quit)) ;
     }
 }
 

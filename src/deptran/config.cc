@@ -681,6 +681,7 @@ void Config::LoadFailoverYML(YAML::Node config) {
   boost::algorithm::to_lower(mode_str);
   auto fail_srv_str = config["failserver"].as<string>();
   boost::algorithm::to_lower(mode_str);
+  failover_srv_idx_ = -1 ;
   if (mode_str == "none")
   {
     failover_ = false ;
@@ -693,6 +694,11 @@ void Config::LoadFailoverYML(YAML::Node config) {
     if(!failover_random_)
     {
         failover_leader_ = fail_srv_str == "leader" ;
+        if ( !failover_leader_ && fail_srv_str != "follower" )
+        {
+            // should be the server index
+            std::istringstream(fail_srv_str) >> failover_srv_idx_ ;
+        }
     }
   }
   failover_run_int_ = config["run_interval"].as<int32_t>();
