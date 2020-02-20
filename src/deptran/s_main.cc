@@ -162,7 +162,7 @@ void server_failover_thread(bool random, bool leader, int srv_idx, bool *quit)
 
     for(int i=0;i<svr_workers_g.size();i++)
     {
-        if(svr_workers_g[i].site_info_->id == expected_idx )
+        if(svr_workers_g[i].site_info_->locale_id == expected_idx )
         {
             idx = i ;
             break ;
@@ -195,7 +195,7 @@ void server_failover(bool *quit)
     bool failover = Config::GetConfig()->get_failover();
     bool random = Config::GetConfig()->get_failover_random() ;
     bool leader = Config::GetConfig()->get_failover_leader() ;
-    bool idx = Config::GetConfig()->get_failover_srv_idx() ;
+    int idx = Config::GetConfig()->get_failover_srv_idx() ;
     if(failover)
     {
         failover_threads_g.push_back(
