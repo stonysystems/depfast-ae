@@ -246,6 +246,7 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
 
 void ClientWorker::DispatchRequest(Coordinator* coo) {
   const char* f = __FUNCTION__;
+  //coo->forward_status_ = PROCESS_FORWARD_REQUEST;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);
     TxRequest req;
@@ -287,6 +288,9 @@ ClientWorker::ClientWorker(
   num_try.store(0);
   commo_ = frame_->CreateCommo(poll_mgr_);
   commo_->loc_id_ = my_site_.locale_id;
+  forward_requests_to_leader_ =
+      (config->replica_proto_ == MODE_FPGA_RAFT && site_info.locale_id != 0) ? true
+                                                                         : false;
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
                                                                          : false;
