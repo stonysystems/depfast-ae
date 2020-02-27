@@ -358,8 +358,10 @@ void RccServer::WaitUntilAllPredSccExecuted(const RccScc& scc) {
           // belong to the scc
           return RccGraph::SearchHint::Ok;
         } else {
-          tx.status_.Wait([&tx](int v)->bool {
-            return (v>=TXN_DCD);
+          tx.status_.Wait([&tx](int v)->bool{
+            return (
+//                tx.current_rank_ <= tx.shared_rank_ ||
+            v>=TXN_DCD);
           });
           return RccGraph::SearchHint::Ok;
         }

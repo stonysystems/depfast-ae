@@ -194,11 +194,11 @@ void ServerConnection::handle_read() {
         if (it != server_->handlers_.end()) {
             // the handler should delete req, and release server_connection refcopy.
             auto x = dynamic_pointer_cast<ServerConnection>(shared_from_this());
-            auto y = it->second;
-            Coroutine::CreateRun([y, req, x] () {
-//              verify(x);
+
+            Coroutine::CreateRun([&it, &req, x, this] () {
+              verify(x);
               verify(x->connected());
-              y(req, x.get());
+              it->second(req, this);
               // this line of code actually relies on the stack outside.
 //              auto f = it->second;
 //              auto r = req;

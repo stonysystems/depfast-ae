@@ -48,7 +48,7 @@ class Frame {
 
   virtual Executor *CreateExecutor(cmdid_t cmd_id, TxLogServer *sch);
   virtual TxLogServer *CreateScheduler();
-  virtual Communicator *CreateCommo(PollMgr *pollmgr = nullptr);
+  virtual Communicator *CreateCommo(PollMgr *pollmgr);
   // for only dtxn
   Sharding *CreateSharding();
   Sharding *CreateSharding(Sharding *sd);

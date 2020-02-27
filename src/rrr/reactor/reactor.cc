@@ -92,19 +92,21 @@ void Reactor::Loop(bool infinite) {
     auto time_now = Time::now();
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
-      auto status = event.status_;
-      switch (status) {
-        case Event::INIT:
-        case Event::WAIT: {
-          const auto &wakeup_time = event.wakeup_time_;
-          if (wakeup_time > 0 && time_now > wakeup_time) {
-            event.status_ = Event::TIMEOUT;
-            ready_events.push_back(*it);
-            it = timeout_events_.erase(it);
-          } else {
-            it++;
-          }
-          break;
+      event.Test();
+      const auto& status = event.status_;
+      if (status == Event::READY) {
+        ready_events.push_back(std::move(*it));
+        it = events.erase(it);
+      } else if (status == Event::DONE) {
+        it = events.erase(it);
+      } else if (status == Event::WAIT) {
+        const auto& wakeup_time = event.wakeup_time_;
+        if (wakeup_time > 0 && Time::now() > wakeup_time) {
+          event.status_ = Event::TIMEOUT;
+          ready_events.push_back(*it);
+          it = events.erase(it);
+        } else {
+          it++;
         }
         case Event::DONE:
         case Event::READY:
@@ -277,7 +279,6 @@ void PollMgr::PollThread::poll_loop() {
     pending_remove_l_.lock();
     std::list<shared_ptr<Pollable>> remove_poll(pending_remove_.begin(), pending_remove_.end());
     pending_remove_.clear();
-    pending_remove_l_.unlock();
 
     for (auto& poll: remove_poll) {
       int fd = poll->fd();
