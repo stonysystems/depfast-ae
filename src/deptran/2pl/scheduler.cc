@@ -75,8 +75,9 @@ bool Scheduler2pl::DoPrepare(txnid_t tx_id) {
     uint64_t lock_req_id = pair.second;
     if (alock->wounded_) {
       ret = false;
+    } else {
+      alock->DisableWound(lock_req_id);
     }
-    alock->DisableWound(lock_req_id);
   }
   tx_box->inuse = false;
   return ret;

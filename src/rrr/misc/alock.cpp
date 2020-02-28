@@ -37,7 +37,7 @@ uint64_t ALock::Lock(uint64_t owner,
           wounded_ = true;
           return 0;
         } else {
-          return -1;
+          return 1;
         }
       };
   vlock(owner,
