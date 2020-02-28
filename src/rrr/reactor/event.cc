@@ -119,9 +119,10 @@ bool IntEvent::TestTrigger() {
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
+  sp_ev->value_ = value_;
   sp_ev->test_ = f;
   events_.push_back(sp_ev);
-  sp_ev->Wait(1*1000*1000);
+  sp_ev->Wait(100*1000*1000);
   verify(sp_ev->status_ != Event::TIMEOUT);
 }
 
