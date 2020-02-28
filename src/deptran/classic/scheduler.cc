@@ -187,7 +187,7 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
     return 0;
   }
   // else: is the leader.
-  sp_tx->prepare_result->Set(DoPrepare(sp_tx->tid_) ? SUCCESS : REJECT);
+  sp_tx->prepare_result->Set(DoPrepare(sp_tx->tid_));
   Log_debug("prepare request replicated and executed for %" PRIx64 ", result: %x, sid: %x",
       sp_tx->tid_, sp_tx->prepare_result->Get(), (int)this->site_id_);
   Log_debug("triggering prepare replication callback %" PRIx64, sp_tx->tid_);
