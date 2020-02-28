@@ -88,6 +88,7 @@ void Reactor::Loop(bool infinite) {
 //    auto& events = all_events_;
     auto& events = waiting_events_;
 //    Log_debug("event list size: %d", events.size());
+    auto time_now = Time::now();
     for (auto it = events.begin(); it != events.end();) {
       Event& event = **it;
       event.Test();
@@ -99,7 +100,7 @@ void Reactor::Loop(bool infinite) {
         it = events.erase(it);
       } else if (status == Event::WAIT) {
         const auto& wakeup_time = event.wakeup_time_;
-        if (wakeup_time > 0 && Time::now() > wakeup_time) {
+        if (wakeup_time > 0 && time_now > wakeup_time) {
           event.status_ = Event::TIMEOUT;
           ready_events.push_back(*it);
           it = events.erase(it);

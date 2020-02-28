@@ -204,9 +204,6 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
-  // TODO maybe change inuse to an event?
-//  verify(!sp_tx->inuse);
-//  sp_tx->inuse = true;
   if (Config::GetConfig()->IsReplicated()) {
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
@@ -223,9 +220,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     } else {
       verify(0);
     }
-//    TrashExecutor(cmd_id);
   }
-//  sp_tx->inuse = false;
   return 0;
 }
 
