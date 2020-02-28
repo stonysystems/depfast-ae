@@ -33,7 +33,12 @@ uint64_t ALock::Lock(uint64_t owner,
   std::function<int()> _wound_callback
       = [&]() {
 //        proceed.Set(1); // TODO why this caused problem???
-        return 0;
+        if (woundable_) {
+          wounded_ = true;
+          return 0;
+        } else {
+          return -1;
+        }
       };
   vlock(owner,
         _yes_callback,
@@ -46,7 +51,7 @@ uint64_t ALock::Lock(uint64_t owner,
 }
 
 void ALock::DisableWound(uint64_t lock_req_id) {
-  // TODO
+  woundable_ = false;
 }
 
 WaitDieALock::~WaitDieALock() {

@@ -153,10 +153,6 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
   verify(sp_tx);
   Log_debug("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-//  auto exec = dynamic_cast<ClassicExecutor*>(GetExecutor(cmd_id));
-//  exec->prepare_reply_ = [res, callback] (int r) {*res = r; callback();};
-
   if (Config::GetConfig()->IsReplicated()) {
     auto sp_prepare_cmd = std::make_shared<TpcPrepareCommand>();
     verify(sp_prepare_cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE);
@@ -166,9 +162,9 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     CreateRepCoord()->Submit(sp_m);
 //    Log_debug("wait for prepare command replicated");
     sp_tx->is_leader_hint_ = true;
-    sp_tx->ev_prepare_->Wait();
+    sp_tx->prepare_result->Wait();
 //    Log_debug("finished prepare command replication");
-    return sp_tx->result_prepare_;
+    return sp_tx->prepare_result->Get();
   } else if (Config::GetConfig()->do_logging()) {
     string log;
     this->get_prepare_log(tx_id, sids, &log);
@@ -191,10 +187,9 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
     return 0;
   }
   // else: is the leader.
-  sp_tx->result_prepare_ = DoPrepare(sp_tx->tid_);
+  sp_tx->prepare_result->Set(DoPrepare(sp_tx->tid_) ? SUCCESS : REJECT);
   Log_debug("prepare request replicated and executed for %" PRIx64 ", result: %x, sid: %x",
-      sp_tx->tid_, sp_tx->result_prepare_, (int)this->site_id_);
-  sp_tx->ev_prepare_->Set(1);
+      sp_tx->tid_, sp_tx->prepare_result->Get(), (int)this->site_id_);
   Log_debug("triggering prepare replication callback %" PRIx64, sp_tx->tid_);
   return 0;
 }
@@ -210,7 +205,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     CreateRepCoord()->Submit(sp_m);
-    sp_tx->ev_commit_->Wait();
+    sp_tx->commit_result->Wait();
   } else {
     if (commit_or_abort == SUCCESS) {
       DoCommit(*sp_tx);
@@ -258,7 +253,7 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   } else {
     verify(0);
   }
-  sp_tx->ev_commit_->Set(1);
+  sp_tx->commit_result->Set(1);
   sp_tx->ev_execute_ready_->Set(1);
   return 0;
 }

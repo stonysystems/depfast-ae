@@ -69,18 +69,17 @@ bool Scheduler2pl::DoPrepare(txnid_t tx_id) {
   auto tx_box = dynamic_pointer_cast<Tx2pl>(GetOrCreateTx(tx_id));
   verify(!tx_box->inuse);
   tx_box->inuse = true;
-  if (tx_box->wounded_) {
-    // lock wounded, do nothing will abort all the locks in the end.
-  } else {
-    for (auto& pair: tx_box->locked_locks_) {
-      ALock* alock = pair.first;
-      uint64_t lock_req_id = pair.second;
-      alock->DisableWound(lock_req_id);
+  bool ret = true;
+  for (auto& pair: tx_box->locked_locks_) {
+    ALock* alock = pair.first;
+    uint64_t lock_req_id = pair.second;
+    if (alock->wounded_) {
+      ret = false;
     }
+    alock->DisableWound(lock_req_id);
   }
-
   tx_box->inuse = false;
-  return !tx_box->wounded_;
+  return ret;
 }
 
 void Scheduler2pl::DoCommit(Tx& tx_box) {

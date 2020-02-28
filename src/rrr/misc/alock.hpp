@@ -30,9 +30,10 @@ namespace rrr {
 class ALock {
  public:
   enum type_t { RLOCK, WLOCK };
- private:
   uint64_t next_id_ = 1;
   uint64_t owner_{0};
+  bool woundable_{true};
+  bool wounded_{false};
 
  protected:
   enum status_t { FREE, WLOCKED, RLOCKED };
