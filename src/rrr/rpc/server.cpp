@@ -197,7 +197,7 @@ void ServerConnection::handle_read() {
             auto y = it->second;
             Coroutine::CreateRun([y, req, x, this] () {
 //              verify(x);
-//              verify(x->connected());
+              verify(x->connected());
               y(req, this);
               // this line of code actually relies on the stack outside.
 //              auto f = it->second;
