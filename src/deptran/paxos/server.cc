@@ -13,6 +13,7 @@ void PaxosServer::OnForward(const uint64_t& tx_id,
                             const uint64_t& dep_id,
                             uint64_t* coro_id,
                             const function<void()> &cb){
+  Log_info("This paxos server is: %d", frame_->site_info_->id);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   shared_ptr<Marshallable> sp_m;

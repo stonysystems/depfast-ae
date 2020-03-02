@@ -45,6 +45,7 @@ shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
   verify(dtxns_.find(tx_id) == dtxns_.end());
   auto dtxn = frame_->CreateTx(epoch_mgr_.curr_epoch_, tx_id, ro, this);
   if (dtxn != nullptr) {
+    Log_info("not null");
     dtxns_[tx_id] = dtxn;
     dtxn->recorder_ = this->recorder_;
     verify(txn_reg_);
@@ -63,11 +64,13 @@ shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
 }
 
 shared_ptr<Tx> TxLogServer::GetOrCreateTx(txnid_t tid, bool ro) {
+  Log_info("The current server is %d", site_id_);
   shared_ptr<Tx> ret = nullptr;
   auto it = dtxns_.find(tid);
   if (it == dtxns_.end()) {
     ret = CreateTx(tid, ro);
   } else {
+    Log_info("found");
     ret = it->second;
   }
   Log_info("Tx is %ld", tid);
