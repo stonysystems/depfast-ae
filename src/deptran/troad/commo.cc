@@ -132,7 +132,7 @@ TroadCommo::BroadcastPreAccept(
         ev->VoteYes();
       } else if (res == REJECT) {
         verify(0);
-        ev->n_voted_no_++;
+        ev->VoteNo();
       } else {
         verify(0);
       }
@@ -220,9 +220,9 @@ shared_ptr<QuorumEvent> TroadCommo::CollectValidation(txid_t txid, set<parid_t> 
       int res;
       fu->get_reply() >> res;
       if (res == SUCCESS) {
-        ev->n_voted_yes_++;
+        ev->VoteYes();
       } else {
-        ev->n_voted_no_++;
+        ev->VoteNo();
       }
     };
     Future::safe_release(proxy->async_RccInquireValidation(txid, fuattr));

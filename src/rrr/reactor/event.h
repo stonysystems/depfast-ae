@@ -59,6 +59,7 @@ class BoxEvent : public Event {
   void Set(const Type& c) {
     is_set_ = true;
     content_ = c;
+    Test();
   }
   void Clear() {
     is_set_ = false;

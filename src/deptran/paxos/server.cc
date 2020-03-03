@@ -137,7 +137,8 @@ void PaxosServer::OnBulkCommit(shared_ptr<Marshallable> &cmd,
   for(int i = 0; i < commit_exec.size(); i++){
       app_next_(*commit_exec[i]->committed_cmd_);
   }
-  //cb();
+  min_active_slot_ = i;
+  in_applying_logs_ = false;
 }
 
 } // namespace janus

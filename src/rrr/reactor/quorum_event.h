@@ -9,7 +9,6 @@ using std::vector;
 namespace janus {
 
 class QuorumEvent : public Event {
- private:
  public:
   int32_t n_voted_yes_{0};
   int32_t n_voted_no_{0};

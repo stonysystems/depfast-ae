@@ -34,16 +34,12 @@ void Event::Wait(uint64_t timeout) {
     verify(sp_coro);
 //    verify(_dbg_p_scheduler_ == nullptr);
 //    _dbg_p_scheduler_ = Reactor::GetReactor().get();
-
-    // TODO for now timeout queue and waiting queues are different. fix it.
-    auto& waiting_events = Reactor::GetReactor()->waiting_events_; // Timeout???
-    waiting_events.push_back(shared_from_this());
-    if (timeout == 0) {
-      wakeup_time_ = 0;
-      wakeup_time_ = Time::now() + 50*1000*1000;
-    } else {
-//      auto& timeout_events = Reactor::GetReactor()->timeout_events_;
-//      auto it = timeout_events.end();
+//    auto& waiting_events = Reactor::GetReactor()->waiting_events_; // Timeout???
+//    waiting_events.push_back(shared_from_this());
+//    if (timeout == 0) {
+//      timeout = 5 * 1000 * 1000;
+//    }
+    if (timeout > 0) {
       wakeup_time_ = Time::now() + timeout;
       auto& timeout_events = Reactor::GetReactor()->timeout_events_;
       timeout_events.push_back(shared_from_this());
@@ -128,7 +124,7 @@ void SharedIntEvent::Wait(function<bool(int v)> f) {
   sp_ev->value_ = value_;
   sp_ev->test_ = f;
   events_.push_back(sp_ev);
-  sp_ev->Wait(1*1000*1000);
+  sp_ev->Wait(100*1000*1000);
   verify(sp_ev->status_ != Event::TIMEOUT);
 }
 

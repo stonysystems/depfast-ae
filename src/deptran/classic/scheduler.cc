@@ -46,8 +46,6 @@ bool SchedulerClassic::ExecutePiece(Tx& tx,
 bool SchedulerClassic::DispatchPiece(Tx& tx,
                                      TxPieceData& piece_data,
                                      TxnOutput& ret_output) {
-
-
   TxnPieceDef
       & piece_def = txn_reg_->get(piece_data.root_type_, piece_data.type_);
   auto& conflicts = piece_def.conflicts_;
@@ -114,10 +112,13 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    verify(0);
   }
 
-  // TODO investigate: change it to a reference with clang will cause crash
-  for (auto sp_piece_data : *sp_vec_piece) {
+  bool ret = true;
+  for (const auto& sp_piece_data : *sp_vec_piece) {
     verify(sp_piece_data);
-    DispatchPiece(*tx, *sp_piece_data, ret_output);
+    ret = DispatchPiece(*tx, *sp_piece_data, ret_output);
+    if (!ret) {
+      break;
+    }
   }
   // TODO reimplement this.
   if (tx->fully_dispatched_->value_ == 0) {
@@ -147,6 +148,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_tx->is_leader_hint_ = true;
     CreateRepCoord()->Submit(sp_m);
 //    Log_debug("wait for prepare command replicated");
+    sp_tx->is_leader_hint_ = true;
     sp_tx->prepare_result->Wait();
 //    Log_debug("finished prepare command replication");
     return sp_tx->prepare_result->Get();
@@ -226,10 +228,14 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   int commit_or_abort = tpc_commit_cmd.ret_;
   if (!sp_tx->is_leader_hint_) {
-    verify(sp_tx->cmd_);
-    unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
-    Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
-    DoPrepare(sp_tx->tid_);
+    if (commit_or_abort == REJECT) {
+      return 0;
+    } else {
+      verify(sp_tx->cmd_);
+      unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
+      Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
+      DoPrepare(sp_tx->tid_);
+    }
   }
   if (commit_or_abort == SUCCESS) {
     sp_tx->committed_ = true;
