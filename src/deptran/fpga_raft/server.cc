@@ -69,6 +69,11 @@ void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
 
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler receives vote for candidate: %llx", can_id);
+  if ( frame_->site_info_->locale_id == can_id)
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+    return ;  
+  } 
 
   uint64_t cur_term = currentTerm ;
 

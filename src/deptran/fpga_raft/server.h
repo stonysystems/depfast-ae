@@ -41,7 +41,7 @@ class FpgaRaftServer : public TxLogServer {
                             const function<void()> &cb) {
         *vote_granted = vote ;
         *reply_term = currentTerm ;
-        if( can_term >= currentTerm)
+        if( can_term > currentTerm)
         {
             state_ = State::FOLLOWER ;
             currentTerm = can_term ;
@@ -49,6 +49,7 @@ class FpgaRaftServer : public TxLogServer {
 
         if(vote)
         {
+            Log_debug("vote for can_id %d canterm %d curterm %d state %d", can_id, can_term, currentTerm, state_);
             vote_for_ = can_id ;
             //reset timeout
             timer_->start() ;
@@ -83,10 +84,6 @@ class FpgaRaftServer : public TxLogServer {
 
   bool IsLeader()
   {
-    if(!init_) 
-    {
-        return this->loc_id_ == 2;
-    }
     return state_ == State::LEADER ;
   }
 
