@@ -65,6 +65,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
 
 //  be careful this could be called from different coroutines.
 void Reactor::Loop(bool infinite) {
+
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
   do {

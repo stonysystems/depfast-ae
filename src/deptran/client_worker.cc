@@ -225,9 +225,10 @@ void ClientWorker::Work() {
 
 //  finish_mutex.lock();
   while (n_concurrent_ > 0) {
+
     Log_debug("wait for finish... %d", n_concurrent_);
     sleep(1);
-//    finish_cond.wait(finish_mutex);
+
   }
 //  finish_mutex.unlock();
 
@@ -305,14 +306,15 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
           free_coordinators_.push_back(coo);
         } else if (config_->client_type_ == Config::Closed){
           Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
-        } else{
-          this->finish_mutex.lock();
-          this->n_concurrent_--;
-          if (this->n_concurrent_ == 0){
-            this->finish_cond.signal();
-          }
-          this->finish_mutex.unlock();
+        }  
+      }
+      else{
+        this->finish_mutex.lock();
+        this->n_concurrent_--;
+        if (this->n_concurrent_ == 0){
+          this->finish_cond.signal();
         }
+        this->finish_mutex.unlock();
       }
 
     };

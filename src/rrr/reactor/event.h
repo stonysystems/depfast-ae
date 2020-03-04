@@ -301,4 +301,5 @@ class SingleRPCEvent: public Event{
       return res_ == SUCCESS || res_ == REJECT;
     }
 };
+
 }

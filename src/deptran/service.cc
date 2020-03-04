@@ -128,16 +128,17 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
                                rrr::i32* res,
                                uint64_t* coro_id,
                                rrr::DeferredReply* defer) {
-  Log_debug("get abort_txn: tid: %ld", tid);
-//  std::lock_guard<std::mutex> guard(mtx_);
-//  const auto& func = [tid, res, defer, this]() {
+
+  Log::debug("get abort_txn: tid: %ld", tid);
+  //std::lock_guard<std::mutex> guard(mtx_);
+  const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, REJECT);
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
-//  };
-//  Coroutine::CreateRun(func);
+  };
+  Coroutine::CreateRun(func);
 }
 
 void ClassicServiceImpl::rpc_null(rrr::DeferredReply* defer) {

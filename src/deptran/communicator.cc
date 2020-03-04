@@ -7,6 +7,7 @@
 #include "command_marshaler.h"
 #include "procedure.h"
 #include "rcc_rpc.h"
+#include <typeinfo>
 
 namespace janus {
 
@@ -232,6 +233,7 @@ void Communicator::BroadcastDispatch(
     }
   }
 }
+
 
 
 //need to change this code to solve the quorum info in the graphs
