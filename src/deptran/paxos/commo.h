@@ -46,9 +46,9 @@ class MultiPaxosCommo : public Communicator {
 
   shared_ptr<PaxosPrepareQuorumEvent>
   SendForward(parid_t par_id,
-                   uint64_t follower_id,
-                   uint64_t dep_id,
-                   shared_ptr<Marshallable> cmd);
+              uint64_t follower_id,
+              uint64_t dep_id,
+              shared_ptr<Marshallable> cmd);
 
   shared_ptr<PaxosPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,

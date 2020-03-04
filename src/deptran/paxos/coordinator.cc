@@ -20,6 +20,7 @@ void CoordinatorMultiPaxos::Forward(){
   auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_, cmd_);
 
   sp_quorum->Wait();
+  Log_info("Follower done waiting");
   sp_quorum->log();
 }
                                     
