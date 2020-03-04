@@ -128,13 +128,13 @@ void CoordinatorClassic::GotoNextPhase() {
   //Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:
-      //Log_info("Dispatching for some reason: %x", this);
+      Log_info("Dispatching for some reason: %x", this);
       verify(phase_ % n_phase == Phase::DISPATCH);
       phase_++;
       DispatchAsync();
       //break;
     case Phase::DISPATCH:
-      //Log_info("Preparing for some reason: %x", this);
+      Log_info("Preparing for some reason: %x", this);
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
@@ -147,7 +147,7 @@ void CoordinatorClassic::GotoNextPhase() {
       }
       //break;
     case Phase::PREPARE:
-      //Log_info("Committing for some reason: %x", this);
+      Log_info("Committing for some reason: %x", this);
       verify(phase_ % n_phase == Phase::COMMIT);
       phase_++;
       Commit();
@@ -243,6 +243,7 @@ void CoordinatorClassic::DispatchAsync() {
   sp_quorum_event->Wait();
   //quorum_event->log();
   if(txn->HasMoreUnsentPiece()){
+    Log_info("MORE????");
     DispatchAsync();
   }
   //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);

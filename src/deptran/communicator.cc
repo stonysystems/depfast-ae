@@ -277,6 +277,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           }
           e->n_voted_yes_ += outputs.size();
           coo->n_dispatch_ack_ += outputs.size();
+          Log_info("Is it ready: %d", e->n_voted_yes_==e->n_total_);
           if(coo->aborted_){
             e->Test();
           }
@@ -295,7 +296,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           }
         };
     
-    Log_debug("send dispatch to site %ld",
+    Log_info("send dispatch to site %ld",
               pair_leader_proxy.first);
     auto proxy = pair_leader_proxy.second;
     shared_ptr<VecPieceData> sp_vpd(new VecPieceData);

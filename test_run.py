@@ -29,7 +29,7 @@ sites_ = [
 #    "64c8s3r1p"
 ]
 benchmarks_ =  [
-#    "rw",
+    "rw",
     "tpca",
     "tpcc",
 #    "tpcc_no",

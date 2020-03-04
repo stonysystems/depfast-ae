@@ -86,7 +86,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
   verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
-  Log_debug("received dispatch for tx id: %" PRIx64, tx->tid_);
+  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
@@ -123,6 +123,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
   }
+  Log_info("End of dispatch");
   return ret;
 }
 
