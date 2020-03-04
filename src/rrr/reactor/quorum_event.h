@@ -15,10 +15,9 @@ using std::unordered_set;
 namespace janus {
 
 class QuorumEvent : public Event {
- private:
-  int32_t n_voted_yes_{0};
-  int32_t n_voted_no_{0};
  public:
+  int32_t n_voted_yes_{0}; // does this need to be private??? - keep always
+  int32_t n_voted_no_{0}; // does this need to be private??? - keep always
   int32_t n_total_ = -1;
   int32_t quorum_ = -1;
   bool timeouted_ = false;
