@@ -67,7 +67,7 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
   Log_info("Accepted vs ballot: %d vs %d", instance->max_ballot_accepted_, ballot);
   
   
-  //TODO: might need to optimize this. we can vote yes on duplicates at least for now
+  //TODO: might need to optimize this. we can vote yes on duplicates
   //verify(instance->max_ballot_accepted_ < ballot);
   
   if (instance->max_ballot_seen_ <= ballot) {

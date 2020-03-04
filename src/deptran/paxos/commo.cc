@@ -14,12 +14,10 @@ MultiPaxosCommo::MultiPaxosCommo(PollMgr* poll) : Communicator(poll) {
 }
 
 shared_ptr<PaxosPrepareQuorumEvent>
-MultiPaxosCommo::SendForward(uint64_t tx_id,
-                                  int ret,
-                                  parid_t par_id,
-                                  uint64_t follower_id,
-                                  uint64_t dep_id,
-                                  shared_ptr<Marshallable> cmd){
+MultiPaxosCommo::SendForward(parid_t par_id,
+                             uint64_t follower_id,
+                             uint64_t dep_id,
+                             shared_ptr<Marshallable> cmd){
   auto e = Reactor::CreateSpEvent<PaxosPrepareQuorumEvent>(1, 1);
   auto src_coroid = e->GetCoroId();
   auto leader_id = LeaderProxyForPartition(par_id).first;
@@ -30,18 +28,12 @@ MultiPaxosCommo::SendForward(uint64_t tx_id,
     uint64_t coro_id = 0;
     fu->get_reply() >> coro_id;
     e->FeedResponse(1);
+    Log_info("adding dependency");
     e->add_dep(follower_id, src_coroid, leader_id, coro_id);
   };
-  
-  int prepare_or_commit = 0;
-  if(cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
-    prepare_or_commit = 1;
-  }
-  else if(cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
-    prepare_or_commit = 0;
-  }
-  else{verify(0);}
-  Future::safe_release(leader_proxy->async_Forward(tx_id, ret, prepare_or_commit, dep_id));
+
+  MarshallDeputy md(cmd);
+  Future::safe_release(leader_proxy->async_Forward(md, dep_id));
 
   return e;
 }

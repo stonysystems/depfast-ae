@@ -17,18 +17,10 @@ void CoordinatorMultiPaxos::Forward(){
   verify(!in_forward);
   in_forward=true;
   auto follower_id = frame_->site_info_->id;
-  shared_ptr<PaxosPrepareQuorumEvent> sp_quorum;
+  auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_, cmd_);
 
-  if(cmd_->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
-    auto c = dynamic_pointer_cast<TpcPrepareCommand>(cmd_); 
-    Log_info("the tx id in coordinator is: %ld", c->tx_id_);
-    sp_quorum = commo()->SendForward(c->tx_id_, c->ret_, par_id_, follower_id, dep_id_, cmd_);
-  }
-  else if(cmd_->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
-    auto c = dynamic_pointer_cast<TpcCommitCommand>(cmd_);
-    sp_quorum = commo()->SendForward(c->tx_id_, c->ret_, par_id_, follower_id, dep_id_, cmd_);
-  }
   sp_quorum->Wait();
+  Log_info("Follower done waiting");
   sp_quorum->log();
 }
                                     

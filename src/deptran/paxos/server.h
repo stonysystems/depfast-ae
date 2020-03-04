@@ -42,10 +42,8 @@ class PaxosServer : public TxLogServer {
     return sp_instance;
   }
 
-  void OnForward(const uint64_t& tx_id,
-                 const int& ret,
-                 const int& prepare_or_commit,
-                 const uint64_t& dep_id,
+  void OnForward(shared_ptr<Marshallable> &cmd,
+                 uint64_t dep_id,
                  uint64_t* coro_id,
                  const function<void()> &cb);
 
