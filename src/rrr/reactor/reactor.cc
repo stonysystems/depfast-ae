@@ -76,17 +76,26 @@ void Reactor::Loop(bool infinite) {
     auto time_now = Time::now();
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
-      //Log_info("HAS TO BE HERE RIGHT?"); 
-      event.Test();
-      //Log_info("checking: %s %d", typeid(event).name(), i);
-      if (event.status_ == Event::READY) {
-        //Log_info("Ready up");
-        ready_events.push_back(std::move(*it));
-        it = events_.erase(it);
-      } else if (event.status_ == Event::DONE) {
-        it = events_.erase(it);
-      } else {
-        it ++;
+      auto status = event.status_;
+      switch (status) {
+        case Event::INIT:
+        case Event::WAIT: {
+          const auto &wakeup_time = event.wakeup_time_;
+          if (wakeup_time > 0 && time_now > wakeup_time) {
+            event.status_ = Event::TIMEOUT;
+            ready_events.push_back(*it);
+            it = timeout_events_.erase(it);
+          } else {
+            it++;
+          }
+          break;
+        }
+        case Event::DONE:
+        case Event::READY:
+          it = timeout_events_.erase(it);
+          break;
+        default:
+          verify(0);
       }
     }
     for (auto it = ready_events.begin(); it != ready_events.end(); it++) {

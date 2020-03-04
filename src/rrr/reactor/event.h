@@ -44,6 +44,7 @@ class Event : public std::enable_shared_from_this<Event> {
     Wait();
   }
   virtual void log(){return;}
+  virtual uint64_t GetCoroId();
   virtual bool Test();
   virtual bool IsReady() {
     verify(test_);

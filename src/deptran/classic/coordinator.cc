@@ -361,6 +361,8 @@ void CoordinatorClassic::Commit() {
 
   verify(tx_data().commit_.load() == committed_);
   verify(committed_ != aborted_);
+
+  TxData* cmd = (TxData*) cmd_;
   if (committed_) {
     tx_data().reply_.res_ = SUCCESS;
     auto quorum_event = commo()->SendCommit(this,

@@ -58,7 +58,7 @@ class Reactor {
     auto sp_ev = make_shared<Ev>(args...);
     sp_ev->__debug_creator = 1;
     // TODO push them into a wait queue when they actually wait.
-    events.push_back(sp_ev);
+    //events.push_back(sp_ev);
     //Log_info("ADDING %s %d", typeid(sp_ev).name(), events.size());
     return sp_ev;
   }
