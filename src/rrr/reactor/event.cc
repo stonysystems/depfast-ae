@@ -86,6 +86,7 @@ bool Event::Test() {
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
       Log_info("READY: %p", this);
+      Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
 //      Log_debug("event status ready, triggered?");

@@ -128,8 +128,8 @@ class QuorumEvent : public Event {
       return true;
     }
     if (Yes()) {
-//      Log_debug("voted: %d is equal or greater than quorum: %d",
-//                (int)n_voted_yes_, (int) quorum_);
+      Log_info("voted: %d is equal or greater than quorum: %d",
+                (int)n_voted_yes_, (int) quorum_);
       return true;
     } else if (No()) {
       return true;
