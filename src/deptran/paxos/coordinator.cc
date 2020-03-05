@@ -190,7 +190,7 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
-	verify(0);
+        verify(0);
         Log_info("The local id is %d", this->loc_id_);
         //Forward();
         //Log_info("Follower logic");

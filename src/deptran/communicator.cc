@@ -343,12 +343,14 @@ Communicator::SendPrepare(Coordinator* coo,
   auto n = cmd->partition_ids_.size();
   auto e = Reactor::CreateSpEvent<AndEvent>();
   auto phase = coo->phase_;
+  int n_total = 1;
   int quorum_id = 0;
   for(auto& partition_id : cmd->partition_ids_){
     auto leader_id = LeaderProxyForPartition(partition_id).first;
     auto site_id = leader_id;
     auto proxies = rpc_par_proxies_[partition_id];
-    auto qe = Reactor::CreateSpEvent<QuorumEvent>(3, 1);
+    if(follower_forwarding) n_total = 3;
+    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     e->AddEvent(qe);
     auto src_coroid = qe->GetCoroId();
       
@@ -382,11 +384,13 @@ Communicator::SendPrepare(Coordinator* coo,
               partition_id,
               tid);
     Future::safe_release(proxy->async_Prepare(tid, sids, Communicator::global_id++, fuattr));
-    for(auto& pair : rpc_par_proxies_[partition_id]){
-      if(pair.first != leader_id){
-        site_id = pair.first;
-        proxy = pair.second;
-        Future::safe_release(proxy->async_Prepare(tid, sids, Communicator::global_id++, fuattr));  
+    if(follower_forwarding){
+      for(auto& pair : rpc_par_proxies_[partition_id]){
+        if(pair.first != leader_id){
+          site_id = pair.first;
+          proxy = pair.second;
+          Future::safe_release(proxy->async_Prepare(tid, sids, Communicator::global_id++, fuattr));  
+        }
       }
     }
   }
@@ -431,6 +435,7 @@ Communicator::SendCommit(Coordinator* coo,
   ___LogSent(pid, tid);
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
+  int n_total = 1;
   auto n = cmd->GetPartitionIds().size();
   auto e = Reactor::CreateSpEvent<AndEvent>();
   
@@ -438,7 +443,8 @@ Communicator::SendCommit(Coordinator* coo,
     auto leader_id = LeaderProxyForPartition(rp).first;
     auto site_id = leader_id;
     auto proxies = rpc_par_proxies_[rp];
-    auto qe = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
+    if(follower_forwarding) n_total = 3;
+    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     qe->id_ = Communicator::global_id;
     auto src_coroid = qe->GetCoroId();
 
@@ -463,11 +469,13 @@ Communicator::SendCommit(Coordinator* coo,
     Log_debug("SendCommit to %ld tid:%ld\n", rp, tid);
     Future::safe_release(proxy->async_Commit(tid, Communicator::global_id++, fuattr));
     
-    for(auto& pair : rpc_par_proxies_[rp]){
-      if(pair.first != leader_id){
-        site_id = pair.first;
-        proxy = pair.second;
-        Future::safe_release(proxy->async_Commit(tid, Communicator::global_id++, fuattr));  
+    if(follower_forwarding){
+      for(auto& pair : rpc_par_proxies_[rp]){
+        if(pair.first != leader_id){
+          site_id = pair.first;
+          proxy = pair.second;
+          Future::safe_release(proxy->async_Commit(tid, Communicator::global_id++, fuattr));  
+        }
       }
     }
 
@@ -496,13 +504,15 @@ Communicator::SendAbort(Coordinator* coo,
   ___LogSent(pid, tid);
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
+  int n_total = 1;
   auto n = cmd->GetPartitionIds().size();
   auto e = Reactor::CreateSpEvent<AndEvent>();
   for(auto& rp : cmd->partition_ids_){
     auto proxies = rpc_par_proxies_[rp];
     auto leader_id = LeaderProxyForPartition(rp).first;
     auto site_id = leader_id;
-    auto qe = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
+    if(follower_forwarding) n_total = 3;
+    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     qe->id_ = Communicator::global_id;
     auto src_coroid = qe->GetCoroId();
 
@@ -542,11 +552,13 @@ Communicator::SendAbort(Coordinator* coo,
     Log_debug("SendAbort to %ld tid:%ld\n", rp, tid);
     Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));
 
-    for(auto& pair : rpc_par_proxies_[rp]){
-      if(pair.first != leader_id){
-        site_id = pair.first;
-        proxy = pair.second;
-        Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
+    if(follower_forwarding){
+      for(auto& pair : rpc_par_proxies_[rp]){
+        if(pair.first != leader_id){
+          site_id = pair.first;
+          proxy = pair.second;
+          Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
+        }
       }
 
     }
