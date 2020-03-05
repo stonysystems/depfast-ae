@@ -63,6 +63,7 @@ class Communicator {
   std::atomic_bool client_leaders_connected_;
   std::vector<std::thread> threads;
   bool broadcasting_to_leaders_only_{true};
+  bool follower_forwarding{false};
 
   Communicator(PollMgr* poll_mgr = nullptr);
   virtual ~Communicator();
