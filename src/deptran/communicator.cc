@@ -304,22 +304,24 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     MarshallDeputy md(sp_vpd); // ????
     auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
     Future::safe_release(future);
-    for (auto& pair : rpc_par_proxies_[par_id]) {
-      if (pair.first != pair_leader_proxy.first) {
-        //if(first) curr->n_total_++;
-        auto follower_id = pair.first;
-        rrr::FutureAttr fuattr;
-        fuattr.callback =
-            [e, coo, this, src_coroid, follower_id](Future* fu) {
-              int32_t ret;
-              TxnOutput outputs;
-              uint64_t coro_id = 0;
-              fu->get_reply() >> ret >> outputs >> coro_id;
-              //e->add_dep(coo->cli_id_, src_coroid, follower_id, coro_id);
-              //coo->ids_.push_back(follower_id);
-              // do nothing
-            };
-        Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+    if(!broadcasting_to_leaders_only_){
+      for (auto& pair : rpc_par_proxies_[par_id]) {
+        if (pair.first != pair_leader_proxy.first) {
+          //if(first) curr->n_total_++;
+          auto follower_id = pair.first;
+          rrr::FutureAttr fuattr;
+          fuattr.callback =
+              [e, coo, this, src_coroid, follower_id](Future* fu) {
+                int32_t ret;
+                TxnOutput outputs;
+                uint64_t coro_id = 0;
+                fu->get_reply() >> ret >> outputs >> coro_id;
+                //e->add_dep(coo->cli_id_, src_coroid, follower_id, coro_id);
+                //coo->ids_.push_back(follower_id);
+                // do nothing
+              };
+          Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+        }
       }
     }
   }

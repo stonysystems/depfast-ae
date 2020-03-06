@@ -286,6 +286,7 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
   if (txn->HasMoreUnsentPiece()) {
     DispatchAsync();
   } else if (AllDispatchAcked()) {
+    verify(!committed_);
     GotoNextPhase();
   }
 }
