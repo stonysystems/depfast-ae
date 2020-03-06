@@ -139,12 +139,12 @@ void CoordinatorClassic::GotoNextPhase() {
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
-        //Log_info("Oh no, we are aborting: %x", this);
+        Log_info("Oh no, we are aborting: %x", this);
         phase_++;
         phase_++;
         Commit();
       } else {
-        //Log_info("Oh yes, we are preparing: %x", this);
+        Log_info("Oh yes, we are preparing: %x", this);
         phase_++;
         Prepare();
       }
@@ -281,6 +281,7 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
   if (txn->HasMoreUnsentPiece()) {
     DispatchAsync();
   } else if (AllDispatchAcked()) {
+    verify(!committed_);
     GotoNextPhase();
   }
 }
