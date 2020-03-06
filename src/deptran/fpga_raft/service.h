@@ -19,11 +19,7 @@ class FpgaRaftServiceImpl : public FpgaRaftService {
   FpgaRaftServer* sched_;
   FpgaRaftServiceImpl(TxLogServer* sched);
   void Forward(const MarshallDeputy& cmd,
-               rrr::DeferredReply* defer) override;
-
-  void Prepare(const uint64_t& slot,
-               const ballot_t& ballot,
-               ballot_t* max_ballot,
+               uint64_t *cmt_idx,
                rrr::DeferredReply* defer) override;
 
   void Vote(const uint64_t& lst_log_idx,
@@ -33,12 +29,6 @@ class FpgaRaftServiceImpl : public FpgaRaftService {
                   ballot_t* reply_term,
                   bool_t *vote_granted,
                   rrr::DeferredReply* defer) override;
-
-  void Accept(const uint64_t& slot,
-              const ballot_t& ballot,
-              const MarshallDeputy& cmd,
-              ballot_t* max_ballot,
-              rrr::DeferredReply* defer) override;
 
   void AppendEntries(const uint64_t& slot,
                      const ballot_t& ballot,

@@ -129,9 +129,10 @@ TroadCommo::BroadcastPreAccept(
       auto sp = dynamic_pointer_cast<RccGraph>(md.sp_data_);
       verify(sp);
       if (res == SUCCESS) {
-        ev->n_voted_yes_++;
+        ev->VoteYes();
       } else if (res == REJECT) {
-        ev->n_voted_no_++;
+        verify(0);
+        ev->VoteNo();
       } else {
         verify(0);
       }
@@ -191,9 +192,9 @@ shared_ptr<QuorumEvent> TroadCommo::BroadcastAccept(parid_t par_id,
       int32_t res;
       fu->get_reply() >> res;
       if (res == SUCCESS) {
-        ev->n_voted_yes_++;
+        ev->VoteYes();
       } else if (res == REJECT) {
-        ev->n_voted_no_++;
+        ev->VoteNo();
       } else {
         verify(0);
       }
@@ -216,7 +217,13 @@ shared_ptr<QuorumEvent> TroadCommo::CollectValidation(txid_t txid, set<parid_t> 
     auto proxy = NearestProxyForPartition(partition_id).second;
     FutureAttr fuattr;
     fuattr.callback = [ev] (Future* fu) {
-      ev->n_voted_yes_++;
+      int res;
+      fu->get_reply() >> res;
+      if (res == SUCCESS) {
+        ev->VoteYes();
+      } else {
+        ev->VoteNo();
+      }
     };
     Future::safe_release(proxy->async_RccInquireValidation(txid, fuattr));
   }
@@ -289,9 +296,9 @@ TroadCommo::BroadcastCommit(parid_t par_id,
       TxnOutput output;
       fu->get_reply() >> res >> output;
       if (res == SUCCESS) {
-        ev->n_voted_yes_++;
+        ev->VoteYes();
       } else {
-        ev->n_voted_no_++;
+        ev->VoteNo();
       }
     };
     verify(cmd_id > 0);

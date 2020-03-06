@@ -48,6 +48,28 @@ class Event : public std::enable_shared_from_this<Event> {
   Event();
 };
 
+template <class Type>
+class BoxEvent : public Event {
+ public:
+  Type content_{};
+  bool is_set_{false};
+  Type& Get() {
+    return content_;
+  }
+  void Set(const Type& c) {
+    is_set_ = true;
+    content_ = c;
+    Test();
+  }
+  void Clear() {
+    is_set_ = false;
+    content_ = {};
+  }
+  virtual bool IsReady() override {
+    return is_set_;
+  }
+};
+
 class IntEvent : public Event {
 
  public:
@@ -65,7 +87,8 @@ class IntEvent : public Event {
   int Set(int n) {
     int t = value_;
     value_ = n;
-    TestTrigger();
+//    TestTrigger();
+    Test();
     return t;
   };
 
@@ -108,7 +131,7 @@ class TimeoutEvent : public Event {
   TimeoutEvent(uint64_t wait_us_): wakeup_time_{Time::now()+wait_us_} {}
 
   bool IsReady() override {
-//    Log_debug("test timeout");
+    // Log_debug("test timeout");
     return (Time::now() > wakeup_time_);
   }
 };

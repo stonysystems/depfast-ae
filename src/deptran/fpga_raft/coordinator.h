@@ -36,6 +36,7 @@ class CoordinatorFpgaRaft : public Coordinator {
   uint32_t n_replica_ = 0;   // TODO
   slotid_t slot_id_ = 0;
   slotid_t *slot_hint_ = nullptr;
+  uint64_t cmt_idx_ = 0 ;
 
   uint32_t n_replica() {
     verify(n_replica_ > 0);
@@ -64,12 +65,7 @@ class CoordinatorFpgaRaft : public Coordinator {
               const std::function<void()> &func = []() {},
               const std::function<void()> &exe_callback = []() {}) override;
 
-  ballot_t PickBallot();
-  void Prepare();
-//  void PrepareAck(phase_t phase, Future *fu);
-  void Accept();
   void AppendEntries();
-//  void AcceptAck(phase_t phase, Future *fu);
   void Commit();
   void LeaderLearn();
 

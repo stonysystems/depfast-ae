@@ -47,9 +47,11 @@ Reactor::GetReactor() {
 std::shared_ptr<Coroutine>
 Reactor::CreateRunCoroutine(const std::function<void()> func) {
   std::shared_ptr<Coroutine> sp_coro;
-  if (REUSING_CORO && available_coros_.size() > 0) {
+  const bool reusing = REUSING_CORO && !available_coros_.empty();
+  if (reusing) {
     sp_coro = available_coros_.back();
     available_coros_.pop_back();
+    verify(!sp_coro->func_);
     sp_coro->func_ = func;
   } else {
     sp_coro = std::make_shared<Coroutine>(func);
@@ -82,42 +84,55 @@ void Reactor::Loop(bool infinite) {
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
   do {
-    std::vector<shared_ptr<Event>> ready_events;
-//    auto& events = all_events_;
-    auto& events = waiting_events_;
-//    Log_debug("event list size: %d", events.size());
-    for (auto it = events.begin(); it != events.end();) {
+    std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
+    for (auto ev : ready_events) {
+      verify(ev->status_ == Event::READY);
+    }
+
+    auto time_now = Time::now();
+    for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
-      event.Test();
-      const auto& status = event.status_;
-      if (status == Event::READY) {
-        ready_events.push_back(std::move(*it));
-        it = events.erase(it);
-      } else if (status == Event::DONE) {
-        it = events.erase(it);
-      } else if (status == Event::WAIT) {
-        auto time = Time::now();
-        const auto& wakeup_time = event.wakeup_time_;
-        if (wakeup_time > 0 && Time::now () > wakeup_time) {
-          if (status == Event::WAIT) {
+      auto status = event.status_;
+      switch (status) {
+        case Event::INIT:
+        case Event::WAIT: {
+          const auto &wakeup_time = event.wakeup_time_;
+          if (wakeup_time > 0 && time_now > wakeup_time) {
             event.status_ = Event::TIMEOUT;
             ready_events.push_back(*it);
+            it = timeout_events_.erase(it);
+          } else {
+            it++;
           }
-          it = events.erase(it);
-        } else {
-          it++;
+          break;
         }
-      } else {
-        it ++;
+        case Event::DONE:
+        case Event::READY:
+          it = timeout_events_.erase(it);
+          break;
+        default:
+          verify(0);
       }
     }
-    for (auto& up_ev: ready_events) {
-      auto& event = *up_ev;
+    for (auto it = ready_events.begin(); it != ready_events.end(); it++) {
+      Event& event = **it;
       auto sp_coro = event.wp_coro_.lock();
       verify(sp_coro);
       verify(coros_.find(sp_coro) != coros_.end());
       ContinueCoro(sp_coro);
     }
+
+    // FOR debug purposes.
+//    auto& events = waiting_events_;
+////    Log_debug("event list size: %d", events.size());
+//    for (auto it = events.begin(); it != events.end(); it++) {
+//      Event& event = **it;
+//      const auto& status = event.status_;
+//      if (event.status_ == Event::WAIT) {
+//        event.Test();
+//        verify(event.status_ != Event::READY);
+//      }
+//    }
   } while (looping_);
 }
 
@@ -133,9 +148,11 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
+  verify(sp_running_coro_th_ == sp_coro);
   if (sp_running_coro_th_->Finished()) {
     if (REUSING_CORO) {
-      sp_coro->status_ = Coroutine::RECYCLED;
+      sp_running_coro_th_->status_ = Coroutine::RECYCLED;
+      sp_running_coro_th_->func_ = {};
       available_coros_.push_back(sp_running_coro_th_);
     }
     coros_.erase(sp_running_coro_th_);
@@ -153,12 +170,10 @@ class PollMgr::PollThread {
 
   // guard mode_ and poll_set_
   SpinLock l_;
-  std::unordered_map<int, int> mode_; // fd->mode
-  std::unordered_set<Pollable*> poll_set_;
-
-  std::set<std::shared_ptr<Job>> set_sp_jobs_;
-
-  std::unordered_set<Pollable*> pending_remove_;
+  std::unordered_map<int, int> mode_{}; // fd->mode
+  std::set<shared_ptr<Pollable>> poll_set_{};
+  std::set<std::shared_ptr<Job>> set_sp_jobs_{};
+  std::unordered_set<shared_ptr<Pollable>> pending_remove_{};
   SpinLock pending_remove_l_;
   SpinLock lock_job_;
 
@@ -185,13 +200,16 @@ class PollMgr::PollThread {
     while (it != set_sp_jobs_.end()) {
       auto sp_job = *it;
       if (sp_job->Ready()) {
-        Coroutine::CreateRun([sp_job]() {sp_job->Work();});
+        Coroutine::CreateRun([sp_job]() {
+          sp_job->Work();
+        });
       }
-      if (sp_job->Done()) {
-        it = set_sp_jobs_.erase(it);
-      } else {
-        it++;
-      }
+      it = set_sp_jobs_.erase(it);
+//      if (sp_job->Done()) {
+//        it = set_sp_jobs_.erase(it);
+//      } else {
+//        it++;
+//      }
     }
     lock_job_.unlock();
   }
@@ -205,20 +223,21 @@ class PollMgr::PollThread {
     stop_flag_ = true;
     Pthread_join(th_, nullptr);
 
+    l_.lock();
+    vector<shared_ptr<Pollable>> tmp(poll_set_.begin(), poll_set_.end());
+    l_.unlock();
     // when stopping, release anything registered in pollmgr
-    for (auto& it: poll_set_) {
+    for (auto it: tmp) {
+      verify(it);
       this->remove(it);
-    }
-    for (auto& it: pending_remove_) {
-      it->release();
     }
   }
 
-  void add(Pollable*);
-  void remove(Pollable*);
+  void add(shared_ptr<Pollable>);
+  void remove(shared_ptr<Pollable>);
   void pause() { pause_flag_ = true; }
   void resume() { pause_flag_ = false; }
-  void update_mode(Pollable*, int new_mode);
+  void update_mode(shared_ptr<Pollable>, int new_mode);
 
   void add(std::shared_ptr<Job>);
   void remove(std::shared_ptr<Job>);
@@ -235,15 +254,20 @@ PollMgr::PollMgr(int n_threads /* =... */)
 
 PollMgr::~PollMgr() {
   delete[] poll_threads_;
+  poll_threads_ = nullptr;
   //Log_debug("rrr::PollMgr: destroyed");
 }
 
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
 
-    while(pause_flag_ && !stop_flag_)
+    while(pause_flag_ )
     {
         sleep(1) ;
+        if(stop_flag_)
+        {
+          break ;
+        }        
     }
     
     TriggerJob();
@@ -251,7 +275,7 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     // after each poll loop, remove uninterested pollables
     pending_remove_l_.lock();
-    std::list<Pollable*> remove_poll(pending_remove_.begin(), pending_remove_.end());
+    std::list<shared_ptr<Pollable>> remove_poll(pending_remove_.begin(), pending_remove_.end());
     pending_remove_.clear();
     pending_remove_l_.unlock();
 
@@ -265,8 +289,6 @@ void PollMgr::PollThread::poll_loop() {
         poll_.Remove(poll);
       }
       l_.unlock();
-
-      poll->release();
     }
     TriggerJob();
     Reactor::GetReactor()->Loop();
@@ -285,11 +307,10 @@ void PollMgr::PollThread::remove(std::shared_ptr<Job> sp_job) {
   lock_job_.unlock();
 }
 
-void PollMgr::PollThread::add(Pollable* poll) {
-  poll->ref_copy();   // increase ref count
-
+void PollMgr::PollThread::add(shared_ptr<Pollable> poll) {
   int poll_mode = poll->poll_mode();
   int fd = poll->fd();
+  verify(poll);
 
   l_.lock();
 
@@ -305,10 +326,10 @@ void PollMgr::PollThread::add(Pollable* poll) {
   l_.unlock();
 }
 
-void PollMgr::PollThread::remove(Pollable* poll) {
+void PollMgr::PollThread::remove(shared_ptr<Pollable> poll) {
   bool found = false;
   l_.lock();
-  std::unordered_set<Pollable*>::iterator it = poll_set_.find(poll);
+  auto it = poll_set_.find(poll);
   if (it != poll_set_.end()) {
     found = true;
     assert(mode_.find(poll->fd()) != mode_.end());
@@ -326,7 +347,7 @@ void PollMgr::PollThread::remove(Pollable* poll) {
   }
 }
 
-void PollMgr::PollThread::update_mode(Pollable* poll, int new_mode) {
+void PollMgr::PollThread::update_mode(shared_ptr<Pollable> poll, int new_mode) {
   int fd = poll->fd();
 
   l_.lock();
@@ -358,7 +379,7 @@ static inline uint32_t hash_fd(uint32_t key) {
   return key;
 }
 
-void PollMgr::add(Pollable* poll) {
+void PollMgr::add(shared_ptr<Pollable> poll) {
   int fd = poll->fd();
   if (fd >= 0) {
     int tid = hash_fd(fd) % n_threads_;
@@ -366,7 +387,7 @@ void PollMgr::add(Pollable* poll) {
   }
 }
 
-void PollMgr::remove(Pollable* poll) {
+void PollMgr::remove(shared_ptr<Pollable> poll) {
   int fd = poll->fd();
   if (fd >= 0) {
     int tid = hash_fd(fd) % n_threads_;
@@ -388,7 +409,7 @@ void PollMgr::resume() {
     }    
 }
 
-void PollMgr::update_mode(Pollable* poll, int new_mode) {
+void PollMgr::update_mode(shared_ptr<Pollable> poll, int new_mode) {
   int fd = poll->fd();
   if (fd >= 0) {
     int tid = hash_fd(fd) % n_threads_;

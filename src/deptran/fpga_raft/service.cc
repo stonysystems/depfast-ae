@@ -10,23 +10,13 @@ FpgaRaftServiceImpl::FpgaRaftServiceImpl(TxLogServer *sched)
 }
 
 void FpgaRaftServiceImpl::Forward(const MarshallDeputy& cmd,
+                                    uint64_t* cmt_idx, 
                                     rrr::DeferredReply* defer) {
    verify(sched_ != nullptr);
-   sched_->OnForward(const_cast<MarshallDeputy&>(cmd).sp_data_);
-   defer->reply();   
-}
+   sched_->OnForward(const_cast<MarshallDeputy&>(cmd).sp_data_, cmt_idx,
+                      std::bind(&rrr::DeferredReply::reply, defer));
 
-void FpgaRaftServiceImpl::Prepare(const uint64_t& slot,
-                                    const ballot_t& ballot,
-                                    ballot_t* max_ballot,
-                                    rrr::DeferredReply* defer) {
-  verify(sched_ != nullptr);
-  sched_->OnPrepare(slot,
-                    ballot,
-                    max_ballot,
-                    std::bind(&rrr::DeferredReply::reply, defer));
 }
-
 
 void FpgaRaftServiceImpl::Vote(const uint64_t& lst_log_idx,
                                     const ballot_t& lst_log_term,
@@ -39,22 +29,6 @@ void FpgaRaftServiceImpl::Vote(const uint64_t& lst_log_idx,
   sched_->OnVote(lst_log_idx,lst_log_term, can_id, can_term,
                     reply_term, vote_granted,
                     std::bind(&rrr::DeferredReply::reply, defer));
-}
-
-void FpgaRaftServiceImpl::Accept(const uint64_t& slot,
-                                   const ballot_t& ballot,
-                                   const MarshallDeputy& md_cmd,
-                                   ballot_t* max_ballot,
-                                   rrr::DeferredReply* defer) {
-  verify(sched_ != nullptr);
-  Coroutine::CreateRun([&] () {
-    sched_->OnAccept(slot,
-                     ballot,
-                     const_cast<MarshallDeputy&>(md_cmd).sp_data_,
-                     max_ballot,
-                     std::bind(&rrr::DeferredReply::reply, defer));
-
-  });
 }
 
 void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,

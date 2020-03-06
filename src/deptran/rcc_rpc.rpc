@@ -20,23 +20,15 @@ abstract service MultiPaxos {
 
 abstract service FpgaRaft {
 
-  defer Forward(MarshallDeputy cmd);
+  defer Forward(MarshallDeputy cmd |
+                uint64_t cmt_idx );
 
-  defer Prepare(uint64_t slot,
-                ballot_t ballot |
-                ballot_t max_ballot);
-                
   defer Vote(uint64_t lst_log_idx,
                 ballot_t lst_log_term,
                 parid_t par_id,
                 ballot_t cur_term|
                 ballot_t max_ballot,
                 bool_t vote_granted );
-
-  defer Accept(uint64_t slot,
-               ballot_t ballot,
-               MarshallDeputy cmd |
-               ballot_t max_ballot);
 
   defer AppendEntries(uint64_t slot,
                       ballot_t ballot,

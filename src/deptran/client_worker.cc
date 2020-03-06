@@ -246,7 +246,6 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
 
 void ClientWorker::DispatchRequest(Coordinator* coo) {
   const char* f = __FUNCTION__;
-  //coo->forward_status_ = PROCESS_FORWARD_REQUEST;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);
     TxRequest req;

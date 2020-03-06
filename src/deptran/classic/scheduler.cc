@@ -43,28 +43,13 @@ bool SchedulerClassic::ExecutePiece(Tx& tx,
   return true;
 }
 
-bool SchedulerClassic::ExecuteAll(Tx &tx, TxnOutput &ret_output) {
-  // wait for an execution signal.
-//  Log_debug("entered waiting for tx id: %" PRIx64, tx.tid_);
-//  tx.ev_execute_ready_.Wait();
-//  Log_debug("finished waiting for tx id: %" PRIx64, tx.tid_);
-  verify(0);
-//  auto sp_vec_piece =
-//      dynamic_pointer_cast<VecPieceData>(tx.cmd_)->sp_vec_piece_data_;
-//  for (auto& piece_data : *sp_vec_piece) {
-//    ExecutePiece(tx, piece_data, ret_output);
-//  }
-  tx.inuse = false;
-  return true;
-}
-
 bool SchedulerClassic::DispatchPiece(Tx& tx,
                                      TxPieceData& piece_data,
                                      TxnOutput& ret_output) {
   TxnPieceDef
       & piece_def = txn_reg_->get(piece_data.root_type_, piece_data.type_);
   auto& conflicts = piece_def.conflicts_;
-  auto id = piece_data.inn_id();
+//  auto id = piece_data.inn_id();
   // Two phase locking won't pass these
 //  verify(!tx.inuse);
 //  tx.inuse = true;
@@ -98,14 +83,14 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto sp_vec_piece =
       dynamic_pointer_cast<VecPieceData>(cmd)->sp_vec_piece_data_;
   verify(sp_vec_piece);
-  auto tx = GetOrCreateTx(cmd_id);
+  auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
+  verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
   Log_debug("received dispatch for tx id: %" PRIx64, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
   // TODO support user-customized pre-process.
-
 // for debug purpose
 //  bool b1 = false, b2 = false;
 //  for (auto& piece_data : *sp_vec_piece) {
@@ -115,23 +100,30 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //  verify(b1 == b2);
   if (!tx->cmd_) {
     tx->cmd_ = cmd;
-  } else {
+  } else if (tx->cmd_ != cmd) {
     auto present_cmd =
         dynamic_pointer_cast<VecPieceData>(tx->cmd_)->sp_vec_piece_data_;
     for (auto& sp_piece_data : *sp_vec_piece) {
       present_cmd->push_back(sp_piece_data);
     }
+  } else {
+    // do nothing
+//    verify(0);
   }
 
-  // TODO investigate: change it to a reference with clang will cause crash
-  for (auto sp_piece_data : *sp_vec_piece) {
-    DispatchPiece(*tx, *sp_piece_data, ret_output);
+  bool ret = true;
+  for (const auto& sp_piece_data : *sp_vec_piece) {
+    verify(sp_piece_data);
+    ret = DispatchPiece(*tx, *sp_piece_data, ret_output);
+    if (!ret) {
+      break;
+    }
   }
   // TODO reimplement this.
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
   }
-  return true;
+  return ret;
 }
 
 // On prepare with replication
@@ -146,22 +138,18 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
   verify(sp_tx);
   Log_debug("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-//  auto exec = dynamic_cast<ClassicExecutor*>(GetExecutor(cmd_id));
-//  exec->prepare_reply_ = [res, callback] (int r) {*res = r; callback();};
-
   if (Config::GetConfig()->IsReplicated()) {
     auto sp_prepare_cmd = std::make_shared<TpcPrepareCommand>();
     verify(sp_prepare_cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE);
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
+    sp_tx->is_leader_hint_ = true;
     CreateRepCoord()->Submit(sp_m);
 //    Log_debug("wait for prepare command replicated");
-    sp_tx->is_leader_hint_ = true;
-    sp_tx->ev_prepare_->Wait();
+    sp_tx->prepare_result->Wait();
 //    Log_debug("finished prepare command replication");
-    return sp_tx->result_prepare_;
+    return sp_tx->prepare_result->Get();
   } else if (Config::GetConfig()->do_logging()) {
     string log;
     this->get_prepare_log(tx_id, sids, &log);
@@ -178,17 +166,15 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
   // TODO and return the prepare callback here.
   auto tx_id = prepare_cmd.tx_id_;
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
-  if (!sp_tx->is_leader_hint_) {
-    // TODO follower site right now does not really do work.
-    return 0;
-  }
   if (!sp_tx->cmd_)
     sp_tx->cmd_ = prepare_cmd.cmd_;
+  if (!sp_tx->is_leader_hint_) {
+    return 0;
+  }
   // else: is the leader.
-  sp_tx->result_prepare_ = DoPrepare(sp_tx->tid_);
+  sp_tx->prepare_result->Set(DoPrepare(sp_tx->tid_));
   Log_debug("prepare request replicated and executed for %" PRIx64 ", result: %x, sid: %x",
-      sp_tx->tid_, sp_tx->result_prepare_, (int)this->site_id_);
-  sp_tx->ev_prepare_->Set(1);
+      sp_tx->tid_, sp_tx->prepare_result->Get(), (int)this->site_id_);
   Log_debug("triggering prepare replication callback %" PRIx64, sp_tx->tid_);
   return 0;
 }
@@ -198,24 +184,15 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
-  // TODO maybe change inuse to an event?
-//  verify(!sp_tx->inuse);
-//  sp_tx->inuse = true;
   if (Config::GetConfig()->IsReplicated()) {
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     CreateRepCoord()->Submit(sp_m);
-    sp_tx->ev_commit_->Wait();
+    sp_tx->commit_result->Wait();
   } else {
-//    verify(exec->phase_ < 3);
-//    exec->phase_ = 3;
     if (commit_or_abort == SUCCESS) {
-#ifdef CHECK_ISO
-      //      MergeDeltas(exec->dtxn_->deltas_);
-#endif
-//      exec->CommitLaunch(res, callback);
       DoCommit(*sp_tx);
     } else if (commit_or_abort == REJECT) {
 //      exec->AbortLaunch(res, callback);
@@ -223,9 +200,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     } else {
       verify(0);
     }
-//    TrashExecutor(cmd_id);
   }
-//  sp_tx->inuse = false;
   return 0;
 }
 
@@ -233,6 +208,7 @@ void SchedulerClassic::DoCommit(Tx& tx_box) {
   auto mdb_txn = RemoveMTxn(tx_box.tid_);
   verify(mdb_txn == tx_box.mdb_txn_);
   mdb_txn->commit();
+  tx_box.mdb_txn_ = nullptr;
   delete mdb_txn; // TODO remove this
 }
 
@@ -241,34 +217,39 @@ void SchedulerClassic::DoAbort(Tx& tx_box) {
   verify(mdb_txn == tx_box.mdb_txn_);
   mdb_txn->abort();
   delete mdb_txn; // TODO remove this
+  tx_box.mdb_txn_ = nullptr;
 }
 
 int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto tx_id = tpc_commit_cmd.tx_id_;
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
-  if (!sp_tx->is_leader_hint_) {
-    // TODO follower site right now does not really do work.
-    return 0;
-  }
   int commit_or_abort = tpc_commit_cmd.ret_;
+  if (!sp_tx->is_leader_hint_) {
+    if (commit_or_abort == REJECT) {
+      return 0;
+    } else {
+      verify(sp_tx->cmd_);
+      unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
+      Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
+      DoPrepare(sp_tx->tid_);
+    }
+  }
   if (commit_or_abort == SUCCESS) {
-#ifdef CHECK_ISO
-    MergeDeltas(exec->dtxn_->deltas_);
-#endif
     sp_tx->committed_ = true;
     DoCommit(*sp_tx);
   } else if (commit_or_abort == REJECT) {
-    sp_tx->aborted_ = false;
+    sp_tx->aborted_ = true;
     DoAbort(*sp_tx);
   } else {
     verify(0);
   }
-  sp_tx->ev_commit_->Set(1);
+  if (sp_tx->is_leader_hint_) {
+    // mostly for debug
+    sp_tx->commit_result->Set(1);
+  }
+//  sp_tx->commit_result->Set(1);
   sp_tx->ev_execute_ready_->Set(1);
-//  verify(app_next_);
-//  app_next_(*(sp_tx->cmd_));
-//  TrashExecutor(tx_id);
   return 0;
 }
 

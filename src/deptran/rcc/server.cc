@@ -218,8 +218,8 @@ void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex) {
   std::function<int(RccTx&)> func =
       [this](RccTx& v) -> int {
         RccTx& parent = v;
-        int r = 0;
-        if (parent.IsExecuted() || parent.IsAborted()) {
+        int r = RccGraph::SearchHint::Ok;
+        if (parent.HasLogApplyStarted() || parent.IsAborted()) {
           r = RccGraph::SearchHint::Skip;
         } else if (parent.status() < TXN_CMT) {
           bool b = parent.Involve(TxLogServer::partition_id_);
@@ -228,14 +228,14 @@ void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex) {
             verify(parent.status() >= TXN_CMT);
           }
           parent.status_.Wait([](int val)->bool {
-            // TODO considering rank.
             return (val>=TXN_CMT);
           });
+        } else if (parent.status() >= TXN_DCD) {
+          return RccGraph::SearchHint::Skip;
         }
-        r = RccGraph::SearchHint::Ok;
         return r;
       };
-  TraversePred(*vertex, -1, func);
+  TraversePredNonRecursive(*vertex, func);
 }
 
 bool RccServer::AllAncCmt(RccTx* vertex) {
@@ -244,7 +244,7 @@ bool RccServer::AllAncCmt(RccTx* vertex) {
       [&all_anc_cmt, &vertex](RccTx& v) -> int {
         RccTx& parent = v;
         int r = 0;
-        if (parent.IsExecuted() || parent.IsAborted()) {
+        if (parent.HasLogApplyStarted() || parent.IsAborted()) {
           r = RccGraph::SearchHint::Skip;
         } else if (parent.status() >= TXN_CMT) {
           r = RccGraph::SearchHint::Ok;
@@ -290,7 +290,7 @@ bool RccServer::HasAbortedAncestor(const RccScc& scc) {
   std::function<int(RccTx&)> func =
       [&has_aborted](RccTx& v) -> int {
         RccTx& info = v;
-        if (info.IsExecuted()) {
+        if (info.HasLogApplyStarted()) {
           return RccGraph::SearchHint::Skip;
         }
         if (info.IsAborted()) {
@@ -309,13 +309,13 @@ bool RccServer::FullyDispatched(const RccScc& scc, rank_t rank) {
                          [this, rank](RccTx* v) {
                            RccTx& tinfo = *v;
                            if (tinfo.Involve(TxLogServer::partition_id_)) {
-                             if (tinfo.current_rank_ > rank) {
-                               return true;
-                             } else if (tinfo.current_rank_ < rank) {
-                               return false;
-                             } else {
+//                             if (tinfo.current_rank_ > rank) {
+//                               return true;
+//                             } else if (tinfo.current_rank_ < rank) {
+//                               return false;
+//                             } else {
                                return tinfo.fully_dispatched_->value_ == 1;
-                             }
+//                             }
                            } else {
                              return true;
                            }
@@ -329,13 +329,13 @@ bool RccServer::IsExecuted(const RccScc& scc, rank_t rank) {
                          [this, rank](RccTx* v) {
                            RccTx& tinfo = *v;
                            if (tinfo.Involve(TxLogServer::partition_id_)) {
-                             if (tinfo.current_rank_ > rank) {
-                               return true;
-                             } else if (tinfo.current_rank_ < rank) {
-                               return false;
-                             } else {
-                               return tinfo.executed_;
-                             }
+//                             if (tinfo.current_rank_ > rank) {
+//                               return true;
+//                             } else if (tinfo.current_rank_ < rank) {
+//                               return false;
+//                             } else {
+                               return tinfo.log_apply_started_;
+//                             }
                            } else {
                              return false;
                            }
@@ -349,20 +349,22 @@ void RccServer::WaitUntilAllPredSccExecuted(const RccScc& scc) {
   scc_set.insert(scc.begin(), scc.end());
   std::function<int(RccTx&)> func =
       [&scc_set, &scc, this](RccTx& tx) -> int {
-        if (tx.IsExecuted()) {
+        if (tx.HasLogApplyStarted()) {
           return RccGraph::SearchHint::Skip;
         } else if (!tx.Involve(TxLogServer::partition_id_)) {
           verify(tx.status() >= TXN_CMT);
+          return RccGraph::SearchHint::Skip;
         } else if (scc_set.find(&tx) != scc_set.end()) {
           // belong to the scc
+          return RccGraph::SearchHint::Ok;
         } else {
-          tx.status_.Wait([&tx](int v)->bool{
-            return (tx.current_rank_ <= tx.shared_rank_ || v>=TXN_DCD);
+          tx.status_.Wait([&tx](int v)->bool {
+            return (v>=TXN_DCD);
           });
+          return RccGraph::SearchHint::Ok;
         }
-        return RccGraph::SearchHint::Ok;
       };
-  TraversePred(*scc[0], -1, func);
+  TraversePredNonRecursive(*scc[0], func);
 }
 
 bool RccServer::AllAncFns(const RccScc& scc) {
@@ -373,7 +375,7 @@ bool RccServer::AllAncFns(const RccScc& scc) {
   std::function<int(RccTx&)> func =
       [&all_anc_fns, &scc_set, &scc](RccTx& v) -> int {
         RccTx& info = v;
-        if (info.IsExecuted()) {
+        if (info.HasLogApplyStarted()) {
           return RccGraph::SearchHint::Skip;
         } else if (info.status() >= TXN_DCD) {
           return RccGraph::SearchHint::Ok;
@@ -387,7 +389,7 @@ bool RccServer::AllAncFns(const RccScc& scc) {
       };
   TraversePred(*scc[0], -1, func);
   return all_anc_fns;
-};
+}
 
 void RccServer::Execute(const RccScc& scc) {
   verify(scc.size() > 0);
@@ -399,26 +401,31 @@ void RccServer::Execute(const RccScc& scc) {
 
 void RccServer::Execute(shared_ptr<RccTx> sp_tx) {
   tx_pending_execution_.push_back(sp_tx);
-  sp_tx->executed_ = true;
+  sp_tx->log_apply_started_ = true;
+  Log_debug("executing dtxn id %" PRIx64, sp_tx->id());
   verify(sp_tx->IsDecided());
   if (sp_tx->Involve(TxLogServer::partition_id_)) {
     Coroutine::CreateRun([sp_tx, this]() {
       if (sp_tx->need_validation_) {
         sp_tx->CommitValidate();
       } else {
-        sp_tx->local_validation_result_ = 1;
+        sp_tx->local_validated_->Set(SUCCESS);
       }
 //      commo()->BroadcastValidation(sp_tx->id(), sp_tx->partition_,
 //          sp_tx->local_validation_result_);
       sp_tx->sp_ev_commit_->Set(1);
-//      sp_tx->sp_ev_global_validated_->Wait(10 * 1000 * 1000);
-      sp_tx->sp_ev_global_validated_->Wait();
-      verify(sp_tx->sp_ev_global_validated_->status_ != Event::TIMEOUT);
+      // TODO recover this?
+//      sp_tx->global_validated_->Wait();
+//      verify(sp_tx->global_validated_->status_ != Event::TIMEOUT);
       sp_tx->CommitExecute();
+      sp_tx->local_validated_->Get();
     });
 #ifdef CHECK_ISO
     MergeDeltas(sp_tx->deltas_);
 #endif
+  } else {
+    // a tmp solution
+    sp_tx->local_validated_->Set(SUCCESS);
   }
 }
 
@@ -460,15 +467,23 @@ void RccServer::DestroyExecutor(txnid_t txn_id) {
 int RccServer::OnInquireValidation(txid_t tx_id) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(tx_id));
-  dtxn->sp_ev_local_validated_->Wait();
-  return dtxn->local_validation_result_;
+  int ret = 0;
+  dtxn->local_validated_->Wait(100*1000*1000);
+  if (dtxn->local_validated_->status_ == Event::TIMEOUT) {
+    ret = -1; //TODO come back and remove this after the correctness checker.
+  } else {
+    dtxn->local_validated_->Wait();
+    ret = dtxn->local_validated_->Get();
+    verify(ret == SUCCESS || ret == REJECT);
+//    verify(ret != REJECT);
+  }
+  return ret;
 }
 
 void RccServer::OnNotifyGlobalValidation(txid_t tx_id, int validation_result) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(tx_id));
-  dtxn->global_validation_result_ = validation_result;
-  dtxn->sp_ev_global_validated_->Set(1);
+  dtxn->global_validated_->Set(validation_result);
 }
 
 int RccServer::OnCommit(const txnid_t cmd_id,
@@ -487,7 +502,8 @@ int RccServer::OnCommit(const txnid_t cmd_id,
   verify(dtxn->p_output_reply_ == nullptr);
   dtxn->p_output_reply_ = output;
   verify(!dtxn->IsAborted());
-  if (dtxn->IsExecuted()) {
+  if (dtxn->HasLogApplyStarted()) {
+    verify(dtxn->local_validated_->Get() != 0);
     ret = SUCCESS; // TODO no return output?
   } else {
 //    Log_info("on commit: %llx par: %d", cmd_id, (int)partition_id_);
@@ -505,7 +521,7 @@ int RccServer::OnCommit(const txnid_t cmd_id,
       RccScc& scc = FindSccPred(*dtxn);
       Decide(scc);
       WaitUntilAllPredSccExecuted(scc);
-      if (FullyDispatched(scc) && !scc[0]->IsExecuted()) {
+      if (FullyDispatched(scc) && !scc[0]->HasLogApplyStarted()) {
         Execute(scc);
       }
     }

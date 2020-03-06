@@ -24,9 +24,13 @@ void CoordinatorFpgaRaft::Forward(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
     // TODO do we need a lock here ?
-    commo()->SendForward(par_id_, loc_id_, cmd);
-    phase_ = Phase::COMMIT;
-    GotoNextPhase();
+    auto e = commo()->SendForward(par_id_, loc_id_, cmd);
+    e->Wait();
+    uint64_t cmt_idx = e->CommitIdx() ;
+    cmt_idx_ = cmt_idx ;
+    Coroutine::CreateRun([&] () {
+      this->sch_->SpCommit(cmt_idx) ;
+    }) ;
 }
 
 
@@ -51,58 +55,6 @@ void CoordinatorFpgaRaft::Submit(shared_ptr<Marshallable>& cmd,
   GotoNextPhase();
 }
 
-ballot_t CoordinatorFpgaRaft::PickBallot() {
-  return curr_ballot_ + 1;
-}
-
-void CoordinatorFpgaRaft::Prepare() {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  verify(0); // for debug;
-  verify(!in_prepare_);
-  in_prepare_ = true;
-  curr_ballot_ = PickBallot();
-  verify(slot_id_ > 0);
-  Log_debug("multi-paxos coordinator broadcasts prepare, "
-                "par_id_: %lx, slot_id: %llx",
-            par_id_,
-            slot_id_);
-  verify(n_prepare_ack_ == 0);
-  int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
-  auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
-  sp_quorum->Wait();
-  if (sp_quorum->Yes()) {
-    verify(!sp_quorum->HasAcceptedValue());
-    // TODO use the previously accepted value.
-
-  } else if (sp_quorum->No()) {
-    // TODO restart prepare?
-    verify(0);
-  } else {
-    // TODO timeout
-    verify(0);
-  }
-}
-
-void CoordinatorFpgaRaft::Accept() {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  verify(!in_accept);
-  in_accept = true;
-  Log_debug("multi-paxos coordinator broadcasts accept, "
-                "par_id_: %lx, slot_id: %llx",
-            par_id_, slot_id_);
-  auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
-  sp_quorum->Wait();
-  if (sp_quorum->Yes()) {
-    committed_ = true;
-  } else if (sp_quorum->No()) {
-    // TODO process the case: failed to get a majority.
-    verify(0);
-  } else {
-    // TODO process timeout.
-    verify(0);
-  }
-}
-
 void CoordinatorFpgaRaft::AppendEntries() {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     verify(!in_append_entries);
@@ -117,7 +69,6 @@ void CoordinatorFpgaRaft::AppendEntries() {
     this->sch_->lastLogIndex += 1;
     auto instance = this->sch_->GetFpgaRaftInstance(this->sch_->lastLogIndex);
 
-    /* TODO: iterate on all uncommited cmds */
     instance->log_ = cmd_;
     instance->term = this->sch_->currentTerm;
 
@@ -174,11 +125,12 @@ void CoordinatorFpgaRaft::LeaderLearn() {
 
     /* if (prevCommitIndex < this->sch_->commitIndex) { */
     /*     auto instance = this->sch_->GetFpgaRaftInstance(this->sch_->commitIndex); */
-    /*     app_next_(instance->log_); */
+    /*     this->sch_->app_next_(*instance->log_); */
     /* } */
 
-    /* verify(phase_ == Phase::COMMIT); */
-    /* GotoNextPhase(); */
+    commo()->BroadcastDecide(par_id_, slot_id_, curr_ballot_, cmd_);
+    verify(phase_ == Phase::COMMIT);
+    GotoNextPhase();
 }
 
 void CoordinatorFpgaRaft::GotoNextPhase() {
@@ -190,7 +142,7 @@ void CoordinatorFpgaRaft::GotoNextPhase() {
       if (IsLeader()) {
         phase_++; // skip prepare phase for "leader"
         verify(phase_ % n_phase == Phase::ACCEPT);
-        Accept();
+        //Accept();
         AppendEntries();
         phase_++;
         verify(phase_ % n_phase == Phase::COMMIT);
@@ -198,21 +150,23 @@ void CoordinatorFpgaRaft::GotoNextPhase() {
         // TODO
         //verify(0);
         Forward(cmd_,commit_callback_) ;
+        phase_ = Phase::COMMIT;
       }
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        Commit();
+        //Commit();
         LeaderLearn();
       } else {
         //verify(0);
         Forward(cmd_,commit_callback_) ;
+        phase_ = Phase::COMMIT;
       }
       break;
     case Phase::PREPARE:
       verify(phase_ % n_phase == Phase::ACCEPT);
       /* Accept(); */
-      AppendEntries() ;
+      AppendEntries();
       break;
     case Phase::COMMIT:
       // do nothing.

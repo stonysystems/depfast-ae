@@ -11,8 +11,14 @@ class TxData;
 class FpgaRaftForwardQuorumEvent: public QuorumEvent {
  public:
   using QuorumEvent::QuorumEvent;
-  void FeedResponse(bool y) {
-    finished = y ;
+  uint64_t CommitIdx()
+  {
+    return cmt_idx_ ;
+  }
+  void FeedResponse(uint64_t cmt_idx) {
+    finished_ = true ;
+    VoteYes();
+    cmt_idx_ = cmt_idx ;
   }
 };
 
@@ -26,13 +32,11 @@ class FpgaRaftPrepareQuorumEvent: public QuorumEvent {
   }
   void FeedResponse(bool y) {
     if (y) {
-      n_voted_yes_++;
+      VoteYes();
     } else {
-      n_voted_no_++;
+      VoteNo();
     }
   }
-
-
 };
 
 class FpgaRaftVoteQuorumEvent: public QuorumEvent {
@@ -43,13 +47,13 @@ class FpgaRaftVoteQuorumEvent: public QuorumEvent {
   }
   void FeedResponse(bool y, ballot_t term) {
     if (y) {
-      n_voted_yes_++;
+      VoteYes();
     } else {
-      n_voted_no_++;
-        if(term > highest_term_)
-        {
-            highest_term_ = term ;
-        }      
+      VoteNo();
+      if(term > highest_term_)
+      {
+        highest_term_ = term ;
+      }      
     }
   }
 };
@@ -59,13 +63,13 @@ class FpgaRaftAcceptQuorumEvent: public QuorumEvent {
   using QuorumEvent::QuorumEvent;
   void FeedResponse(bool y) {
     if (y) {
-      n_voted_yes_++;
+      VoteYes();
     } else {
-      n_voted_no_++;
+      VoteNo();
     }
-    Log_debug("multi-paxos comm accept event, "
+    /*Log_debug("multi-paxos comm accept event, "
               "yes vote: %d, no vote: %d",
-              n_voted_yes_, n_voted_no_);
+              n_voted_yes_, n_voted_no_);*/
   }
 };
 
@@ -80,13 +84,13 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
             minIndex = std::min(minIndex, index);
 
         if (appendOK) {
-            n_voted_yes_++;
+             VoteYes();
         } else {
-            n_voted_no_++;
+             VoteNo();
         }
-        Log_debug("fpga-raft comm accept event, "
+        /*Log_debug("fpga-raft comm accept event, "
                   "yes vote: %d, no vote: %d, min index: %d",
-                  n_voted_yes_, n_voted_no_, minIndex);
+                  n_voted_yes_, n_voted_no_, minIndex);*/
     }
 };
 
@@ -154,3 +158,4 @@ class FpgaRaftCommo : public Communicator {
 };
 
 } // namespace janus
+

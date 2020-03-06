@@ -11,7 +11,7 @@ namespace janus {
 
 FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   frame_ = frame ;
-  state_ = frame_->site_info_->locale_id == 2? State::LEADER : State::FOLLOWER ;
+  is_leader_ = frame_->site_info_->locale_id == 1 ;
   stop_ = false ;
   timer_ = new Timer() ;
 }
@@ -22,33 +22,40 @@ FpgaRaftServer::~FpgaRaftServer() {
     n_commit_);
 }
 
-void FpgaRaftServer::AskToVote() {
-  // TODO need a lock yidawu
-  //std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("multi-paxos scheduler ask to vote");
-  state_ = State::CANDIDATE ;
-  currentTerm++ ;
-//  parid_t par_id = site_info_->partition_id_ ;
-  parid_t par_id = 0 ;
-  parid_t loc_id = 0 ;
-  slotid_t lst_idx = 0;
-  ballot_t lst_term = 0 ; // broadcast here
-
-  if(this->commo_ == NULL ) return ;
+void FpgaRaftServer::RequestVote() {
   
-  par_id = this->frame_->site_info_->partition_id_;
-  loc_id = this->frame_->site_info_->locale_id;
+  if(this->commo_ == NULL ) return ;
 
+  parid_t par_id = this->frame_->site_info_->partition_id_ ;
+  parid_t loc_id = this->frame_->site_info_->locale_id ;
+
+  Log_debug("fpga raft server %d ask to vote", loc_id );
+
+  uint32_t lstoff = 0  ;
+  slotid_t lst_idx = 0 ;
+  ballot_t lst_term = 0 ;
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    // TODO set fpga isleader false 
+    currentTerm++ ;
+    lstoff = lastLogIndex - snapidx_ ;
+    auto log = GetFpgaRaftInstance(lstoff) ;
+    lst_idx = log->idx;
+    lst_term = log->term ;
+  }
+  
   auto sp_quorum = ((FpgaRaftCommo *)(this->commo_))->BroadcastVote(par_id,lst_idx,lst_term,loc_id, currentTerm );
   sp_quorum->Wait();
+  std::lock_guard<std::recursive_mutex> lock1(mtx_);
   if (sp_quorum->Yes()) {
     // become a leader
-    state_ = State::LEADER ;
+    is_leader_ = true ;
     Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
   } else if (sp_quorum->No()) {
     // become a follower
     Log_debug("vote rejected %d", loc_id);
-    state_ = State::FOLLOWER ;
+    is_leader_ = false ;
     //reset cur term if new term is higher
     ballot_t new_term = sp_quorum->Term() ;
     currentTerm = new_term > currentTerm? new_term : currentTerm ;
@@ -68,95 +75,74 @@ void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
                             const function<void()> &cb) {
 
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("multi-paxos scheduler receives vote for candidate: %llx", can_id);
-  if ( frame_->site_info_->locale_id == can_id)
-  {
-    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
-    return ;  
-  } 
+  Log_debug("fpga raft receives vote from candidate: %llx", can_id);
 
   uint64_t cur_term = currentTerm ;
-
-  if( can_term <= cur_term)
+  if( can_term < cur_term)
   {
     doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
     return ;
   }
 
-  doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, true, cb) ;
-
-}
-
-
-void FpgaRaftServer::OnPrepare(slotid_t slot_id,
-                            ballot_t ballot,
-                            ballot_t *max_ballot,
-                            const function<void()> &cb) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("multi-paxos scheduler receives prepare for slot_id: %llx",
-            slot_id);
-  auto instance = GetInstance(slot_id);
-  verify(ballot != instance->max_ballot_seen_);
-  if (instance->max_ballot_seen_ < ballot) {
-    instance->max_ballot_seen_ = ballot;
-  } else {
-    // TODO if accepted anything, return;
-    verify(0);
+  // has voted to a machine in the same term, vote no
+  // TODO when to reset the vote_for_??
+  if( can_term == cur_term && vote_for_ != INVALID_PARID )
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+    return ;
   }
-  *max_ballot = instance->max_ballot_seen_;
-  n_prepare_++;
-  cb();
-}
 
-void FpgaRaftServer::OnAccept(const slotid_t slot_id,
-                           const ballot_t ballot,
-                           shared_ptr<Marshallable> &cmd,
-                           ballot_t *max_ballot,
-                           const function<void()> &cb) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
-  auto instance = GetInstance(slot_id);
-  verify(instance->max_ballot_accepted_ < ballot);
-  if (instance->max_ballot_seen_ <= ballot) {
-    instance->max_ballot_seen_ = ballot;
-    instance->max_ballot_accepted_ = ballot;
-  } else {
-    // TODO
-    verify(0);
+  // lstoff starts from 1
+  uint32_t lstoff = lastLogIndex - snapidx_ ;
+
+  ballot_t curlstterm = snapterm_ ;
+  slotid_t curlstidx = lastLogIndex ;
+
+  if(lstoff > 0 )
+  {
+    auto log = GetFpgaRaftInstance(lstoff) ;
+    curlstterm = log->term ;
+    curlstidx = log->idx ;
   }
-  *max_ballot = instance->max_ballot_seen_;
-  n_accept_++;
-  cb();
+
+  // TODO del only for test 
+  verify(lstoff == lastLogIndex ) ;
+
+  if( lst_log_term > curlstterm || (lst_log_term == curlstterm && lst_log_idx >= curlstidx) )
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, true, cb) ;
+    return ;
+  }
+
+  doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+
 }
 
 void FpgaRaftServer::StartTimer()
 {
     if(!init_ ){
         resetTimer() ;
-
         Coroutine::CreateRun([&]() {
-            //int32_t duration = 3 ;
-            //Reactor::GetReactor()->looping_ = true ;
-            int32_t duration = 2 + RandomGenerator::rand(0, 4) ;
-            auto timeout = 1*1000*1000;
+            Log_debug("start timer for election") ;
+            int32_t duration = randDuration() ;
             while(!stop_)
             {
                 if ( !IsLeader() && timer_->elapsed() > duration) {
                     Log_debug(" timer time out") ;
                     // ask to vote
-                    AskToVote() ;
-                    auto sp_e1 = Reactor::CreateSpEvent<TimeoutEvent>(timeout);
-                    while(!end_ && !stop_)
+                    RequestVote() ;
+                    auto sp_e1 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
+                    while(!end_)
                     {
-                    sp_e1->Wait() ;
+                      sp_e1->Wait(wait_int_) ;
+                      if(stop_) return ;
                     }
-
                     Log_debug("start a new timer") ;
-                    timer_->start() ;
-                    duration = 2 + RandomGenerator::rand(0, 4) ;
+                    resetTimer() ;
+                    duration = randDuration() ;
                 }
-                auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(timeout);
-                sp_e->Wait() ;
+                auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
+                sp_e2->Wait(wait_int_) ;
             } 
         });
       init_ = true ;
@@ -166,7 +152,7 @@ void FpgaRaftServer::StartTimer()
 /* NOTE: same as ReceiveAppend */
 /* NOTE: broadcast send to all of the host even to its own server 
  * should we exclude the execution of this function for leader? */
-void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
+  void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
                                      const ballot_t ballot,
                                      const uint64_t leaderCurrentTerm,
                                      const uint64_t leaderPrevLogIndex,
@@ -177,6 +163,7 @@ void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
                                      uint64_t *followerCurrentTerm,
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
+
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         StartTimer() ;
         resetTimer() ;
@@ -188,8 +175,9 @@ void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
                 (leaderPrevLogIndex <= this->lastLogIndex)
                 /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
             if (leaderCurrentTerm > this->currentTerm) {
-                this->state_ = State::FOLLOWER ;
-                this->currentTerm = leaderCurrentTerm;
+                currentTerm = leaderCurrentTerm;
+                Log_debug("server %d, set to be follower", loc_id_ ) ;
+                is_leader_ = false ;
             }
             this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
             uint64_t prevCommitIndex = this->commitIndex;
@@ -197,9 +185,9 @@ void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
             /* TODO: Replace entries after s.log[prev] w/ ents */
             /* TODO: it should have for loop for multiple entries */
             auto instance = GetFpgaRaftInstance(lastLogIndex);
-            instance->log_ = cmd;
+            instance->log_ = cmd; 
             instance->term = this->currentTerm;
-            /* TODO: execute logs */
+            //app_next_(*instance->log_); 
             verify(lastLogIndex > commitIndex);
 
             *followerAppendOK = 1;
@@ -212,53 +200,62 @@ void FpgaRaftServer::OnAppendEntries(const slotid_t slot_id,
         cb();
     }
 
-    void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd)
-    {
-        if(IsLeader())
-        {
-            Log_debug(" is leader");
-        }
-        else{
-        Log_debug(" not leader");}
-
+    void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd, 
+                                          uint64_t *cmt_idx,
+                                          const function<void()> &cb) {
         this->rep_frame_ = this->frame_ ;
 
         auto co = ((TxLogServer *)(this))->CreateRepCoord();
         ((CoordinatorFpgaRaft*)co)->Submit(cmd);
-    }
-
-
-    void FpgaRaftServer::OnCommit(const slotid_t slot_id,
-            const ballot_t ballot,
-            shared_ptr<Marshallable> &cmd) {
+        
         std::lock_guard<std::recursive_mutex> lock(mtx_);
-        Log_debug("multi-paxos scheduler decide for slot: %lx", slot_id);
-        auto instance = GetInstance(slot_id);
-        instance->committed_cmd_ = cmd;
-        if (slot_id > max_committed_slot_) {
-            max_committed_slot_ = slot_id;
-        }
-        verify(slot_id > max_executed_slot_);
-        for (slotid_t id = max_executed_slot_ + 1; id <= max_committed_slot_; id++) {
-            auto next_instance = GetInstance(id);
-            if (next_instance->committed_cmd_) {
-                app_next_(*next_instance->committed_cmd_);
-                Log_debug("multi-paxos par:%d loc:%d executed slot %lx now", partition_id_, loc_id_, id);
-                max_executed_slot_++;
-                n_commit_++;
-            } else {
-                break;
-            }
+        *cmt_idx = ((CoordinatorFpgaRaft*)co)->cmt_idx_ ;
+        if(IsLeader() || *cmt_idx == 0 )
+        {
+          Log_debug(" is leader");
+          *cmt_idx = this->commitIndex ;
         }
 
-        // TODO should support snapshot for freeing memory.
-        // for now just free anything 1000 slots before.
-        int i = min_active_slot_;
-        while (i + 1000 < max_executed_slot_) {
-            logs_.erase(i);
-            i++;
-        }
-        min_active_slot_ = i;
+        verify(*cmt_idx != 0) ;
+        cb() ;        
     }
+
+  void FpgaRaftServer::OnCommit(const slotid_t slot_id,
+                              const ballot_t ballot,
+                              shared_ptr<Marshallable> &cmd) {
+    std::lock_guard<std::recursive_mutex> lock(mtx_);                              
+    /* verify(slot_id > max_executed_slot_); */
+    for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
+        auto next_instance = GetFpgaRaftInstance(id);
+        if (next_instance->log_) {
+            app_next_(*next_instance->log_);
+            Log_debug("fpga-raft par:%d loc:%d executed slot %lx now", partition_id_, loc_id_, id);
+            executeIndex++;
+        } else {
+            break;
+        }
+    }
+  }
+  void FpgaRaftServer::SpCommit(const uint64_t cmt_idx) {
+      std::lock_guard<std::recursive_mutex> lock(mtx_);
+      Log_debug("fpga raft spcommit for index: %lx for server %d", cmt_idx, loc_id_);
+      verify(cmt_idx != 0 ) ;
+      if (cmt_idx < commitIndex) {
+          return ;
+      }
+
+      commitIndex = cmt_idx;
+
+      for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
+          auto next_instance = GetFpgaRaftInstance(id);
+          if (next_instance->log_) {
+              app_next_(*next_instance->log_);
+              Log_debug("fpga-raft par:%d loc:%d executed slot %lx now", partition_id_, loc_id_, id);
+              executeIndex++;
+          } else {
+              break;
+          }
+      }
+  }
 
 } // namespace janus

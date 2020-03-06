@@ -68,22 +68,21 @@ Coordinator *FpgaRaftFrame::CreateCoordinator(cooid_t coo_id,
   coo->n_replica_ = config->GetPartitionSize(site_info_->partition_id_);
   coo->loc_id_ = this->site_info_->locale_id;
   verify(coo->n_replica_ != 0); // TODO
-  Log_debug("create new multi-paxos coord, coo_id: %d", (int) coo->coo_id_);
+  Log_debug("create new fpga raft coord, coo_id: %d", (int) coo->coo_id_);
   return coo;
 }
 
 TxLogServer *FpgaRaftFrame::CreateScheduler() {
-  /* TxLogServer *sch = nullptr; */
-  FpgaRaftServer *sch = nullptr;
-  sch = new FpgaRaftServer(this);
-  //sch->Init(this) ;
-  //sch->frame_ = this;
-
-  //sch->state_ = (this->site_info_->locale_id == 0);
-  /* TODO: remove when have a class for common data */
-  this->sch_ = sch;
-  Log_debug("create new multi-paxos sched loc: %d", this->site_info_->locale_id);
-  return sch;
+  if(sch_ == nullptr)
+  {
+    sch_ = new FpgaRaftServer(this);
+  }
+  else
+  {
+    verify(0) ;
+  }
+  Log_debug("create new fpga raft sched loc: %d", this->site_info_->locale_id);
+  return sch_ ;
 }
 
 Communicator *FpgaRaftFrame::CreateCommo(PollMgr *poll) {
