@@ -16,7 +16,7 @@ namespace janus {
 
 shared_ptr<Tx> TxLogServer::CreateTx(epoch_t epoch, txnid_t tid, bool
 read_only) {
-  Log_info("create tid %ld", tid);
+  Log_debug("create tid %ld", tid);
   verify(dtxns_.find(tid) == dtxns_.end());
   if (epoch == 0) {
     epoch = epoch_mgr_.curr_epoch_;
@@ -41,11 +41,10 @@ read_only) {
 }
 
 shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
-  Log_info("create tid %" PRIx64, tx_id);
+  Log_debug("create tid %" PRIx64, tx_id);
   verify(dtxns_.find(tx_id) == dtxns_.end());
   auto dtxn = frame_->CreateTx(epoch_mgr_.curr_epoch_, tx_id, ro, this);
   if (dtxn != nullptr) {
-    Log_info("not null");
     dtxns_[tx_id] = dtxn;
     dtxn->recorder_ = this->recorder_;
     verify(txn_reg_);
@@ -64,16 +63,16 @@ shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
 }
 
 shared_ptr<Tx> TxLogServer::GetOrCreateTx(txnid_t tid, bool ro) {
-  Log_info("The current server is %d", site_id_);
+  //Log_info("The current server is %d", site_id_);
   shared_ptr<Tx> ret = nullptr;
   auto it = dtxns_.find(tid);
   if (it == dtxns_.end()) {
     ret = CreateTx(tid, ro);
   } else {
-    Log_info("found");
+    //Log_info("found");
     ret = it->second;
   }
-  Log_info("Tx is %ld", tid);
+  //Log_info("Tx is %ld", tid);
   verify(ret != nullptr);
   verify(ret->tid_ == tid);
   return ret;

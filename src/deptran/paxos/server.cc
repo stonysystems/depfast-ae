@@ -64,8 +64,6 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
   Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
 
   auto instance = GetInstance(slot_id);
-  Log_info("Accepted vs ballot: %d vs %d", instance->max_ballot_accepted_, ballot);
-  
   
   //TODO: might need to optimize this. we can vote yes on duplicates at least for now
   //verify(instance->max_ballot_accepted_ < ballot);

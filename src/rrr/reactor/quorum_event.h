@@ -12,6 +12,8 @@ using std::vector;
 using std::unordered_map;
 using std::unordered_set;
 
+#define logging 0
+
 namespace janus {
 
 class QuorumEvent : public Event {
@@ -85,21 +87,23 @@ class QuorumEvent : public Event {
   }*/
 
   void log(){
-    std::ofstream of(log_file, std::fstream::app);
-    //of << "hello\n";
-    //if(coro_id_ == -1) return;
+    if(logging){
+      std::ofstream of(log_file, std::fstream::app);
+      //of << "hello\n";
+      //if(coro_id_ == -1) return;
     
-    // Maybe this part can be more efficient
-    for(auto it = deps.begin(); it != deps.end(); it++){
-      for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
-        for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
-          for(auto it4 = it3->second.begin(); it4 != it3->second.end(); it4++){
-            of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << ", " << id_ << ": " << quorum_ << "/" << n_total_ << " }\n";
+      // Maybe this part can be more efficient
+      for(auto it = deps.begin(); it != deps.end(); it++){
+        for(auto it2 = it->second.begin(); it2 != it->second.end(); it2++){
+          for(auto it3 = it2->second.begin(); it3 != it2->second.end(); it3++){
+            for(auto it4 = it3->second.begin(); it4 != it3->second.end(); it4++){
+              of << "{ " << it->first << ", " << it2->first << ", " << it3->first << ", " << *it4 << ", " << id_ << ": " << quorum_ << "/" << n_total_ << " }\n";
+            }
           }
         }
       }
+      of.close();
     }
-    of.close();
   }
 
   bool Yes() {
@@ -191,8 +195,8 @@ class QuorumEvent : public Event {
       return true;
     }
     if (Yes()) {
-      Log_info("voted: %d is equal or greater than quorum: %d",
-                (int)n_voted_yes_, (int) quorum_);
+//      Log_info("voted: %d is equal or greater than quorum: %d",
+//                (int)n_voted_yes_, (int) quorum_);
       return true;
     } else if (No()) {
       return true;

@@ -52,7 +52,7 @@ void MultiPaxosServiceImpl::Accept(const uint64_t& slot,
                      std::bind(&rrr::DeferredReply::reply, defer));
 
   });
-  Log_info("coro id on service side: %d", coro->id);
+  //Log_info("coro id on service side: %d", coro->id);
 }
 
 void MultiPaxosServiceImpl::Decide(const uint64_t& slot,
