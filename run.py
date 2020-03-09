@@ -647,15 +647,15 @@ class ServerController(object):
 
         if (taskset == 1):
             # set task on CPU 1
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 16)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 16)
             logger.info("Setting servers on CPU 1")
         elif (taskset == 2):
             # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 1)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 1)
             logger.info("Setting servers on CPU 0, odd number cores")
         elif (taskset == 3):
             # set task on CPU 0, even number cores, overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x)
             logger.info("Setting servers on CPU 0, even number cores")
         else:
             self.taskset_func = lambda x: ""
@@ -928,7 +928,7 @@ def create_parser():
                  "1: CPU 1; "
                  "2: CPU 0, odd cores; "
                  "3: CPU 0, even cores;",
-            default=0, action="store", metavar="[0|1|2|3]")
+            default=2, action="store", metavar="[0|1|2|3]")
 
     parser.add_argument("-c", "--client-taskset", dest="c_taskset",
             help="taskset client processes round robin", default=False,

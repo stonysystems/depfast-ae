@@ -86,7 +86,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
   verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
-  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
+//  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
@@ -123,7 +123,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
   }
-  Log_info("End of dispatch");
+  //Log_info("End of dispatch");
   return ret;
 }
 
@@ -138,7 +138,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
                                  const uint64_t& dep_id) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
-  Log_info("%s: at site %d, tx: %"
+  Log_debug("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
   if (Config::GetConfig()->IsReplicated()) {
     auto sp_prepare_cmd = std::make_shared<TpcPrepareCommand>();
@@ -146,7 +146,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
-    Log_info("This is dep_id: %d", dep_id);
+    //Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
     auto coo = CreateRepCoord(dep_id);
@@ -202,9 +202,9 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
     cmd->ret_ = commit_or_abort;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
-    Log_info("This is dep_id: %d", dep_id);
+    //Log_info("This is dep_id: %d", dep_id);
     CreateRepCoord(dep_id)->Submit(sp_m);
-    Log_info("Before failing verify");
+    //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
   } else {
     if (commit_or_abort == SUCCESS) {
