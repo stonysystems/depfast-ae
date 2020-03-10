@@ -461,6 +461,7 @@ class ClientController(object):
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
+                    #logger.debug("Do nothing after failed client heartbeat")
             i=0
             for future in futures:
                 res = future.result
@@ -508,8 +509,10 @@ class ClientController(object):
             self.cur_time = time.time()
             need_break = self.print_stage_result(do_sample, do_sample_lock)
             if (need_break):
+                logger.debug('needing break')
                 break
             else:
+                logger.debug('sleeping')
                 time.sleep(self.timeout)
 
     def print_stage_result(self, do_sample, do_sample_lock):
@@ -530,8 +533,8 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 25
-        upper_cutoff_pct = 75
+        lower_cutoff_pct = 15
+        upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
@@ -640,6 +643,7 @@ class ServerController(object):
         self.timeout = config['args'].s_timeout
         self.log_dir = config['args'].log_dir
         taskset = config['args'].s_taskset
+        self.slow_node = config['args'].slow_node
         self.recording_path = config['args'].recording_path
         self.process_infos = process_infos
         self.rpc_proxy = dict()
@@ -757,12 +761,13 @@ class ServerController(object):
 
                 try:
                     for site in sites:
-#                        logger.debug("ping %s", site.name)
+                        logger.debug("ping %s", site.name)
                         if do_statistics:
                             futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
                         else:
                             futures.append(site.rpc_proxy.async_server_heart_beat())
                 except:
+                    logger.fatal(traceback.format_exc())
                     logger.fatal("server heart beat failure")
                     break
 
@@ -840,10 +845,16 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
-               " ./build/deptran_server " + \
-               "-b " + \
-               "-d " + str(self.config['args'].c_duration) + " "
+        if process.name == self.slow_node:
+            s = "nohup cgexec -g cpu:mongodb " + self.taskset_func(host_process_counts[process.host_address]) + \
+                    " ./build/deptran_server " + \
+                    "-b " + \
+                    "-d " + str(self.config['args'].c_duration) + " "
+        else:
+            s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+                   " ./build/deptran_server " + \
+                   "-b " + \
+                   "-d " + str(self.config['args'].c_duration) + " "
 
         for fn in self.config['args'].config_files:
             s += "-f '" + fn + "' "
@@ -948,6 +959,10 @@ def create_parser():
     parser.add_argument("-H", "--hosts", dest="hosts_path",
             help="hosts path", default="./config/hosts-local",
             metavar="HOSTS_PATH")
+
+    parser.add_argument("-sl", "--slow-node", dest="slow_node",
+            help = "which node to slow down", default="p0000",
+            metavar="SLOW_NODE")
     logger.debug(parser)
     return parser
 
