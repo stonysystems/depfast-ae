@@ -326,7 +326,7 @@ ClientPool::ClientPool(PollMgr* pollmgr /* =? */,
 ClientPool::~ClientPool() {
   for (auto& it : cache_) {
     for (int i = 0; i < parallel_connections_; i++) {
-      Log_info("CLOSING CONNECTIONS")
+      Log_info("CLOSING CONNECTIONS");
       it.second[i]->close_and_release();
     }
     delete[] it.second;
