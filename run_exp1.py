@@ -380,6 +380,7 @@ class ClientController(object):
         self.n_asking = 0
         self.max_tps = 0
 
+        self.once = False
         self.recording_period = False
         self.print_max = False
 
@@ -536,6 +537,28 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
+            if (progress <= lower_cutoff_pct and not self.once):
+                try:
+                    stdout = subprocess.check_output('ss -tulpn | grep 0.0.0.0:8001',
+                                                     stderr=subprocess.STDOUT,
+                                                     shell=True,
+                                                     timeout=10)
+                    self.once = True
+                    stdout = stdout.decode()
+                    pid_split = stdout.split('pid=')[1]
+                    pid = pid_split.split(',')[0]
+
+                    #cmd = ['echo', apid, 
+                    stdout2 = subprocess.check_output('echo ' + pid + ' | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs',
+                                                      stderr=subprocess.STDOUT,
+                                                      shell=True,
+                                                      timeout=10)
+                    logger.debug('successfully added process to cgroup?: {0}, {1}'.format(stdout2.decode(), pid))
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
                 self.recording_period = True

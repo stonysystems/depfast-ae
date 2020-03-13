@@ -94,7 +94,7 @@ void Client::invalidate_pending_futures() {
 }
 
 void Client::close() {
-  Log_info("CLOSING");
+  //Log_info("CLOSING");
   if (status_ == CONNECTED) {
     pollmgr_->remove(shared_from_this());
     ::close(sock_);
@@ -262,7 +262,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   out_l_.lock();
 
   if (status_ != CONNECTED) {
-    Log_info("NOT CONNECTED");
+    //Log_info("NOT CONNECTED");
     return nullptr;
   }
 
@@ -281,7 +281,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
     }
     pending_fu_l_.unlock();
 
-    Log_info("NOT CONNECTED 2");
+    //Log_info("NOT CONNECTED 2");
     return nullptr;
   }
 
@@ -290,7 +290,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   *this << v64(fu->xid_);
   *this << rpc_id;
 
-  Log_info("EXITING begin_request");
+  //Log_info("EXITING begin_request");
   // one ref is already in pending_fu_
   return (Future*) fu->ref_copy();
 }
