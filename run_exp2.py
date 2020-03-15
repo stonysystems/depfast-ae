@@ -387,6 +387,7 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
+        self.pid2 = 0
         self.once = False
         self.recording_period = False
         self.print_max = False
@@ -556,11 +557,23 @@ class ClientController(object):
                     self.pid = pid_split.split(',')[0]
 
                     #cmd = ['echo', apid, 
-                    stdout2 = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs',
+                    stdout2 = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs',
                                                       stderr=subprocess.STDOUT,
                                                       shell=True,
                                                       timeout=10)
                     logger.debug('successfully added process to cgroup?: {0}, {1}'.format(stdout2.decode(), self.pid))
+
+                    stdout3 = subprocess.check_output('ps -aF | grep ./inf',
+                                                      stderr=subprocess.STDOUT,
+                                                      shell=True,
+                                                      timeout=True)
+                    stdout3 = stdout3.decode()
+                    self.pid2 = stdout3.split()[1]
+                    stdout4 = subprocess.check_output('echo ' + self.pid2 + ' | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs',
+                                                      stderr=subprocess.STDOUT,
+                                                      shell=True,
+                                                      timeout=10)
+                    logger.debug('successfully added deadloop to cgroup?: {0}, {1}.'.format(stdout4.decode(), self.pid2))
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
