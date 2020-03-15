@@ -295,18 +295,22 @@ class TxnInfo(object):
         if len(self.mid_latencies)>0:
             self.data['latency']['min'] = self.mid_latencies[0]
             self.data['latency']['max'] = self.mid_latencies[len(self.mid_latencies)-1]
+            self.data['latency']['avg'] = sum(self.mid_latencies)/len(self.mid_latencies)
         else:
             self.data['latency']['min'] = NO_VALUE
             self.data['latency']['max'] = NO_VALUE
+            self.data['latency']['avg'] = NO_VALUE
 
         self.data['all_latency'] = {}
         self.data['all_latency'].update(all_latencies)
         if len(self.mid_all_latencies)>0:
             self.data['all_latency']['min'] = self.mid_all_latencies[0]
             self.data['all_latency']['max'] = self.mid_all_latencies[len(self.mid_all_latencies)-1]
+            self.data['all_latency']['avg'] = sum(self.mid_all_latencies)/len(self.mid_all_latencies)
         else:
             self.data['all_latency']['min'] = NO_VALUE
             self.data['all_latency']['max'] = NO_VALUE
+            self.data['all_latency']['avg'] = NO_VALUE
 
         self.data['att_latency'] = {}
         self.data['att_latency'].update(att_latencies)
@@ -315,9 +319,11 @@ class TxnInfo(object):
             self.data['att_latency']['max'] = self.mid_attempt_latencies[
                 len(self.mid_attempt_latencies)-1
             ]
+            self.data['att_latency']['avg'] = sum(self.mid_attempt_latencies)/len(self.mid_attempt_latencies)
         else:
             self.data['att_latency']['min'] = NO_VALUE
             self.data['att_latency']['max'] = NO_VALUE
+            self.data['att_latency']['avg'] = NO_VALUE
 
         logger.info("\n__Data__\n{}\n__EndData__\n".format(yaml.dump(self.data)))
 
@@ -532,7 +538,7 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 15
+        lower_cutoff_pct = 10
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
