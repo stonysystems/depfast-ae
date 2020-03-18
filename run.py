@@ -937,7 +937,7 @@ def create_parser():
                  "1: CPU 1; "
                  "2: CPU 0, odd cores; "
                  "3: CPU 0, even cores;",
-            default=2, action="store", metavar="[0|1|2|3]")
+            default=0, action="store", metavar="[0|1|2|3]")
 
     parser.add_argument("-c", "--client-taskset", dest="c_taskset",
             help="taskset client processes round robin", default=False,
