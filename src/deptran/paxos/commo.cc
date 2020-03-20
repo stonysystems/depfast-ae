@@ -97,6 +97,8 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
   auto leader_id = LeaderProxyForPartition(par_id).first; // might need to be changed to coordinator's id
   vector<Future*> fus;
+  auto start = chrono::steady_clock::now();
+  auto start_ = chrono::duration_cast<chrono::microseconds>(start.time_since_epoch()).count();
   WAN_WAIT;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
@@ -112,7 +114,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
       e->deps[leader_id][src_coroid][follower_id].insert(coro_id); 
     };
     MarshallDeputy md(cmd);
-    auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);
+    auto f = proxy->async_Accept(slot_id, start_, ballot, md, fuattr);
     Future::safe_release(f);
   }
   return e;
@@ -132,7 +134,8 @@ void MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = cb;
     MarshallDeputy md(cmd);
-    auto f = proxy->async_Accept(slot_id, ballot, md, fuattr);
+    uint64_t time = 0; // compiles the code
+    auto f = proxy->async_Accept(slot_id, time,ballot, md, fuattr);
     Future::safe_release(f);
   }
 //  verify(0);

@@ -6,6 +6,7 @@
 #include "../classic/tpc_command.h"
 #include "../classic/tx.h"
 #include "coordinator.h"
+#include <chrono>
 
 namespace janus {
 class Command;
@@ -54,6 +55,7 @@ class PaxosServer : public TxLogServer {
                  const function<void()> &cb);
 
   void OnAccept(const slotid_t slot_id,
+		const uint64_t time,
                 const ballot_t ballot,
                 shared_ptr<Marshallable> &cmd,
                 ballot_t *max_ballot,
