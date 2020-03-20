@@ -6,6 +6,7 @@
 //#include <fstream>
 #include <iostream>
 #include "event.h"
+#include <chrono>
 
 using rrr::Event;
 using std::vector;
@@ -26,6 +27,7 @@ class QuorumEvent : public Event {
   uint64_t coro_id_ = -1;
   int64_t par_id_ = -1;
   uint64_t id_ = -1;
+  std::chrono::steady_clock::time_point ready_time;
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
 
@@ -197,6 +199,7 @@ class QuorumEvent : public Event {
     if (Yes()) {
 //      Log_info("voted: %d is equal or greater than quorum: %d",
 //                (int)n_voted_yes_, (int) quorum_);
+      ready_time = std::chrono::steady_clock::now();
       return true;
     } else if (No()) {
       return true;

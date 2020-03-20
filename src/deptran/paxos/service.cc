@@ -37,6 +37,7 @@ void MultiPaxosServiceImpl::Prepare(const uint64_t& slot,
 }
 
 void MultiPaxosServiceImpl::Accept(const uint64_t& slot,
+		                   const uint64_t& time,
                                    const ballot_t& ballot,
                                    const MarshallDeputy& md_cmd,
                                    ballot_t* max_ballot,
@@ -45,6 +46,7 @@ void MultiPaxosServiceImpl::Accept(const uint64_t& slot,
   verify(sched_ != nullptr);
   auto coro = Coroutine::CreateRun([&] () {
     sched_->OnAccept(slot,
+		     time,
                      ballot,
                      const_cast<MarshallDeputy&>(md_cmd).sp_data_,
                      max_ballot,

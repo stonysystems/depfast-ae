@@ -8,6 +8,7 @@
 #include "deptran/procedure.h"
 #include "../command_marshaler.h"
 #include "../rcc_rpc.h"
+#include <chrono>
 
 class SimpleCommand;
 namespace janus {
@@ -30,6 +31,7 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
                rrr::DeferredReply* defer) override;
 
   void Accept(const uint64_t& slot,
+	      const uint64_t& time,
               const ballot_t& ballot,
               const MarshallDeputy& cmd,
               ballot_t* max_ballot,

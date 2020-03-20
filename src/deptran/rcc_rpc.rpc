@@ -12,6 +12,7 @@ abstract service MultiPaxos {
                 uint64_t coro_id);
 
   defer Accept(uint64_t slot,
+               uint64_t time,
                ballot_t ballot,
                MarshallDeputy cmd |
                ballot_t max_ballot,

@@ -55,12 +55,16 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
 }
 
 void PaxosServer::OnAccept(const slotid_t slot_id,
+		           const uint64_t time,
                            const ballot_t ballot,
                            shared_ptr<Marshallable> &cmd,
                            ballot_t *max_ballot,
                            uint64_t* coro_id,
                            const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  auto start = chrono::steady_clock::now();
+  auto start_ = chrono::duration_cast<chrono::microseconds>(start.time_since_epoch()).count();
+  Log_info("Duration of RPC is: %d", start_-time);
   Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
 
   auto instance = GetInstance(slot_id);
@@ -75,6 +79,10 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
     // TODO
     verify(0);
   }
+
+  auto end = chrono::steady_clock::now();
+  auto duration = chrono::duration_cast<chrono::microseconds>(end-start);
+  Log_info("Duration of Accept() at Follower's side is: %d", duration.count());
   *coro_id = Coroutine::CurrentCoroutine()->id;
   *max_ballot = instance->max_ballot_seen_;
   n_accept_++;
