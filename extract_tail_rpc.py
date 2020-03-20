@@ -1,7 +1,7 @@
 import math
 
 durations = []
-with open('proc-p1-fast.log') as f:
+with open('../fast1_a/log/proc-host3.log') as f:
     for line in f:
         if 'Duration of RPC' in line:
             durations.append(int(line.split(': ')[1]))
@@ -13,7 +13,7 @@ print(durations[index])
 
 
 durations2 = []
-with open('proc-p1-slow.log') as f:
+with open('../slow1_a/log/proc-host3.log') as f:
     for line in f:
         if 'Duration of RPC' in line:
             durations2.append(int(line.split(': ')[1]))

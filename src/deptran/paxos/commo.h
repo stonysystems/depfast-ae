@@ -4,6 +4,7 @@
 #include "../constants.h"
 #include "../communicator.h"
 #include <chrono>
+#include <ctime>
 
 namespace janus {
 

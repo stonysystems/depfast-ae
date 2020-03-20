@@ -98,8 +98,19 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
   auto leader_id = LeaderProxyForPartition(par_id).first; // might need to be changed to coordinator's id
   vector<Future*> fus;
-  auto start = chrono::steady_clock::now();
-  auto start_ = chrono::duration_cast<chrono::microseconds>(start.time_since_epoch()).count();
+  auto start = chrono::system_clock::now();
+
+  time_t tstart = chrono::system_clock::to_time_t(start);
+  tm * date = localtime(&tstart);
+  date->tm_hour = 0;
+  date->tm_min = 0;
+  date->tm_sec = 0;
+  auto midn = std::chrono::system_clock::from_time_t(std::mktime(date));
+
+  auto hours = chrono::duration_cast<chrono::hours>(start-midn);
+  auto minutes = chrono::duration_cast<chrono::minutes>(start-midn);
+
+  auto start_ = chrono::duration_cast<chrono::microseconds>(start-midn-hours-minutes).count();
   WAN_WAIT;
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;

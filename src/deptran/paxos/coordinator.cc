@@ -127,13 +127,12 @@ void CoordinatorMultiPaxos::Accept() {
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
   sp_quorum->id_ = dep_id_;
   Log_info("Accept(): %d", dep_id_);
-  
-  auto start = chrono::steady_clock::now();
-  Log_info("Time before Wait() is: %lu", chrono::duration_cast<chrono::microseconds>(start.time_since_epoch()).count());
+
+  auto start = chrono::system_clock::now();
   sp_quorum->Wait();
-  auto end = chrono::steady_clock::now();
+  auto end = chrono::system_clock::now();
   auto duration = chrono::duration_cast<chrono::microseconds>(end-start);
-  auto duration_ready = chrono::duration_cast<chrono::microseconds>(end-sp_quorum->ready_time);
+  //auto duration_ready = chrono::duration_cast<chrono::microseconds>(end-sp_quorum->ready_time);
   Log_info("Duration of Wait() in Accept() is: %d", duration.count());
   //Log_info("Duration after Ready to end of Wait() is: %d", duration_ready.count());
   sp_quorum->log();
