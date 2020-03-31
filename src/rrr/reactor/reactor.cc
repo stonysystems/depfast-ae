@@ -263,8 +263,6 @@ void PollMgr::PollThread::poll_loop() {
 
     while(pause_flag_ && !stop_flag_ )
     {
-        //auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(1000*1000);
-        //sp_e2->Wait(1000*1000) ;
         sleep(1) ;
     }
     

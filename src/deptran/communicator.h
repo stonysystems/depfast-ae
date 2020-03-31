@@ -121,7 +121,7 @@ class Communicator {
   void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
-  shared_ptr<IntEvent> SendPrepare(parid_t gid,
+  void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
                    const std::function<void(int)> &callback) ;

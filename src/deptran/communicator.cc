@@ -111,7 +111,6 @@ Communicator::LeaderProxyForPartition(parid_t par_id) const {
       Log_fatal("could not find leader for partition %d", par_id);
     } else {
       // leader_cache[par_id] = *proxy_it;
-      //SetLeaderCache(par_id, *proxy_it) ;
       Log_debug("leader site for parition %d is %d", par_id, proxy_it->first);
     }
     verify(proxy_it->second != nullptr);
@@ -239,32 +238,6 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
-shared_ptr<IntEvent> Communicator::SendPrepare(groupid_t gid,
-                               txnid_t tid,
-                               std::vector<int32_t>& sids,
-                               const function<void(int)>& callback) {
-  FutureAttr fuattr;
-  auto e = Reactor::CreateSpEvent<IntEvent>();
-  std::function<void(Future*)> cb =
-      [this, callback, e](Future* fu) {
-        int res;
-        fu->get_reply() >> res;
-        if(e->Set(1) == -1) return ;
-        callback(res);
-      };
-  fuattr.callback = cb;
-  auto proxy_pair = LeaderProxyForPartition(gid);
-  ClassicProxy* proxy = proxy_pair.second;
-  SetLeaderCache(gid, proxy_pair) ;
-  Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
-            sids.size(),
-            gid,
-            tid);
-  Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
-  return e ;
-}
-
-/*
 void Communicator::SendPrepare(groupid_t gid,
                                txnid_t tid,
                                std::vector<int32_t>& sids,
@@ -277,15 +250,13 @@ void Communicator::SendPrepare(groupid_t gid,
         callback(res);
       };
   fuattr.callback = cb;
-  auto proxy_pair = LeaderProxyForPartition(gid);
-  ClassicProxy* proxy = proxy_pair.second;
-  SetLeaderCache(gid, proxy_pair) ;
+  ClassicProxy* proxy = LeaderProxyForPartition(gid).second;
   Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
             sids.size(),
             gid,
             tid);
   Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
-}*/
+}
 
 void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   auto value = std::make_pair(pid, tid);

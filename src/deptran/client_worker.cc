@@ -314,18 +314,9 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
       {
         auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(500*1000);
         sp_e->Wait(500*1000) ;
-        // Log_debug("coo id %d in n_pause_concurrent wait2", coo->coo_id_) ;
       }
 
     }
-    /*if (*failover_server_idx_ == cur_leader_ )
-    {
-      // if the server to be paused is the current leader
-      // we will search for a new leader
-      // client will resume after a new leader has been elected
-      // we assume the leadership won't be changed if no pause happens
-      SearchLeader(coo) ;
-    }*/
     n_pause_concurrent_[coo->coo_id_] = false ;
     Log_debug("client worker end dispatch request pause: %d with cur leader %d", 
     coo->coo_id_, cur_leader_) ;
