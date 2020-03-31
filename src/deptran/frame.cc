@@ -330,7 +330,7 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
     case MODE_NONE:
     case MODE_NOTX:
     default:
-      sp_tx.reset(new Tx2pl(epoch, tid, mgr));
+      sp_tx.reset(new TxClassic(epoch, tid, mgr));
       break;
   }
   return sp_tx;
