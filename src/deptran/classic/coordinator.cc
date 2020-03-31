@@ -439,21 +439,23 @@ void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {
 }
 
 void CoordinatorClassic::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+    locid_t prev_pause_srv = *cur_pause ;
 retry:
-    Log_debug("start setting a new leader from %d", *cur_pause );
-    auto e = commo()->BroadcastGetLeader(par_id, *cur_pause); 
+    Log_debug("start setting a new leader from %d", prev_pause_srv );
+    auto e = commo()->BroadcastGetLeader(par_id, prev_pause_srv); 
     e->Wait() ;
     if (e->Yes()) {
       // assign new leader
       Log_debug("set a new leader %d", e->leader_id_ );
       commo()->SetNewLeaderProxy(par_id, e->leader_id_) ;
-      if ( *cur_pause != e->leader_id_ )
+      if ( prev_pause_srv != e->leader_id_ )
       {
         *cur_pause = e->leader_id_ ;
       }
     } else if (e->No()) {
-        usleep(300 * 1000) ;  // 300 ms
-        Log_debug("retry get new leader");
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+        sp_e->Wait(300*1000) ;
+        //usleep(300 * 1000) ;  // 300 ms
         goto retry ;
     } else {
         verify(0);

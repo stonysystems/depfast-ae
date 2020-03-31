@@ -260,26 +260,40 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
 
 void ClientWorker::DispatchRequest(Coordinator* coo) {
 
-  if(*failover_trigger_) 
+  if(*failover_trigger_ || failover_trigger_loc) 
   {
     if(coo->offset_ == 0)
     {
       failover_wait_leader_ = true ;
     }
     n_pause_concurrent_[coo->coo_id_] = true ;
-    
-    for(auto it =n_pause_concurrent_.begin(); it!=n_pause_concurrent_.end();it++ )
+   
+    if(coo->offset_ == 0 )
     {
-      while(!it->second) 
-      {
-        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(1000*1000);
-        sp_e->Wait(1000*1000) ;
-      }
+        failover_pause_start = false ; 
+        for(auto it =n_pause_concurrent_.begin(); it!=n_pause_concurrent_.end();it++ )
+        {
+            while(!it->second) 
+            {
+                auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+                sp_e->Wait(300*1000) ;
+            }
+        }
+        failover_pause_start = true ; 
     }
+    else
+    {
+        while(!failover_pause_start) { 
+            auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+            sp_e->Wait(300*1000) ;
+        }
+    }
+
     Log_debug("client worker start dispatch request pause: %d with cur leader %d", 
     coo->coo_id_, cur_leader_) ;
     if(coo->offset_ == 0)
     {
+      failover_trigger_loc = true ;
       *failover_trigger_ = false ;
     }
     while(!*failover_trigger_){
@@ -290,15 +304,17 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     {
       *failover_trigger_ = false ;
       SearchLeader(coo) ;
+      failover_trigger_loc = false ;
+      failover_pause_start = false ; 
       failover_wait_leader_ = false ;
     }
     else
     {
       while(failover_wait_leader_ && !*failover_server_quit_) 
       {
-        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(100*1000);
-        sp_e->Wait(100*1000) ;
-        Log_debug("coo id %d in n_pause_concurrent wait2", coo->coo_id_) ;
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(500*1000);
+        sp_e->Wait(500*1000) ;
+        // Log_debug("coo id %d in n_pause_concurrent wait2", coo->coo_id_) ;
       }
 
     }

@@ -52,6 +52,8 @@ class ClientWorker {
   volatile locid_t* failover_server_idx_ ;
   locid_t cur_leader_{0} ; // init leader is 0
   bool failover_wait_leader_{false} ;
+  bool failover_trigger_loc{false} ;
+  bool failover_pause_start{false} ;
  public:
   ClientWorker(uint32_t id,
                Config::SiteInfo &site_info,
