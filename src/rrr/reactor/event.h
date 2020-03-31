@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <mutex>
 #include "../base/all.hpp"
 
 namespace rrr {
@@ -85,6 +86,12 @@ class IntEvent : public Event {
   }
 
   int Set(int n) {
+    // TODO temp solution YIDAWU
+    //std::lock_guard<std::recursive_mutex> lock(mtx_);
+    if(status_ == TIMEOUT)
+    {
+        return -1 ;
+    }
     int t = value_;
     value_ = n;
 //    TestTrigger();

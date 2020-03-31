@@ -30,6 +30,7 @@ class Coordinator {
   uint32_t n_start_ = 0;
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
+  uint32_t offset_;
   parid_t par_id_ = -1;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;
@@ -127,6 +128,7 @@ class Coordinator {
   }
 
   virtual void DoTxAsync(TxRequest &) = 0;
+  virtual void SetNewLeader(parid_t,volatile locid_t*) { verify(0); } ;
   virtual void Submit(shared_ptr<Marshallable>& cmd,
                       const std::function<void()>& commit_callback = [](){},
                       const std::function<void()>& exe_callback = [](){}) {

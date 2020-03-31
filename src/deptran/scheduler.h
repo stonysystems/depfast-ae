@@ -156,6 +156,11 @@ class TxLogServer {
 
   virtual void Next(Marshallable& cmd) { verify(0); };
 
+  virtual bool IsLeader() { verify(0); } ;
+
+  virtual void Pause() { verify(0); } ;
+  virtual void Resume() { verify(0); } ;
+
   // epoch related functions
   void TriggerUpgradeEpoch();
   void UpgradeEpochAck(parid_t par_id, siteid_t site_id, int res);

@@ -43,6 +43,10 @@ class ClassicServiceImpl : public ClassicService {
                 TxnOutput* output,
                 DeferredReply* defer_reply) override;
 
+  void IsLeader(const parid_t& can_id,
+                 bool_t* is_leader,
+                 DeferredReply* defer_reply) override ;
+
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
                i32* res,

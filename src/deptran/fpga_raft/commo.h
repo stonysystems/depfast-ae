@@ -16,7 +16,6 @@ class FpgaRaftForwardQuorumEvent: public QuorumEvent {
     return cmt_idx_ ;
   }
   void FeedResponse(uint64_t cmt_idx) {
-    finished_ = true ;
     VoteYes();
     cmt_idx_ = cmt_idx ;
   }
@@ -78,12 +77,12 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
     uint64_t minIndex;
     using QuorumEvent::QuorumEvent;
     void FeedResponse(bool appendOK, uint64_t index) {
-        if ((n_voted_yes_ == 0) && (n_voted_no_ == 0))
-            minIndex = index;
-        else
-            minIndex = std::min(minIndex, index);
-
         if (appendOK) {
+            if ((n_voted_yes_ == 0) && (n_voted_no_ == 0))
+                minIndex = index;
+            else
+                minIndex = std::min(minIndex, index);
+
              VoteYes();
         } else {
              VoteNo();

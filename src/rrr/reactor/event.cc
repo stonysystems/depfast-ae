@@ -62,7 +62,6 @@ void Event::Wait(uint64_t timeout) {
 //    if (status_ == TIMEOUT) {
 //      verify(0);
 //    }
-
   }
 }
 

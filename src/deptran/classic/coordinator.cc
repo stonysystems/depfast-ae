@@ -263,16 +263,27 @@ void CoordinatorClassic::Prepare() {
   }
 
   for (auto& partition_id : cmd->partition_ids_) {
+retry:    
     Log_debug("send prepare tid: %ld; partition_id %d",
               cmd_->id_,
               partition_id);
-    commo()->SendPrepare(partition_id,
+    auto e = commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
                          std::bind(&CoordinatorClassic::PrepareAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));
+    /*e->Wait(1000*1000) ;
+    if(e->get() == 1)
+    {
+
+    }
+    else
+    {
+      Log_debug("**********************classic timeout**********************") ;
+      goto retry ;
+    }*/
     verify(site_prepare_[partition_id] == 0);
     site_prepare_[partition_id]++;
     verify(site_prepare_[partition_id] == 1);
@@ -436,6 +447,28 @@ void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {
   auto it = ___phase_one_tids_.find(txn_id);
   verify(it == ___phase_one_tids_.end());
   ___phase_one_tids_.insert(txn_id);
+}
+
+void CoordinatorClassic::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+retry:
+    Log_debug("start setting a new leader from %d", *cur_pause );
+    auto e = commo()->BroadcastGetLeader(par_id, *cur_pause); 
+    e->Wait() ;
+    if (e->Yes()) {
+      // assign new leader
+      Log_debug("set a new leader %d", e->leader_id_ );
+      commo()->SetNewLeaderProxy(par_id, e->leader_id_) ;
+      if ( *cur_pause != e->leader_id_ )
+      {
+        *cur_pause = e->leader_id_ ;
+      }
+    } else if (e->No()) {
+        usleep(300 * 1000) ;  // 300 ms
+        Log_debug("retry get new leader");
+        goto retry ;
+    } else {
+        verify(0);
+    }      
 }
 
 } // namespace janus

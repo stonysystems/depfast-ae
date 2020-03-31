@@ -19,7 +19,13 @@ shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id
     int n = Config::GetConfig()->GetPartitionSize(par_id);
     auto e = Reactor::CreateSpEvent<FpgaRaftForwardQuorumEvent>(1,1);
     parid_t fid = (self_id + 1 ) % n ;
-    if (fid != self_id + 1 ) sleep(2) ;  // sleep for 2 seconds cos no leader
+    if (fid != self_id + 1 )
+    {
+      // sleep for 2 seconds cos no leader
+      int32_t timeout = 2*1000*1000 ;
+      auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(timeout);
+      sp_e->Wait(timeout);    
+    }
     auto proxies = rpc_par_proxies_[par_id];
     WAN_WAIT;
     auto proxy = (FpgaRaftProxy*) proxies[fid].second ;
@@ -46,7 +52,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2+1);
+  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
   WAN_WAIT;

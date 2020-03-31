@@ -223,11 +223,13 @@ void ServerWorker::SetupCommo() {
 }
 
 void ServerWorker::Pause() {
+    rep_sched_->Pause() ;
     svr_poll_mgr_->pause() ;
 }
 
 void ServerWorker::Resume() {
     svr_poll_mgr_->resume() ;
+    rep_sched_->Resume() ;
 }
 
 void ServerWorker::ShutDown() {

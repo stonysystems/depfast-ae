@@ -71,6 +71,8 @@ abstract service Classic {
                      int32_t res)
 
   defer TruncateEpoch(uint32_t old_epoch)
+  
+  defer IsLeader(parid_t cur_pause| bool_t is_leader );
 
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 

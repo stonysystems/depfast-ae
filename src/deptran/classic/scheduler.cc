@@ -98,9 +98,11 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    if (piece_data.inn_id_ == 205) b2 = true;
 //  }
 //  verify(b1 == b2);
+  verify(cmd) ;
   if (!tx->cmd_) {
     tx->cmd_ = cmd;
   } else if (tx->cmd_ != cmd) {
+    Log_debug("cmd is different");
     auto present_cmd =
         dynamic_pointer_cast<VecPieceData>(tx->cmd_)->sp_vec_piece_data_;
     for (auto& sp_piece_data : *sp_vec_piece) {

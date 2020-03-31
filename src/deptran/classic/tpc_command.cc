@@ -42,6 +42,7 @@ Marshal& TpcPrepareCommand::FromMarshal(Marshal& m) {
 //  }
   MarshallDeputy md;
   m >> md;
+  verify(md.sp_data_!=NULL) ;
   if (!cmd_)
     cmd_ = md.sp_data_;
   else

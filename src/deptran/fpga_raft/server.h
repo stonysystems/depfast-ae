@@ -17,7 +17,6 @@ struct FpgaRaftData {
   shared_ptr<Marshallable> committed_cmd_{nullptr};
 
   ballot_t term;
-  slotid_t idx ;
   shared_ptr<Marshallable> log_{nullptr};
 };
 
@@ -34,8 +33,17 @@ class FpgaRaftServer : public TxLogServer {
   slotid_t snapidx_ = 0 ;
   ballot_t snapterm_ = 0 ;
   int32_t wait_int_ = 1 * 1000 * 1000 ; // 1s
+  bool paused_ = false ;
+  bool in_applying_logs_ = false ;
 
   void RequestVote() ;
+
+  void setIsLeader(bool isLeader)
+  {
+    Log_debug("set loc_id %d isleader %d", loc_id_, isLeader) ;
+    is_leader_ = isLeader ;
+  }
+  
   void doVote(const slotid_t& lst_log_idx,
                             const ballot_t& lst_log_term,
                             const parid_t& can_id,
@@ -44,24 +52,27 @@ class FpgaRaftServer : public TxLogServer {
                             bool_t *vote_granted,
                             bool_t vote,
                             const function<void()> &cb) {
-        *vote_granted = vote ;
-        *reply_term = currentTerm ;
-        if( can_term > currentTerm)
-        {
-            is_leader_ = false ;
-            currentTerm = can_term ;
-        }
+      *vote_granted = vote ;
+      *reply_term = currentTerm ;
+      Log_debug("loc %d vote decision %d, for can_id %d canterm %d curterm %d isleader %d lst_log_idx %d lst_log_term %d", 
+            loc_id_, vote, can_id, can_term, currentTerm, is_leader_, lst_log_idx, lst_log_term );
+                    
+      if( can_term > currentTerm)
+      {
+          // is_leader_ = false ;  // TODO recheck
+          currentTerm = can_term ;
+      }
 
-        if(vote)
-        {
-            Log_debug("vote for can_id %d canterm %d curterm %d isleader %d", can_id, can_term, currentTerm, is_leader_);
-            vote_for_ = can_id ;
-            //reset timeout
-            timer_->start() ;
-        }
-        n_vote_++ ;
-        cb() ;
-    }
+      if(vote)
+      {
+          setIsLeader(false) ;
+          vote_for_ = can_id ;
+          //reset timeout
+          resetTimer() ;
+      }
+      n_vote_++ ;
+      cb() ;
+  }
 
   void resetTimer()
   {
@@ -70,7 +81,7 @@ class FpgaRaftServer : public TxLogServer {
 
   int32_t randDuration() 
   {
-    return 2 + RandomGenerator::rand(0, 4) ;
+    return 4 + RandomGenerator::rand(0, 6) ;
   }
   
  public:
@@ -89,8 +100,8 @@ class FpgaRaftServer : public TxLogServer {
   uint64_t currentTerm = 0;
   uint64_t commitIndex = 0;
   uint64_t executeIndex = 0;
-//  map<slotid_t, shared_ptr<FpgaRaftData>> raft_logs_{};
-  vector<shared_ptr<FpgaRaftData>> raft_logs_{};
+  map<slotid_t, shared_ptr<FpgaRaftData>> raft_logs_{};
+//  vector<shared_ptr<FpgaRaftData>> raft_logs_{};
 
   void StartTimer() ;
 
@@ -99,6 +110,16 @@ class FpgaRaftServer : public TxLogServer {
     return is_leader_ ;
   }
 
+  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index ){
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    *index = lastLogIndex ;
+    lastLogIndex += 1;
+    auto instance = GetFpgaRaftInstance(lastLogIndex);
+    instance->log_ = cmd;
+    instance->term = currentTerm;
+    *term = currentTerm ;
+  }
+  
   shared_ptr<FpgaRaftData> GetInstance(slotid_t id) {
     verify(id >= min_active_slot_);
     auto& sp_instance = logs_[id];
@@ -107,7 +128,7 @@ class FpgaRaftServer : public TxLogServer {
     return sp_instance;
   }
 
-  shared_ptr<FpgaRaftData> GetFpgaRaftInstance(slotid_t id) {
+ /* shared_ptr<FpgaRaftData> GetFpgaRaftInstance(slotid_t id) {
     if ( id <= raft_logs_.size() )
     {
         return raft_logs_[id-1] ;
@@ -115,7 +136,15 @@ class FpgaRaftServer : public TxLogServer {
     auto sp_instance = std::make_shared<FpgaRaftData>();
     raft_logs_.push_back(sp_instance) ;
     return sp_instance;
-  }
+  }*/
+   shared_ptr<FpgaRaftData> GetFpgaRaftInstance(slotid_t id) {
+     verify(id >= min_active_slot_);
+     auto& sp_instance = raft_logs_[id];
+     if(!sp_instance)
+       sp_instance = std::make_shared<FpgaRaftData>();
+     return sp_instance;
+   }
+
 
   FpgaRaftServer(Frame *frame) ;
   ~FpgaRaftServer() ;
@@ -149,6 +178,14 @@ class FpgaRaftServer : public TxLogServer {
                           const function<void()> &cb) ;
 
   void SpCommit(const uint64_t cmt_idx) ;
+
+  virtual void Pause() override { 
+    paused_ = true ;
+  }
+  virtual void Resume() override {
+    paused_ = false ;
+    resetTimer() ;
+  }
 
   virtual bool HandleConflicts(Tx& dtxn,
                                innid_t inn_id,

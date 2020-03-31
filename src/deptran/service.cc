@@ -62,6 +62,15 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::IsLeader(const parid_t& can_id,
+                                 bool_t* is_leader,
+                                 rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*) dtxn_sched_;
+  *is_leader = sched->IsLeader();
+  defer->reply();
+}
+
+
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
                                  rrr::i32* res,

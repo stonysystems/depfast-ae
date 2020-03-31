@@ -16,14 +16,13 @@ CoordinatorFpgaRaft::CoordinatorFpgaRaft(uint32_t coo_id,
 }
 
 bool CoordinatorFpgaRaft::IsLeader() {
-   //return this->loc_id_ == 2;
    return this->sch_->IsLeader() ;
 }
 
 void CoordinatorFpgaRaft::Forward(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
-    // TODO do we need a lock here ?
+    verify(0) ; // TODO delete it
     auto e = commo()->SendForward(par_id_, loc_id_, cmd);
     e->Wait();
     uint64_t cmt_idx = e->CommitIdx() ;
@@ -64,17 +63,18 @@ void CoordinatorFpgaRaft::AppendEntries() {
                   "par_id_: %lx, slot_id: %llx, lastLogIndex: %d",
               par_id_, slot_id_, this->sch_->lastLogIndex);
     /* Should we use slot_id instead of lastLogIndex and balot instead of term? */
-    uint32_t prevLogIndex = this->sch_->lastLogIndex;
+    uint64_t prevLogIndex = this->sch_->lastLogIndex;
 
-    this->sch_->lastLogIndex += 1;
+    /*this->sch_->lastLogIndex += 1;
     auto instance = this->sch_->GetFpgaRaftInstance(this->sch_->lastLogIndex);
 
     instance->log_ = cmd_;
-    instance->term = this->sch_->currentTerm;
+    instance->term = this->sch_->currentTerm;*/
 
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
-retry:
+    this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex) ;
+
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
                                                      slot_id_,
                                                      curr_ballot_,
@@ -88,20 +88,21 @@ retry:
     sp_quorum->Wait();
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
+        verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
+        Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
     }
     else if (sp_quorum->No()) {
         //verify(0);
         // TODO should become a follower if the term is smaller
-        if(!IsLeader())
+        //if(!IsLeader())
         {
             Forward(cmd_,commit_callback_) ;
+            return ;
         }
     }
     else {
-        //verify(0);
-        // TODO recheck
-        goto retry ;
+        verify(0);
     }
 }
 
@@ -119,9 +120,10 @@ void CoordinatorFpgaRaft::LeaderLearn() {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     commit_callback_();
     uint64_t prevCommitIndex = this->sch_->commitIndex;
+    verify(minIndex >= prevCommitIndex) ;
     this->sch_->commitIndex = std::max(this->sch_->commitIndex, minIndex);
-    Log_debug("fpga-raft commit for partition: %d, slot %d, commit %d in loc:%d",
-              (int) par_id_, (int) slot_id_, sch_->commitIndex, loc_id_);
+    Log_debug("fpga-raft commit for partition: %d, slot %d, commit %d minIndex %d in loc:%d", 
+      (int) par_id_, (int) slot_id_, sch_->commitIndex, minIndex, loc_id_);
 
     /* if (prevCommitIndex < this->sch_->commitIndex) { */
     /*     auto instance = this->sch_->GetFpgaRaftInstance(this->sch_->commitIndex); */
@@ -142,7 +144,6 @@ void CoordinatorFpgaRaft::GotoNextPhase() {
       if (IsLeader()) {
         phase_++; // skip prepare phase for "leader"
         verify(phase_ % n_phase == Phase::ACCEPT);
-        //Accept();
         AppendEntries();
         phase_++;
         verify(phase_ % n_phase == Phase::COMMIT);
@@ -155,17 +156,15 @@ void CoordinatorFpgaRaft::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        //Commit();
         LeaderLearn();
       } else {
-        //verify(0);
-        Forward(cmd_,commit_callback_) ;
+        // verify(0);
+        // Forward(cmd_,commit_callback_) ;
         phase_ = Phase::COMMIT;
       }
       break;
     case Phase::PREPARE:
       verify(phase_ % n_phase == Phase::ACCEPT);
-      /* Accept(); */
       AppendEntries();
       break;
     case Phase::COMMIT:

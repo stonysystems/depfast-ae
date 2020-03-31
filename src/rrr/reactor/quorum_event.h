@@ -16,9 +16,9 @@ class QuorumEvent : public Event {
   int32_t n_total_ = -1;
   int32_t quorum_ = -1;
   int64_t highest_term_{0} ;
-  bool finished_ = false ;
   bool timeouted_ = false;
   uint64_t cmt_idx_{0} ;
+  uint32_t leader_id_{0} ;
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
 
@@ -30,11 +30,11 @@ class QuorumEvent : public Event {
                             quorum_(quorum) {
   }
 
-  bool Yes() {
+  virtual bool Yes() {
     return n_voted_yes_ >= quorum_;
   }
 
-  bool No() {
+  virtual bool No() {
     verify(n_total_ >= quorum_);
     return n_voted_no_ > (n_total_ - quorum_);
   }
@@ -55,7 +55,7 @@ class QuorumEvent : public Event {
   }
 
   bool IsReady() override {
-    if (timeouted_ || finished_) {
+    if (timeouted_) {
       // TODO add time out support
       return true;
     }

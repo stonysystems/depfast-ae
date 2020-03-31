@@ -56,6 +56,10 @@ class SchedulerClassic: public TxLogServer {
 
   virtual void Next(Marshallable&) override;
 
+  virtual bool IsLeader() override {
+    return rep_sched_->IsLeader() ;
+  }  
+
   int PrepareReplicated(TpcPrepareCommand& prepare_cmd);
   int CommitReplicated(TpcCommitCommand& commit_cmd);
 

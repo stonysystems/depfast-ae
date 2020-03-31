@@ -11,7 +11,7 @@ namespace janus {
 
 FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   frame_ = frame ;
-  is_leader_ = frame_->site_info_->locale_id == 1 ;
+  is_leader_ = frame_->site_info_->locale_id == 0 ;
   stop_ = false ;
   timer_ = new Timer() ;
 }
@@ -23,8 +23,14 @@ FpgaRaftServer::~FpgaRaftServer() {
 }
 
 void FpgaRaftServer::RequestVote() {
-  
-  if(this->commo_ == NULL ) return ;
+
+  if(paused_) {
+      resetTimer() ;
+      return ;
+  }
+
+  // currently don't request vote if no log
+  if(this->commo_ == NULL || lastLogIndex == 0 ) return ;
 
   parid_t par_id = this->frame_->site_info_->partition_id_ ;
   parid_t loc_id = this->frame_->site_info_->locale_id ;
@@ -41,7 +47,7 @@ void FpgaRaftServer::RequestVote() {
     currentTerm++ ;
     lstoff = lastLogIndex - snapidx_ ;
     auto log = GetFpgaRaftInstance(lstoff) ;
-    lst_idx = log->idx;
+    lst_idx = lstoff + snapidx_ ;
     lst_term = log->term ;
   }
   
@@ -50,12 +56,12 @@ void FpgaRaftServer::RequestVote() {
   std::lock_guard<std::recursive_mutex> lock1(mtx_);
   if (sp_quorum->Yes()) {
     // become a leader
-    is_leader_ = true ;
+    setIsLeader(true) ;
     Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
   } else if (sp_quorum->No()) {
     // become a follower
     Log_debug("vote rejected %d", loc_id);
-    is_leader_ = false ;
+    setIsLeader(false) ;
     //reset cur term if new term is higher
     ballot_t new_term = sp_quorum->Term() ;
     currentTerm = new_term > currentTerm? new_term : currentTerm ;
@@ -86,7 +92,8 @@ void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
 
   // has voted to a machine in the same term, vote no
   // TODO when to reset the vote_for_??
-  if( can_term == cur_term && vote_for_ != INVALID_PARID )
+//  if( can_term == cur_term && vote_for_ != INVALID_PARID )
+  if( can_term == cur_term)
   {
     doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
     return ;
@@ -102,8 +109,10 @@ void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
   {
     auto log = GetFpgaRaftInstance(lstoff) ;
     curlstterm = log->term ;
-    curlstidx = log->idx ;
   }
+
+  Log_debug("vote for lstoff %d, curlstterm %d, curlstidx %d", lstoff, curlstterm, curlstidx  );
+
 
   // TODO del only for test 
   verify(lstoff == lastLogIndex ) ;
@@ -131,9 +140,9 @@ void FpgaRaftServer::StartTimer()
                     Log_debug(" timer time out") ;
                     // ask to vote
                     RequestVote() ;
-                    auto sp_e1 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
                     while(!end_)
                     {
+                      auto sp_e1 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
                       sp_e1->Wait(wait_int_) ;
                       if(stop_) return ;
                     }
@@ -166,18 +175,18 @@ void FpgaRaftServer::StartTimer()
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         StartTimer() ;
-        resetTimer() ;
-
+        
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)
                 /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
+            resetTimer() ;
             if (leaderCurrentTerm > this->currentTerm) {
                 currentTerm = leaderCurrentTerm;
                 Log_debug("server %d, set to be follower", loc_id_ ) ;
-                is_leader_ = false ;
+                setIsLeader(false) ;
             }
             this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
             uint64_t prevCommitIndex = this->commitIndex;
@@ -195,6 +204,8 @@ void FpgaRaftServer::StartTimer()
             *followerLastLogIndex = this->lastLogIndex;
         }
         else {
+            Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
+                this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
             *followerAppendOK = 0;
         }
         cb();
@@ -223,20 +234,29 @@ void FpgaRaftServer::StartTimer()
   void FpgaRaftServer::OnCommit(const slotid_t slot_id,
                               const ballot_t ballot,
                               shared_ptr<Marshallable> &cmd) {
-    std::lock_guard<std::recursive_mutex> lock(mtx_);                              
-    /* verify(slot_id > max_executed_slot_); */
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+
+    // This prevents the log entry from being applied twice
+    if (in_applying_logs_) {
+      return;
+    }
+    in_applying_logs_ = true;
+    
     for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
         auto next_instance = GetFpgaRaftInstance(id);
         if (next_instance->log_) {
-            app_next_(*next_instance->log_);
             Log_debug("fpga-raft par:%d loc:%d executed slot %lx now", partition_id_, loc_id_, id);
+            app_next_(*next_instance->log_);
             executeIndex++;
         } else {
             break;
         }
     }
+    in_applying_logs_ = false;
+
   }
   void FpgaRaftServer::SpCommit(const uint64_t cmt_idx) {
+      verify(0) ; // TODO delete it
       std::lock_guard<std::recursive_mutex> lock(mtx_);
       Log_debug("fpga raft spcommit for index: %lx for server %d", cmt_idx, loc_id_);
       verify(cmt_idx != 0 ) ;

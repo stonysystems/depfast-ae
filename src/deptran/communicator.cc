@@ -110,7 +110,8 @@ Communicator::LeaderProxyForPartition(parid_t par_id) const {
     if (proxy_it == partition_proxies.end()) {
       Log_fatal("could not find leader for partition %d", par_id);
     } else {
-      leader_cache[par_id] = *proxy_it;
+      // leader_cache[par_id] = *proxy_it;
+      //SetLeaderCache(par_id, *proxy_it) ;
       Log_debug("leader site for parition %d is %d", par_id, proxy_it->first);
     }
     verify(proxy_it->second != nullptr);
@@ -205,6 +206,7 @@ void Communicator::BroadcastDispatch(
         callback(ret, outputs);
       };
   auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+  SetLeaderCache(par_id, pair_leader_proxy) ;
   Log_debug("send dispatch to site %ld",
             pair_leader_proxy.first);
   auto proxy = pair_leader_proxy.second;
@@ -237,6 +239,32 @@ void Communicator::SendStart(SimpleCommand& cmd,
   verify(0);
 }
 
+shared_ptr<IntEvent> Communicator::SendPrepare(groupid_t gid,
+                               txnid_t tid,
+                               std::vector<int32_t>& sids,
+                               const function<void(int)>& callback) {
+  FutureAttr fuattr;
+  auto e = Reactor::CreateSpEvent<IntEvent>();
+  std::function<void(Future*)> cb =
+      [this, callback, e](Future* fu) {
+        int res;
+        fu->get_reply() >> res;
+        if(e->Set(1) == -1) return ;
+        callback(res);
+      };
+  fuattr.callback = cb;
+  auto proxy_pair = LeaderProxyForPartition(gid);
+  ClassicProxy* proxy = proxy_pair.second;
+  SetLeaderCache(gid, proxy_pair) ;
+  Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
+            sids.size(),
+            gid,
+            tid);
+  Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
+  return e ;
+}
+
+/*
 void Communicator::SendPrepare(groupid_t gid,
                                txnid_t tid,
                                std::vector<int32_t>& sids,
@@ -249,13 +277,15 @@ void Communicator::SendPrepare(groupid_t gid,
         callback(res);
       };
   fuattr.callback = cb;
-  ClassicProxy* proxy = LeaderProxyForPartition(gid).second;
+  auto proxy_pair = LeaderProxyForPartition(gid);
+  ClassicProxy* proxy = proxy_pair.second;
+  SetLeaderCache(gid, proxy_pair) ;
   Log_debug("SendPrepare to %ld sites gid:%ld, tid:%ld\n",
             sids.size(),
             gid,
             tid);
   Future::safe_release(proxy->async_Prepare(tid, sids, fuattr));
-}
+}*/
 
 void Communicator::___LogSent(parid_t pid, txnid_t tid) {
   auto value = std::make_pair(pid, tid);
@@ -276,7 +306,9 @@ void Communicator::SendCommit(parid_t pid,
 #endif
   FutureAttr fuattr;
   fuattr.callback = [callback](Future*) { callback(); };
-  ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
+  auto proxy_pair = LeaderProxyForPartition(pid);
+  ClassicProxy* proxy = proxy_pair.second;
+  SetLeaderCache(pid, proxy_pair) ;
   Log_debug("SendCommit to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Commit(tid, fuattr));
 }
@@ -288,7 +320,9 @@ void Communicator::SendAbort(parid_t pid, txnid_t tid,
 #endif
   FutureAttr fuattr;
   fuattr.callback = [callback](Future*) { callback(); };
-  ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
+  auto proxy_pair = LeaderProxyForPartition(pid);
+  ClassicProxy* proxy = proxy_pair.second;
+  SetLeaderCache(pid, proxy_pair) ;
   Log_debug("SendAbort to %ld tid:%ld\n", pid, tid);
   Future::safe_release(proxy->async_Abort(tid, fuattr));
 }
@@ -400,4 +434,66 @@ void Communicator::AddMessageHandler(
     function<bool(const MarshallDeputy&, MarshallDeputy&)> f) {
   msg_marshall_handlers_.push_back(f);
 }
+
+/*void Communicator::BroadcastGetLeader (locid_t cur_pause) {
+    auto future = proxy->async_GetLeader(cmd_id, md, fuattr);
+    Future::safe_release(future);
+    if (!broadcasting_to_leaders_only_) {
+      for (auto& pair : rpc_par_proxies_[par_id]) {
+        if (pair.first != pair_leader_proxy.first) {
+          rrr::FutureAttr fu2;
+          fu2.callback =
+              [coo, this, callback](Future* fu) {
+                int32_t ret;
+                TxnOutput outputs;
+                fu->get_reply() >> ret >> outputs;
+                // do nothing
+              };
+          Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fu2));
+        }
+      }
+    }
+}*/
+
+shared_ptr<GetLeaderQuorumEvent>
+  Communicator::BroadcastGetLeader(parid_t par_id, locid_t cur_pause ) 
+{  
+  int n = Config::GetConfig()->GetPartitionSize(par_id);  
+  auto e = Reactor::CreateSpEvent<GetLeaderQuorumEvent>(n-1, 1);  
+  auto proxies = rpc_par_proxies_[par_id];  
+  WAN_WAIT;  
+  for (auto& p : proxies) {    
+    if (p.first == cur_pause)        
+      continue;    
+    auto proxy = p.second;    
+    FutureAttr fuattr;    
+    fuattr.callback = [e, p](Future* fu) {
+      bool_t is_leader  = false ;      
+      fu->get_reply() >> is_leader ;      
+      e->FeedResponse(is_leader, p.first); 
+    };    
+    Future::safe_release(proxy->async_IsLeader(par_id, fuattr));  
+  }  
+  return e;
+}
+
+void Communicator::SetNewLeaderProxy(parid_t par_id, locid_t loc_id)
+{
+  auto it = rpc_par_proxies_.find(par_id);
+  verify(it != rpc_par_proxies_.end());
+  auto& partition_proxies = it->second;
+  auto config = Config::GetConfig();
+  auto proxy_it = std::find_if(
+      partition_proxies.begin(),
+      partition_proxies.end(),
+      [config, loc_id](const std::pair<siteid_t, ClassicProxy*>& p) {
+        verify(p.second != nullptr);
+        auto& site = config->SiteById(p.first);
+        return site.locale_id == loc_id ;
+      });
+   verify (proxy_it != partition_proxies.end()) ;
+   leader_cache_[par_id] = *proxy_it;
+   Log_debug("set leader porxy for parition %d is %d", par_id, loc_id);
+}
+
 } // namespace janus
