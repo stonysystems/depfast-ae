@@ -263,27 +263,16 @@ void CoordinatorClassic::Prepare() {
   }
 
   for (auto& partition_id : cmd->partition_ids_) {
-retry:    
     Log_debug("send prepare tid: %ld; partition_id %d",
               cmd_->id_,
               partition_id);
-    auto e = commo()->SendPrepare(partition_id,
+    commo()->SendPrepare(partition_id,
                          cmd_->id_,
                          sids,
                          std::bind(&CoordinatorClassic::PrepareAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));
-    /*e->Wait(1000*1000) ;
-    if(e->get() == 1)
-    {
-
-    }
-    else
-    {
-      Log_debug("**********************classic timeout**********************") ;
-      goto retry ;
-    }*/
     verify(site_prepare_[partition_id] == 0);
     site_prepare_[partition_id]++;
     verify(site_prepare_[partition_id] == 1);

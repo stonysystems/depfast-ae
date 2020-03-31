@@ -435,26 +435,6 @@ void Communicator::AddMessageHandler(
   msg_marshall_handlers_.push_back(f);
 }
 
-/*void Communicator::BroadcastGetLeader (locid_t cur_pause) {
-    auto future = proxy->async_GetLeader(cmd_id, md, fuattr);
-    Future::safe_release(future);
-    if (!broadcasting_to_leaders_only_) {
-      for (auto& pair : rpc_par_proxies_[par_id]) {
-        if (pair.first != pair_leader_proxy.first) {
-          rrr::FutureAttr fu2;
-          fu2.callback =
-              [coo, this, callback](Future* fu) {
-                int32_t ret;
-                TxnOutput outputs;
-                fu->get_reply() >> ret >> outputs;
-                // do nothing
-              };
-          Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fu2));
-        }
-      }
-    }
-}*/
-
 shared_ptr<GetLeaderQuorumEvent>
   Communicator::BroadcastGetLeader(parid_t par_id, locid_t cur_pause ) 
 {  
