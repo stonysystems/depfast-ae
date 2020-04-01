@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <chrono>
 
 #include "misc/marshal.hpp"
 #include "reactor/epoll_wrapper.h"
@@ -152,9 +153,13 @@ public:
 
     template<class T>
     Client& operator <<(const T& v) {
+	//auto start = std::chrono::steady_clock::now();
         if (status_ == CONNECTED) {
             this->out_ << v;
         }
+	//auto end = std::chrono::steady_clock::now();
+	//auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+	//Log_info("Time of << is: %d", duration);
         return *this;
     }
 

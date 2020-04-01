@@ -182,12 +182,18 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
+  //Log_info("Handling write");
   if (status_ != CONNECTED) {
     return;
   }
 
   out_l_.lock();
+  //auto start = chrono::steady_clock::now();
   out_.write_to_fd(sock_);
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+
+  //Log_info("The Time of Writing to Socket is: %d", duration);
 
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
@@ -262,6 +268,7 @@ int Client::poll_mode() {
 }
 
 Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
+  //auto start = chrono::steady_clock::now();
   out_l_.lock();
 
   if (status_ != CONNECTED) {
@@ -293,12 +300,16 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   *this << v64(fu->xid_);
   *this << rpc_id;
 
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for begin_request is: %d", duration);
   //Log_info("EXITING begin_request");
   // one ref is already in pending_fu_
   return (Future*) fu->ref_copy();
 }
 
 void Client::end_request() {
+  //auto start = chrono::steady_clock::now();
   // set reply size in packet
   if (bmark_ != nullptr) {
     i32 request_size = out_.get_and_reset_write_cnt();
@@ -312,6 +323,9 @@ void Client::end_request() {
   pollmgr_->update_mode(shared_from_this(), Pollable::READ | Pollable::WRITE);
 
   out_l_.unlock();
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for end_request is: %d");
 }
 
 ClientPool::ClientPool(PollMgr* pollmgr /* =? */,

@@ -128,7 +128,11 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
       e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
     };
     MarshallDeputy md(cmd);
+    auto start1 = chrono::system_clock::now();
     auto f = proxy->async_Accept(slot_id, start_, ballot, md, fuattr);
+    auto end1 = chrono::system_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(end1-start1).count();
+    Log_info("Time for Async_Accept() for %d is: %d", follower_id, duration);
     Future::safe_release(f);
   }
   return e;

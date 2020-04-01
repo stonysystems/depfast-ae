@@ -137,11 +137,14 @@ void ServerConnection::end_reply() {
 }
 
 void ServerConnection::handle_read() {
+    //Log_info("Server's addr is: %s", server_->addr_.c_str());
     if (status_ == CLOSED) {
         return;
     }
 
+    //time this part, we can check the rpc_id by hardcoding
     int bytes_read = in_.read_from_fd(socket_);
+    
     if (bytes_read == 0) {
         return;
     }
@@ -191,23 +194,33 @@ void ServerConnection::handle_read() {
 #endif // RPC_STATISTICS
 
         auto it = server_->handlers_.find(rpc_id);
+	//Log_info("RPC ID is: %d", rpc_id);
         if (it != server_->handlers_.end()) {
             // the handler should delete req, and release server_connection refcopy.
             auto x = dynamic_pointer_cast<ServerConnection>(shared_from_this());
             auto y = it->second;
-            Coroutine::CreateRun([y, req, x] () {
+            Coroutine::CreateRun([y, req, x, this, rpc_id] () {
 //              verify(x);
               verify(x->connected());
+
+//#ifdef SIMULATE_WAN
+	      if(this->server_->addr_ == "0.0.0.0:10001"){
+                  //Log_info("SLOWING DOWN");
+	      	  auto ev = Reactor::CreateSpEvent<NeverEvent>();
+                  ev->Wait(4000 * 1000); // timeout after 100 ms
+                  //ev->Wait(1); // timeout after 100 ms
+	      }
+//#endif
               y(req, x.get());
               // this line of code actually relies on the stack outside.
 //              auto f = it->second;
 //              auto r = req;
 //              auto c = (ServerConnection*)this->ref_copy();
-#ifdef SIMULATE_WAN
-//              auto ev = Reactor::CreateSpEvent<NeverEvent>();
-//              ev->Wait(100 * 1000); // timeout after 100 ms
-//              ev->Wait(1); // timeout after 100 ms
-#endif
+//#ifdef SIMULATE_WAN
+	      	//auto ev = Reactor::CreateSpEvent<NeverEvent>();
+                //ev->Wait(100 * 1000); // timeout after 100 ms
+                //ev->Wait(1); // timeout after 100 ms
+//#endif
 //              f(r, c);
             });
         } else {
@@ -513,6 +526,8 @@ ServerListener::ServerListener(Server* server, string addr) {
 
 int Server::start(const char* bind_addr) {
   string addr(bind_addr);
+  Log_info("bind address is: %s", bind_addr);
+  addr_ = addr;
   sp_server_listener_ = std::make_unique<ServerListener>(this, addr);
   pollmgr_->add(sp_server_listener_);
   return 0;
