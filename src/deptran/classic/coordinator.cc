@@ -122,6 +122,7 @@ void CoordinatorClassic::DoTxAsync(PollMgr* poll_mgr_, TxRequest& req) {
 }
 
 void CoordinatorClassic::GotoNextPhase() {
+  //Log_info("We're moving along: %d", phase_ % 4);
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
   //Log_info("Current phase is %d", current_phase);
@@ -154,6 +155,7 @@ void CoordinatorClassic::GotoNextPhase() {
       //break;
     case Phase::COMMIT:
       verify(phase_ % n_phase == Phase::INIT_END);
+      verify(committed_ != aborted_);
       if (committed_){
         //Log_info("Finishing for some reason");
         //phase_++;
@@ -222,22 +224,12 @@ void CoordinatorClassic::DispatchAsync() {
   n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
-  for (auto& pair: cmds_by_par){    auto& cmds = pair.second;
+  for (auto& pair: cmds_by_par){
+    auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
   }
-  /*for (auto& pair: cmds_by_par) {
-    const parid_t& par_id = pair.first;
-    auto& cmds = pair.second;
-    cnt += cmds.size();
-    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
-    for (auto c: cmds) {
-      c->id_ = next_pie_id();
-      dispatch_acks_[c->inn_id_] = false;
-      sp_vec_piece->push_back(c);
-    }
-    commo()->BroadcastDispatch(disp_event, sp_vec_piece, this, txn);
-  }*/
-
+  // need to create a vector of quorum events or a different data structure
+  // probably need a quorum event for each partition
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   //Log_info("Waiting DispatchEvent: %x", *disp_event);
   sp_quorum_event->Wait();
@@ -263,6 +255,7 @@ bool CoordinatorClassic::AllDispatchAcked() {
 void CoordinatorClassic::DispatchAck(phase_t phase,
                                      int res,
                                      TxnOutput& outputs) {
+  //Log_info("Is this being called");
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   if (phase != phase_) return;
   auto* txn = (TxData*) cmd_;

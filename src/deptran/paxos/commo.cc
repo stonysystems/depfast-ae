@@ -67,7 +67,6 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
-
     e->add_dep(leader_id, src_coroid, follower_id, -1);
 
     FutureAttr fuattr;

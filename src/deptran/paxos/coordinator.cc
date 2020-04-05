@@ -192,6 +192,7 @@ void CoordinatorMultiPaxos::Commit() {
 void CoordinatorMultiPaxos::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
+  //Log_info("Current phase is %d", current_phase);
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:

@@ -30,7 +30,6 @@ class QuorumEvent : public Event {
   std::chrono::steady_clock::time_point ready_time;
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
-
   vector<int> sites_{};
   std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> deps{};
   std::string log_file = "logs.txt";
@@ -126,6 +125,7 @@ class QuorumEvent : public Event {
     n_voted_no_++;
     Test();
   }
+
 
   bool IsReady() override {
     if (timeouted_) {

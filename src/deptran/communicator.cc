@@ -7,6 +7,7 @@
 #include "command_marshaler.h"
 #include "procedure.h"
 #include "rcc_rpc.h"
+#include <typeinfo>
 
 namespace janus {
 
@@ -233,7 +234,6 @@ void Communicator::BroadcastDispatch(
   }
 }
 
-
 //need to change this code to solve the quorum info in the graphs
 //either create another event here or inside the coordinator.
 std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
@@ -358,7 +358,6 @@ Communicator::SendPrepare(Coordinator* coo,
       
     qe->id_ = Communicator::global_id;
     qe->par_id_ = quorum_id++;
-
     FutureAttr fuattr;
     fuattr.callback = [e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
@@ -375,7 +374,6 @@ Communicator::SendPrepare(Coordinator* coo,
         cmd->commit_.store(false);
         coo->aborted_ = true;
       }
-
       qe->n_voted_yes_++;
       e->Test();
     };
@@ -666,8 +664,8 @@ Communicator::BroadcastMessage(shardid_t shard_id,
     };
     Future* f = nullptr;
     Future::safe_release(f);
+    return events;
   }
-  return events;
 }
 
 shared_ptr<MessageEvent>
@@ -679,13 +677,9 @@ Communicator::SendMessage(siteid_t site_id,
   return ev;
 }
 
-void Communicator::AddMessageHandler(
-    function<bool(const string&, string&)> f) {
-  msg_string_handlers_.push_back(f);
-}
 
 void Communicator::AddMessageHandler(
     function<bool(const MarshallDeputy&, MarshallDeputy&)> f) {
-  msg_marshall_handlers_.push_back(f);
+   msg_marshall_handlers_.push_back(f);
 }
 } // namespace janus

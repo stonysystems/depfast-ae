@@ -37,6 +37,7 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
                             ballot_t *max_ballot,
                             uint64_t* coro_id,
                             const function<void()> &cb) {
+
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler receives prepare for slot_id: %llx",
             slot_id);
@@ -53,6 +54,7 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
   n_prepare_++;
   cb();
 }
+
 
 void PaxosServer::OnAccept(const slotid_t slot_id,
 		           const uint64_t time,

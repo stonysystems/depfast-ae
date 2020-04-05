@@ -225,9 +225,10 @@ void ClientWorker::Work() {
 
 //  finish_mutex.lock();
   while (n_concurrent_ > 0) {
+
     Log_debug("wait for finish... %d", n_concurrent_);
     sleep(1);
-//    finish_cond.wait(finish_mutex);
+
   }
 //  finish_mutex.unlock();
 

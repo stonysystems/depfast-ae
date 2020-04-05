@@ -204,12 +204,12 @@ void ServerConnection::handle_read() {
               verify(x->connected());
 
 //#ifdef SIMULATE_WAN
-	      if(this->server_->addr_ == "0.0.0.0:10001"){
+	      /*if(this->server_->addr_ == "0.0.0.0:10001"){
                   //Log_info("SLOWING DOWN");
 	      	  auto ev = Reactor::CreateSpEvent<NeverEvent>();
                   ev->Wait(4000 * 1000); // timeout after 100 ms
                   //ev->Wait(1); // timeout after 100 ms
-	      }
+	      }*/
 //#endif
               y(req, x.get());
               // this line of code actually relies on the stack outside.

@@ -93,7 +93,6 @@ class Communicator {
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
 
-
   shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
                         Coordinator* coo,
                         TxData* txn);
@@ -109,7 +108,6 @@ class Communicator {
                    txnid_t tid,
                    std::vector<int32_t> &sids,
                    const std::function<void(int)> &callback) ;*/
-
   /*void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;

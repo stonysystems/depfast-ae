@@ -171,7 +171,6 @@ class OrEvent : public Event {
   }
 };
 
-
 class AndEvent : public Event {
  public:
   vector<shared_ptr<Event>> events_;

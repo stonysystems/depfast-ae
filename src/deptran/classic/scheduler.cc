@@ -191,7 +191,6 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
-
   // TODO maybe change inuse to an event?
 //  verify(!sp_tx->inuse);
 //  sp_tx->inuse = true;

@@ -9,7 +9,6 @@ MultiPaxosServiceImpl::MultiPaxosServiceImpl(TxLogServer *sched)
 
 }
 
-
 void MultiPaxosServiceImpl::Forward(const MarshallDeputy& md_cmd,
                                     const uint64_t& dep_id,
                                     uint64_t* coro_id,
