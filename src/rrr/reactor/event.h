@@ -51,7 +51,6 @@ class Event : public std::enable_shared_from_this<Event> {
     verify(test_);
     return test_(0);
   }
-  virtual uint64_t GetCoroId();
 
   friend Reactor;
 // protected:
@@ -192,12 +191,6 @@ class AndEvent : public Event {
     AddEvent(args...);
   }
   
-  void log() {
-    for(int i = 0; i < events_.size(); i++){
-      events_[i]->log();
-    }
-  }
-
   void log() {
     for(int i = 0; i < events_.size(); i++){
       events_[i]->log();

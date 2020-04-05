@@ -314,7 +314,6 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
             this->finish_cond.signal();
           }
           this->finish_mutex.unlock();
-        }
       }
 
     };
