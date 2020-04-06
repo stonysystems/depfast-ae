@@ -1211,7 +1211,7 @@ def main():
         if server_controller is not None:
             try:
                 #comment the following line when doing profiling
-                server_controller.server_kill()
+                #server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())

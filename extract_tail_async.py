@@ -23,7 +23,7 @@ with open('../slow_host2/log/proc-host1.log') as f:
 
 durations2.sort()
 
-index = int(math.ceil(99.9/100*len(durations2)))-1
+index = int(math.ceil(99.99/100*len(durations2)))-1
 print()
 print('Matrix after tail for slow case:')
 print(durations2[index])

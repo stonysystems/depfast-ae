@@ -15,7 +15,7 @@ index = int(math.ceil(99.99/100*len(durations)))-1
 print('99.99 percent tail of fast: ', durations[index])
 
 durations2 = []
-with open('../slow_host2/log/proc-host2.log') as f:
+with open('../slow_host2/log/proc-host1.log') as f:
     for line in f:
         if 'Duration of RPC' in line:
             if len(line.split(': ')) > 1:

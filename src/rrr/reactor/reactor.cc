@@ -75,6 +75,7 @@ void Reactor::Loop(bool infinite) {
     }
 
     auto time_now = Time::now();
+    //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
       auto status = event.status_;

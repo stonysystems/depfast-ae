@@ -22,6 +22,13 @@ class Reactor {
   static std::shared_ptr<Reactor> GetReactor();
   static thread_local std::shared_ptr<Reactor> sp_reactor_th_;
   static thread_local std::shared_ptr<Coroutine> sp_running_coro_th_;
+
+  /*struct eventComp{
+    bool operator()(const std::shared_ptr<Event>& lhs, const std::shared_ptf<Event>& rhs) const{
+      return lhs->timeout
+    }
+  }*/
+
   /**
    * A reactor needs to keep reference to all coroutines created,
    * in case it is freed by the caller after a yield.
