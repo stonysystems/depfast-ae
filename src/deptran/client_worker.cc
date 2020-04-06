@@ -306,15 +306,15 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
           free_coordinators_.push_back(coo);
         } else if (config_->client_type_ == Config::Closed){
           Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
-        }  
-      }
-      else{
-        this->finish_mutex.lock();
-        this->n_concurrent_--;
-        if (this->n_concurrent_ == 0){
-          this->finish_cond.signal();
         }
-        this->finish_mutex.unlock();
+      } 
+      else{
+          this->finish_mutex.lock();
+          this->n_concurrent_--;
+          if (this->n_concurrent_ == 0){
+            this->finish_cond.signal();
+          }
+          this->finish_mutex.unlock();
       }
 
     };

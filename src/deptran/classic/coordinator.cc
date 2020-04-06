@@ -139,12 +139,10 @@ void CoordinatorClassic::GotoNextPhase() {
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
       if (aborted_) {
-        //Log_info("Oh no, we are aborting: %x", this);
         phase_++;
         phase_++;
         Commit();
       } else {
-        //Log_info("Oh yes, we are preparing: %x", this);
         phase_++;
         Prepare();
       }
@@ -224,7 +222,7 @@ void CoordinatorClassic::DispatchAsync() {
   int cnt = 0;
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
   n_pd = 1;
-  auto cmds_by_par = txn->GetReadyPiecesData(n_pd);
+  auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par){
     auto& cmds = pair.second;
@@ -309,6 +307,7 @@ void CoordinatorClassic::Prepare() {
                                    this,
                                    phase_,
                                    std::placeholders::_1));*/
+
   auto quorum_event = commo()->SendPrepare(this,
                                           cmd_->id_,
                                           sids);
@@ -320,6 +319,7 @@ void CoordinatorClassic::Prepare() {
     cmd->commit_.store(true);
     committed_ = true;
   }
+
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;
     //verify(site_prepare_[partition_id] == 1);
@@ -457,7 +457,6 @@ void CoordinatorClassic::End() {
                   PRIx64, this->ongoing_tx_id_);
     tx_data->callback_(tx_reply_buf);
     //quorum event created for the sole purpose of logging
-    
 
     /*auto curr_id = Coroutine::CurrentCoroutine()->id;
     for(auto i = 0; i < sp_quorum_events.size(); i++){
@@ -469,7 +468,6 @@ void CoordinatorClassic::End() {
       curr.second->log();
       curr.second.reset();
     }*/
-
 
     sp_quorum_events.clear();
     ids_.clear();

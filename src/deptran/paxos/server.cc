@@ -31,6 +31,7 @@ void PaxosServer::OnForward(shared_ptr<Marshallable> &cmd,
   *coro_id = Coroutine::CurrentCoroutine()->id;
   cb();
 }
+
 void PaxosServer::OnPrepare(slotid_t slot_id,
                             ballot_t ballot,
                             ballot_t *max_ballot,
@@ -79,6 +80,7 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
   auto start_ = chrono::duration_cast<chrono::microseconds>(start-midn-hours-minutes).count();
   Log_info("Duration of RPC is: %d", start_-time);
   Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
+
   auto instance = GetInstance(slot_id);
   
   //TODO: might need to optimize this. we can vote yes on duplicates at least for now

@@ -43,6 +43,7 @@ class Event : public std::enable_shared_from_this<Event> {
     test_ = f;
     Wait();
   }
+
   virtual void log(){return;}
   virtual uint64_t GetCoroId();
   virtual bool Test();
@@ -112,8 +113,8 @@ class IntEvent : public Event {
 class SharedIntEvent {
  public:
   int value_{};
-  vector<shared_ptr<IntEvent>> events_;
-  int Set(int& v) {
+  vector<shared_ptr<IntEvent>> events_{};
+  int Set(const int& v) {
     auto ret = value_;
     value_ = v;
     for (auto sp_ev : events_) {
@@ -124,7 +125,9 @@ class SharedIntEvent {
   }
 
   void Wait(function<bool(int)> f);
+  void WaitUntilGreaterOrEqualThan(int x);
 };
+
 
 class NeverEvent: public Event {
  public:
@@ -248,7 +251,6 @@ class DispatchEvent: public Event{
     bool IsReady() override{
       if(n_dispatch_ == n_dispatch_ack_){
         if(aborted_){
-          //Log_info("aborted");
           return true;
         }
         else{
@@ -261,7 +263,6 @@ class DispatchEvent: public Event{
         }
       }
       else if(more){
-        //Log_info("more");
         return true;
       }
       Log_info("FALSE");

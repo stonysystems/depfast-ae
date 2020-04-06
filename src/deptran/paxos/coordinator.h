@@ -64,7 +64,9 @@ class CoordinatorMultiPaxos : public Coordinator {
 
   ballot_t PickBallot();
   void Submit();
+
   void Forward();
+
   void Prepare();
 //  void PrepareAck(phase_t phase, Future *fu);
   void Accept();

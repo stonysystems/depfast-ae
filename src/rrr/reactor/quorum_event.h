@@ -119,7 +119,6 @@ class QuorumEvent : public Event {
   void VoteYes() {
     n_voted_yes_++;
     Test();
-
   }
 
   void VoteNo() {

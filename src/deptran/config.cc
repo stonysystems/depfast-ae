@@ -812,6 +812,7 @@ std::vector<Config::SiteInfo> Config::SitesByPartitionId(
   verify(0);
 }
 
+
 std::vector<int> Config::SiteIdsByPartitionId(parid_t partition_id){
   std::vector<int> result;
   auto it = find_if(replica_groups_.begin(), replica_groups_.end(),

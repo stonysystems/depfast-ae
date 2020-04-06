@@ -16,19 +16,19 @@ uint64_t Event::GetCoroId(){
 
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
-
-  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
   verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
-
+  verify(status_ == INIT);
   if (IsReady()) {
     status_ = DONE; // no need to wait.
     return;
   } else {
-    //Log_info("Waiting with status: %d", status_);
-    verify(status_ == INIT);
-    status_= DEBUG;
-    //Log_info("Waiting with status2: %d", status_);
+//    if (status_ == WAIT) {
+//      // this does not look right, fix later
+//      Log_fatal("multiple waits on the same event; no support at the moment");
+//    }
+//    verify(status_ == INIT); // does not support multiple wait so far. maybe we can support it in the future.
+//    status_= DEBUG;
     // the event may be created in a different coroutine.
     // this value is set when wait is called.
     // for now only one coroutine can wait on an event.
@@ -38,9 +38,11 @@ void Event::Wait(uint64_t timeout) {
 //    _dbg_p_scheduler_ = Reactor::GetReactor().get();
 //    auto& waiting_events = Reactor::GetReactor()->waiting_events_; // Timeout???
 //    waiting_events.push_back(shared_from_this());
-//    if (timeout == 0) {
-//      timeout = 5 * 1000 * 1000;
-//    }
+#ifdef EVENT_TIMEOUT_CHECK
+    if (timeout == 0) {
+      timeout = 120 * 1000 * 1000;
+    }
+#endif
     if (timeout > 0) {
       wakeup_time_ = Time::now() + timeout;
       auto& timeout_events = Reactor::GetReactor()->timeout_events_;
@@ -58,15 +60,17 @@ void Event::Wait(uint64_t timeout) {
 //        }
 //      }
 //      events.insert(it, shared_from_this());
-//
-//    somewhere here, we should output the logs
+
     wp_coro_ = sp_coro;
     //Log_info("waiting");
     status_ = WAIT;
+    verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
-//    if (status_ == TIMEOUT) {
-//      verify(0);
-//    }
+#ifdef EVENT_TIMEOUT_CHECK
+    if (status_ == TIMEOUT) {
+      verify(0);
+    }
+#endif
   }
 }
 
@@ -75,7 +79,6 @@ bool Event::Test() {
   if (IsReady()) {
     if (status_ == INIT) {
       // wait has not been called, do nothing until wait happens.
-      status_ = DONE;
     } else if (status_ == WAIT) {
       auto sp_coro = wp_coro_.lock();
       verify(sp_coro);
@@ -130,13 +133,23 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
+void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x) {
+  Wait([x](int v)->bool{
+    return v>=x;
+  });
+}
+
 void SharedIntEvent::Wait(function<bool(int v)> f) {
+  if (f(value_)) {
+    return;
+  }
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->test_ = f;
   events_.push_back(sp_ev);
-  sp_ev->Wait(100*1000*1000);
-  verify(sp_ev->status_ != Event::TIMEOUT);
+//  sp_ev->Wait(1000*1000*1000);
+//  verify(sp_ev->status_ != Event::TIMEOUT);
+  sp_ev->Wait();
 }
 
 } // namespace rrr

@@ -234,8 +234,6 @@ void Communicator::BroadcastDispatch(
   }
 }
 
-
-
 //need to change this code to solve the quorum info in the graphs
 //either create another event here or inside the coordinator.
 std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
@@ -265,7 +263,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto par_id = sp_vec_piece->at(0)->PartitionId();
     auto pair_leader_proxy = LeaderProxyForPartition(par_id);
     auto leader_id = pair_leader_proxy.first;
-    //Log_info("The leader id is %d", leader_id);
 
     rrr::FutureAttr fuattr;
     fuattr.callback =
@@ -361,7 +358,6 @@ Communicator::SendPrepare(Coordinator* coo,
       
     qe->id_ = Communicator::global_id;
     qe->par_id_ = quorum_id++;
-    
     FutureAttr fuattr;
     fuattr.callback = [e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
@@ -378,7 +374,6 @@ Communicator::SendPrepare(Coordinator* coo,
         cmd->commit_.store(false);
         coo->aborted_ = true;
       }
-      
       qe->n_voted_yes_++;
       e->Test();
     };
@@ -565,8 +560,8 @@ Communicator::SendAbort(Coordinator* coo,
           Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
         }
       }
-    }
 
+    }
     coo->site_abort_[rp]++;
   }
   return e;
@@ -669,8 +664,8 @@ Communicator::BroadcastMessage(shardid_t shard_id,
     };
     Future* f = nullptr;
     Future::safe_release(f);
+    return events;
   }
-  return events;
 }
 
 shared_ptr<MessageEvent>
@@ -682,13 +677,9 @@ Communicator::SendMessage(siteid_t site_id,
   return ev;
 }
 
-void Communicator::AddMessageHandler(
-    function<bool(const string&, string&)> f) {
-  msg_string_handlers_.push_back(f);
-}
 
 void Communicator::AddMessageHandler(
     function<bool(const MarshallDeputy&, MarshallDeputy&)> f) {
-  msg_marshall_handlers_.push_back(f);
+   msg_marshall_handlers_.push_back(f);
 }
 } // namespace janus
