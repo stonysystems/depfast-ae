@@ -53,7 +53,15 @@ class ServerListener: public Pollable {
   int poll_mode() {
     return Pollable::READ;
   }
+  size_t content_size() {
+    verify(0);
+    return 0;
+  }
   void handle_write() {verify(0);}
+  //void handle_read_one() {verify(0);}
+  bool handle_read_two() {
+    return true;
+  }
   void handle_read();
   void handle_error() {verify(0);}
   void close();
@@ -144,7 +152,15 @@ public:
     }
 
     int poll_mode();
+    size_t content_size() {
+      verify(0);
+      return 0;
+    }
     void handle_write();
+    //void handle_read_one() {verify(0);}
+    bool handle_read_two() {
+      return true;
+    }
     void handle_read();
     void handle_error();
 };

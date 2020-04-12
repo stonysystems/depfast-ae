@@ -118,11 +118,14 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     e->add_dep(leader_id, src_coroid, follower_id, -1);
 
     FutureAttr fuattr;
-    fuattr.callback = [e, ballot, leader_id, src_coroid, follower_id] (Future* fu) {
+    fuattr.callback = [e, start, ballot, leader_id, src_coroid, follower_id] (Future* fu) {
       ballot_t b = 0;
       uint64_t coro_id = 0;
       fu->get_reply() >> b >> coro_id;
       e->FeedResponse(b==ballot);
+      auto end = chrono::system_clock::now();
+      auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+      Log_info("The duration of Accept() for %d is: %d", follower_id, duration);
       e->deps[leader_id][src_coroid][follower_id].erase(-1);
       e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
     };

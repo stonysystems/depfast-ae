@@ -146,6 +146,7 @@ int Client::connect(const char* addr) {
     if (sock_ == -1) {
       continue;
     }
+    //Log_info("host port host port: %s:%s and socket: %d", host, port, sock_);
 
     const int yes = 1;
     verify(setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == 0);
@@ -182,6 +183,7 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
+  auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
   if (status_ != CONNECTED) {
     return;
@@ -199,18 +201,88 @@ void Client::handle_write() {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
+  auto end = chrono::steady_clock::now();
+  auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  Log_info("Duration of handle_write() is: %d", duration);
 }
 
-void Client::handle_read() {
+size_t Client::content_size() {
+  return in_.content_size();
+}
+
+void Client::handle_read(){
   if (status_ != CONNECTED) {
     return;
   }
 
   int bytes_read = in_.read_from_fd(sock_);
   if (bytes_read == 0) {
+    Log_info("sure");
+  }
+}
+
+bool Client::handle_read_two() {
+  //return true;
+  bool done = false;
+  i32 packet_size;
+  int n_peek = in_.peek(&packet_size, sizeof(i32));
+  for(;;) {
+    if (n_peek == sizeof(i32)
+        && in_.content_size() >= packet_size + sizeof(i32)) {
+      verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+
+      v64 v_reply_xid;
+      v32 v_error_code;
+
+      in_ >> v_reply_xid >> v_error_code;
+
+      pending_fu_l_.lock();
+      unordered_map<i64, Future*>::iterator
+        it = pending_fu_.find(v_reply_xid.get());
+      if(it != pending_fu_.end()){
+        Future* fu = it->second;
+        verify(fu->xid_ == v_reply_xid.get());
+
+        pending_fu_.erase(it);
+        pending_fu_l_.unlock();
+
+        fu->error_code_ = v_error_code.get();
+        fu->reply_.read_from_marshal(in_,
+	    	                     packet_size - v_reply_xid.val_size()
+				         - v_error_code.val_size());
+
+        fu->notify_ready();
+
+        fu->release();
+      } else{
+        pending_fu_l_.unlock();
+      }
+    } else{
+      done = true;
+      break;
+    }
+  }
+
+
+  Reactor::GetReactor()->Loop();
+  return done;
+}
+
+/*void Client::handle_read() {
+  if (status_ != CONNECTED) {
+    Log_info("DCed");
     return;
   }
 
+  int bytes_read = in_.read_from_fd(sock_);
+  //Log_info("The bytes read is: %d", bytes_read);
+  Log_info("the socket is: %d", sock_);
+  if (bytes_read == 0) {
+    Log_info("sure");
+  }
+
+
+  //auto start = chrono::steady_clock::now();
   for (;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
@@ -255,7 +327,11 @@ void Client::handle_read() {
   // This is a workaround, the Loop call should really happen
   // between handle_read and handle_write in the epoll loop
   Reactor::GetReactor()->Loop();
-}
+
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("Duration of handle_read() is: %d", duration);
+}*/
 
 int Client::poll_mode() {
   int mode = Pollable::READ;

@@ -1,7 +1,7 @@
 import math
 
 durations = []
-with open('../fast_b/log/proc-host1.log') as f:
+with open('log/proc-host1.log') as f:
     for line in f:
         if 'Time for Async_Accept() for 0' in line:
             if len(line.split(': ')) > 1:

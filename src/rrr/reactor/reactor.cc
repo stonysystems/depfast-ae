@@ -260,7 +260,9 @@ PollMgr::~PollMgr() {
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
     TriggerJob();
-    poll_.Wait();
+    //poll_.Wait();
+    poll_.Wait_One();
+    poll_.Wait_Two();
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
     // after each poll loop, remove uninterested pollables
