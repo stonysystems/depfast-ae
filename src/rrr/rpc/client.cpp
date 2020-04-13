@@ -183,7 +183,7 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
-  auto start = chrono::steady_clock::now();
+  //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
   if (status_ != CONNECTED) {
     return;
@@ -201,9 +201,9 @@ void Client::handle_write() {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
-  auto end = chrono::steady_clock::now();
-  auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
-  Log_info("Duration of handle_write() is: %d", duration);
+ // auto end = chrono::steady_clock::now();
+ // auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+ // Log_info("Duration of handle_write() is: %d", duration);
 }
 
 size_t Client::content_size() {
@@ -226,7 +226,7 @@ bool Client::handle_read_two() {
   bool done = false;
   i32 packet_size;
   int n_peek = in_.peek(&packet_size, sizeof(i32));
-  for(;;) {
+  for(int i = 0; i < 10; i++) {
     if (n_peek == sizeof(i32)
         && in_.content_size() >= packet_size + sizeof(i32)) {
       verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));

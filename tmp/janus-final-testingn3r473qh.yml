@@ -1,0 +1,20 @@
+bench:
+  population: {history: 1000000}
+  scale: 1
+  weight: {read: 0, write: 1}
+  workload: rw
+client: {forwarding: false, rate: -1, type: closed}
+host: {localhost: localhost}
+mode: {ab: brq, batch: false, cc: brq, ongoing: 1, retry: 20}
+process: {c0: localhost, s0: localhost, s1: localhost, s2: localhost}
+schema:
+- column:
+  - {name: h_key, primary: true, type: integer}
+  - {name: h_c_id, type: integer}
+  name: history
+sharding: {history: MOD}
+site:
+  client:
+  - [c0]
+  server:
+  - ['s0:10000', 's1:10001', 's2:10002']

@@ -1,0 +1,18 @@
+bench:
+  population:
+    history: 1000000
+  scale: 1
+  weight:
+    read: 0
+    write: 1
+  workload: rw
+schema:
+- column:
+  - name: h_key
+    primary: true
+    type: integer
+  - name: h_c_id
+    type: integer
+  name: history
+sharding:
+  history: MOD
