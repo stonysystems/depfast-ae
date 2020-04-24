@@ -270,7 +270,10 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           int32_t ret;
           TxnOutput outputs;
           uint64_t coro_id = 0;
-          fu->get_reply() >> ret >> outputs >> coro_id;
+	  double cpu = 0.0;
+	  double net = 0.0;
+          fu->get_reply() >> ret >> outputs >> coro_id >> cpu >> net;
+	  if(cpu != -1.0 || net != -1.0) Log_info("cpu: %f and network: %f", cpu, net);
           if(ret == REJECT){
             coo->aborted_ = true;
             txn->commit_.store(false);

@@ -34,7 +34,7 @@ abstract service Classic {
 //                 TxnOutput output);
 
   defer Dispatch(i64 tid, MarshallDeputy cmd |
-                 i32 res, TxnOutput output, uint64_t coro_id);
+                 i32 res, TxnOutput output, uint64_t coro_id, double cpu, double net);
 
   defer Prepare(i64 tid, 
                 vector<i32> sids,

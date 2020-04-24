@@ -46,8 +46,8 @@ private:
         double ret;
 
         ticks = times(&tms_buf);
-
-        if (ticks <= last_ticks_/* || num_processors_ <= 0*/)
+        Log_info("ticks: %d -> %d", last_ticks_, ticks);
+        if (ticks <= last_ticks_ + 100/* || num_processors_ <= 0*/)
             return -1.0;
 
         ret = (tms_buf.tms_stime - last_kernel_ticks_) +

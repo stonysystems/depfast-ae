@@ -42,6 +42,8 @@ class ClassicServiceImpl : public ClassicService {
                 int32_t* res,
                 TxnOutput* output,
                 uint64_t* coro_id,
+	        double* cpu,
+		double* net,
                 DeferredReply* defer_reply) override;
 
   void Prepare(const i64& tid,
