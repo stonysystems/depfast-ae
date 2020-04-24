@@ -60,9 +60,10 @@ class ServerListener: public Pollable {
   void handle_write() {verify(0);}
   //void handle_read_one() {verify(0);}
   bool handle_read_two() {
+    verify(0);
     return true;
   }
-  void handle_read();
+  bool handle_read();
   void handle_error() {verify(0);}
   void close();
   int fd() {return server_sock_;}
@@ -159,9 +160,10 @@ public:
     void handle_write();
     //void handle_read_one() {verify(0);}
     bool handle_read_two() {
+      verify(0);
       return true;
     }
-    void handle_read();
+    bool handle_read();
     void handle_error();
 };
 

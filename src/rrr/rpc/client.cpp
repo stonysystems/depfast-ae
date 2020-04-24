@@ -210,23 +210,32 @@ size_t Client::content_size() {
   return in_.content_size();
 }
 
-void Client::handle_read(){
+bool Client::handle_read(){
   if (status_ != CONNECTED) {
-    return;
+    Log_info("NOT CONNECTED");
+    return false;
   }
 
+  //Log_info("failing here");
   int bytes_read = in_.read_from_fd(sock_);
+  //Log_info("bytes read: %d", bytes_read);
   if (bytes_read == 0) {
     Log_info("sure");
+    return false;
   }
+  return true;
 }
 
 bool Client::handle_read_two() {
+  if (status_ != CONNECTED) {
+    return false;
+  }
+
   //return true;
   bool done = false;
-  i32 packet_size;
-  int n_peek = in_.peek(&packet_size, sizeof(i32));
   for(int i = 0; i < 10; i++) {
+    i32 packet_size;
+    int n_peek = in_.peek(&packet_size, sizeof(i32));
     if (n_peek == sizeof(i32)
         && in_.content_size() >= packet_size + sizeof(i32)) {
       verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
@@ -239,6 +248,7 @@ bool Client::handle_read_two() {
       pending_fu_l_.lock();
       unordered_map<i64, Future*>::iterator
         it = pending_fu_.find(v_reply_xid.get());
+      //Log_info("pending size: %d", pending_fu_.size());
       if(it != pending_fu_.end()){
         Future* fu = it->second;
         verify(fu->xid_ == v_reply_xid.get());

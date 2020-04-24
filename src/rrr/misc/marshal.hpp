@@ -72,6 +72,7 @@ class Marshal: public NoCopy {
 
     // NOTE: This function is only intended for Marshal::read_from_marshal.
     chunk *shared_copy() const {
+      //if(read_idx != 0 && write_idx != 0) Log_info("read_idx: %d and write_idx: %d", read_idx, write_idx);
       return new chunk(data, read_idx, write_idx);
     }
 
@@ -322,7 +323,7 @@ inline rrr::Marshal &operator<<(rrr::Marshal &m, const uint32_t &u) {
 inline rrr::Marshal &operator<<(rrr::Marshal &m, const uint64_t &u) {
   //Log_info("The sizeof u is: %d", sizeof(u));
   //auto start = std::chrono::steady_clock::now();
-  verify(m.write(&u, 123456) == sizeof(u));
+  verify(m.write(&u, sizeof(u)) == sizeof(u));
   //auto end = std::chrono::steady_clock::now();
   //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
   //Log_info("Time of << for uint64 is: %d", duration);

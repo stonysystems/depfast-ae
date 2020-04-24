@@ -154,11 +154,6 @@ size_t Marshal::content_size_slow() const {
 }
 
 size_t Marshal::write(const void* p, size_t n) {
-    bool timing = false;
-    if (n == 123456){
-        timing = true;
-	n = 8;
-    }
     assert(tail_ == nullptr || tail_->next == nullptr);
     chrono::time_point<chrono::steady_clock> start;
     if (head_ == nullptr) {
@@ -182,13 +177,13 @@ size_t Marshal::write(const void* p, size_t n) {
         if (n_write < n) {
 	    //Log_info("Less less less");
             const char* pc = (const char *) p;
-	    if(timing) start = chrono::steady_clock::now();
+	    //if(timing) start = chrono::steady_clock::now();
             tail_->next = new chunk(pc + n_write, n - n_write);
-            if(timing){
+            /*if(timing){
 	        auto end = chrono::steady_clock::now();
 		auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
 		Log_info("Duration of Less less less is: %d", duration);
-	    }
+	    }*/
             tail_ = tail_->next;
         }
 	
@@ -327,6 +322,7 @@ size_t Marshal::read_from_marshal(Marshal& m, size_t n) {
 
         // number of bytes that need to be copied
         size_t copy_n = std::min(tail_->data->size - tail_->write_idx, n);
+	//Log_info("copy_n: %d", copy_n);
         char* buf = new char[copy_n];
         n_fetch = m.read(buf, copy_n);
         verify(n_fetch == copy_n);

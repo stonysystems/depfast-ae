@@ -136,17 +136,17 @@ void ServerConnection::end_reply() {
     out_l_.unlock();
 }
 
-void ServerConnection::handle_read() {
+bool ServerConnection::handle_read() {
     //Log_info("Server's addr is: %s", server_->addr_.c_str());
     if (status_ == CLOSED) {
-        return;
+        return false;
     }
 
     //time this part, we can check the rpc_id by hardcoding
     int bytes_read = in_.read_from_fd(socket_);
     
     if (bytes_read == 0) {
-        return;
+        return false;
     }
 
     list<Request*> complete_requests;
@@ -240,6 +240,7 @@ void ServerConnection::handle_read() {
             delete req;
         }
     }
+    return false;
 }
 
 void ServerConnection::handle_write() {
@@ -416,7 +417,7 @@ void Server::server_loop(struct addrinfo* svr_addr) {
     status_ = STOPPED;
 }
 
-void ServerListener::handle_read() {
+bool ServerListener::handle_read() {
 //  fd_set fds;
 //  FD_ZERO(&fds);
 //  FD_SET(server_sock_, &fds);
@@ -442,6 +443,7 @@ void ServerListener::handle_read() {
       break;
     }
   }
+  return false;
 }
 
 void ServerListener::close() {

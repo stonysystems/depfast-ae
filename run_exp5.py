@@ -387,7 +387,7 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
-        self.once = False
+        self.once = 0
         self.recording_period = False
         self.print_max = False
 
@@ -544,13 +544,16 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if (progress <= lower_cutoff_pct and not self.once):
+            if(self.once == 0):
+                self.once += 1
+            if (progress >= 1 and self.once == 1):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev ens4 root netem delay 400ms'
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2':
+                            time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
-                    self.once = True
+                    self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:

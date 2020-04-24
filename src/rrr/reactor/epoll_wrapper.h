@@ -35,7 +35,7 @@ public:
     virtual int fd() = 0;
     virtual int poll_mode() = 0;
     virtual size_t content_size() = 0;
-    virtual void handle_read() = 0;
+    virtual bool handle_read() = 0;
     //virtual void handle_read_one() = 0;
     virtual bool handle_read_two() = 0;
     virtual void handle_write() = 0;
@@ -45,7 +45,7 @@ public:
 
 class Epoll {
  private:
-  std::vector<Pollable*> pending;
+  std::vector<Pollable*> pending{};
  public:
 
   Epoll() {
@@ -212,8 +212,8 @@ class Epoll {
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
       verify(poll != nullptr);
       if (evlist[i].events & EPOLLIN) {
-	  poll->handle_read();
-	  pending.push_back(poll);
+	  bool push = poll->handle_read();
+          if(push) pending.push_back(poll);
       }
       if (evlist[i].events & EPOLLOUT) {
           poll->handle_write();
