@@ -60,6 +60,10 @@ class SchedulerClassic: public TxLogServer {
     return rep_sched_->IsLeader() ;
   }  
 
+  virtual bool IsFPGALeader() override {
+    return rep_sched_->IsFPGALeader() ;
+  }  
+
   int PrepareReplicated(TpcPrepareCommand& prepare_cmd);
   int CommitReplicated(TpcCommitCommand& commit_cmd);
 

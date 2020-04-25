@@ -218,6 +218,12 @@ Coordinator* Frame::CreateCoordinator(cooid_t coo_id,
   return coo;
 }
 
+Coordinator* Frame::CreateBulkCoordinator(Config *config, int benchmark) {
+  verify(0);
+  Coordinator *coo;
+  return coo;
+}
+
 void Frame::GetTxTypes(std::map<int32_t, std::string>& txn_types) {
   auto benchmark_ = Config::config_s->benchmark_;
   switch (benchmark_) {

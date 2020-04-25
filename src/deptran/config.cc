@@ -39,7 +39,7 @@
 
 namespace janus {
 Config *Config::config_s = nullptr;
-
+size_t bulkBatchCount=100;
 
 Config * Config::GetConfig() {
   verify(config_s != nullptr);
@@ -67,15 +67,19 @@ int Config::CreateConfig(int argc, char **argv) {
   int server_or_client          = -1;
   int32_t tot_req_num           = 10000;
   int16_t n_concurrent          = 1;
+  bulkBatchCount = 100;
 
   int c;
   optind = 1;
   string filename;
-  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:")) != -1) {
+  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:A:")) != -1) {
     switch (c) {
       case 'b': // heartbeat to controller
         heart_beat = true;
         break;
+      case 'A':
+        bulkBatchCount = strtoul(optarg, &end_ptr, 10);
+		break;
       case 'd': // duration
         duration = strtoul(optarg, &end_ptr, 10);
 

@@ -57,6 +57,25 @@ class FpgaRaftVoteQuorumEvent: public QuorumEvent {
   }
 };
 
+class FpgaRaftVote2FPGAQuorumEvent: public QuorumEvent {
+ public:
+  using QuorumEvent::QuorumEvent;
+  bool HasAcceptedValue() {
+    return false;
+  }
+  void FeedResponse(bool y, ballot_t term) {
+    if (y) {
+      VoteYes();
+    } else {
+      VoteNo();
+      if(term > highest_term_)
+      {
+        highest_term_ = term ;
+      }      
+    }
+  }
+};
+
 class FpgaRaftAcceptQuorumEvent: public QuorumEvent {
  public:
   using QuorumEvent::QuorumEvent;
@@ -116,6 +135,18 @@ class FpgaRaftCommo : public Communicator {
                         parid_t self_id,
                         ballot_t cur_term );
   void BroadcastVote(parid_t par_id,
+                        slotid_t lst_log_idx,
+                        ballot_t lst_log_term,
+                        parid_t self_id,
+                        ballot_t cur_term,
+                        const function<void(Future *fu)> &callback);  
+  shared_ptr<FpgaRaftVote2FPGAQuorumEvent>
+  BroadcastVote2FPGA(parid_t par_id,
+                        slotid_t lst_log_idx,
+                        ballot_t lst_log_term,
+                        parid_t self_id,
+                        ballot_t cur_term );
+  void BroadcastVote2FPGA(parid_t par_id,
                         slotid_t lst_log_idx,
                         ballot_t lst_log_term,
                         parid_t self_id,

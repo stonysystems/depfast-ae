@@ -19,6 +19,10 @@ bool CoordinatorFpgaRaft::IsLeader() {
    return this->sch_->IsLeader() ;
 }
 
+bool CoordinatorFpgaRaft::IsFPGALeader() {
+   return this->sch_->IsFPGALeader() ;
+}
+
 void CoordinatorFpgaRaft::Forward(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {

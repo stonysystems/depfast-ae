@@ -43,9 +43,12 @@ class Frame {
                                          ClientControlServiceImpl *ccsi,
                                          uint32_t id,
                                          shared_ptr<TxnRegistry> txn_reg);
+
+  virtual Coordinator *CreateBulkCoordinator(Config *config, int benchmark);
+
   virtual Executor *CreateExecutor(cmdid_t cmd_id, TxLogServer *sch);
   virtual TxLogServer *CreateScheduler();
-  virtual Communicator *CreateCommo(PollMgr *pollmgr);
+  virtual Communicator *CreateCommo(PollMgr *pollmgr = nullptr);
   // for only dtxn
   Sharding *CreateSharding();
   Sharding *CreateSharding(Sharding *sd);

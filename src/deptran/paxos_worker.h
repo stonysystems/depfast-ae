@@ -7,6 +7,8 @@
 #include "scheduler.h"
 #include "communicator.h"
 #include "config.h"
+#include "./paxos/coordinator.h"
+#include "concurrentqueue.h"
 
 namespace janus {
 
@@ -136,19 +138,86 @@ public:
   virtual Marshal& FromMarshal(Marshal&) override;
 };
 
+inline rrr::Marshal& operator<<(rrr::Marshal &m, const LogEntry &cmd) {
+  m << cmd.length;
+  m << cmd.log_entry;
+  return m;
+}
+
+inline rrr::Marshal& operator>>(rrr::Marshal &m, LogEntry &cmd) {
+  m >> cmd.length;
+  m >> cmd.log_entry;
+  return m;
+}
+
+class BulkPaxosCmd : public  Marshallable {
+public:
+  vector<slotid_t> slots{};
+  vector<ballot_t> ballots{};
+  vector<shared_ptr<MarshallDeputy> > cmds{};
+
+  BulkPaxosCmd() : Marshallable(MarshallDeputy::CMD_BLK_PXS) {}
+  virtual ~BulkPaxosCmd() {
+      slots.clear();
+      ballots.clear();
+  }
+  Marshal& ToMarshal(Marshal& m) const override {
+      m << (int32_t) slots.size();
+      for(auto i : slots){
+          m << i;
+      }
+      m << (int32_t) ballots.size();
+      for(auto i : ballots){
+          m << i;
+      }
+      m << (int32_t) cmds.size();
+      verify(cmds[0] != nullptr);
+      for (auto sp : cmds) {
+          m << *sp;
+      }
+      return m;
+  }
+
+  Marshal& FromMarshal(Marshal& m) override {
+      int32_t szs, szb, szc;
+      m >> szs;
+      for (int i = 0; i < szs; i++) {
+          slotid_t x;
+          m >> x;
+          slots.push_back(x);
+      }
+      m >> szb;
+      for (int i = 0; i < szs; i++) {
+          ballot_t x;
+          m >> x;
+          ballots.push_back(x);
+      }
+      m >> szc;
+      for (int i = 0; i < szc; i++) {
+          auto x = std::make_shared<MarshallDeputy>();
+          m >> *x;
+          cmds.push_back(x);
+      }
+      return m;
+  }
+};
+
 class PaxosWorker {
 private:
   inline void _Submit(shared_ptr<Marshallable>);
+  inline void _BulkSubmit(shared_ptr<Marshallable>);
 
   rrr::Mutex finish_mutex{};
   rrr::CondVar finish_cond{};
-  std::atomic<int> n_current{0};
   std::function<void(const char*, int)> callback_ = nullptr;
   vector<Coordinator*> created_coordinators_{};
   struct timeval t1;
   struct timeval t2;
 
 public:
+  std::atomic<int> n_current{0};
+  std::atomic<int> n_submit{0};
+  std::atomic<int> n_tot{0};
   SubmitPool* submit_pool = nullptr;
   rrr::PollMgr* svr_poll_mgr_ = nullptr;
   vector<rrr::Service*> services_ = {};
@@ -170,13 +239,34 @@ public:
   TxLogServer* rep_sched_ = nullptr;
   Communicator* rep_commo_ = nullptr;
 
+  static moodycamel::ConcurrentQueue<Coordinator*> coo_queue;
+  moodycamel::ConcurrentQueue<Marshallable*> replay_queue;
+  int bulk_writer = 0;
+  int bulk_reader = -1;
+  rrr::SpinLock acc_;
+  const unsigned int cnt = bulkBatchCount;
+  pthread_t bulkops_th_;
+  pthread_t replay_th_;
+  bool stop_flag = true;
+  bool stop_replay_flag = true;
+
   void SetupHeartbeat();
+  void InitQueueRead();
   void SetupBase();
+  int  deq_from_coo(vector<Coordinator*>&);
   void SetupService();
   void SetupCommo();
   void ShutDown();
   void Next(Marshallable&);
   void WaitForSubmit();
+  void IncSubmit();
+  void BulkSubmit(const vector<Coordinator*>&);
+  void AddAccept(Coordinator*);
+  void AddReplayEntry(Marshallable&);
+  static void* StartReadAccept(void*);
+  static void* StartReplayRead(void*);
+  PaxosWorker();
+  ~PaxosWorker();
 
   static const uint32_t CtrlPortDelta = 10000;
   void WaitForShutdown();
@@ -185,6 +275,9 @@ public:
 
   void Submit(const char*, int, uint32_t);
   void register_apply_callback(std::function<void(const char*, int)>);
+  rrr::PollMgr * GetPollMgr(){
+      return svr_poll_mgr_;
+  }
 };
 
 } // namespace janus

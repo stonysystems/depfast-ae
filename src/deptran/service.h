@@ -47,6 +47,14 @@ class ClassicServiceImpl : public ClassicService {
                  bool_t* is_leader,
                  DeferredReply* defer_reply) override ;
 
+  void IsFPGALeader(const parid_t& can_id,
+                 bool_t* is_leader,
+                 DeferredReply* defer_reply) override ;
+
+  void SimpleCmd (const SimpleCommand& cmd, 
+                      i32* res, DeferredReply* defer_reply) override ;
+
+
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
                i32* res,

@@ -302,8 +302,8 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
     }
     if(coo->offset_ == 0)
     {
-      *failover_trigger_ = false ;
       SearchLeader(coo) ;
+      *failover_trigger_ = false ;
       failover_trigger_loc = false ;
       failover_pause_start = false ; 
       failover_wait_leader_ = false ;

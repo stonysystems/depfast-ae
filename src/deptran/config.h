@@ -6,6 +6,7 @@
 #include "sharding.h"
 
 namespace janus {
+extern size_t bulkBatchCount;
 
 class Config {
  public:

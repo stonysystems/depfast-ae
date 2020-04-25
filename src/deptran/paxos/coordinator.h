@@ -7,10 +7,9 @@
 namespace janus {
 
 class MultiPaxosCommo;
+class BulkCoordinatorMultiPaxos;
 class CoordinatorMultiPaxos : public Coordinator {
  public:
-//  static ballot_t next_slot_s;
- private:
   enum Phase { INIT_END = 0, PREPARE = 1, ACCEPT = 2, COMMIT = 3 };
   const int32_t n_phase_ = 4;
 
@@ -22,7 +21,6 @@ class CoordinatorMultiPaxos : public Coordinator {
   bool in_submission_ = false; // debug;
   bool in_prepare_ = false; // debug
   bool in_accept = false; // debug
- public:
   shared_ptr<Marshallable> cmd_{nullptr};
   CoordinatorMultiPaxos(uint32_t coo_id,
                         int32_t benchmark,
@@ -40,6 +38,10 @@ class CoordinatorMultiPaxos : public Coordinator {
 
   bool IsLeader() {
     return this->loc_id_ == 0;
+  }
+
+  void assignCmd(shared_ptr<Marshallable>& cmd){
+    cmd_ = cmd;
   }
 
   slotid_t GetNextSlot() {
@@ -69,6 +71,21 @@ class CoordinatorMultiPaxos : public Coordinator {
   void Restart() override { verify(0); }
 
   void GotoNextPhase();
+};
+
+class BulkCoordinatorMultiPaxos : public CoordinatorMultiPaxos {
+public:
+    shared_ptr<Marshallable> cmd_{nullptr};
+    void Accept();
+    void Commit();
+    void GotoNextPhase();
+    BulkCoordinatorMultiPaxos(uint32_t coo_id,
+                          int32_t benchmark,
+                          ClientControlServiceImpl *ccsi,
+                          uint32_t thread_id);
+    void BulkSubmit(shared_ptr<Marshallable> &cmd,
+                    const std::function<void()> &func = []() {},
+                    const std::function<void()> &exe_callback = []() {});
 };
 
 } //namespace janus

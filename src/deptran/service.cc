@@ -13,6 +13,8 @@
 #include "janus/scheduler.h"
 #include "februus/scheduler.h"
 #include "benchmark_control_rpc.h"
+#include "classic/tpc_command.h"
+#include "coordinator.h"
 
 namespace janus {
 
@@ -62,6 +64,18 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::SimpleCmd(const SimpleCommand& cmd,
+                                        rrr::i32* res,
+                                        rrr::DeferredReply* defer) {
+  auto empty_cmd = std::make_shared<TpcEmptyCommand>();
+  verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
+  auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
+  auto sched = (SchedulerClassic*) dtxn_sched_;
+  sched->CreateRepCoord()->Submit(sp_m);
+  *res = SUCCESS ;
+  defer->reply();
+}
+
 void ClassicServiceImpl::IsLeader(const parid_t& can_id,
                                  bool_t* is_leader,
                                  rrr::DeferredReply* defer) {
@@ -70,6 +84,13 @@ void ClassicServiceImpl::IsLeader(const parid_t& can_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::IsFPGALeader(const parid_t& can_id,
+                                 bool_t* is_leader,
+                                 rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*) dtxn_sched_;
+  *is_leader = sched->IsFPGALeader();  
+  defer->reply();
+}
 
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,

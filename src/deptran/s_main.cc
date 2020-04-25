@@ -215,7 +215,13 @@ void server_failover_thread(bool random, bool leader, int srv_idx)
           failover_triggers[i] = true ;
         }
         Log_info("server %d paused for failover test", idx);
-        sleep(stop_int) ;    
+        sleep(stop_int) ;
+        for (int i = 0; i < client_workers_g.size() ; ++i)
+        {
+          while(failover_triggers[i]) {
+            if (failover_server_quit) return ;
+          }
+        }        
         svr_workers_g[idx].Resume() ;
         Log_info("server %d resumed for failover test", idx);
         if(leader)

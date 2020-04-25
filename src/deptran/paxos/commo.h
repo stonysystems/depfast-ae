@@ -65,6 +65,12 @@ class MultiPaxosCommo : public Communicator {
                        const slotid_t slot_id,
                        const ballot_t ballot,
                        const shared_ptr<Marshallable> cmd);
+  shared_ptr<PaxosAcceptQuorumEvent>
+    BroadcastBulkAccept(parid_t par_id,
+                        shared_ptr<Marshallable> cmd);
+  shared_ptr<PaxosAcceptQuorumEvent>
+    BroadcastBulkDecide(parid_t par_id,
+                           const shared_ptr<Marshallable> cmd);
 };
 
 } // namespace janus

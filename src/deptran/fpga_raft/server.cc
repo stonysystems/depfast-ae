@@ -5,13 +5,14 @@
 #include "exec.h"
 #include "frame.h"
 #include "coordinator.h"
-
+#include "../classic/tpc_command.h"
 
 namespace janus {
 
 FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   frame_ = frame ;
-  is_leader_ = frame_->site_info_->locale_id == 0 ;
+  setIsFPGALeader(frame_->site_info_->locale_id == 0) ;
+  setIsLeader(frame_->site_info_->locale_id == 0) ;
   stop_ = false ;
   timer_ = new Timer() ;
 }
@@ -22,12 +23,7 @@ FpgaRaftServer::~FpgaRaftServer() {
     n_commit_);
 }
 
-void FpgaRaftServer::RequestVote() {
-
-  if(paused_) {
-      resetTimer() ;
-      return ;
-  }
+void FpgaRaftServer::RequestVote2FPGA() {
 
   // currently don't request vote if no log
   if(this->commo_ == NULL || lastLogIndex == 0 ) return ;
@@ -35,7 +31,14 @@ void FpgaRaftServer::RequestVote() {
   parid_t par_id = this->frame_->site_info_->partition_id_ ;
   parid_t loc_id = this->frame_->site_info_->locale_id ;
 
-  Log_debug("fpga raft server %d ask to vote", loc_id );
+  if(paused_) {
+      resetTimer() ;
+      Log_debug("fpga raft server %d request vote to fpga rejected due to paused", loc_id );
+      // req_voting_ = false ;
+      return ;
+  }
+
+  Log_debug("fpga raft server %d in request vote to fpga", loc_id );
 
   uint32_t lstoff = 0  ;
   slotid_t lst_idx = 0 ;
@@ -43,7 +46,118 @@ void FpgaRaftServer::RequestVote() {
 
   {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
-    // TODO set fpga isleader false 
+    // TODO set fpga isleader false, recheck 
+    setIsFPGALeader(false) ;
+    currentTerm++ ;
+    lstoff = lastLogIndex - snapidx_ ;
+    auto log = GetFpgaRaftInstance(lstoff) ;
+    lst_idx = lstoff + snapidx_ ;
+    lst_term = log->term ;
+  }
+  
+  auto sp_quorum = ((FpgaRaftCommo *)(this->commo_))->BroadcastVote2FPGA(par_id,lst_idx,lst_term,loc_id, currentTerm );
+  sp_quorum->Wait();
+  std::lock_guard<std::recursive_mutex> lock1(mtx_);
+  if (sp_quorum->Yes()) {
+    // become a leader
+    setIsFPGALeader(true) ;
+    Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
+  } else if (sp_quorum->No()) {
+    // become a follower
+    Log_debug("vote rejected %d", loc_id);
+    setIsFPGALeader(false) ;
+    //reset cur term if new term is higher
+    ballot_t new_term = sp_quorum->Term() ;
+    currentTerm = new_term > currentTerm? new_term : currentTerm ;
+  } else {
+    // TODO process timeout.
+    Log_debug("vote timeout %d", loc_id);
+  }
+  req_voting_ = false ;
+}
+
+void FpgaRaftServer::OnVote2FPGA(const slotid_t& lst_log_idx,
+                            const ballot_t& lst_log_term,
+                            const parid_t& can_id,
+                            const ballot_t& can_term,
+                            ballot_t *reply_term,
+                            bool_t *vote_granted,
+                            const function<void()> &cb) {
+
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("fpga raft receives vote from candidate: %llx", can_id);
+
+  uint64_t cur_term = currentTerm ;
+  if( can_term < cur_term)
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+    return ;
+  }
+
+  // has voted to a machine in the same term, vote no
+  // TODO when to reset the vote_for_??
+//  if( can_term == cur_term && vote_for_ != INVALID_PARID )
+  if( can_term == cur_term)
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+    return ;
+  }
+
+  // lstoff starts from 1
+  uint32_t lstoff = lastLogIndex - snapidx_ ;
+
+  ballot_t curlstterm = snapterm_ ;
+  slotid_t curlstidx = lastLogIndex ;
+
+  if(lstoff > 0 )
+  {
+    auto log = GetFpgaRaftInstance(lstoff) ;
+    curlstterm = log->term ;
+  }
+
+  Log_debug("vote for lstoff %d, curlstterm %d, curlstidx %d", lstoff, curlstterm, curlstidx  );
+
+
+  // TODO del only for test 
+  verify(lstoff == lastLogIndex ) ;
+
+  if( lst_log_term > curlstterm || (lst_log_term == curlstterm && lst_log_idx >= curlstidx) )
+  {
+    doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, true, cb) ;
+    return ;
+  }
+
+  doVote(lst_log_idx, lst_log_term, can_id, can_term, reply_term, vote_granted, false, cb) ;
+
+}
+
+
+void FpgaRaftServer::RequestVote() {
+
+  // currently don't request vote if no log
+  if(this->commo_ == NULL || lastLogIndex == 0 ) return ;
+
+  parid_t par_id = this->frame_->site_info_->partition_id_ ;
+  parid_t loc_id = this->frame_->site_info_->locale_id ;
+
+
+  if(paused_) {
+      Log_debug("fpga raft server %d request vote rejected due to paused", loc_id );
+      resetTimer() ;
+      // req_voting_ = false ;
+      return ;
+  }
+
+  Log_debug("fpga raft server %d in request vote", loc_id );
+
+  uint32_t lstoff = 0  ;
+  slotid_t lst_idx = 0 ;
+  ballot_t lst_term = 0 ;
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    // TODO set fpga isleader false, recheck 
+    setIsFPGALeader(false) ;
     currentTerm++ ;
     lstoff = lastLogIndex - snapidx_ ;
     auto log = GetFpgaRaftInstance(lstoff) ;
@@ -57,7 +171,24 @@ void FpgaRaftServer::RequestVote() {
   if (sp_quorum->Yes()) {
     // become a leader
     setIsLeader(true) ;
-    Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
+
+    this->rep_frame_ = this->frame_ ;
+    auto co = ((TxLogServer *)(this))->CreateRepCoord();
+    auto empty_cmd = std::make_shared<TpcEmptyCommand>();
+    verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
+    auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
+    ((CoordinatorFpgaRaft*)co)->Submit(sp_m);
+    
+    RequestVote2FPGA() ;
+    if(IsLeader())
+    {
+      Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
+    }
+    else
+    {
+      Log_debug("fpga vote rejected %d curterm %d, do rollback", loc_id, currentTerm);
+      setIsLeader(false) ;
+    }
   } else if (sp_quorum->No()) {
     // become a follower
     Log_debug("vote rejected %d", loc_id);
@@ -69,7 +200,7 @@ void FpgaRaftServer::RequestVote() {
     // TODO process timeout.
     Log_debug("vote timeout %d", loc_id);
   }
-  end_ = true ;
+  req_voting_ = false ;
 }
 
 void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
@@ -82,6 +213,10 @@ void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,
 
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("fpga raft receives vote from candidate: %llx", can_id);
+
+  setIsFPGALeader(false) ;
+
+  // TODO wait all the log pushed to fpga host
 
   uint64_t cur_term = currentTerm ;
   if( can_term < cur_term)
@@ -139,13 +274,14 @@ void FpgaRaftServer::StartTimer()
                 if ( !IsLeader() && timer_->elapsed() > duration) {
                     Log_debug(" timer time out") ;
                     // ask to vote
+                    // req_voting_ = true ;
                     RequestVote() ;
-                    while(!end_)
+                    /*while(req_voting_)
                     {
                       auto sp_e1 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
                       sp_e1->Wait(wait_int_) ;
                       if(stop_) return ;
-                    }
+                    }*/
                     Log_debug("start a new timer") ;
                     resetTimer() ;
                     duration = randDuration() ;
@@ -215,7 +351,6 @@ void FpgaRaftServer::StartTimer()
                                           uint64_t *cmt_idx,
                                           const function<void()> &cb) {
         this->rep_frame_ = this->frame_ ;
-
         auto co = ((TxLogServer *)(this))->CreateRepCoord();
         ((CoordinatorFpgaRaft*)co)->Submit(cmd);
         

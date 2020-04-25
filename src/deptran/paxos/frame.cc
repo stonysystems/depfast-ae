@@ -69,6 +69,25 @@ Coordinator *MultiPaxosFrame::CreateCoordinator(cooid_t coo_id,
   return coo;
 }
 
+
+Coordinator *MultiPaxosFrame::CreateBulkCoordinator(Config *config, int benchmark) {
+    verify(config != nullptr);
+    CoordinatorMultiPaxos *coo;
+    coo = new BulkCoordinatorMultiPaxos(0, benchmark, nullptr, 0);
+    coo->frame_ = this;
+    verify(commo_ != nullptr);
+    coo->commo_ = commo_;
+    coo->n_replica_ = config->GetPartitionSize(site_info_->partition_id_);
+    coo->loc_id_ = this->site_info_->locale_id;
+    verify(coo->n_replica_ != 0); // TODO
+    Log_debug("create new multi-paxos bulk coord");
+    return coo;
+}
+
+
+
+
+
 TxLogServer *MultiPaxosFrame::CreateScheduler() {
   TxLogServer *sch = nullptr;
   sch = new PaxosServer();

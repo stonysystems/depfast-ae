@@ -44,6 +44,7 @@ class CoordinatorFpgaRaft : public Coordinator {
   }
 
   bool IsLeader() ;
+  bool IsFPGALeader() ;
 
   slotid_t GetNextSlot() {
     verify(0);

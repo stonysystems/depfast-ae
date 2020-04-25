@@ -423,7 +423,7 @@ shared_ptr<GetLeaderQuorumEvent>
       fu->get_reply() >> is_leader ;      
       e->FeedResponse(is_leader, p.first); 
     };    
-    Future::safe_release(proxy->async_IsLeader(par_id, fuattr));  
+    Future::safe_release(proxy->async_IsFPGALeader(par_id, fuattr));  
   }  
   return e;
 }
@@ -446,5 +446,26 @@ void Communicator::SetNewLeaderProxy(parid_t par_id, locid_t loc_id)
    leader_cache_[par_id] = *proxy_it;
    Log_debug("set leader porxy for parition %d is %d", par_id, loc_id);
 }
+
+void Communicator::SendSimpleCmd(groupid_t gid,
+                               SimpleCommand & cmd,
+                               std::vector<int32_t>& sids,
+                               const function<void(int)>& callback)
+{
+  FutureAttr fuattr;
+  std::function<void(Future*)> cb =
+      [this, callback](Future* fu) {
+        int res;
+        fu->get_reply() >> res;
+        callback(res);
+      };
+  fuattr.callback = cb;
+  ClassicProxy* proxy = LeaderProxyForPartition(gid).second;
+  Log_debug("SendEmptyCmd to %ld sites gid:%ld\n",
+            sids.size(),
+            gid);
+  Future::safe_release(proxy->async_SimpleCmd(cmd, fuattr));
+}
+
 
 } // namespace janus

@@ -47,5 +47,28 @@ void MultiPaxosServiceImpl::Decide(const uint64_t& slot,
   defer->reply();
 }
 
+void MultiPaxosServiceImpl::BulkAccept(const MarshallDeputy& md_cmd,
+                                       i32* valid,
+                                       rrr::DeferredReply* defer) {
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnBulkAccept(const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                         valid,
+                        std::bind(&rrr::DeferredReply::reply, defer));
+  });
+}
+
+void MultiPaxosServiceImpl::BulkDecide(const MarshallDeputy& md_cmd,
+                                       i32* valid,
+                                       rrr::DeferredReply* defer) {
+  verify(sched_ != nullptr);
+  Coroutine::CreateRun([&] () {
+    sched_->OnBulkCommit(const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                         valid,
+                         std::bind(&rrr::DeferredReply::reply, defer));
+    defer->reply();
+  });
+}
+
 
 } // namespace janus;

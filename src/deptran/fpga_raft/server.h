@@ -27,21 +27,38 @@ class FpgaRaftServer : public TxLogServer {
   Timer *timer_;
   bool stop_ = false ;
   parid_t vote_for_ = INVALID_PARID ;
-  bool end_ = false ;
   bool init_ = false ;
   bool is_leader_ = false ;
+  bool fpga_is_leader_ = false ;  
+  uint64_t fpga_lastLogIndex = 0;
+  uint64_t fpga_commitIndex = 0;
   slotid_t snapidx_ = 0 ;
   ballot_t snapterm_ = 0 ;
   int32_t wait_int_ = 1 * 1000 * 1000 ; // 1s
   bool paused_ = false ;
+  bool req_voting_ = false ;
   bool in_applying_logs_ = false ;
 
   void RequestVote() ;
+  void RequestVote2FPGA() ;
 
   void setIsLeader(bool isLeader)
   {
-    Log_debug("set loc_id %d isleader %d", loc_id_, isLeader) ;
+    Log_debug("set loc_id %d is leader %d", loc_id_, isLeader) ;
     is_leader_ = isLeader ;
+  }
+
+  void setIsFPGALeader(bool isLeader)
+  {
+    Log_debug("set loc_id %d is fpga leader %d", loc_id_, isLeader) ;
+    fpga_is_leader_ = isLeader ;
+
+    if (isLeader) 
+    {
+      fpga_lastLogIndex = lastLogIndex ;
+      fpga_commitIndex = commitIndex ;
+    }
+    
   }
   
   void doVote(const slotid_t& lst_log_idx,
@@ -110,6 +127,11 @@ class FpgaRaftServer : public TxLogServer {
     return is_leader_ ;
   }
 
+  bool IsFPGALeader()
+  {
+    return fpga_is_leader_ ;
+  }
+  
   void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index ){
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     *index = lastLogIndex ;
@@ -156,6 +178,15 @@ class FpgaRaftServer : public TxLogServer {
                       ballot_t *reply_term,
                       bool_t *vote_granted,
                       const function<void()> &cb) ;
+
+  void OnVote2FPGA(const slotid_t& lst_log_idx,
+                      const ballot_t& lst_log_term,
+                      const parid_t& can_id,
+                      const ballot_t& can_term,
+                      ballot_t *reply_term,
+                      bool_t *vote_granted,
+                      const function<void()> &cb) ;
+
 
   void OnAppendEntries(const slotid_t slot_id,
                        const ballot_t ballot,

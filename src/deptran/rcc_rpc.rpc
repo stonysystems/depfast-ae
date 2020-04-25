@@ -16,6 +16,11 @@ abstract service MultiPaxos {
   defer Decide(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd);
+
+  defer BulkAccept(MarshallDeputy cmd | i32 val);
+
+  defer BulkDecide(MarshallDeputy cmd | i32 val);	       
+	       
 }
 
 abstract service FpgaRaft {
@@ -24,6 +29,13 @@ abstract service FpgaRaft {
                 uint64_t cmt_idx );
 
   defer Vote(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer Vote2FPGA(uint64_t lst_log_idx,
                 ballot_t lst_log_term,
                 parid_t par_id,
                 ballot_t cur_term|
@@ -73,6 +85,8 @@ abstract service Classic {
   defer TruncateEpoch(uint32_t old_epoch)
   
   defer IsLeader(parid_t cur_pause| bool_t is_leader );
+  defer IsFPGALeader(parid_t cur_pause| bool_t is_leader );
+  defer SimpleCmd( SimpleCommand cmd| i32 res);
 
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
