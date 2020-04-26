@@ -84,10 +84,11 @@ abstract service Classic {
 
   defer TruncateEpoch(uint32_t old_epoch)
   
-  defer IsLeader(parid_t cur_pause| bool_t is_leader );
-  defer IsFPGALeader(parid_t cur_pause| bool_t is_leader );
+  defer IsLeader(locid_t cur_pause| bool_t is_leader );
+  defer IsFPGALeader(locid_t cur_pause| bool_t is_leader );
   defer SimpleCmd( SimpleCommand cmd| i32 res);
-
+  defer FailOverTrig(bool_t pause| i32 res);
+   
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
   // <input_0> <input_1> ... |
@@ -177,6 +178,10 @@ abstract service Classic {
                       i32 ret);
 
   defer CommitFebruus(txid_t tx_id, uint64_t timestamp | i32 ret);
+}
+
+abstract service FailOverCtrl {
+  defer FailOverTrig(bool_t pause| i32 res);
 }
 
 

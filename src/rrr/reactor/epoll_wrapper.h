@@ -40,6 +40,8 @@ public:
 
 class Epoll {
  public:
+   volatile bool* pause ;
+   volatile bool* stop ;
 
   Epoll() {
 #ifdef USE_KQUEUE
@@ -186,7 +188,14 @@ class Epoll {
         poll->handle_read();
       }
       if (evlist[i].filter == EVFILT_WRITE) {
-        poll->handle_write();
+        Coroutine::CreateRun([&]() {
+            while(*pause && !*stop)
+            {
+              auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
+              sp_e2->Wait(1*1000*1000) ;
+            } 
+            poll->handle_write();
+        });
       }
 
       // handle error after handle IO, so that we can at least process something

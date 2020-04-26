@@ -21,7 +21,7 @@ namespace janus {
 ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
                                        rrr::PollMgr* poll_mgr,
                                        ServerControlServiceImpl* scsi) : scsi_(
-    scsi), dtxn_sched_(sched) {
+    scsi), dtxn_sched_(sched), poll_mgr_(poll_mgr) {
 
 #ifdef PIECE_COUNT
   piece_count_timer_.start();
@@ -64,6 +64,24 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::FailOverTrig(const bool_t& pause, 
+                                          rrr::i32* res, 
+                                          rrr::DeferredReply* defer) {
+  if(pause) {
+    dtxn_sched_->rep_sched_->Pause() ;
+    poll_mgr_->pause() ;
+    auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(10*1000*1000);
+    sp_e2->Wait(10*1000*1000) ;    
+    poll_mgr_->resume() ;
+    dtxn_sched_->rep_sched_->Resume() ;
+  } else {
+    poll_mgr_->resume() ;
+    dtxn_sched_->rep_sched_->Resume() ;
+  }
+  *res = SUCCESS;
+  defer->reply();
+}
+
 void ClassicServiceImpl::SimpleCmd(const SimpleCommand& cmd,
                                         rrr::i32* res,
                                         rrr::DeferredReply* defer) {
@@ -76,7 +94,7 @@ void ClassicServiceImpl::SimpleCmd(const SimpleCommand& cmd,
   defer->reply();
 }
 
-void ClassicServiceImpl::IsLeader(const parid_t& can_id,
+void ClassicServiceImpl::IsLeader(const locid_t& can_id,
                                  bool_t* is_leader,
                                  rrr::DeferredReply* defer) {
   auto sched = (SchedulerClassic*) dtxn_sched_;
@@ -84,7 +102,7 @@ void ClassicServiceImpl::IsLeader(const parid_t& can_id,
   defer->reply();
 }
 
-void ClassicServiceImpl::IsFPGALeader(const parid_t& can_id,
+void ClassicServiceImpl::IsFPGALeader(const locid_t& can_id,
                                  bool_t* is_leader,
                                  rrr::DeferredReply* defer) {
   auto sched = (SchedulerClassic*) dtxn_sched_;

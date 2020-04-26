@@ -38,6 +38,7 @@ class ClientWorker {
   std::mutex coordinator_mutex{};
   vector<Coordinator*> free_coordinators_{};
   vector<Coordinator*> created_coordinators_{};
+  Coordinator* fail_ctrl_coo_ ;
 //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
 
   std::atomic<uint32_t> num_txn, success, num_try;
@@ -70,6 +71,9 @@ class ClientWorker {
   Coordinator* FindOrCreateCoordinator();
   void DispatchRequest(Coordinator *coo);
   void SearchLeader(Coordinator* coo);
+  void Pause(int idx) ;
+  void Resume(int idx) ;
+  Coordinator* CreateFailCtrlCoordinator() ;
   void AcceptForwardedRequest(TxRequest &request, TxReply* txn_reply, rrr::DeferredReply* defer);
 
  protected:

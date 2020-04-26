@@ -6,6 +6,7 @@
 #include "command_marshaler.h"
 #include "benchmark_control_rpc.h"
 #include "server_worker.h"
+#include "../rrr/reactor/event.h"
 
 #ifdef CPU_PROFILE
 # include <gperftools/profiler.h>
@@ -141,7 +142,7 @@ void wait_for_clients() {
   }
 }
 
-void server_failover_thread(bool random, bool leader, int srv_idx)
+void server_failover_co(bool random, bool leader, int srv_idx)
 {
     int idx = -1 ;
     int expected_idx = -1 ;
@@ -192,9 +193,16 @@ void server_failover_thread(bool random, bool leader, int srv_idx)
         {
             idx = rand() % svr_workers_g.size() ;
         }
-        if(idx == -1) break ;   // quit if no idx has beeen assigned
         failover_server_idx = idx ;
-        sleep(run_int) ;
+        //sleep(run_int) ;
+        auto r = Reactor::CreateSpEvent<TimeoutEvent>(run_int * 1000 * 1000);
+        r->Wait(run_int * 1000 * 1000) ;        
+        if(idx == -1) 
+        {
+          // TODO other types
+          if (!leader) break ;
+          idx = 0 ;
+        }        
         if(failover_server_quit)
         {
             break ;
@@ -209,20 +217,25 @@ void server_failover_thread(bool random, bool leader, int srv_idx)
             if (failover_server_quit) return ;
           }
         }
-        svr_workers_g[idx].Pause() ;
+        // TODO the idx of client
+        client_workers_g[0]->Pause(idx) ;
+//        svr_workers_g[idx].Pause() ;
         for (int i = 0; i < client_workers_g.size() ; ++i)
         {
           failover_triggers[i] = true ;
         }
         Log_info("server %d paused for failover test", idx);
-        sleep(stop_int) ;
+        //sleep(stop_int) ;
+        auto s = Reactor::CreateSpEvent<TimeoutEvent>(stop_int * 1000 * 1000);
+        s->Wait(stop_int * 1000 * 1000) ;        
         for (int i = 0; i < client_workers_g.size() ; ++i)
         {
           while(failover_triggers[i]) {
             if (failover_server_quit) return ;
           }
         }        
-        svr_workers_g[idx].Resume() ;
+        client_workers_g[0]->Resume(idx) ;
+//        svr_workers_g[idx].Resume() ;
         Log_info("server %d resumed for failover test", idx);
         if(leader)
         {
@@ -233,6 +246,12 @@ void server_failover_thread(bool random, bool leader, int srv_idx)
 
 }
 
+void server_failover_thread(bool random, bool leader, int srv_idx) {
+  Coroutine::CreateRun([&, random, leader, srv_idx]() { 
+    server_failover_co(random, leader, srv_idx) ;
+  }) ;
+}
+
 void server_failover()
 {
     bool failover = Config::GetConfig()->get_failover();
@@ -241,9 +260,12 @@ void server_failover()
     int idx = Config::GetConfig()->get_failover_srv_idx() ;
     if(failover)
     {
+      /*Coroutine::CreateRun([&, random, leader, idx]() { 
+        server_failover_co(random, leader, idx) ;
+      }) ;*/
       // TODO only consider the partition 0 now
-      failover_threads_g.push_back(
-          std::thread(&server_failover_thread, random, leader, idx)) ;
+      /*failover_threads_g.push_back(
+          std::thread(&server_failover_thread, random, leader, idx)) ;*/
     }
 }
 

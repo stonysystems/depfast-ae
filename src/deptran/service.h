@@ -12,6 +12,7 @@ class TxLogServer;
 class SimpleCommand;
 class Communicator;
 class SchedulerClassic;
+class rrr::PollMgr ;
 
 class ClassicServiceImpl : public ClassicService {
 
@@ -30,6 +31,7 @@ class ClassicServiceImpl : public ClassicService {
   Communicator* comm_{nullptr};
 
   TxLogServer* dtxn_sched_;
+  rrr::PollMgr* poll_mgr_ ;
 
   TxLogServer* dtxn_sched() {
     return dtxn_sched_;
@@ -43,11 +45,15 @@ class ClassicServiceImpl : public ClassicService {
                 TxnOutput* output,
                 DeferredReply* defer_reply) override;
 
-  void IsLeader(const parid_t& can_id,
+  void FailOverTrig(const bool_t& pause, 
+                        rrr::i32* res, 
+                        rrr::DeferredReply* defer) override ;
+
+  void IsLeader(const locid_t& can_id,
                  bool_t* is_leader,
                  DeferredReply* defer_reply) override ;
 
-  void IsFPGALeader(const parid_t& can_id,
+  void IsFPGALeader(const locid_t& can_id,
                  bool_t* is_leader,
                  DeferredReply* defer_reply) override ;
 

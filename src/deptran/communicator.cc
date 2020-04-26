@@ -423,10 +423,34 @@ shared_ptr<GetLeaderQuorumEvent>
       fu->get_reply() >> is_leader ;      
       e->FeedResponse(is_leader, p.first); 
     };    
-    Future::safe_release(proxy->async_IsFPGALeader(par_id, fuattr));  
+    Future::safe_release(proxy->async_IsFPGALeader(cur_pause, fuattr));  
   }  
   return e;
 }
+
+shared_ptr<QuorumEvent> Communicator::SendFailOverTrig(parid_t par_id, 
+                                          locid_t loc_id, bool pause ) 
+{  
+  int n = Config::GetConfig()->GetPartitionSize(par_id);  
+  auto e = Reactor::CreateSpEvent<QuorumEvent>(1,1);
+  auto proxies = rpc_par_proxies_[par_id];  
+  WAN_WAIT;  
+  for (auto& p : proxies) {    
+    if (p.first != loc_id)        
+      continue;    
+    auto proxy = p.second;    
+    FutureAttr fuattr;
+    fuattr.callback = [e](Future* fu) {
+          int res;
+          fu->get_reply() >> res;
+          if (res == 0) e->VoteYes() ;
+          else e->VoteNo() ;
+        };
+    Future::safe_release(proxy->async_FailOverTrig(pause, fuattr));  
+  }  
+  return e ;
+}
+
 
 void Communicator::SetNewLeaderProxy(parid_t par_id, locid_t loc_id)
 {

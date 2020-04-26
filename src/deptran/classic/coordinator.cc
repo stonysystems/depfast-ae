@@ -462,4 +462,15 @@ retry:
     }      
 }
 
+void CoordinatorClassic::SendFailOverTrig(parid_t par_id,
+                                                locid_t loc_id, 
+                                                bool pause) {
+    auto e = commo()->SendFailOverTrig(par_id, loc_id, pause); 
+    e->Wait() ;
+    if (e->No()) {
+      verify(0) ;
+    }
+}
+
+
 } // namespace janus

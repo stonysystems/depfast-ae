@@ -117,6 +117,29 @@ Coordinator* ClientWorker::FindOrCreateCoordinator() {
   return coo;
 }
 
+Coordinator* ClientWorker::CreateFailCtrlCoordinator() {
+
+  cooid_t coo_id = cli_id_;
+  uint64_t offset_id = 1000000 ; // TODO temp value
+  coo_id = (coo_id << 16) + offset_id;
+  auto coo = frame_->CreateCoordinator(coo_id,
+                                       config_,
+                                       benchmark,
+                                       ccsi,
+                                       id,
+                                       txn_reg_);
+  coo->loc_id_ = my_site_.locale_id;
+  coo->commo_ = commo_;
+  coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
+  coo->offset_ = offset_id ;
+  Log_debug("coordinator %d created at site %d: forward %d",
+            coo->coo_id_,
+            this->my_site_.id,
+            coo->forward_status_);
+  return coo ;
+}
+
+
 Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
 
   cooid_t coo_id = cli_id_;
@@ -153,6 +176,48 @@ void ClientWorker::Work() {
     ccsi->wait_for_start(id);
   }
   Log_debug("after wait for start");
+
+  if (!fail_ctrl_coo_)
+  {
+    fail_ctrl_coo_ = CreateFailCtrlCoordinator() ;
+  }
+
+  bool failover = Config::GetConfig()->get_failover();
+  if(failover)
+  {
+    auto p_job = (Job*)new OneTimeJob([this] () {
+      int idx = 0 ;
+      while(!*failover_server_quit_)
+      {
+          auto r = Reactor::CreateSpEvent<TimeoutEvent>(10 * 1000 * 1000);
+          r->Wait(10 * 1000 * 1000) ;        
+          *failover_trigger_ = true ;
+          while(*failover_trigger_) 
+          {
+            auto e = Reactor::CreateSpEvent<TimeoutEvent>(100 * 1000);
+            e->Wait(100 * 1000) ;  
+            if(*failover_server_quit_) return ;
+          }
+          Pause(idx) ;          
+          *failover_trigger_ = true ;
+          Log_info("server %d paused for failover test", idx);
+          auto s = Reactor::CreateSpEvent<TimeoutEvent>(10 * 1000 * 1000);
+          s->Wait(10 * 1000 * 1000) ;        
+          while(*failover_trigger_) 
+          {
+            auto e = Reactor::CreateSpEvent<TimeoutEvent>(50 * 1000);
+            e->Wait(50 * 1000) ;  
+            if(*failover_server_quit_) return ;
+          }
+          Resume(idx) ;
+          Log_info("server %d resumed for failover test", idx);
+          // set the new leader
+          idx = cur_leader_ ;
+      }
+    });
+    shared_ptr<Job> sp_job(p_job);
+    poll_mgr_->add(sp_job);
+  } 
 
   timer_ = new Timer();
   timer_->start();
@@ -297,6 +362,8 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
       *failover_trigger_ = false ;
     }
     while(!*failover_trigger_){
+      auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+      sp_e->Wait(300*1000) ;      
       if(*failover_server_quit_) 
         break ;
     }
@@ -387,6 +454,16 @@ ClientWorker::ClientWorker(
             cli_id_,
             forward_requests_to_leader_);
 }
+
+void ClientWorker::Pause(int idx) {
+  // TODO modify it locid and parid
+  fail_ctrl_coo_->SendFailOverTrig(0,idx,true) ;
+}
+
+void ClientWorker::Resume(int idx) {
+  // TODO modify it locid and parid
+  fail_ctrl_coo_->SendFailOverTrig(0,idx,false) ;
+}    
 
 } // namespace janus
 

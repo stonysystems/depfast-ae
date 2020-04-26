@@ -420,10 +420,10 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
     case MODE_2PL:
     case MODE_OCC:
     case MODE_NONE:
-    case MODE_NOTX:
     case MODE_TAPIR:
     case MODE_JANUS:
     case MODE_RCC:
+    case MODE_NOTX:
     default:
       result.push_back(new ClassicServiceImpl(dtxn_sched, poll_mgr, scsi));
       break;

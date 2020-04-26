@@ -217,6 +217,8 @@ class PollMgr::PollThread {
  public:
 
   PollThread() : stop_flag_(false), pause_flag_(false) {
+    poll_.stop = &stop_flag_ ;
+    poll_.pause = &pause_flag_ ;
   }
 
   ~PollThread() {
@@ -261,10 +263,12 @@ PollMgr::~PollMgr() {
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
 
-    while(pause_flag_ && !stop_flag_ )
+/*    while(pause_flag_ && !stop_flag_ )
     {
-        sleep(1) ;
-    }
+        auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
+        sp_e2->Wait(1*1000*1000) ;
+//        sleep(1) ;
+    }*/
     
     TriggerJob();
     poll_.Wait();

@@ -130,6 +130,7 @@ class Coordinator {
 
   virtual void DoTxAsync(TxRequest &) = 0;
   virtual void SetNewLeader(parid_t,volatile locid_t*) { verify(0); } ;
+  virtual void SendFailOverTrig(parid_t,locid_t, bool) { verify(0); } ;
   virtual void Submit(shared_ptr<Marshallable>& cmd,
                       const std::function<void()>& commit_callback = [](){},
                       const std::function<void()>& exe_callback = [](){}) {

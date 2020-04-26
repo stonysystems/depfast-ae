@@ -161,6 +161,7 @@ class Communicator {
                                             MarshallDeputy&)>);
   shared_ptr<GetLeaderQuorumEvent> BroadcastGetLeader(parid_t par_id, 
                                                             locid_t cur_pause ) ;
+  shared_ptr<QuorumEvent> SendFailOverTrig(parid_t par_id, locid_t loc_id, bool pause) ;
   void SetNewLeaderProxy(parid_t par_id, locid_t loc_id)  ;
   void SendSimpleCmd(groupid_t gid,
                                  SimpleCommand & cmd,
