@@ -11,13 +11,13 @@
  *
  */
 
-#include "coordinator_new.h"
+#include "coordinator.h"
 #include "../frame.h"
 #include "../benchmark_control_rpc.h"
 
 namespace janus {
 
-CoordinatorClassicNew::CoordinatorClassicNew(uint32_t coo_id,
+CoordinatorNoTx::CoordinatorNoTx(uint32_t coo_id,
                                        int benchmark,
                                        ClientControlServiceImpl* ccsi,
                                        uint32_t thread_id)
@@ -28,7 +28,7 @@ CoordinatorClassicNew::CoordinatorClassicNew(uint32_t coo_id,
   verify(commo_ == nullptr);
 }
 
-Communicator* CoordinatorClassicNew::commo() {
+Communicator* CoordinatorNoTx::commo() {
   if (commo_ == nullptr) {
     commo_ = new Communicator;
   }
@@ -36,7 +36,7 @@ Communicator* CoordinatorClassicNew::commo() {
   return commo_;
 }
 
-void CoordinatorClassicNew::DoTxAsync(TxRequest& req) {
+void CoordinatorNoTx::DoTxAsync(TxRequest& req) {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   TxData* cmd = frame_->CreateTxnCommand(req, txn_reg_);
   verify(txn_reg_ != nullptr);
@@ -54,7 +54,7 @@ void CoordinatorClassicNew::DoTxAsync(TxRequest& req) {
 }
 
 
-void CoordinatorClassicNew::Reset() {
+void CoordinatorNoTx::Reset() {
   Coordinator::Reset();
   for (int i = 0; i < site_prepare_.size(); i++) {
     site_prepare_[i] = 0;
@@ -72,10 +72,10 @@ void CoordinatorClassicNew::Reset() {
 
 
 /** caller should be thread_safe */
-void CoordinatorClassicNew::Prepare() {
+void CoordinatorNoTx::Prepare() {
   TxData* cmd = (TxData*) cmd_;
   auto mode = Config::GetConfig()->tx_proto_;
-  verify(mode == MODE_OCC || mode == MODE_2PL);
+  verify(mode == MODE_NOTX);
 
   std::vector<i32> sids;
   for (auto& site : cmd->partition_ids_) {
@@ -93,7 +93,7 @@ void CoordinatorClassicNew::Prepare() {
     commo()->SendSimpleCmd(partition_id,
                          *simpleCmd,
                          sids,
-                         std::bind(&CoordinatorClassicNew::PrepareAck,
+                         std::bind(&CoordinatorNoTx::PrepareAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));
@@ -103,35 +103,16 @@ void CoordinatorClassicNew::Prepare() {
   //}
 }
 
-void CoordinatorClassicNew::PrepareAck(phase_t phase, int res) {
+void CoordinatorNoTx::PrepareAck(phase_t phase, int res) {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   /*if (phase != phase_) return;*/
   TxData* cmd = (TxData*) cmd_;
   n_prepare_ack_++;
-/*
-  verify(res == SUCCESS || res == REJECT);
-  if (res == REJECT) {
-    cmd->commit_.store(false);
-    aborted_ = true;
-//    Log_fatal("2PL prepare failed due to error %d", e);
-  }
-  Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
-
-  if (n_prepare_ack_ == cmd->partition_ids_.size()) {
-    Log_debug("2PL prepare finished for %ld", cmd->root_id_);
-    if (!aborted_) {
-      cmd->commit_.store(true);
-      committed_ = true;
-    }
-    GotoNextPhase();
-  } else {
-    // Do nothing.
-  }*/
   committed_ = true ;
   End() ;
 }
 
-void CoordinatorClassicNew::End() {
+void CoordinatorNoTx::End() {
   TxData* tx_data = (TxData*) cmd_;
   TxReply& tx_reply_buf = tx_data->get_reply();
   double last_latency = tx_data->last_attempt_latency();
@@ -151,7 +132,7 @@ void CoordinatorClassicNew::End() {
   delete tx_data;
 }
 
-void CoordinatorClassicNew::Report(TxReply& txn_reply,
+void CoordinatorNoTx::Report(TxReply& txn_reply,
                                 double last_latency) {
 
   bool not_forwarding = forward_status_ != PROCESS_FORWARD_REQUEST;
@@ -173,7 +154,7 @@ void CoordinatorClassicNew::Report(TxReply& txn_reply,
   }
 }
 
-void CoordinatorClassicNew::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+void CoordinatorNoTx::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
     locid_t prev_pause_srv = *cur_pause ;
 retry:
     Log_debug("start setting a new leader from %d", prev_pause_srv );

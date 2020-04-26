@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "none/coordinator.h"
 #include "none/scheduler.h"
+#include "notx/coordinator.h"
 #include "rcc/coord.h"
 #include "snow/ro6_coord.h"
 #include "2pl/coordinator.h"
@@ -69,6 +70,7 @@ Frame* Frame::GetFrame(int mode) {
   // some built-in mode
   switch (mode) {
     case MODE_NONE:
+    case MODE_NOTX:
     case MODE_MDCC:
     case MODE_2PL:
     case MODE_OCC:
@@ -205,6 +207,13 @@ Coordinator* Frame::CreateCoordinator(cooid_t coo_id,
     case MODE_MDCC:
 //      coo = (Coordinator*)new mdcc::MdccCoordinator(coo_id, id, config, ccsi);
       break;
+    case MODE_NOTX:
+      coo = new CoordinatorNoTx(coo_id,
+                         benchmark,
+                         ccsi,
+                         id);
+      ((Coordinator*)coo)->txn_reg_ = txn_reg;  // TODO delete this yidawu
+      break ;
     case MODE_NONE:
     default:
       coo = new CoordinatorNone(coo_id,
@@ -319,6 +328,7 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
     case MODE_FPGA_RAFT:
       break;
     case MODE_NONE:
+    case MODE_NOTX:
     default:
       sp_tx.reset(new Tx2pl(epoch, tid, mgr));
       break;
@@ -357,6 +367,7 @@ TxLogServer* Frame::CreateScheduler() {
     case MODE_MDCC:
 //      sch = new mdcc::MdccScheduler();
       break;
+    case MODE_NOTX:
     case MODE_NONE:
       sch = new SchedulerNone();
       break;
@@ -409,6 +420,7 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
     case MODE_2PL:
     case MODE_OCC:
     case MODE_NONE:
+    case MODE_NOTX:
     case MODE_TAPIR:
     case MODE_JANUS:
     case MODE_RCC:
@@ -423,7 +435,8 @@ map<string, int> &Frame::FrameNameToMode() {
       {"none",          MODE_NONE},
       {"2pl",           MODE_2PL},
       {"occ",           MODE_OCC},
-      {"snow",           MODE_RO6},
+      {"snow",          MODE_RO6},
+      {"notx",          MODE_NOTX},
       {"rpc_null",      MODE_RPC_NULL},
       {"deptran",       MODE_DEPTRAN},
       {"deptran_er",    MODE_DEPTRAN},

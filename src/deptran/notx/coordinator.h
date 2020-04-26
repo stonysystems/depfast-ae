@@ -8,14 +8,14 @@
 namespace janus {
 class ClientControlServiceImpl;
 
-class CoordinatorClassicNew : public Coordinator {
+class CoordinatorNoTx : public Coordinator {
  public:
-  CoordinatorClassicNew(uint32_t coo_id,
+  CoordinatorNoTx(uint32_t coo_id,
                      int benchmark,
                      ClientControlServiceImpl* ccsi,
                      uint32_t thread_id);
 
-  virtual ~CoordinatorClassicNew() {}
+  virtual ~CoordinatorNoTx() {}
 
   inline TxData& tx_data() {
     return *(TxData*) cmd_;
