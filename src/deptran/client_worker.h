@@ -71,8 +71,8 @@ class ClientWorker {
   Coordinator* FindOrCreateCoordinator();
   void DispatchRequest(Coordinator *coo);
   void SearchLeader(Coordinator* coo);
-  void Pause(int idx) ;
-  void Resume(int idx) ;
+  void Pause(locid_t locid) ;
+  void Resume(locid_t locid) ;
   Coordinator* CreateFailCtrlCoordinator() ;
   void AcceptForwardedRequest(TxRequest &request, TxReply* txn_reply, rrr::DeferredReply* defer);
 

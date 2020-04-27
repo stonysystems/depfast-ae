@@ -70,10 +70,6 @@ void ClassicServiceImpl::FailOverTrig(const bool_t& pause,
   if(pause) {
     dtxn_sched_->rep_sched_->Pause() ;
     poll_mgr_->pause() ;
-    auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(10*1000*1000);
-    sp_e2->Wait(10*1000*1000) ;    
-    poll_mgr_->resume() ;
-    dtxn_sched_->rep_sched_->Resume() ;
   } else {
     poll_mgr_->resume() ;
     dtxn_sched_->rep_sched_->Resume() ;

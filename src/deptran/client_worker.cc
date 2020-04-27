@@ -186,7 +186,7 @@ void ClientWorker::Work() {
   if(failover)
   {
     auto p_job = (Job*)new OneTimeJob([this] () {
-      int idx = 0 ;
+      locid_t idx = 0 ;
       while(!*failover_server_quit_)
       {
           auto r = Reactor::CreateSpEvent<TimeoutEvent>(10 * 1000 * 1000);
@@ -408,6 +408,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
 }
 
 void ClientWorker::SearchLeader(Coordinator* coo) {
+  // TODO multiple par_id yidawu
   parid_t par_id = 0 ;
   coo->SetNewLeader(par_id, failover_server_idx_ );
   cur_leader_ = *failover_server_idx_ ;
@@ -455,14 +456,14 @@ ClientWorker::ClientWorker(
             forward_requests_to_leader_);
 }
 
-void ClientWorker::Pause(int idx) {
+void ClientWorker::Pause(locid_t locid) {
   // TODO modify it locid and parid
-  fail_ctrl_coo_->SendFailOverTrig(0,idx,true) ;
+  fail_ctrl_coo_->SendFailOverTrig(0,locid,true) ;
 }
 
-void ClientWorker::Resume(int idx) {
+void ClientWorker::Resume(locid_t locid) {
   // TODO modify it locid and parid
-  fail_ctrl_coo_->SendFailOverTrig(0,idx,false) ;
+  fail_ctrl_coo_->SendFailOverTrig(0,locid,false) ;
 }    
 
 } // namespace janus

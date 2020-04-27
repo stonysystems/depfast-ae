@@ -411,9 +411,11 @@ shared_ptr<GetLeaderQuorumEvent>
 {  
   int n = Config::GetConfig()->GetPartitionSize(par_id);  
   auto e = Reactor::CreateSpEvent<GetLeaderQuorumEvent>(n-1, 1);  
-  auto proxies = rpc_par_proxies_[par_id];  
+  auto proxies = rpc_par_proxies_[par_id];
+  int count = 0 ;
   WAN_WAIT;  
-  for (auto& p : proxies) {    
+  for (auto& p : proxies) {
+    count++ ;
     if (p.first == cur_pause)        
       continue;    
     auto proxy = p.second;    
@@ -425,6 +427,7 @@ shared_ptr<GetLeaderQuorumEvent>
     };    
     Future::safe_release(proxy->async_IsFPGALeader(cur_pause, fuattr));  
   }  
+  verify(count>=3) ; // TODO del it
   return e;
 }
 
@@ -454,7 +457,19 @@ shared_ptr<QuorumEvent> Communicator::SendFailOverTrig(parid_t par_id,
 
 void Communicator::SetNewLeaderProxy(parid_t par_id, locid_t loc_id)
 {
-  auto it = rpc_par_proxies_.find(par_id);
+  bool found = false ;
+  auto proxies = rpc_par_proxies_[par_id];  
+  for (auto& p : proxies) {    
+    if (p.first == loc_id) {
+       leader_cache_[par_id] = p;
+       found = true ;
+       break ;
+    }
+  }  
+
+  verify(found) ;
+
+/*  auto it = rpc_par_proxies_.find(par_id);
   verify(it != rpc_par_proxies_.end());
   auto& partition_proxies = it->second;
   auto config = Config::GetConfig();
@@ -467,7 +482,7 @@ void Communicator::SetNewLeaderProxy(parid_t par_id, locid_t loc_id)
         return site.locale_id == loc_id ;
       });
    verify (proxy_it != partition_proxies.end()) ;
-   leader_cache_[par_id] = *proxy_it;
+   leader_cache_[par_id] = *proxy_it;*/
    Log_debug("set leader porxy for parition %d is %d", par_id, loc_id);
 }
 
