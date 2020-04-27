@@ -35,8 +35,11 @@ class CoordinatorNoTx : public Coordinator {
   virtual void DispatchAck(phase_t phase,
                            int res,
                            map<innid_t, map<int32_t, Value>>& outputs) { verify(0);};
-  void Prepare();
-  void PrepareAck(phase_t phase, int res);
+  void Prepare() {verify(0) ;};
+  void PrepareAck(phase_t phase, int res){verify(0);};
+  void SimpleCmd() ;
+  void SimpleCmdAck(phase_t phase, int res) ;
+
   virtual void Commit() { verify(0);};
   void End() ;
 

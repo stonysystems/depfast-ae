@@ -50,7 +50,7 @@ void CoordinatorNoTx::DoTxAsync(TxRequest& req) {
   Reset(); // In case of reuse.
 
   Log_debug("do one request txn_id: %d", cmd_->id_);
-  Coroutine::CreateRun([this]() { Prepare(); });
+  Coroutine::CreateRun([this]() { SimpleCmd(); });
 }
 
 
@@ -72,7 +72,7 @@ void CoordinatorNoTx::Reset() {
 
 
 /** caller should be thread_safe */
-void CoordinatorNoTx::Prepare() {
+void CoordinatorNoTx::SimpleCmd() {
   TxData* cmd = (TxData*) cmd_;
   auto mode = Config::GetConfig()->tx_proto_;
   verify(mode == MODE_NOTX);
@@ -93,7 +93,7 @@ void CoordinatorNoTx::Prepare() {
     commo()->SendSimpleCmd(partition_id,
                          *simpleCmd,
                          sids,
-                         std::bind(&CoordinatorNoTx::PrepareAck,
+                         std::bind(&CoordinatorNoTx::SimpleCmdAck,
                                    this,
                                    phase_,
                                    std::placeholders::_1));
@@ -103,7 +103,7 @@ void CoordinatorNoTx::Prepare() {
   //}
 }
 
-void CoordinatorNoTx::PrepareAck(phase_t phase, int res) {
+void CoordinatorNoTx::SimpleCmdAck(phase_t phase, int res) {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   /*if (phase != phase_) return;*/
   TxData* cmd = (TxData*) cmd_;
