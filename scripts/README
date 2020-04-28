@@ -1,0 +1,32 @@
+README
+get_bandwidth.sh uses the iperf3 tool to calculate the bandwidth of the servers given as argument to the script.
+The script takes 3 server(INTERNAL) IPs and writes the bandwidth value to ~/bandwidth file on the given servers.
+To change the file to which the bandwidth value gets written, modify the output_file variable.
+
+To run -
+./get_bandwidth.sh <server1IP> <server2IP> <server3IP>
+
+Example -
+./get_bandwidth.sh 10.128.0.33 10.128.0.32 10.128.0.18
+
+Output -
+rksinha_cs_stonybrook_edu@ritz-cockroachdb:~/janus-gray/scripts$ ./get_bandwidth.sh 10.128.0.33 10.128.0.32 10.128.0.18
+Running iperf server on 10.128.0.32
+Running iperf client on 10.128.0.33
+Bandwidth of 10.128.0.33=15.8 Gbits/sec
+
+Running iperf server on 10.128.0.33
+Running iperf client on 10.128.0.32
+Bandwidth of 10.128.0.32=9.19 Gbits/sec
+
+Running iperf client on 10.128.0.18
+Bandwidth of 10.128.0.18=15.0 Gbits/sec
+
+Prerequisites -
+1. iperf3 should be installed on all the servers. To install - sudo apt install iperf3
+2. ssh to internal IP address should work on all the servers. If it fails due to public key permission denied error -
+   Add the public key of all the servers to the ~/.ssh/authorized_keys file of all the servers.
+
+Known Limitations -
+1. The servers bandwidth should fall in identical range i.e. all of them either have Gbits/sec or Mbits.sec but not a mix.
+2. The script currently works only for 3 servers.
