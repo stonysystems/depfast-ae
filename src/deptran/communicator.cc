@@ -273,7 +273,36 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  double cpu = 0.0;
 	  double net = 0.0;
           fu->get_reply() >> ret >> outputs >> coro_id >> cpu >> net;
+
 	  if(cpu != -1.0 || net != -1.0) Log_info("cpu: %f and network: %f", cpu, net);
+
+          struct timespec end_;
+	  clock_gettime(CLOCK_REALTIME,&end_);
+
+	  rrr::i64 start_sec = this->outbound_[src_coroid].first;
+	  rrr::i64 start_nsec = this->outbound_[src_coroid].second;
+
+	  rrr::i64 curr = ((rrr::i64)end_.tv_sec - start_sec)*1000000000 + ((rrr::i64)end_.tv_nsec - start_nsec);
+	  curr /= 1000;
+	  this->total_time += curr;
+	  this->total++;
+          if(this->index < 100){
+	    this->window[this->index];
+	    this->index++;
+	    this->window_time = this->total_time;
+	  }
+          else{
+	    this->window_time = 0;
+	    for(int i = 0; i < 99; i++){
+	      this->window[i] = this->window[i+1];
+	      this->window_time += this->window[i];
+	    }
+	    this->window[99] = curr;
+	    this->window_time += curr;
+	  }
+	  Log_info("average time of RPC is: %d", this->total_time/this->total);
+	  Log_info("window time of RPC is: %d", this->window_time/this->index);
+
           if(ret == REJECT){
             coo->aborted_ = true;
             txn->commit_.store(false);
@@ -305,6 +334,12 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
     sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
     MarshallDeputy md(sp_vpd); // ????
+
+    struct timespec start_;
+    clock_gettime(CLOCK_REALTIME, &start_);
+
+    outbound_[src_coroid] = make_pair((rrr::i64)start_.tv_sec, (rrr::i64)start_.tv_nsec);
+
     auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
     Future::safe_release(future);
     if(!broadcasting_to_leaders_only_){
