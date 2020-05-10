@@ -66,12 +66,12 @@ void CoordinatorMultiPaxos::Prepare() {
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
   auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
   auto start = chrono::steady_clock::now();
-  //Log_info("Time before Wait() is: %d", chrono::duration_cast<chrono::milliseconds>(start.time_since_epoch()).count());
+  Log_info("Time before Wait() is: %d", chrono::duration_cast<chrono::milliseconds>(start.time_since_epoch()).count());
   sp_quorum->Wait();
   auto end = chrono::steady_clock::now();
 
   auto duration = chrono::duration_cast<chrono::milliseconds>(end-start);
-  //Log_info("Duration of Wait() in Prepare() is: %d", duration.count());
+  Log_info("Duration of Wait() in Prepare() is: %d", duration.count());
   sp_quorum->log();
   if (sp_quorum->Yes()) {
     verify(!sp_quorum->HasAcceptedValue());
@@ -127,13 +127,13 @@ void CoordinatorMultiPaxos::Accept() {
   auto start = chrono::system_clock::now();
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
   sp_quorum->id_ = dep_id_;
-  //Log_info("Accept(): %d", dep_id_);
+  Log_info("Accept(): %d", dep_id_);
 
   sp_quorum->Wait();
   auto end = chrono::system_clock::now();
   auto duration = chrono::duration_cast<chrono::microseconds>(end-start);
   //auto duration_ready = chrono::duration_cast<chrono::microseconds>(end-sp_quorum->ready_time);
-  //Log_info("Duration of Wait() in Accept() is: %d", duration.count());
+  Log_info("Duration of Wait() in Accept() is: %d", duration.count());
   //Log_info("Duration after Ready to end of Wait() is: %d", duration_ready.count());
   sp_quorum->log();
   if (sp_quorum->Yes()) {
@@ -205,7 +205,7 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
       } else {
         // TODO
         verify(0);
-        //Log_info("The local id is %d", this->loc_id_);
+        Log_info("The local id is %d", this->loc_id_);
         //Forward();
         //Log_info("Follower logic");
         //For now, do nothing
