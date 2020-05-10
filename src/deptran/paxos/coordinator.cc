@@ -133,7 +133,7 @@ void CoordinatorMultiPaxos::Accept() {
   auto end = chrono::system_clock::now();
   auto duration = chrono::duration_cast<chrono::microseconds>(end-start);
   //auto duration_ready = chrono::duration_cast<chrono::microseconds>(end-sp_quorum->ready_time);
-  Log_info("Duration of Wait() in Accept() is: %d", duration.count());
+  //Log_info("Duration of Wait() in Accept() is: %d", duration.count());
   //Log_info("Duration after Ready to end of Wait() is: %d", duration_ready.count());
   sp_quorum->log();
   if (sp_quorum->Yes()) {
@@ -205,7 +205,7 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
       } else {
         // TODO
         verify(0);
-        Log_info("The local id is %d", this->loc_id_);
+        //Log_info("The local id is %d", this->loc_id_);
         //Forward();
         //Log_info("Follower logic");
         //For now, do nothing
