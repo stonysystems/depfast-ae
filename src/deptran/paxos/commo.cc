@@ -125,7 +125,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
       e->FeedResponse(b==ballot);
       auto end = chrono::system_clock::now();
       auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
-      Log_info("The duration of Accept() for %d is: %d", follower_id, duration);
+      //Log_info("The duration of Accept() for %d is: %d", follower_id, duration);
       e->deps[leader_id][src_coroid][follower_id].erase(-1);
       e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
     };
@@ -134,7 +134,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     auto f = proxy->async_Accept(slot_id, start_, ballot, md, fuattr);
     auto end1 = chrono::system_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(end1-start1).count();
-    Log_info("Time for Async_Accept() for %d is: %d", follower_id, duration);
+    //Log_info("Time for Async_Accept() for %d is: %d", follower_id, duration);
     Future::safe_release(f);
   }
   return e;

@@ -66,12 +66,12 @@ void CoordinatorMultiPaxos::Prepare() {
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
   auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
   auto start = chrono::steady_clock::now();
-  Log_info("Time before Wait() is: %d", chrono::duration_cast<chrono::milliseconds>(start.time_since_epoch()).count());
+  //Log_info("Time before Wait() is: %d", chrono::duration_cast<chrono::milliseconds>(start.time_since_epoch()).count());
   sp_quorum->Wait();
   auto end = chrono::steady_clock::now();
 
   auto duration = chrono::duration_cast<chrono::milliseconds>(end-start);
-  Log_info("Duration of Wait() in Prepare() is: %d", duration.count());
+  //Log_info("Duration of Wait() in Prepare() is: %d", duration.count());
   sp_quorum->log();
   if (sp_quorum->Yes()) {
     verify(!sp_quorum->HasAcceptedValue());
