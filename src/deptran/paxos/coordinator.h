@@ -2,7 +2,9 @@
 
 #include "../__dep__.h"
 #include "../coordinator.h"
+#include "../classic/tpc_command.h"
 #include "../frame.h"
+#include <chrono>
 
 namespace janus {
 
@@ -22,6 +24,7 @@ class CoordinatorMultiPaxos : public Coordinator {
   bool in_submission_ = false; // debug;
   bool in_prepare_ = false; // debug
   bool in_accept = false; // debug
+  bool in_forward = false; //debug
  public:
   shared_ptr<Marshallable> cmd_{nullptr};
   CoordinatorMultiPaxos(uint32_t coo_id,
@@ -54,11 +57,16 @@ class CoordinatorMultiPaxos : public Coordinator {
   }
 
   void DoTxAsync(TxRequest &req) override {}
+  void DoTxAsync(PollMgr* poll_mgr_, TxRequest &req) override {}
   void Submit(shared_ptr<Marshallable> &cmd,
               const std::function<void()> &func = []() {},
               const std::function<void()> &exe_callback = []() {}) override;
 
   ballot_t PickBallot();
+  void Submit();
+
+  void Forward();
+
   void Prepare();
 //  void PrepareAck(phase_t phase, Future *fu);
   void Accept();

@@ -41,19 +41,26 @@ class ClassicServiceImpl : public ClassicService {
                 const MarshallDeputy& cmd,
                 int32_t* res,
                 TxnOutput* output,
+                uint64_t* coro_id,
                 DeferredReply* defer_reply) override;
 
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
+               const uint64_t& dep_id,
                i32* res,
+               uint64_t* coro_id,
                DeferredReply* defer) override;
 
   void Commit(const i64& tid,
+              const uint64_t& dep_id,
               i32* res,
+              uint64_t* coro_id,
               DeferredReply* defer) override;
 
   void Abort(const i64& tid,
+             const uint64_t& dep_id,
              i32* res,
+             uint64_t* coro_id,
              DeferredReply* defer) override;
 
   void UpgradeEpoch(const uint32_t& curr_epoch,

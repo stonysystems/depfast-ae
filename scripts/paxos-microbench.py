@@ -120,7 +120,7 @@ def main():
             logger.info("starting %s @ %s", config.process_name[i], address)
             cmd = gen_process_cmd(config, i)
             logger.debug("running: %s", cmd)
-            subprocess.call(['ssh', '-f', address, cmd])
+            subprocess.call(['ssh', '-f', address, '-o', 'StrictHostKeyChecking=no', cmd])
 
         t_list = []
         num_list = list(range(len(config.process_name)))

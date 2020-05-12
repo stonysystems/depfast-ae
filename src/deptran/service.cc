@@ -41,6 +41,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   const MarshallDeputy& md,
                                   int32_t* res,
                                   TxnOutput* output,
+                                  uint64_t* coro_id,
                                   rrr::DeferredReply* defer) {
 #ifdef PIECE_COUNT
   piece_count_key_t piece_count_key =
@@ -55,25 +56,32 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-  *res = SUCCESS;
-  if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
-    *res = REJECT;
-  }
-  defer->reply();
+  auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
+    *res = SUCCESS;
+    if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
+      *res = REJECT;
+    }
+    *coro_id = Coroutine::CurrentCoroutine()->id;
+    defer->reply();
+  });
 }
 
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
+                                 const uint64_t& dep_id,
                                  rrr::i32* res,
+                                 uint64_t* coro_id,
                                  rrr::DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [res, defer, tid, sids, this]() {
+  const auto& func = [res, coro_id, defer, tid, sids, dep_id, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    bool ret = sched->OnPrepare(tid, sids);
+    bool ret = sched->OnPrepare(tid, sids, dep_id);
     *res = ret ? SUCCESS : REJECT;
+    *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-  Coroutine::CreateRun(func);
+  auto coro = Coroutine::CreateRun(func);
+  //Log_info("coro id on service side: %d", coro->id);
 // TODO move the stat to somewhere else.
 #ifdef PIECE_COUNT
   std::map<piece_count_key_t, uint64_t>::iterator pc_it;
@@ -94,30 +102,37 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 }
 
 void ClassicServiceImpl::Commit(const rrr::i64& tid,
+                                const uint64_t& dep_id,
                                 rrr::i32* res,
+                                uint64_t* coro_id,
                                 rrr::DeferredReply* defer) {
-//  std::lock_guard<std::mutex> guard(mtx_);
-//  const auto& func = [tid, res, defer, this]() {
+  //std::lock_guard<std::mutex> guard(mtx_);
+  const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, SUCCESS);
+    sched->OnCommit(tid, dep_id, SUCCESS);
     *res = SUCCESS;
+    *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
-//  };
-//  Coroutine::CreateRun(func);
+  };
+  Coroutine::CreateRun(func);
 }
 
 void ClassicServiceImpl::Abort(const rrr::i64& tid,
+                               const uint64_t& dep_id,
                                rrr::i32* res,
+                               uint64_t* coro_id,
                                rrr::DeferredReply* defer) {
-  Log_debug("get abort_txn: tid: %ld", tid);
-//  std::lock_guard<std::mutex> guard(mtx_);
-//  const auto& func = [tid, res, defer, this]() {
+
+  Log::debug("get abort_txn: tid: %ld", tid);
+  //std::lock_guard<std::mutex> guard(mtx_);
+  const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, REJECT);
+    sched->OnCommit(tid, dep_id, REJECT);
     *res = SUCCESS;
+    *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
-//  };
-//  Coroutine::CreateRun(func);
+  };
+  Coroutine::CreateRun(func);
 }
 
 void ClassicServiceImpl::rpc_null(rrr::DeferredReply* defer) {

@@ -50,6 +50,7 @@ class MessageEvent : public IntEvent {
 
 class Communicator {
  public:
+  static uint64_t global_id;
   const int CONNECT_TIMEOUT_MS = 120*1000;
   const int CONNECT_SLEEP_MS = 1000;
   rrr::PollMgr *rpc_poll_ = nullptr;
@@ -62,6 +63,7 @@ class Communicator {
   std::atomic_bool client_leaders_connected_;
   std::vector<std::thread> threads;
   bool broadcasting_to_leaders_only_{true};
+  bool follower_forwarding{false};
 
   Communicator(PollMgr* poll_mgr = nullptr);
   virtual ~Communicator();
@@ -90,16 +92,28 @@ class Communicator {
   void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
-  void SendPrepare(parid_t gid,
+
+  shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
+                        Coordinator* coo,
+                        TxData* txn);
+
+  shared_ptr<AndEvent> SendPrepare(Coordinator* coo,
+                                         txnid_t tid,
+                                         std::vector<int32_t>& sids);
+  shared_ptr<AndEvent> SendCommit(Coordinator* coo,
+                                     txnid_t tid);
+  shared_ptr<AndEvent> SendAbort(Coordinator* coo,
+                                    txnid_t tid);
+  /*void SendPrepare(parid_t gid,
                    txnid_t tid,
                    std::vector<int32_t> &sids,
-                   const std::function<void(int)> &callback) ;
-  void SendCommit(parid_t pid,
+                   const std::function<void(int)> &callback) ;*/
+  /*void SendCommit(parid_t pid,
                   txnid_t tid,
                   const std::function<void()> &callback) ;
   void SendAbort(parid_t pid,
                  txnid_t tid,
-                 const std::function<void()> &callback) ;
+                 const std::function<void()> &callback) ;*/
 
   // for debug
   std::set<std::pair<parid_t, txnid_t>> phase_three_sent_;
