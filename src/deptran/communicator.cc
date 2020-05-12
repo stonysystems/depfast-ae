@@ -272,9 +272,10 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           uint64_t coro_id = 0;
 	  double cpu = 0.0;
 	  double net = 0.0;
-          fu->get_reply() >> ret >> outputs >> coro_id >> cpu >> net;
+	  Profiling profile;
+          fu->get_reply() >> ret >> outputs >> coro_id >> profile;
 
-	  if(cpu != -1.0 || net != -1.0) Log_info("cpu: %f and network: %f", cpu, net);
+	  if(profile.cpu_util != -1.0) Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
 
           struct timespec end_;
 	  clock_gettime(CLOCK_REALTIME,&end_);

@@ -34,7 +34,7 @@ abstract service Classic {
 //                 TxnOutput output);
 
   defer Dispatch(i64 tid, MarshallDeputy cmd |
-                 i32 res, TxnOutput output, uint64_t coro_id, double cpu, double net);
+                 i32 res, TxnOutput output, uint64_t coro_id, Profiling profile);
 
   defer Prepare(i64 tid, 
                 vector<i32> sids,
@@ -201,6 +201,12 @@ struct ClientResponse  {
     i64 period_nsec;   // running time in nano seconds
     i32 is_finish;  // if client finishs
     i64 n_asking;   // asking finish request count
+}
+
+struct Profiling {
+    double cpu_util;
+    double tx_util;
+    double rx_util;
 }
 
 abstract service ServerControl {

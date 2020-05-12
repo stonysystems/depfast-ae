@@ -61,7 +61,7 @@ private:
 
         ticks = times(&tms_buf);
         //Log_info("ticks: %d -> %d", last_ticks_, ticks);
-        if (ticks <= last_ticks_ + 100/* || num_processors_ <= 0*/)
+        if (ticks <= last_ticks_ + 1000000/* || num_processors_ <= 0*/)
             return -1.0;
 
 	std::string line1;

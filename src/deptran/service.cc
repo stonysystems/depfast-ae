@@ -42,8 +42,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   int32_t* res,
                                   TxnOutput* output,
                                   uint64_t* coro_id,
-				  double* cpu,
-				  double* net,
+				  Profiling* profile,
                                   rrr::DeferredReply* defer) {
 #ifdef PIECE_COUNT
   piece_count_key_t piece_count_key =
@@ -58,9 +57,9 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-  auto func = Coroutine::CreateRun([cmd_id, sp, output, cpu, net, res, coro_id, this, defer]() {
-    *cpu = rrr::CPUInfo::cpu_stat();
-    *net = rrr::NetInfo::net_stat();
+  auto func = Coroutine::CreateRun([cmd_id, sp, output, profile, res, coro_id, this, defer]() {
+    std::vector<double> result = rrr::CPUInfo::cpu_stat();
+    *profile = {result[0], result[1], result[2]};
     *res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
