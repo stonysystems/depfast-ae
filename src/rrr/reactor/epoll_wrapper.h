@@ -187,16 +187,16 @@ class Epoll {
     int nev = kevent(poll_fd_, nullptr, 0, evlist, max_nev, &timeout);
 
     for (int i = 0; i < nev; i++){
-      Pollable* poll = (Pollable *) evlist[i].data.ptr;
-      if (evlist[i].events & EPOLLIN){
-        poll->handle_read_one();
+      Pollable* poll = (Pollable *) evlist[i].udata;
+      if (evlist[i].filter & EVFILT_READ){
+        poll->handle_read();
 	Log_info("pushing back");
         pending.push_back(poll);
       }
-      if (evlist[i].events & EPOLLOUT){
+      if (evlist[i].filter & EVFILT_WRITE){
         poll->handle_write();
       }
-      if (evlist[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)){
+      if (evlist[i].flags & EV_EOF){
         poll->handle_error();
       }
     }

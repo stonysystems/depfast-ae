@@ -16,13 +16,9 @@ if(UNIX AND NOT APPLE)
     )
 elseif(APPLE)
     HunterGate(
-            URL "https://github.com/ruslo/hunter/archive/v0.23.179.tar.gz"
-            SHA1 "21b2f139feb9f3c37e367750013aee15e1c45355"
-            #        "${CMAKE_CURRENT_LIST_DIR}/cxx11.cmake"
-            #        FILEPATH "/home/shuai/git/janus/config.cmake"
-            LOCAL
+            URL "https://github.com/cpp-pm/hunter/archive/v0.23.254.tar.gz"
+            SHA1 "017e688b9848c1f695303e8cfe9f35d40e154112"
     )
-
 endif()
 
 
@@ -124,7 +120,8 @@ add_library(YAMLCPP
 set(CMAKE_VERBOSE_MAKEFILE on)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_IPC")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Weffc++")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCHECK_ISO")

@@ -39,7 +39,7 @@ Coordinator::Coordinator(uint32_t coo_id,
   // TODO this would be slow.
   vector<string> addrs;
   Config::GetConfig()->get_all_site_addr(addrs);
-  Log_info("Initializing site_prepare_ for %x: %p", this, site_prepare_);  
+//  Log_info("Initializing site_prepare_ for %x: %p", this, site_prepare_);
   site_prepare_.resize(addrs.size(), 0);
   Log_info("What is the first value of site_prepare_ for %x: %d", this, site_prepare_[0]);
   site_commit_.resize(addrs.size(), 0);

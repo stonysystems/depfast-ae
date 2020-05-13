@@ -261,8 +261,12 @@ void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
     TriggerJob();
     //poll_.Wait();
+#ifdef USE_KQUEUE
+    poll_.Wait();
+#else
     poll_.Wait_One();
     poll_.Wait_Two();
+#endif
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
     // after each poll loop, remove uninterested pollables

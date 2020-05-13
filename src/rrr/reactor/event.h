@@ -287,7 +287,7 @@ class SingleRPCEvent: public Event{
       if(index == dep.end()) dep.insert(tgtId);
       //Log_info("size of dependencies: %d", dep.size());
     }
-    void log(){
+    void log() override {
       std::ofstream of(log_file, std::fstream::app);
       //of << "hello\n";
       of << "{ " << cli_id_ << ": ";

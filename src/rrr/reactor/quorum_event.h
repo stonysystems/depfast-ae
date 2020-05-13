@@ -87,7 +87,7 @@ class QuorumEvent : public Event {
     }
   }*/
 
-  void log(){
+  void log() override {
     if(logging){
       std::ofstream of(log_file, std::fstream::app);
       //of << "hello\n";

@@ -432,7 +432,7 @@ shared_ptr<AndEvent>
 Communicator::SendCommit(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
-  ___LogSent(pid, tid);
+//  ___LogSent(pid, tid);
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
   int n_total = 1;
@@ -501,7 +501,7 @@ shared_ptr<AndEvent>
 Communicator::SendAbort(Coordinator* coo,
                               txnid_t tid) {
 #ifdef LOG_LEVEL_AS_DEBUG
-  ___LogSent(pid, tid);
+//  ___LogSent(pid, tid);
 #endif
   TxData* cmd = (TxData*) coo->cmd_;
   int n_total = 1;
