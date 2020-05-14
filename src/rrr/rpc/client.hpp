@@ -114,7 +114,8 @@ public:
      * NOT a refcopy! This is intended to avoid circular reference, which prevents everything from being released correctly.
      */
     PollMgr* pollmgr_;
-
+    
+    std::string host_;
     int sock_;
     enum {
         NEW, CONNECTED, CLOSED
