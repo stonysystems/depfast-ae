@@ -15,17 +15,46 @@ namespace rrr {
 
 class CPUInfo {
 private:
+    unsigned long last_bytes_rxed, last_bytes_txed;
     clock_t last_ticks_, last_user_ticks_, last_kernel_ticks_;
+    pid_t pid_;
     //uint32_t num_processors_;
     CPUInfo() {
         //FILE* proc_cpuinfo;
         struct tms tms_buf;
         //char line[1024];
+	double txed, rxed;
 
+	std::string line;
+	std::string temp;
+	std::ifstream netfile("/proc/"+std::to_string(pid_)+"/net/dev");
+	for(int i = 0; i < 4; i++){
+	  getline(netfile, line);
+	}
+	
+	int i = 1;
+	char* token = strtok(&line[0], " ");
+	while(token != NULL){
+	 token = strtok(NULL, " ");
+	 Log_info("token here: %s", token);
+	 if(i == 1){
+	   txed = strtof(token, NULL);
+	   //Log_info("TX total: %d", tx_total);
+	 }
+	 if(i == 9){
+	   rxed = strtof(token, NULL);
+	 }
+	 i++;
+	
+	}
+
+	last_bytes_rxed = rxed;
+	last_bytes_txed = txed;
         last_ticks_ = times(&tms_buf);
         last_user_ticks_ = tms_buf.tms_utime;
         last_kernel_ticks_ = tms_buf.tms_stime;
 
+	pid_ = ::getpid();
         //proc_cpuinfo = fopen("/proc/cpuinfo", "r");
         //num_processors_ = 0;
         //while (fgets(line, 1024, proc_cpuinfo) != NULL)
@@ -46,6 +75,7 @@ private:
         struct tms tms_buf;
         clock_t ticks;
 	std::vector<double> result;
+	unsigned long txed, rxed;
         double cpu_total, tx_total, rx_total;
 
         ticks = times(&tms_buf);
@@ -53,45 +83,47 @@ private:
         if (ticks <= last_ticks_ + 1000/* || num_processors_ <= 0*/)
             return {-1.0, -1.0, -1.0};
 
-        //ret = (tms_buf.tms_stime - last_kernel_ticks_) +
-        //    (tms_buf.tms_utime - last_user_ticks_);
+        cpu_total = (tms_buf.tms_stime - last_kernel_ticks_) +
+            (tms_buf.tms_utime - last_user_ticks_);
         //ret /= (ticks - last_ticks_);
         //ret /= num_processors_;
-
-	popen("cpu.sh", "r");
-	//Log_info("status: %d", status);
-	std::ifstream cpufile("temp.txt");
-	std::string value, pid, cpu, line, rx, tx;
-	while(std::getline(cpufile, value, '\n')){
-	    pid = value.substr(0, value.find(" "));
-	    cpu = value.substr(value.find(" "));
-	    Log_info("PID: %s and CPU: %s", pid, cpu);
-	    cpu_total += strtod(cpu.c_str(), NULL);
-	    
-	    std::string command("/bin/cat /proc/"+pid+"/net/dev | /bin/grep ens4 | /usr/bin/awk '{print $2, $10}; > temp.txt");
-	    std::system(command.c_str());
-	    std::ifstream netfile("temp.txt");
-	    
-	    std::string line;
-	    std::getline(netfile, line);
-	    tx = value.substr(0, line.find(" "));
-	    rx = value.substr(line.find(" "));
-	    
-
-	    netfile.close();
-	    tx_total += strtod(tx.c_str(), NULL);
-	    rx_total += strtod(rx.c_str(), NULL);
+	
+	std::string line;
+	std::string temp;
+	std::ifstream netfile("/proc/"+std::to_string(pid_)+"/net/dev");
+	for(int i = 0; i < 4; i++){
+	  getline(netfile, line);
 	}
-	cpufile.close();
+	
+	int i = 1;
+	char* token = strtok(&line[0], " ");
+	while(token != NULL){
+	 token = strtok(NULL, " ");
+	 Log_info("token here: %s", token);
+	 if(i == 1){
+	   txed = strtoul(token, NULL, 0);
+	   //Log_info("TX total: %d", tx_total);
+	 }
+	 if(i == 9){
+	   rxed = strtoul(token, NULL, 0);
+	 }
+	 i++;
+	}
 
+	std::ifstream iofile("/proc/"+std::to_string(pid_)+"/io");
+	
+	tx_total = (txed-last_bytes_txed)/(ticks - last_ticks_);
+	rx_total = (rxed-last_bytes_rxed)/(ticks - last_ticks_);
 	result.push_back(cpu_total);
 	result.push_back(tx_total);
 	result.push_back(rx_total);
 	
         last_ticks_ = ticks;
-        //last_user_ticks_ = tms_buf.tms_utime;
-        //last_kernel_ticks_ = tms_buf.tms_stime;
-	
+        last_user_ticks_ = tms_buf.tms_utime;
+        last_kernel_ticks_ = tms_buf.tms_stime;
+	last_bytes_txed = txed;
+	last_bytes_rxed = rxed;
+
         return result;
     }
 
