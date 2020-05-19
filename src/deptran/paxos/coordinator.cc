@@ -13,18 +13,25 @@ CoordinatorMultiPaxos::CoordinatorMultiPaxos(uint32_t coo_id,
     : Coordinator(coo_id, benchmark, ccsi, thread_id) {
 }
 
-BulkCoordinatorMultiPaxos::BulkCoordinatorMultiPaxos(uint32_t coo_id,
-                                             int32_t benchmark,
-                                             ClientControlServiceImpl* ccsi,
-                                             uint32_t thread_id)
-  : CoordinatorMultiPaxos(coo_id, benchmark, ccsi, thread_id) {
+
+void CoordinatorMultiPaxos::Forward(){
+  verify(!in_forward);
+  in_forward=true;
+  auto follower_id = frame_->site_info_->id;
+  auto sp_quorum = commo()->SendForward(par_id_, follower_id, dep_id_, cmd_);
+
+  sp_quorum->Wait();
+  Log_info("Follower done waiting");
+  sp_quorum->log();
 }
+                                    
 
 void CoordinatorMultiPaxos::Submit(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
   if (!IsLeader()) {
-    Log_fatal("i am not the leader; site %d; locale %d",
+    //change back to fatal
+    Log_info("i am not the leader; site %d; locale %d",
               frame_->site_info_->id, loc_id_);
   }
 
@@ -65,6 +72,8 @@ void CoordinatorMultiPaxos::Prepare() {
   in_prepare_ = true;
   curr_ballot_ = PickBallot();
   verify(slot_id_ > 0);
+  //rpc_event->add_dep(commo()->LeaderProxyForPartition(par_id_).first);
+  //rpc_event->log();
   Log_debug("multi-paxos coordinator broadcasts prepare, "
                 "par_id_: %lx, slot_id: %llx",
             par_id_,
@@ -72,7 +81,14 @@ void CoordinatorMultiPaxos::Prepare() {
   verify(n_prepare_ack_ == 0);
   int n_replica = Config::GetConfig()->GetPartitionSize(par_id_);
   auto sp_quorum = commo()->BroadcastPrepare(par_id_, slot_id_, curr_ballot_);
+  auto start = chrono::steady_clock::now();
+  Log_info("Time before Wait() is: %d", chrono::duration_cast<chrono::milliseconds>(start.time_since_epoch()).count());
   sp_quorum->Wait();
+  auto end = chrono::steady_clock::now();
+
+  auto duration = chrono::duration_cast<chrono::milliseconds>(end-start);
+  Log_info("Duration of Wait() in Prepare() is: %d", duration.count());
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     verify(!sp_quorum->HasAcceptedValue());
     // TODO use the previously accepted value.
@@ -124,8 +140,18 @@ void CoordinatorMultiPaxos::Accept() {
   Log_debug("multi-paxos coordinator broadcasts accept, "
                 "par_id_: %lx, slot_id: %llx",
             par_id_, slot_id_);
+  auto start = chrono::system_clock::now();
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
+  sp_quorum->id_ = dep_id_;
+  Log_info("Accept(): %d", dep_id_);
+
   sp_quorum->Wait();
+  auto end = chrono::system_clock::now();
+  auto duration = chrono::duration_cast<chrono::microseconds>(end-start);
+  //auto duration_ready = chrono::duration_cast<chrono::microseconds>(end-sp_quorum->ready_time);
+  Log_info("Duration of Wait() in Accept() is: %d", duration.count());
+  //Log_info("Duration after Ready to end of Wait() is: %d", duration_ready.count());
+  sp_quorum->log();
   if (sp_quorum->Yes()) {
     committed_ = true;
   } else if (sp_quorum->No()) {
@@ -182,6 +208,7 @@ void CoordinatorMultiPaxos::Commit() {
 void CoordinatorMultiPaxos::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
+  //Log_info("Current phase is %d", current_phase);
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:
@@ -194,12 +221,19 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
       } else {
         // TODO
         verify(0);
+        Log_info("The local id is %d", this->loc_id_);
+        //Forward();
+        //Log_info("Follower logic");
+        //For now, do nothing
+        //
+        //Next steps: Find the leader, call submit, wait for the reply
       }
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
         Commit();
-      } else {
+      }
+      else{
         verify(0);
       }
       break;

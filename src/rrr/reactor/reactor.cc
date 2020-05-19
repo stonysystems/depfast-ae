@@ -50,6 +50,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
     sp_coro = available_coros_.back();
+    sp_coro->id = Coroutine::global_id++;
     available_coros_.pop_back();
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
@@ -60,29 +61,14 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   ContinueCoro(sp_coro);
   Loop();
   return sp_coro;
-//  __debug_set_all_coro_.insert(sp_coro.get());
-//  verify(!curr_coro_); // Create a coroutine from another?
-//  verify(!sp_running_coro_th_); // disallows nested coroutines
-//  auto sp_old_coro = sp_running_coro_th_;
-//  sp_running_coro_th_ = sp_coro;
-//  verify(sp_coro);
-//  auto pair = coros_.insert(sp_coro);
-//  verify(pair.second);
-//  verify(coros_.size() > 0);
-//  sp_coro->Run();
-//  if (sp_coro->Finished()) {
-//    coros_.erase(sp_coro);
-//  }
-//  Loop();
-//  // yielded or finished, reset to old coro.
-//  sp_running_coro_th_ = sp_old_coro;
-//  return sp_coro;
 }
 
 //  be careful this could be called from different coroutines.
 void Reactor::Loop(bool infinite) {
+
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
+
   do {
     std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
     verify(ready_events_.empty());
@@ -91,6 +77,7 @@ void Reactor::Loop(bool infinite) {
     }
 
     auto time_now = Time::now();
+    //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
       auto status = event.status_;
@@ -217,16 +204,14 @@ class PollMgr::PollThread {
     while (it != set_sp_jobs_.end()) {
       auto sp_job = *it;
       if (sp_job->Ready()) {
-        Coroutine::CreateRun([sp_job]() {
-          sp_job->Work();
-        });
+        //Log_info("Could be right before GotoNextPhase()");
+        Coroutine::CreateRun([sp_job]() {sp_job->Work();});
       }
-      it = set_sp_jobs_.erase(it);
-//      if (sp_job->Done()) {
-//        it = set_sp_jobs_.erase(it);
-//      } else {
-//        it++;
-//      }
+      if (sp_job->Done()) {
+        it = set_sp_jobs_.erase(it);
+      } else {
+        it++;
+      }
     }
     lock_job_.unlock();
   }
@@ -288,7 +273,13 @@ void PollMgr::PollThread::poll_loop() {
     }*/
     
     TriggerJob();
+    //poll_.Wait();
+#ifdef USE_KQUEUE
     poll_.Wait();
+#else
+    poll_.Wait_One();
+    poll_.Wait_Two();
+#endif
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
     // after each poll loop, remove uninterested pollables

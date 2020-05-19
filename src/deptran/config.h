@@ -208,6 +208,7 @@ class Config {
   int NumSites(SiteInfoType type=SERVER);
   const SiteInfo& SiteById(uint32_t id);
   vector<SiteInfo> SitesByPartitionId(parid_t partition_id);
+  vector<int> SiteIdsByPartitionId(parid_t partition_id);
   vector<SiteInfo> SitesByLocaleId(uint32_t locale_id, SiteInfoType type=SERVER);
   vector<SiteInfo> SitesByProcessName(string proc_name, SiteInfoType type=SERVER);
   SiteInfo* SiteByName(std::string name);

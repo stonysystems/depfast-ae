@@ -6,7 +6,9 @@
 #include "base/all.hpp"
 #include <unistd.h>
 #include <array>
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 #ifdef __APPLE__
 #define USE_KQUEUE
@@ -32,13 +34,18 @@ public:
 
     virtual int fd() = 0;
     virtual int poll_mode() = 0;
-    virtual void handle_read() = 0;
+    virtual size_t content_size() = 0;
+    virtual bool handle_read() = 0;
+    //virtual void handle_read_one() = 0;
+    virtual bool handle_read_two() = 0;
     virtual void handle_write() = 0;
     virtual void handle_error() = 0;
 };
 
 
 class Epoll {
+ private:
+  std::vector<Pollable*> pending{};
  public:
    volatile bool* pause ;
    volatile bool* stop ;
@@ -170,6 +177,77 @@ class Epoll {
     return 0;
   }
 
+
+  void Wait_One() {
+    const int max_nev = 100;
+#ifdef USE_KQUEUE
+    struct kevent evlist[max_nev];
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 50 * 1000 * 1000; // 0.05 sec
+
+    int nev = kevent(poll_fd_, nullptr, 0, evlist, max_nev, &timeout);
+
+    for (int i = 0; i < nev; i++){
+      Pollable* poll = (Pollable *) evlist[i].udata;
+      if (evlist[i].filter & EVFILT_READ){
+        poll->handle_read();
+	Log_info("pushing back");
+        pending.push_back(poll);
+      }
+      if (evlist[i].filter & EVFILT_WRITE){
+        poll->handle_write();
+      }
+      if (evlist[i].flags & EV_EOF){
+        poll->handle_error();
+      }
+    }
+
+#else
+    struct epoll_event evlist[max_nev];
+    int timeout = 1; // milli, 0.001 sec
+//    int timeout = 0; // busy loop
+    int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
+    
+    //if(nev != 0) Log_info("the number of events: %d", nev);
+    for (int i = 0; i < nev; i++) {
+      Pollable* poll = (Pollable *) evlist[i].data.ptr;
+      verify(poll != nullptr);
+      if (evlist[i].events & EPOLLIN) {
+	  bool push = poll->handle_read();
+          if(push) pending.push_back(poll);
+      }
+      if (evlist[i].events & EPOLLOUT) {
+          poll->handle_write();
+      }
+
+      // handle error after handle IO, so that we can at least process something
+      if (evlist[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+          poll->handle_error();
+      }
+    }
+#endif
+  }
+
+  void Wait_Two() {
+    /*if (pending.size() != 0) {
+       Log_info("WAITING TM: %d", pending.size());
+       //pending.clear();
+    }*/
+    //return;
+    for(auto it = pending.begin(); it != pending.end();){
+      //Log_info("CRAZY");
+      Pollable* poll = *it;
+
+      bool done = poll->handle_read_two();
+      if(done){
+        pending.erase(it);
+      } else{
+        it++;
+      }
+    }
+  }
+
   void Wait() {
     const int max_nev = 100;
 #ifdef USE_KQUEUE
@@ -209,6 +287,23 @@ class Epoll {
     int timeout = 1; // milli, 0.001 sec
 //    int timeout = 0; // busy loop
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
+
+    if(nev != 0){
+      /*Log_info("stuck here: %d", nev);
+      std::vector<size_t> lengths(nev);
+      for (int i = 0; i < nev; i++) {
+        Pollable* poll = (Pollable *) evlist[i].data.ptr;
+        lengths[i] = poll->content_size();
+      }
+
+      std::vector<size_t> args(nev);
+      std::iota(args.begin(), args.end(), 0);
+      std::sort(args.begin(), args.end(), [&lengths](int i1, int i2) { return lengths[i1] < lengths[i2];} );
+      Log_info("not stuck here");*/
+    }
+    
+    Log_info("the number of events: %d", nev);
+    
     for (int i = 0; i < nev; i++) {
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
       verify(poll != nullptr);

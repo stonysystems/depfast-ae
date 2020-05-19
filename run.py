@@ -295,18 +295,22 @@ class TxnInfo(object):
         if len(self.mid_latencies)>0:
             self.data['latency']['min'] = self.mid_latencies[0]
             self.data['latency']['max'] = self.mid_latencies[len(self.mid_latencies)-1]
+            self.data['latency']['avg'] = sum(self.mid_latencies)/len(self.mid_latencies)
         else:
             self.data['latency']['min'] = NO_VALUE
             self.data['latency']['max'] = NO_VALUE
+            self.data['latency']['avg'] = NO_VALUE
 
         self.data['all_latency'] = {}
         self.data['all_latency'].update(all_latencies)
         if len(self.mid_all_latencies)>0:
             self.data['all_latency']['min'] = self.mid_all_latencies[0]
             self.data['all_latency']['max'] = self.mid_all_latencies[len(self.mid_all_latencies)-1]
+            self.data['all_latency']['avg'] = sum(self.mid_all_latencies)/len(self.mid_all_latencies)
         else:
             self.data['all_latency']['min'] = NO_VALUE
             self.data['all_latency']['max'] = NO_VALUE
+            self.data['all_latency']['avg'] = NO_VALUE
 
         self.data['att_latency'] = {}
         self.data['att_latency'].update(att_latencies)
@@ -315,9 +319,11 @@ class TxnInfo(object):
             self.data['att_latency']['max'] = self.mid_attempt_latencies[
                 len(self.mid_attempt_latencies)-1
             ]
+            self.data['att_latency']['avg'] = sum(self.mid_attempt_latencies)/len(self.mid_attempt_latencies)
         else:
             self.data['att_latency']['min'] = NO_VALUE
             self.data['att_latency']['max'] = NO_VALUE
+            self.data['att_latency']['avg'] = NO_VALUE
 
         logger.info("\n__Data__\n{}\n__EndData__\n".format(yaml.dump(self.data)))
 
@@ -461,6 +467,7 @@ class ClientController(object):
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
+                    #logger.debug("Do nothing after failed client heartbeat")
             i=0
             for future in futures:
                 res = future.result
@@ -506,6 +513,7 @@ class ClientController(object):
             logger.debug("avg timing from {} servers: run_sec {:.2f}; run_nsec {:.2f}".format(len(futures), res.run_sec, res.run_nsec))
 
             self.cur_time = time.time()
+            #time.sleep(self.timeout)
             need_break = self.print_stage_result(do_sample, do_sample_lock)
             if (need_break):
                 break
@@ -530,8 +538,8 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 25
-        upper_cutoff_pct = 75
+        lower_cutoff_pct = 10
+        upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
@@ -647,15 +655,15 @@ class ServerController(object):
 
         if (taskset == 1):
             # set task on CPU 1
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 16)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 16)
             logger.info("Setting servers on CPU 1")
         elif (taskset == 2):
             # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 1)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 1)
             logger.info("Setting servers on CPU 0, odd number cores")
         elif (taskset == 3):
             # set task on CPU 0, even number cores, overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x)
             logger.info("Setting servers on CPU 0, even number cores")
         else:
             self.taskset_func = lambda x: ""
@@ -740,71 +748,72 @@ class ServerController(object):
             sample_result = []
             while (not g_exit):
                 logger.debug("top server heartbeat loop")
-                do_statistics = False
-                do_sample_lock.acquire()
-                if do_sample.value == 1:
-                    do_statistics = True
-                    do_sample.value = 0
-                do_sample_lock.release()
-                i = 0
-                r_cnt_sum = 0
-                r_cnt_num = 0
-                r_sz_sum = 0
-                r_sz_num = 0
-                statistics = dict()
-                cpu_util = [0.0] * len(sites)
-                futures = []
+                #do_statistics = False
+                #do_sample_lock.acquire()
+                #if do_sample.value == 1:
+                #    do_statistics = True
+                #    do_sample.value = 0
+                #do_sample_lock.release()
+                #i = 0
+                #r_cnt_sum = 0
+                #r_cnt_num = 0
+                #r_sz_sum = 0
+                #r_sz_num = 0
+                #statistics = dict()
+                #cpu_util = [0.0] * len(sites)
+                #futures = []
 
-                try:
-                    for site in sites:
-#                        logger.debug("ping %s", site.name)
-                        if do_statistics:
-                            futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
-                        else:
-                            futures.append(site.rpc_proxy.async_server_heart_beat())
-                except:
-                    logger.fatal("server heart beat failure")
-                    break
+                #try:
+                #    for site in sites:
+                #        logger.debug("ping %s", site.name)
+                #        if do_statistics:
+                #            futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
+                #        else:
+                #            futures.append(site.rpc_proxy.async_server_heart_beat())
+                #except:
+                #    logger.fatal(traceback.format_exc())
+                #    logger.fatal("server heart beat failure")
+                #    break
 
 
-                i = 0
-                while (i < len(futures)):
-                    if do_statistics:
-                        ret = futures[i].result
-                        r_cnt_sum += ret.r_cnt_sum
-                        r_cnt_num += ret.r_cnt_num
-                        r_sz_sum += ret.r_sz_sum
-                        r_sz_num += ret.r_sz_num
-                        cpu_util[i] = ret.cpu_util
-                        logger.info("CPU {}: {}".format(i, ret.cpu_util))
-                        for k, v in ret.statistics.items():
-                            if k not in statistics:
-                                statistics[k] = ServerResponse(v)
-                            else:
-                                statistics[k].add_one(v)
-                    else:
-                        futures[i].wait()
-                    i += 1
-                if do_statistics:
-                    total_result = []
-                    interval_result = []
-                    cur_time = time.time()
-                    interval_time = cur_time - self.pre_time
-                    self.pre_time = cur_time
-                    for k, v in statistics.items():
-                        total_result.append([k, v.get_value(), v.get_times(), v.get_ave()])
-                        interval_result.append([k, v.get_value(), v.get_times(), v.get_ave(), interval_time])
-                    self.pre_statistics = statistics
-                    sample_result = interval_result
-                    avg_cpu_util = sum(cpu_util) / len(cpu_util)
-                    if r_cnt_num != 0:
-                        avg_r_cnt = (1.0 * r_cnt_sum) / r_cnt_num
-                    else:
-                        avg_r_cnt = -1.0
-                    if r_sz_num != 0:
-                        avg_r_sz = (1.0 * r_sz_sum) / r_sz_num
-                    else:
-                        avg_r_sz = -1.0
+                #i = 0
+                #while (i < len(futures)):
+                #    if do_statistics:
+                #        ret = futures[i].result
+                #        r_cnt_sum += ret.r_cnt_sum
+                #        r_cnt_num += ret.r_cnt_num
+                #        r_sz_sum += ret.r_sz_sum
+                #        r_sz_num += ret.r_sz_num
+                #        cpu_util[i] = ret.cpu_util
+                #        logger.info("CPU {}: {}".format(i, ret.cpu_util))
+                #        for k, v in ret.statistics.items():
+                #            if k not in statistics:
+                #                statistics[k] = ServerResponse(v)
+                #            else:
+                #                statistics[k].add_one(v)
+                    #else:
+                        #futures[i].wait()
+                #    i += 1
+                #if do_statistics:
+                #    total_result = []
+                #    interval_result = []
+                #    cur_time = time.time()
+                #    interval_time = cur_time - self.pre_time
+                #    self.pre_time = cur_time
+                #    for k, v in statistics.items():
+                #        total_result.append([k, v.get_value(), v.get_times(), v.get_ave()])
+                #        interval_result.append([k, v.get_value(), v.get_times(), v.get_ave(), interval_time])
+                #    self.pre_statistics = statistics
+                #    sample_result = interval_result
+                #    avg_cpu_util = sum(cpu_util) / len(cpu_util)
+                #    if r_cnt_num != 0:
+                #        avg_r_cnt = (1.0 * r_cnt_sum) / r_cnt_num
+                #    else:
+                #        avg_r_cnt = -1.0
+                #    if r_sz_num != 0:
+                #        avg_r_sz = (1.0 * r_sz_sum) / r_sz_num
+                #    else:
+                #        avg_r_sz = -1.0
                 cond.acquire()
                 if (s_init_finish.value == 0):
                     cond.release()
@@ -841,9 +850,9 @@ class ServerController(object):
             recording = ""
 
         s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
-               " ./build/deptran_server " + \
-               "-b " + \
-               "-d " + str(self.config['args'].c_duration) + " "
+            " ./build/deptran_server " + \
+            "-b " + \
+            "-d " + str(self.config['args'].c_duration) + " "
 
         for fn in self.config['args'].config_files:
             s += "-f '" + fn + "' "
@@ -928,7 +937,7 @@ def create_parser():
                  "1: CPU 1; "
                  "2: CPU 0, odd cores; "
                  "3: CPU 0, even cores;",
-            default=0, action="store", metavar="[0|1|2|3]")
+            default=2, action="store", metavar="[0|1|2|3]")
 
     parser.add_argument("-c", "--client-taskset", dest="c_taskset",
             help="taskset client processes round robin", default=False,
@@ -948,6 +957,7 @@ def create_parser():
     parser.add_argument("-H", "--hosts", dest="hosts_path",
             help="hosts path", default="./config/hosts-local",
             metavar="HOSTS_PATH")
+
     logger.debug(parser)
     return parser
 
