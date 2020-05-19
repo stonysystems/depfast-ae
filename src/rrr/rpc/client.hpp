@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <chrono>
 
 #include "misc/marshal.hpp"
 #include "reactor/epoll_wrapper.h"
@@ -113,7 +114,8 @@ public:
      * NOT a refcopy! This is intended to avoid circular reference, which prevents everything from being released correctly.
      */
     PollMgr* pollmgr_;
-
+    
+    std::string host_;
     int sock_;
     enum {
         NEW, CONNECTED, CLOSED
@@ -152,9 +154,13 @@ public:
 
     template<class T>
     Client& operator <<(const T& v) {
+	//auto start = std::chrono::steady_clock::now();
         if (status_ == CONNECTED) {
             this->out_ << v;
         }
+	//auto end = std::chrono::steady_clock::now();
+	//auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+	//Log_info("Time of << is: %d", duration);
         return *this;
     }
 
@@ -177,7 +183,10 @@ public:
     }
 
     int poll_mode();
-    void handle_read();
+    size_t content_size();
+    //void handle_read_one();
+    bool handle_read_two();
+    bool handle_read();
     void handle_write();
     void handle_error();
 

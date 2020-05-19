@@ -94,6 +94,7 @@ void Client::invalidate_pending_futures() {
 }
 
 void Client::close() {
+  //Log_info("CLOSING");
   if (status_ == CONNECTED) {
     pollmgr_->remove(shared_from_this());
     ::close(sock_);
@@ -111,6 +112,7 @@ int Client::connect(const char* addr) {
     return EINVAL;
   }
   string host = addr_str.substr(0, idx);
+  host_ = host;
   string port = addr_str.substr(idx + 1);
 #ifdef USE_IPC
   struct sockaddr_un saun;
@@ -145,6 +147,7 @@ int Client::connect(const char* addr) {
     if (sock_ == -1) {
       continue;
     }
+    //Log_info("host port host port: %s:%s and socket: %d", host, port, sock_);
 
     const int yes = 1;
     verify(setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == 0);
@@ -181,29 +184,118 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
+  //auto start = chrono::steady_clock::now();
+  //Log_info("Handling write");
   if (status_ != CONNECTED) {
     return;
   }
 
   out_l_.lock();
+  //auto start = chrono::steady_clock::now();
   out_.write_to_fd(sock_);
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+
+  //Log_info("The Time of Writing to Socket is: %d", duration);
 
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
+ // auto end = chrono::steady_clock::now();
+ // auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+ // Log_info("Duration of handle_write() is: %d", duration);
 }
 
-void Client::handle_read() {
+size_t Client::content_size() {
+  return in_.content_size();
+}
+
+bool Client::handle_read(){
   if (status_ != CONNECTED) {
+    Log_info("NOT CONNECTED");
+    return false;
+  }
+
+  //Log_info("failing here");
+  int bytes_read = in_.read_from_fd(sock_);
+  //Log_info("bytes read: %d", bytes_read);
+  if (bytes_read == 0) {
+    Log_info("sure");
+    return false;
+  }
+  return true;
+}
+
+bool Client::handle_read_two() {
+  if (status_ != CONNECTED) {
+    return false;
+  }
+
+  //return true;
+  bool done = false;
+  int iters = 5;
+  if(host_ == "10.128.0.61") iters = INT_MAX;
+  for(;;) {
+    i32 packet_size;
+    int n_peek = in_.peek(&packet_size, sizeof(i32));
+    if (n_peek == sizeof(i32)
+        && in_.content_size() >= packet_size + sizeof(i32)) {
+      verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+
+      v64 v_reply_xid;
+      v32 v_error_code;
+
+      in_ >> v_reply_xid >> v_error_code;
+
+      pending_fu_l_.lock();
+      unordered_map<i64, Future*>::iterator
+        it = pending_fu_.find(v_reply_xid.get());
+      //Log_info("pending size: %d", pending_fu_.size());
+      if(it != pending_fu_.end()){
+        Future* fu = it->second;
+        verify(fu->xid_ == v_reply_xid.get());
+
+        pending_fu_.erase(it);
+        pending_fu_l_.unlock();
+
+        fu->error_code_ = v_error_code.get();
+        fu->reply_.read_from_marshal(in_,
+	    	                     packet_size - v_reply_xid.val_size()
+				         - v_error_code.val_size());
+
+        fu->notify_ready();
+
+        fu->release();
+      } else{
+        pending_fu_l_.unlock();
+      }
+    } else{
+      done = true;
+      break;
+    }
+  }
+
+
+  Reactor::GetReactor()->Loop();
+  return done;
+}
+
+/*void Client::handle_read() {
+  if (status_ != CONNECTED) {
+    Log_info("DCed");
     return;
   }
 
   int bytes_read = in_.read_from_fd(sock_);
+  //Log_info("The bytes read is: %d", bytes_read);
+  Log_info("the socket is: %d", sock_);
   if (bytes_read == 0) {
-    return;
+    Log_info("sure");
   }
 
+
+  //auto start = chrono::steady_clock::now();
   for (;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
@@ -248,7 +340,11 @@ void Client::handle_read() {
   // This is a workaround, the Loop call should really happen
   // between handle_read and handle_write in the epoll loop
   Reactor::GetReactor()->Loop();
-}
+
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("Duration of handle_read() is: %d", duration);
+}*/
 
 int Client::poll_mode() {
   int mode = Pollable::READ;
@@ -261,9 +357,11 @@ int Client::poll_mode() {
 }
 
 Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
+  //auto start = chrono::steady_clock::now();
   out_l_.lock();
 
   if (status_ != CONNECTED) {
+    //Log_info("NOT CONNECTED");
     return nullptr;
   }
 
@@ -282,6 +380,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
     }
     pending_fu_l_.unlock();
 
+    //Log_info("NOT CONNECTED 2");
     return nullptr;
   }
 
@@ -290,11 +389,16 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   *this << v64(fu->xid_);
   *this << rpc_id;
 
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for begin_request is: %d", duration);
+  //Log_info("EXITING begin_request");
   // one ref is already in pending_fu_
   return (Future*) fu->ref_copy();
 }
 
 void Client::end_request() {
+  //auto start = chrono::steady_clock::now();
   // set reply size in packet
   if (bmark_ != nullptr) {
     i32 request_size = out_.get_and_reset_write_cnt();
@@ -308,6 +412,9 @@ void Client::end_request() {
   pollmgr_->update_mode(shared_from_this(), Pollable::READ | Pollable::WRITE);
 
   out_l_.unlock();
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for end_request is: %d");
 }
 
 ClientPool::ClientPool(PollMgr* pollmgr /* =? */,
@@ -325,6 +432,7 @@ ClientPool::ClientPool(PollMgr* pollmgr /* =? */,
 ClientPool::~ClientPool() {
   for (auto& it : cache_) {
     for (int i = 0; i < parallel_connections_; i++) {
+      Log_info("CLOSING CONNECTIONS");
       it.second[i]->close_and_release();
     }
     delete[] it.second;

@@ -9,6 +9,11 @@
 namespace rrr {
 using std::function;
 
+uint64_t Event::GetCoroId(){
+  auto sp_coro = Coroutine::CurrentCoroutine();
+  return sp_coro->id;
+}
+
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
@@ -35,7 +40,7 @@ void Event::Wait(uint64_t timeout) {
 //    waiting_events.push_back(shared_from_this());
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
-      timeout = 120 * 1000 * 1000;
+      timeout = 20 * 1000 * 1000;
     }
 #endif
     if (timeout > 0) {
@@ -55,12 +60,15 @@ void Event::Wait(uint64_t timeout) {
 //        }
 //      }
 //      events.insert(it, shared_from_this());
+
     wp_coro_ = sp_coro;
+    //Log_info("waiting");
     status_ = WAIT;
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
     if (status_ == TIMEOUT) {
+      Log_info("timeout");
       verify(0);
     }
 #endif
@@ -81,16 +89,22 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
+      //Log_info("READY: %p", this);
       Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
-//      Log_debug("event status ready, triggered?");
+      Log_info("event status ready, triggered?");
     } else if (status_ == DONE) {
       // do nothing
     } else {
       verify(0);
     }
     return true;
+  }
+  else{
+    if(status_ == DONE){
+      status_ = INIT;
+    }
   }
   return false;
 }

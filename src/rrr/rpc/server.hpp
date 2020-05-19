@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <pthread.h>
 #include <memory>
+#include <chrono>
 
 #include <sys/socket.h>
 #include <netdb.h>
@@ -52,8 +53,17 @@ class ServerListener: public Pollable {
   int poll_mode() {
     return Pollable::READ;
   }
+  size_t content_size() {
+    verify(0);
+    return 0;
+  }
   void handle_write() {verify(0);}
-  void handle_read();
+  //void handle_read_one() {verify(0);}
+  bool handle_read_two() {
+    verify(0);
+    return true;
+  }
+  bool handle_read();
   void handle_error() {verify(0);}
   void close();
   int fd() {return server_sock_;}
@@ -143,8 +153,17 @@ public:
     }
 
     int poll_mode();
+    size_t content_size() {
+      verify(0);
+      return 0;
+    }
     void handle_write();
-    void handle_read();
+    //void handle_read_one() {verify(0);}
+    bool handle_read_two() {
+      verify(0);
+      return true;
+    }
+    bool handle_read();
     void handle_error();
 };
 
