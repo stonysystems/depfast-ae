@@ -1,6 +1,7 @@
 
 #include "communicator.h"
 #include "coordinator.h"
+#include "classic/coordinator.h"
 #include "rcc/graph.h"
 #include "rcc/graph_marshaler.h"
 #include "command.h"
@@ -240,11 +241,10 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     ReadyPiecesData cmds_by_par,
     Coordinator* coo,
     TxData* txn) {
-  int total = coo->n_dispatch_;
+  int total = cmds_by_par.size();
   //std::shared_ptr<AndEvent> e = Reactor::CreateSpEvent<AndEvent>();
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
   std::unordered_set<int> leaders{};
-  e->n_voted_yes_ = coo->n_dispatch_ack_;
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
   //Log_info("The size of cmds_by_par is %d", cmds_by_par.size());
@@ -264,36 +264,40 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     auto pair_leader_proxy = LeaderProxyForPartition(par_id);
     auto leader_id = pair_leader_proxy.first;
 
+    phase_t phase = coo->phase_;
     rrr::FutureAttr fuattr;
     fuattr.callback =
-        [e, coo, this, txn, src_coroid, leader_id](Future* fu) {
+        [e, coo, this, phase, txn, src_coroid, leader_id](Future* fu) {
           int32_t ret;
           TxnOutput outputs;
           uint64_t coro_id = 0;
           fu->get_reply() >> ret >> outputs >> coro_id;
-          if(ret == REJECT){
-            coo->aborted_ = true;
-            txn->commit_.store(false);
-          }
-          e->n_voted_yes_ += outputs.size();
-          coo->n_dispatch_ack_ += outputs.size();
-          //Log_info("Is it ready: %d", e->n_voted_yes_==e->n_total_);
-          if(coo->aborted_){
-            e->Test();
-          }
+
+          e->n_voted_yes_++;
+          if(phase != coo->phase_){
+	    e->Test();
+	  }
           else{
+            if(ret == REJECT){
+              coo->aborted_ = true;
+              txn->commit_.store(false);
+            }
+            coo->n_dispatch_ack_ += outputs.size();
             for(auto& pair: outputs){
               const uint32_t& inn_id = pair.first;
               coo->dispatch_acks_[inn_id] = true;
               txn->Merge(pair.first, pair.second);
             }
+	  
+	    CoordinatorClassic* classic_coo = (CoordinatorClassic*)coo;
+	    //classic_coo->debug_cnt--;
             if(txn->HasMoreUnsentPiece()){
-              e->n_voted_yes_ = coo->n_dispatch_;
+              classic_coo->DispatchAsync(false);
             }
-            //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
+              //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
             coo->ids_.push_back(leader_id);
             e->Test();
-          }
+	  }
         };
     
     Log_debug("send dispatch to site %ld",
@@ -302,6 +306,9 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
     sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
     MarshallDeputy md(sp_vpd); // ????
+    CoordinatorClassic* classic_coo = (CoordinatorClassic*) coo;
+    //classic_coo->debug_cnt++;
+    //Log_info("debug_cnt: %d", classic_coo->debug_cnt);
     auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
     Future::safe_release(future);
     if(!broadcasting_to_leaders_only_){
@@ -495,7 +502,7 @@ Communicator::SendCommit(Coordinator* coo,
   fuattr.callback = [callback](Future*) { callback(); };
   ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
   Log_debug("SendCommit to %ld tid:%ld\n", pid, tid);
-  Future::safe_release(proxy->async_Commit(tid, fuattr));
+  Future::safe_release(proxy->async_Commit(tid, 0, fuattr));
 }*/
 shared_ptr<AndEvent>
 Communicator::SendAbort(Coordinator* coo,
@@ -532,21 +539,6 @@ Communicator::SendAbort(Coordinator* coo,
       qe->n_voted_yes_++;
       e->Test();
     };
-    //keep for future reference
-
-    //auto leader_id = LeaderProxyForPartition(rp).first;
-    //this is kind of a hack. it might be broken
-    //auto it = coo->sp_quorum_events.find(leader_id);
-    //if(it == coo->sp_quorum_events.end()){
-      //auto qe = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
-      //qe->id_ = Communicator::global_id;
-      //qe->par_id_ = quorum_id++;
-      //coo->sp_quorum_events.push_back({leader_id, qe});
-      //first = true;
-    //}
-    //else{
-    //  verify(0);
-    //}
 
     ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
     Log_debug("SendAbort to %ld tid:%ld\n", rp, tid);
@@ -576,7 +568,7 @@ Communicator::SendAbort(Coordinator* coo,
   fuattr.callback = [callback](Future*) { callback(); };
   ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
   Log_debug("SendAbort to %ld tid:%ld\n", pid, tid);
-  Future::safe_release(proxy->async_Abort(tid, fuattr));
+  Future::safe_release(proxy->async_Abort(tid, 0, fuattr));
 }*/
 
 void Communicator::SendUpgradeEpoch(epoch_t curr_epoch,

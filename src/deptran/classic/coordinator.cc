@@ -125,30 +125,25 @@ void CoordinatorClassic::GotoNextPhase() {
   //Log_info("We're moving along: %d", phase_ % 4);
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
+  phase_++;
   //Log_info("Current phase is %d", current_phase);
   //Log_info("aborted and committed: %d, %d", aborted_, committed_);
-  switch (phase_++ % n_phase) {
+  switch (current_phase) {
     case Phase::INIT_END:
-      //Log_info("Dispatching for some reason: %x", this);
+      //Log_info("Dispatching for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::DISPATCH);
-      phase_++;
-      DispatchAsync();
+      DispatchAsync(true);
+      break;
       //break;
     case Phase::DISPATCH:
-      //Log_info("Preparing for some reason: %x", this);
+      //Log_info("Preparing for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
-      if (aborted_) {
-        phase_++;
-        phase_++;
-        Commit();
-      } else {
-        phase_++;
-        Prepare();
-      }
+      phase_++;
+      Prepare();
       //break;
     case Phase::PREPARE:
-      //Log_info("Committing for some reason: %x", this);
+      //Log_info("Committing for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::COMMIT);
       phase_++;
       Commit();
@@ -241,14 +236,43 @@ void CoordinatorClassic::DispatchAsync() {
   //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
+void CoordinatorClassic::DispatchAsync(bool last) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  auto txn = (TxData*) cmd_;
+
+  int cnt = 0;
+  auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
+  n_pd = 1;
+  auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
+  Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
+  for (auto& pair: cmds_by_par){
+    auto& cmds = pair.second;
+    n_dispatch_ += cmds.size();
+  }
+  
+  sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
+  phase_t phase = phase_;
+  sp_quorum_event->Wait();
+  debug_cnt--;
+
+  if(phase != phase) return;
+  /*if(txn->HasMoreUnsentPiece()){
+    DispatchAsync(true);
+  }*/if(last && AllDispatchAcked()){
+    GotoNextPhase();
+  }
+  //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+}
+
 bool CoordinatorClassic::AllDispatchAcked() {
   bool ret1 = std::all_of(dispatch_acks_.begin(),
                           dispatch_acks_.end(),
                           [](std::pair<innid_t, bool> pair) {
                             return pair.second;
                           });
-  if (ret1)
+  if (ret1){
     verify(n_dispatch_ack_ == n_dispatch_);
+  }
   return ret1;
 }
 
@@ -264,21 +288,19 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
     txn->commit_.store(false);
   }
   n_dispatch_ack_ += outputs.size();
-  if (aborted_) {
+  /*if (aborted_) {
     if (n_dispatch_ack_ == n_dispatch_) {
       GotoNextPhase();
       return;
     }
-  }
+  }*/
 
   for (auto& pair : outputs) {
     const innid_t& inn_id = pair.first;
     dispatch_acks_[inn_id] = true;
     txn->Merge(pair.first, pair.second);
   }
-  if (txn->HasMoreUnsentPiece()) {
-    DispatchAsync();
-  } else if (AllDispatchAcked()) {
+  if (AllDispatchAcked()) {
     verify(!committed_);
     GotoNextPhase();
   }
@@ -353,6 +375,8 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
 
 void CoordinatorClassic::Commit() {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
+  auto it = dispatch_acks_.begin();
+  it->second = true;
 //  ___TestPhaseThree(cmd_->id_);
   auto mode = Config::GetConfig()->tx_proto_;
   verify(mode == MODE_OCC || mode == MODE_2PL);
@@ -384,7 +408,7 @@ void CoordinatorClassic::Commit() {
                           std::bind(&CoordinatorClassic::CommitAck,
                                     this,
                                     phase_));
-      //site_commit_[rp]++;
+      site_commit_[rp]++;
     }*/
   } else if (aborted_) {
     tx_data().reply_.res_ = REJECT;

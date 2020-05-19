@@ -123,7 +123,11 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
                                uint64_t* coro_id,
                                rrr::DeferredReply* defer) {
 
+<<<<<<< HEAD
   Log::debug("get abort_txn: tid: %ld", tid);
+=======
+  Log_debug("get abort_txn: tid: %ld", tid);
+>>>>>>> 46f2e8b12a13b1caf8d7a2216967fa91504df9c3
   //std::lock_guard<std::mutex> guard(mtx_);
   const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;

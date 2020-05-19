@@ -41,7 +41,7 @@ void Event::Wait(uint64_t timeout) {
 //    waiting_events.push_back(shared_from_this());
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
-      timeout = 120 * 1000 * 1000;
+      timeout = 20 * 1000 * 1000;
     }
 #endif
     if (timeout > 0) {
@@ -69,6 +69,7 @@ void Event::Wait(uint64_t timeout) {
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
     if (status_ == TIMEOUT) {
+      Log_info("timeout");
       verify(0);
     }
 #endif
@@ -93,7 +94,7 @@ bool Event::Test() {
       Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
-//      Log_debug("event status ready, triggered?");
+      Log_info("event status ready, triggered?");
     } else if (status_ == DONE) {
       // do nothing
     } else {
