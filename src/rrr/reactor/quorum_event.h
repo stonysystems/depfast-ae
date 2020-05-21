@@ -128,7 +128,6 @@ class QuorumEvent : public Event {
     n_voted_no_++;
     Test();
   }
-  
   int64_t Term() {
     return highest_term_ ;
   }

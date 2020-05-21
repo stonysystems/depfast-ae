@@ -13,7 +13,6 @@ CoordinatorMultiPaxos::CoordinatorMultiPaxos(uint32_t coo_id,
     : Coordinator(coo_id, benchmark, ccsi, thread_id) {
 }
 
-
 void CoordinatorMultiPaxos::Forward(){
   verify(!in_forward);
   in_forward=true;
@@ -234,42 +233,6 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
         Commit();
       }
       else{
-        verify(0);
-      }
-      break;
-    case Phase::PREPARE:
-      verify(phase_ % n_phase == Phase::ACCEPT);
-      Accept();
-      break;
-    case Phase::COMMIT:
-      // do nothing.
-      break;
-    default:
-      verify(0);
-  }
-}
-
-void BulkCoordinatorMultiPaxos::GotoNextPhase() {
-  int n_phase = 4;
-  int current_phase = phase_ % n_phase;
-  phase_++;
-  switch (current_phase) {
-    case Phase::INIT_END:
-      if (IsLeader()) {
-        phase_++; // skip prepare phase for "leader"
-        verify(phase_ % n_phase == Phase::ACCEPT);
-        Accept();
-        phase_++;
-        verify(phase_ % n_phase == Phase::COMMIT);
-      } else {
-        // TODO
-        verify(0);
-      }
-    case Phase::ACCEPT:
-      verify(phase_ % n_phase == Phase::COMMIT);
-      if (committed_) {
-        Commit();
-      } else {
         verify(0);
       }
       break;
