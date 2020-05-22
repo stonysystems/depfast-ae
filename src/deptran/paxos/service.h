@@ -43,14 +43,6 @@ class MultiPaxosServiceImpl : public MultiPaxosService {
               const MarshallDeputy& cmd,
               rrr::DeferredReply* defer) override;
 
-  void BulkDecide(const MarshallDeputy& cmd,
-                  i32* valid,
-                  rrr::DeferredReply* defer) override;
-
-  void BulkAccept(const MarshallDeputy& cmd,
-                  i32* valid,
-                  rrr::DeferredReply* defer) override;
-
 };
 
 } // namespace janus

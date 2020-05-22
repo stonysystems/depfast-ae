@@ -10,7 +10,7 @@
 
 namespace janus {
 
-//REG_FRAME(MODE_MULTI_PAXOS, vector<string>({"paxos"}), MultiPaxosFrame);
+REG_FRAME(MODE_MULTI_PAXOS, vector<string>({"paxos"}), MultiPaxosFrame);
 
 template<typename D>
 struct automatic_register {
@@ -68,25 +68,6 @@ Coordinator *MultiPaxosFrame::CreateCoordinator(cooid_t coo_id,
   Log_debug("create new multi-paxos coord, coo_id: %d", (int) coo->coo_id_);
   return coo;
 }
-
-
-Coordinator *MultiPaxosFrame::CreateBulkCoordinator(Config *config, int benchmark) {
-    verify(config != nullptr);
-    CoordinatorMultiPaxos *coo;
-    coo = new BulkCoordinatorMultiPaxos(0, benchmark, nullptr, 0);
-    coo->frame_ = this;
-    verify(commo_ != nullptr);
-    coo->commo_ = commo_;
-    coo->n_replica_ = config->GetPartitionSize(site_info_->partition_id_);
-    coo->loc_id_ = this->site_info_->locale_id;
-    verify(coo->n_replica_ != 0); // TODO
-    Log_debug("create new multi-paxos bulk coord");
-    return coo;
-}
-
-
-
-
 
 TxLogServer *MultiPaxosFrame::CreateScheduler() {
   TxLogServer *sch = nullptr;

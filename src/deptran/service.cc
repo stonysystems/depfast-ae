@@ -91,7 +91,7 @@ void ClassicServiceImpl::SimpleCmd(const SimpleCommand& cmd,
   verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
   auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
   auto sched = (SchedulerClassic*) dtxn_sched_;
-  sched->CreateRepCoord()->Submit(sp_m);
+  sched->CreateRepCoord(0)->Submit(sp_m);
   *res = SUCCESS ;
   defer->reply();
 }

@@ -173,7 +173,7 @@ void FpgaRaftServer::RequestVote() {
     setIsLeader(true) ;
 
     this->rep_frame_ = this->frame_ ;
-    auto co = ((TxLogServer *)(this))->CreateRepCoord();
+    auto co = ((TxLogServer *)(this))->CreateRepCoord(0);
     auto empty_cmd = std::make_shared<TpcEmptyCommand>();
     verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
     auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
@@ -351,7 +351,7 @@ void FpgaRaftServer::StartTimer()
                                           uint64_t *cmt_idx,
                                           const function<void()> &cb) {
         this->rep_frame_ = this->frame_ ;
-        auto co = ((TxLogServer *)(this))->CreateRepCoord();
+        auto co = ((TxLogServer *)(this))->CreateRepCoord(0);
         ((CoordinatorFpgaRaft*)co)->Submit(cmd);
         
         std::lock_guard<std::recursive_mutex> lock(mtx_);

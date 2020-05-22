@@ -45,27 +45,12 @@ void CoordinatorMultiPaxos::Submit(shared_ptr<Marshallable>& cmd,
   GotoNextPhase();
 }
 
-void BulkCoordinatorMultiPaxos::BulkSubmit(shared_ptr<Marshallable>& cmd,
-                                       const function<void()>& func,
-                                       const function<void()>& exe_callback) {
-    if (!IsLeader()) {
-        Log_fatal("i am not the leader; site %d; locale %d",
-                  frame_->site_info_->id, loc_id_);
-    }
-    //std::lock_guard<std::recursive_mutex> lock(mtx_);
-    verify(!in_submission_);
-    in_submission_ = true;
-    cmd_ = cmd;
-    commit_callback_ = func;
-    GotoNextPhase();
-}
-
 ballot_t CoordinatorMultiPaxos::PickBallot() {
   return curr_ballot_ + 1;
 }
 
 void CoordinatorMultiPaxos::Prepare() {
-  //std::lock_guard<std::recursive_mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(0); // for debug;
   verify(!in_prepare_);
   in_prepare_ = true;
@@ -133,7 +118,7 @@ void CoordinatorMultiPaxos::Prepare() {
 }
 
 void CoordinatorMultiPaxos::Accept() {
-  //std::lock_guard<std::recursive_mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(!in_accept);
   in_accept = true;
   Log_debug("multi-paxos coordinator broadcasts accept, "
@@ -195,7 +180,7 @@ void CoordinatorMultiPaxos::Accept() {
 }
 
 void CoordinatorMultiPaxos::Commit() {
-  //std::lock_guard<std::recursive_mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   commit_callback_();
   Log_debug("multi-paxos broadcast commit for partition: %d, slot %d",
             (int) par_id_, (int) slot_id_);
@@ -246,34 +231,6 @@ void CoordinatorMultiPaxos::GotoNextPhase() {
     default:
       verify(0);
   }
-}
-
-void BulkCoordinatorMultiPaxos::Accept() {
-    //std::lock_guard<std::recursive_mutex> lock(mtx_);
-    auto sp_quorum = commo()->BroadcastBulkAccept(par_id_, cmd_);
-    sp_quorum->Wait();
-    if (sp_quorum->Yes()) {
-        committed_ = true;
-    } else if (sp_quorum->No()) {
-        verify(0);
-    } else {
-        verify(0);
-    }
-}
-
-void BulkCoordinatorMultiPaxos::Commit() {
-    //std::lock_guard<std::recursive_mutex> lock(mtx_);
-    commit_callback_();
-    auto sp_quorum = commo()->BroadcastBulkDecide(par_id_, cmd_);
-    sp_quorum->Wait();
-    if (sp_quorum->Yes()) {
-    } else if (sp_quorum->No()) {
-      verify(0);
-    } else {
-      verify(0);
-    }
-    verify(phase_ == Phase::COMMIT);
-    GotoNextPhase();
 }
 
 } // namespace janus

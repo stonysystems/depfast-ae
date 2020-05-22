@@ -58,6 +58,7 @@ class CoordinatorFpgaRaft : public Coordinator {
   }
 
   void DoTxAsync(TxRequest &req) override {}
+  void DoTxAsync(PollMgr*, TxRequest &) override {}
   void Forward(shared_ptr<Marshallable> &cmd,
               const std::function<void()> &func = []() {},
               const std::function<void()> &exe_callback = []() {}) ;

@@ -114,7 +114,7 @@ Communicator::LeaderProxyForPartition(parid_t par_id) const {
     if (proxy_it == partition_proxies.end()) {
       Log_fatal("could not find leader for partition %d", par_id);
     } else {
-      // leader_cache[par_id] = *proxy_it;
+      leader_cache[par_id] = *proxy_it;
       Log_debug("leader site for parition %d is %d", par_id, proxy_it->first);
     }
     verify(proxy_it->second != nullptr);

@@ -264,14 +264,6 @@ PollMgr::~PollMgr() {
 
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
-
-/*    while(pause_flag_ && !stop_flag_ )
-    {
-        auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
-        sp_e2->Wait(1*1000*1000) ;
-//        sleep(1) ;
-    }*/
-    
     TriggerJob();
     //poll_.Wait();
 #ifdef USE_KQUEUE
@@ -286,6 +278,7 @@ void PollMgr::PollThread::poll_loop() {
     pending_remove_l_.lock();
     std::list<shared_ptr<Pollable>> remove_poll(pending_remove_.begin(), pending_remove_.end());
     pending_remove_.clear();
+    pending_remove_l_.unlock();
 
     for (auto& poll: remove_poll) {
       int fd = poll->fd();

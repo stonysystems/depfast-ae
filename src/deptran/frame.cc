@@ -10,7 +10,6 @@
 #include "scheduler.h"
 #include "none/coordinator.h"
 #include "none/scheduler.h"
-#include "notx/coordinator.h"
 #include "rcc/coord.h"
 #include "snow/ro6_coord.h"
 #include "2pl/coordinator.h"
@@ -207,13 +206,6 @@ Coordinator* Frame::CreateCoordinator(cooid_t coo_id,
     case MODE_MDCC:
 //      coo = (Coordinator*)new mdcc::MdccCoordinator(coo_id, id, config, ccsi);
       break;
-    case MODE_NOTX:
-      coo = new CoordinatorNoTx(coo_id,
-                         benchmark,
-                         ccsi,
-                         id);
-      ((Coordinator*)coo)->txn_reg_ = txn_reg;  // TODO delete this yidawu
-      break ;
     case MODE_NONE:
     default:
       coo = new CoordinatorNone(coo_id,
@@ -224,12 +216,6 @@ Coordinator* Frame::CreateCoordinator(cooid_t coo_id,
       break;
   }
   coo->frame_ = this;
-  return coo;
-}
-
-Coordinator* Frame::CreateBulkCoordinator(Config *config, int benchmark) {
-  verify(0);
-  Coordinator *coo;
   return coo;
 }
 

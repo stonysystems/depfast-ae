@@ -266,14 +266,7 @@ class Epoll {
         poll->handle_read();
       }
       if (evlist[i].filter == EVFILT_WRITE) {
-        Coroutine::CreateRun([&]() {
-            while(*pause && !*stop)
-            {
-              auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
-              sp_e2->Wait(1*1000*1000) ;
-            } 
-            poll->handle_write();
-        });
+        poll->handle_write();
       }
 
       // handle error after handle IO, so that we can at least process something

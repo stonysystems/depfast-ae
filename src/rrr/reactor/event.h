@@ -142,7 +142,7 @@ class TimeoutEvent : public Event {
   TimeoutEvent(uint64_t wait_us_): wakeup_time_{Time::now()+wait_us_} {}
 
   bool IsReady() override {
-    // Log_debug("test timeout");
+//    Log_debug("test timeout");
     return (Time::now() > wakeup_time_);
   }
 };
