@@ -12,7 +12,7 @@ class TxLogServer;
 class SimpleCommand;
 class Communicator;
 class SchedulerClassic;
-class rrr::PollMgr ;
+//class rrr::PollMgr ;
 
 class ClassicServiceImpl : public ClassicService {
 

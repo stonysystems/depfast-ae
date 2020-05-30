@@ -103,7 +103,7 @@ void Client::close() {
   invalidate_pending_futures();
 }
 
-int Client::connect(const char* addr) {
+int Client::connect(const char* addr, bool client) {
   verify(status_ != CONNECTED);
   string addr_str(addr);
   size_t idx = addr_str.find(":");
@@ -235,7 +235,7 @@ bool Client::handle_read_two() {
   //return true;
   bool done = false;
   int iters = 5;
-  if(host_ == "10.128.0.61") iters = INT_MAX;
+  if(client_) iters = INT_MAX;
   for(;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));

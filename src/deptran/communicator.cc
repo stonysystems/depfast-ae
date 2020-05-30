@@ -131,11 +131,12 @@ Communicator::ConnectToClientSite(Config::SiteInfo& site,
 
   auto start = std::chrono::steady_clock::now();
   rrr::Client* rpc_cli = new rrr::Client(rpc_poll_);
+	rpc_cli->client_ = true;
   double elapsed;
   int attempt = 0;
   do {
     Log_info("connect to client site: %s (attempt %d)", addr, attempt++);
-    auto connect_result = rpc_cli->connect(addr);
+    auto connect_result = rpc_cli->connect(addr, true);
     if (connect_result == SUCCESS) {
       ClientControlProxy* rpc_proxy = new ClientControlProxy(rpc_cli);
       rpc_clients_.insert(std::make_pair(site.id, rpc_cli));
