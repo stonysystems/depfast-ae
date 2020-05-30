@@ -49,15 +49,32 @@ void ClientWorker::ForwardRequestDone(Coordinator* coo,
   defer->reply();
 }
 
-void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
+/*void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
   verify(coo != nullptr);
 
   if (txn_reply.res_ == SUCCESS)
     success++;
   num_txn++;
   num_try.fetch_add(txn_reply.n_try_);
-
+  
   bool have_more_time = timer_->elapsed() < duration;
+  if (have_more_time){
+    //n_event->number++; //this one doesn't count
+    if (config_->client_type_ == Config::Open){
+      std::lock_guard<std::mutex> lock(coordinator_mutex);
+      free_coordinators_.push_back(coo);
+    } else if (config_->client_type_ == Config::Closed){
+      Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
+    }
+  } else{
+    finish_mutex.lock();
+    n_concurrent_--;
+    if (n_concurrent_ == 0){
+      finish_cond.signal();
+    }
+    finish_mutex.unlock();
+  }*/
+  /*bool have_more_time = timer_->elapsed() < duration;
   Log_debug("received callback from tx_id %" PRIx64, txn_reply.tx_id_);
   Log_debug("elapsed: %2.2f; duration: %d", timer_->elapsed(), duration);
   if (have_more_time && config_->client_type_ == Config::Open) {
@@ -81,7 +98,8 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     verify(n_concurrent_ >= 0);
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
-//      finish_cond.signal();
+      finish_cond.signal();
+
     } else {
       Log_debug("waiting for %d more coordinators to finish", n_concurrent_);
       Log_debug("transactions they are processing:");
@@ -96,7 +114,7 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
   } else {
     verify(0);
   }
-}
+}*/
 
 Coordinator* ClientWorker::FindOrCreateCoordinator() {
   std::lock_guard<std::mutex> lock(coordinator_mutex);
@@ -150,6 +168,7 @@ Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
                                        ccsi,
                                        id,
                                        txn_reg_);
+  coo->cli_id_ = cli_id_;
   coo->loc_id_ = my_site_.locale_id;
   coo->commo_ = commo_;
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
@@ -222,18 +241,29 @@ void ClientWorker::Work() {
   timer_ = new Timer();
   timer_->start();
 
+  //and_event = Reactor::CreateSpEvent<AndEvent>();
+  //n_event = Reactor::CreateSpEvent<NEvent>();
+  //n_event->number = n_concurrent_;
+  //timeout_event = Reactor::CreateSpEvent<TimeoutEvent>(duration);
+  //and_event->AddEvent(timeout_event);
+  //and_event->AddEvent(n_event);
+  //add timeoutevent to AndEvent
+
   if (config_->client_type_ == Config::Closed) {
-    Log_info("closed loop clients.");
+    Log_info("closed loop clients. %d", n_concurrent_);
     verify(n_concurrent_ > 0);
-    int n = n_concurrent_;
-    auto sp_job = std::make_shared<OneTimeJob>([this] () {
-      for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
-        auto coo = CreateCoordinator(n_tx);
-        Log_debug("create coordinator %d", coo->coo_id_);
+
+    for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
+      auto coo = CreateCoordinator(n_tx);
+      Log_debug("create coordinator %d", coo->coo_id_);
+      //create run here
+      Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
+      /*auto p_job = (Job*)new OneTimeJob([this, coo] () {
         this->DispatchRequest(coo);
-      }
-    });
-    poll_mgr_->add(dynamic_pointer_cast<Job>(sp_job));
+      });
+      shared_ptr<Job> sp_job(p_job);
+      poll_mgr_->add(sp_job);*/
+    }
   } else {
     Log_info("open loop clients.");
     const std::chrono::nanoseconds wait_time
@@ -269,9 +299,10 @@ void ClientWorker::Work() {
 
 //  finish_mutex.lock();
   while (n_concurrent_ > 0) {
+
     Log_debug("wait for finish... %d", n_concurrent_);
     sleep(1);
-//    finish_cond.wait(finish_mutex);
+
   }
 //  finish_mutex.unlock();
 
@@ -318,6 +349,12 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
                               std::placeholders::_1);
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
     coo->DoTxAsync(req);
+    //auto leader_id = commo_->LeaderProxyForPartition(coo->par_id_).first;
+    TxData* tx_data = (TxData*) coo->cmd_;
+    //Log_info("What is the reply at the beginning? %d", tx_data->reply_.res_);
+    tx_data->reply_.res_ = 10;
+    auto rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, tx_data->reply_.res_);
+    //n_event->AddEvent(rpc_event);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -397,13 +434,45 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
       std::lock_guard<std::mutex> lock(this->request_gen_mutex);
       tx_generator_->GetTxRequest(&req, coo->coo_id_);
     }
-    req.callback_ = std::bind(&ClientWorker::RequestDone,
+    req.callback_ = [this, coo](TxReply& tx_reply){
+      verify(coo != nullptr);
+
+      if (tx_reply.res_ == SUCCESS)
+        this->success++;
+      this->num_txn++;
+      this->num_try.fetch_add(tx_reply.n_try_);
+  
+      bool have_more_time = this->timer_->elapsed() < this->duration;
+      if (have_more_time){
+      //n_event->number++; //this one doesn't count
+        if (config_->client_type_ == Config::Open){
+          std::lock_guard<std::mutex> lock(coordinator_mutex);
+          free_coordinators_.push_back(coo);
+        } else if (config_->client_type_ == Config::Closed){
+          Coroutine::CreateRun([this, coo] (){this->DispatchRequest(coo);});
+        }
+      } 
+      else{
+          this->finish_mutex.lock();
+          this->n_concurrent_--;
+          if (this->n_concurrent_ == 0){
+            this->finish_cond.signal();
+          }
+          this->finish_mutex.unlock();
+      }
+
+    };
+    /*req.callback_ = std::bind(&ClientWorker::RequestDone,
                               this,
                               coo,
-                              std::placeholders::_1);
-    coo->DoTxAsync(req);
+                              std::placeholders::_1);*/
+    coo->DoTxAsync(poll_mgr_, req);
   };
   task();
+  TxData* tx_data = (TxData*) coo->cmd_;
+  tx_data->reply_.res_ = 10;
+  coo->rpc_event = Reactor::CreateSpEvent<SingleRPCEvent>(cli_id_, tx_data->reply_.res_);
+  coo->rpc_event->Wait();
 //  dispatch_pool_->run_async(task); // this causes bug
 }
 
@@ -451,7 +520,7 @@ ClientWorker::ClientWorker(
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
                                                                          : false;
-  Log_debug("client %d created; forward %d",
+  Log_info("client %d created; forward %d",
             cli_id_,
             forward_requests_to_leader_);
 }

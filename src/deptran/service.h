@@ -44,6 +44,7 @@ class ClassicServiceImpl : public ClassicService {
                 int32_t* res,
                 TxnOutput* output,
                 uint64_t* coro_id,
+	        			Profiling* profile,
                 DeferredReply* defer_reply) override;
 
   void FailOverTrig(const bool_t& pause, 

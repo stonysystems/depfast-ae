@@ -234,9 +234,9 @@ bool Client::handle_read_two() {
 
   //return true;
   bool done = false;
-  int iters = 5;
+  int iters = 10;
   if(client_) iters = INT_MAX;
-  for(;;) {
+  for(int i = 0; i < iters; i++) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
     if (n_peek == sizeof(i32)

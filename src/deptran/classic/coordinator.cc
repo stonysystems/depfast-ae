@@ -219,26 +219,21 @@ void CoordinatorClassic::DispatchAsync() {
   n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
-  for (auto& pair: cmds_by_par) {
-    const parid_t& par_id = pair.first;
+  for (auto& pair: cmds_by_par){
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
-    cnt += cmds.size();
-    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
-    for (auto c: cmds) {
-      c->id_ = next_pie_id();
-      dispatch_acks_[c->inn_id_] = false;
-      sp_vec_piece->push_back(c);
-    }
-    commo()->BroadcastDispatch(sp_vec_piece,
-                               this,
-                               std::bind(&CoordinatorClassic::DispatchAck,
-                                         this,
-                                         phase_,
-                                         std::placeholders::_1,
-                                         std::placeholders::_2));
   }
-  Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+  // need to create a vector of quorum events or a different data structure
+  // probably need a quorum event for each partition
+  sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
+  //Log_info("Waiting DispatchEvent: %x", *disp_event);
+  sp_quorum_event->Wait();
+  //quorum_event->log();
+  if(txn->HasMoreUnsentPiece()){
+    //Log_info("MORE????");
+    DispatchAsync();
+  }
+  //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
 void CoordinatorClassic::DispatchAsync(bool last) {

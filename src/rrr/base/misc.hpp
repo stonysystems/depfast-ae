@@ -93,7 +93,6 @@ class OneTimeJob : public Job {
     ready_ = false;
     func_();
     done_ = true;
-    func_ = {};
   }
 };
 

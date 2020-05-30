@@ -40,7 +40,7 @@ void Event::Wait(uint64_t timeout) {
 //    waiting_events.push_back(shared_from_this());
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
-      timeout = 20 * 1000 * 1000;
+      timeout = 30 * 1000 * 1000;
     }
 #endif
     if (timeout > 0) {

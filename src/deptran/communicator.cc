@@ -273,11 +273,44 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           int32_t ret;
           TxnOutput outputs;
           uint64_t coro_id = 0;
-          fu->get_reply() >> ret >> outputs >> coro_id;
+	  			double cpu = 0.0;
+	  			double net = 0.0;
+	  			Profiling profile;
+          fu->get_reply() >> ret >> outputs >> coro_id >> profile;
+
+	  			/*if(profile.cpu_util != -1.0) Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
+
+          struct timespec end_;
+	  			clock_gettime(CLOCK_REALTIME,&end_);
+
+	  			rrr::i64 start_sec = this->outbound_[src_coroid].first;
+	  			rrr::i64 start_nsec = this->outbound_[src_coroid].second;
+
+	  			rrr::i64 curr = ((rrr::i64)end_.tv_sec - start_sec)*1000000000 + ((rrr::i64)end_.tv_nsec - start_nsec);
+	  			curr /= 1000;
+	  			this->total_time += curr;
+	  			this->total++;
+          if(this->index < 100){
+	    			this->window[this->index];
+	    			this->index++;
+	    			this->window_time = this->total_time;
+	  			}
+          else{
+	    			this->window_time = 0;
+	    			for(int i = 0; i < 99; i++){
+	      			this->window[i] = this->window[i+1];
+	      			this->window_time += this->window[i];
+	    			}
+	    			this->window[99] = curr;
+	    			this->window_time += curr;
+	  			}
+	  			Log_info("average time of RPC is: %d", this->total_time/this->total);
+	 			  Log_info("window time of RPC is: %d", this->window_time/this->index);*/
+
           e->n_voted_yes_++;
           if(phase != coo->phase_){
-	    e->Test();
-	  }
+	    			e->Test();
+	  			}
           else{
             if(ret == REJECT){
               coo->aborted_ = true;
@@ -290,16 +323,16 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
               txn->Merge(pair.first, pair.second);
             }
 	  
-	    CoordinatorClassic* classic_coo = (CoordinatorClassic*)coo;
-	    //classic_coo->debug_cnt--;
+	    			CoordinatorClassic* classic_coo = (CoordinatorClassic*)coo;
+	    			//classic_coo->debug_cnt--;
             if(txn->HasMoreUnsentPiece()){
               classic_coo->DispatchAsync(false);
             }
               //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);
             coo->ids_.push_back(leader_id);
             e->Test();
-	  }
-        };
+	  			}
+      };
     
     Log_debug("send dispatch to site %ld",
               pair_leader_proxy.first);
@@ -310,6 +343,12 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     CoordinatorClassic* classic_coo = (CoordinatorClassic*) coo;
     //classic_coo->debug_cnt++;
     //Log_info("debug_cnt: %d", classic_coo->debug_cnt);
+
+    struct timespec start_;
+    clock_gettime(CLOCK_REALTIME, &start_);
+
+    outbound_[src_coroid] = make_pair((rrr::i64)start_.tv_sec, (rrr::i64)start_.tv_nsec);
+
     auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
     Future::safe_release(future);
     if(!broadcasting_to_leaders_only_){
