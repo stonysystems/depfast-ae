@@ -26,16 +26,18 @@ s3name="andrew-server3"
 serverZone="us-central1-a"
 
 echo "Running leader experiment $expno for mongodb"
-# Start the servers if they are already not started
-gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
-
-sleep 30
 
 mkdir -p leader_results
 
 for (( i=1; i<=$iterations; i++ ))
 do
 	echo "Running experiment $expno - Trial $i"
+
+	# Start the servers
+	gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
+
+	sleep 60
+
 	# 0. Cleanup first
 	ssh -i ~/.ssh/id_rsa "$s1" "sh -c 'rm -rf /srv/mongodb/rs0-*/data ; rm -rf /srv/mongodb/rs0-*'"
 	ssh -i ~/.ssh/id_rsa "$s2" "sh -c 'rm -rf /srv/mongodb/rs0-*/data ; rm -rf /srv/mongodb/rs0-*'"
@@ -92,19 +94,19 @@ do
 	ssh -i ~/.ssh/id_rsa "$s2" "sudo sh -c 'rm -rf /data/db ; sudo umount /dev/sdb ; rm -rf /data/ ; sudo cgdelete cpu:db cpu:cpulow cpu:cpuhigh blkio:db ; pkill mongod ; true'"
 	ssh -i ~/.ssh/id_rsa "$s3" "sudo sh -c 'rm -rf /data/db ; sudo umount /dev/sdb ; rm -rf /data/ ; sudo cgdelete cpu:db cpu:cpulow cpu:cpuhigh blkio:db ;  pkill mongod ; true'"
 	rm result.json
+	# Remove the tc rule for exp 5
+	if [ "$expno" == 5 ]; then
+		ssh -i ~/.ssh/id_rsa "$primaryip" "sudo sh -c 'sudo /sbin/tc qdisc del dev ens4 root'"
+	fi
 
 	sleep 5
 	
 	# 8. Power off all the VMs
-	#ssh -f -i ~/.ssh/id_rsa "$s1" "sudo sh -c 'sudo shutdown -h now'"
 	gcloud compute instances stop "$s1name" "$s2name" "$s3name" --zone="$serverZone"
 
-	# 9. Start all the vms again
-	gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
-
-	# Sleep again for ssh to work
-	sleep 1m
 done
 
+# Shutdown the servers
 gcloud compute instances stop "$s1name" "$s2name" "$s3name" --zone="$serverZone"
-sudo shutdown -h now
+#Make sure either shutdown is executed when you run this script or uncomment the last line
+#sudo shutdown -h now

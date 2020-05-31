@@ -7,7 +7,7 @@ if [ "$#" -ne 4 ]; then
     echo "1st arg - number of iterations"
     echo "2nd arg - workload path"
     echo "3rd arg - seconds to run ycsb run"
-    echo "4th arg - experiment to run"
+    echo "4th arg - experiment to run(1,2,3,4,5)"
     exit 1
 fi
 
@@ -27,15 +27,18 @@ serverZone="us-central1-a"
 
 echo "Running follower experiment $expno for mongodb"
 # Start the servers if they are already not started
-gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
-
-sleep 30
 
 mkdir -p results
 
 for (( i=1; i<=$iterations; i++ ))
 do
 	echo "Running experiment $expno - Trial $i"
+
+	# Start the servers
+	gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
+
+	sleep 60
+
 	# 0. Cleanup first
 	ssh -i ~/.ssh/id_rsa "$s1" "sh -c 'rm -rf /srv/mongodb/rs0-*/data ; rm -rf /srv/mongodb/rs0-*'"
 	ssh -i ~/.ssh/id_rsa "$s2" "sh -c 'rm -rf /srv/mongodb/rs0-*/data ; rm -rf /srv/mongodb/rs0-*'"
@@ -93,20 +96,20 @@ do
 	ssh -i ~/.ssh/id_rsa "$s1" "sudo sh -c 'rm -rf /data/db ; sudo umount /dev/sdb ; sudo rm -rf /data/ ; sudo cgdelete cpu:db cpu:cpulow cpu:cpuhigh blkio:db ; pkill mongod ; true'"
 	ssh -i ~/.ssh/id_rsa "$s2" "sudo sh -c 'rm -rf /data/db ; sudo umount /dev/sdb ; sudo rm -rf /data/ ; sudo cgdelete cpu:db cpu:cpulow cpu:cpuhigh blkio:db ; pkill mongod ; true'"
 	ssh -i ~/.ssh/id_rsa "$s3" "sudo sh -c 'rm -rf /data/db ; sudo umount /dev/sdb ; sudo rm -rf /data/ ; sudo cgdelete cpu:db cpu:cpulow cpu:cpuhigh blkio:db ; pkill mongod ; true'"
+	# Remove the tc rule for exp 5
+	if [ "$expno" == 5 ]; then
+		ssh -i ~/.ssh/id_rsa "$secondaryip" "sudo sh -c 'sudo /sbin/tc qdisc del dev ens4 root'"
+	fi
 	rm result.json
 
 	sleep 5
 	
 	# 8. Power off all the VMs
-	#ssh -f -i ~/.ssh/id_rsa "$s1" "sudo sh -c 'sudo shutdown -h now'"
 	gcloud compute instances stop "$s1name" "$s2name" "$s3name" --zone="$serverZone"
 
-	# 9. Start all the vms again
-	gcloud compute instances start "$s1name" "$s2name" "$s3name" --zone="$serverZone"
-
-	# Sleep again for ssh to work
-	sleep 1m
 done
 
-# sudo shutdown -h now
+# Shut down the servers
 gcloud compute instances stop "$s1name" "$s2name" "$s3name" --zone="$serverZone"
+#Make sure either shutdown is executed when you run this script or uncomment the last line
+# sudo shutdown -h now
