@@ -39,12 +39,14 @@ class ClassicServiceImpl : public ClassicService {
 
   void rpc_null(DeferredReply* defer) override ;
 
+	void ReElect(bool_t* success,
+							 DeferredReply* defer) override;
+
   void Dispatch(const i64& cmd_id,
                 const MarshallDeputy& cmd,
                 int32_t* res,
                 TxnOutput* output,
                 uint64_t* coro_id,
-	        			Profiling* profile,
                 DeferredReply* defer_reply) override;
 
   void FailOverTrig(const bool_t& pause, 
@@ -74,12 +76,14 @@ class ClassicServiceImpl : public ClassicService {
               const uint64_t& dep_id,
               i32* res,
               uint64_t* coro_id,
+	        		Profiling* profile,
               DeferredReply* defer) override;
 
   void Abort(const i64& tid,
              const uint64_t& dep_id,
              i32* res,
              uint64_t* coro_id,
+	        	 Profiling* profile,
              DeferredReply* defer) override;
 
   void UpgradeEpoch(const uint32_t& curr_epoch,

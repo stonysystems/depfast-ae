@@ -194,6 +194,32 @@ Communicator::NearestProxyForPartition(parid_t par_id) const {
   return partition_proxies[index];
 };
 
+std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
+	int total = rpc_par_proxies_[0].size() - 1;
+  std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
+
+	for(auto& pair: rpc_par_proxies_[0]){
+		rrr::FutureAttr fuattr;
+		int id = pair.first;
+		if(id == 0) continue;
+		fuattr.callback = 
+			[e, this, id] (Future* fu) {
+				bool_t success = false;
+				fu->get_reply() >> success;
+				
+				if(success){
+					for(int i = 0; i < 100; i++) Log_info("success success");
+					e->VoteYes();
+					this->SetNewLeaderProxy(0, id);
+					e->Test();
+				}
+			};
+		auto f = pair.second->async_ReElect(fuattr);
+		Future::safe_release(f);
+	}
+	return e;
+
+}
 void Communicator::BroadcastDispatch(
     shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
     Coordinator* coo,
@@ -275,37 +301,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           uint64_t coro_id = 0;
 	  			double cpu = 0.0;
 	  			double net = 0.0;
-	  			Profiling profile;
-          fu->get_reply() >> ret >> outputs >> coro_id >> profile;
-
-	  			/*if(profile.cpu_util != -1.0) Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
-
-          struct timespec end_;
-	  			clock_gettime(CLOCK_REALTIME,&end_);
-
-	  			rrr::i64 start_sec = this->outbound_[src_coroid].first;
-	  			rrr::i64 start_nsec = this->outbound_[src_coroid].second;
-
-	  			rrr::i64 curr = ((rrr::i64)end_.tv_sec - start_sec)*1000000000 + ((rrr::i64)end_.tv_nsec - start_nsec);
-	  			curr /= 1000;
-	  			this->total_time += curr;
-	  			this->total++;
-          if(this->index < 100){
-	    			this->window[this->index];
-	    			this->index++;
-	    			this->window_time = this->total_time;
-	  			}
-          else{
-	    			this->window_time = 0;
-	    			for(int i = 0; i < 99; i++){
-	      			this->window[i] = this->window[i+1];
-	      			this->window_time += this->window[i];
-	    			}
-	    			this->window[99] = curr;
-	    			this->window_time += curr;
-	  			}
-	  			Log_info("average time of RPC is: %d", this->total_time/this->total);
-	 			  Log_info("window time of RPC is: %d", this->window_time/this->index);*/
+          fu->get_reply() >> ret >> outputs >> coro_id;
 
           e->n_voted_yes_++;
           if(phase != coo->phase_){
@@ -334,6 +330,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			}
       };
     
+		Log_info("the parid is: %d", par_id);
     Log_debug("send dispatch to site %ld",
               pair_leader_proxy.first);
     auto proxy = pair_leader_proxy.second;
@@ -500,10 +497,47 @@ Communicator::SendCommit(Coordinator* coo,
     coo->n_finish_req_++;
     FutureAttr fuattr;
     auto phase = coo->phase_;
-    fuattr.callback = [e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
+    fuattr.callback = [this, e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
       uint64_t coro_id = 0;
-      fu->get_reply() >> res >> coro_id;
+			Profiling profile;
+      fu->get_reply() >> res >> coro_id >> profile;
+
+	  	if(profile.cpu_util != -1.0){
+				Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
+				this->cpu = profile.cpu_util;
+				this->tx = profile.tx_util;
+			}
+
+      struct timespec end_;
+	  	clock_gettime(CLOCK_REALTIME,&end_);
+
+	  	rrr::i64 start_sec = this->outbound_[src_coroid].first;
+	  	rrr::i64 start_nsec = this->outbound_[src_coroid].second;
+
+	  	rrr::i64 curr = ((rrr::i64)end_.tv_sec - start_sec)*1000000000 + ((rrr::i64)end_.tv_nsec - start_nsec);
+	  	curr /= 1000;
+	  	this->total_time += curr;
+	  	this->total++;
+      if(this->index < 100){
+	    	this->window[this->index];
+	    	this->index++;
+	    	this->window_time = this->total_time;
+	  	}
+      else{
+	    	this->window_time = 0;
+	    	for(int i = 0; i < 99; i++){
+	      	this->window[i] = this->window[i+1];
+	      	this->window_time += this->window[i];
+	    	}
+	    	this->window[99] = curr;
+	    	this->window_time += curr;
+	  	}
+			this->window_avg = this->window_time/this->index;
+			this->total_avg = this->total_time/this->total;
+			Log_info("this time is: %d", curr);
+	  	//Log_info("average time of RPC is: %d", this->total_avg);
+	 		//Log_info("window time of RPC is: %d", this->window_avg);
 
       qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id);
 
@@ -570,10 +604,45 @@ Communicator::SendAbort(Coordinator* coo,
     coo->n_finish_req_++;
     FutureAttr fuattr;
     auto phase = coo->phase_;
-    fuattr.callback = [e, qe, coo, src_coroid, site_id, phase, cmd](Future* fu) {
+    fuattr.callback = [this, e, qe, coo, src_coroid, site_id, phase, cmd](Future* fu) {
       int32_t res;
       uint64_t coro_id = 0;
-      fu->get_reply() >> res >> coro_id;
+			Profiling profile;
+      fu->get_reply() >> res >> coro_id >> profile;
+
+	  	if(profile.cpu_util != -1.0){
+				Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
+				this->cpu = profile.cpu_util;
+				this->tx = profile.tx_util;
+			}
+
+      struct timespec end_;
+	  	clock_gettime(CLOCK_REALTIME,&end_);
+
+	  	rrr::i64 start_sec = this->outbound_[src_coroid].first;
+	  	rrr::i64 start_nsec = this->outbound_[src_coroid].second;
+
+	  	rrr::i64 curr = ((rrr::i64)end_.tv_sec - start_sec)*1000000000 + ((rrr::i64)end_.tv_nsec - start_nsec);
+	  	curr /= 1000;
+	  	this->total_time += curr;
+	  	this->total++;
+      if(this->index < 100){
+	    	this->window[this->index];
+	    	this->index++;
+	    	this->window_time = this->total_time;
+	  	}
+      else{
+	    	this->window_time = 0;
+	    	for(int i = 0; i < 99; i++){
+	      	this->window[i] = this->window[i+1];
+	      	this->window_time += this->window[i];
+	    	}
+	    	this->window[99] = curr;
+	    	this->window_time += curr;
+	  	}
+			Log_info("this time is: %d", curr);
+	  	Log_info("average time of RPC is: %d", this->total_time/this->total);
+	 		Log_info("window time of RPC is: %d", this->window_time/this->index);
 
       qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id); 
 

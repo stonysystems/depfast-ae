@@ -39,7 +39,7 @@ class FpgaRaftServer : public TxLogServer {
   bool req_voting_ = false ;
   bool in_applying_logs_ = false ;
 
-  void RequestVote() ;
+  bool RequestVote() ;
   void RequestVote2FPGA() ;
 
   void setIsLeader(bool isLeader)

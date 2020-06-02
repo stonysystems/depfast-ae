@@ -39,12 +39,17 @@ ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
   this->RegisterStats();
 }
 
+void ClassicServiceImpl::ReElect(bool_t* success,
+																 rrr::DeferredReply* defer) {
+	//for(int i = 0; i < 100; i++) Log_info("loop loop loop");
+	*success = dtxn_sched()->RequestVote();
+	defer->reply();
+}
 void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   const MarshallDeputy& md,
                                   int32_t* res,
                                   TxnOutput* output,
                                   uint64_t* coro_id,
-				  												Profiling* profile,
                                   rrr::DeferredReply* defer) {
 #ifdef PIECE_COUNT
   piece_count_key_t piece_count_key =
@@ -59,10 +64,8 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-  auto func = Coroutine::CreateRun([cmd_id, sp, output, profile, res, coro_id, this, defer]() {
-    //std::vector<double> result = rrr::CPUInfo::cpu_stat();
-    //*profile = {result[0], result[1], result[2]};
-    *profile = {0, 0, 0};
+  auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
+    //*profile = {0, 0, 0};
 		*res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
@@ -154,11 +157,14 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
                                 const uint64_t& dep_id,
                                 rrr::i32* res,
                                 uint64_t* coro_id,
+																Profiling* profile,
                                 rrr::DeferredReply* defer) {
   //std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
+  const auto& func = [tid, res, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, SUCCESS);
+    std::vector<double> result = rrr::CPUInfo::cpu_stat();
+    *profile = {result[0], result[1], result[2]};
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
@@ -170,13 +176,16 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
                                const uint64_t& dep_id,
                                rrr::i32* res,
                                uint64_t* coro_id,
+															 Profiling* profile,
                                rrr::DeferredReply* defer) {
 
   Log_debug("get abort_txn: tid: %ld", tid);
   //std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [tid, res, coro_id, dep_id, defer, this]() {
+  const auto& func = [tid, res, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, REJECT);
+    std::vector<double> result = rrr::CPUInfo::cpu_stat();
+    *profile = {result[0], result[1], result[2]};
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();

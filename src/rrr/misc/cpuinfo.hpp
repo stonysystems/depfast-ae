@@ -85,12 +85,12 @@ private:
 
       ticks = times(&tms_buf);
       Log_info("ticks: %d -> %d", last_ticks_, ticks);
-      if (ticks <= last_ticks_ + 1000/* || num_processors_ <= 0*/)
+      if (ticks <= last_ticks_ + 100/* || num_processors_ <= 0*/)
         return {-1.0, -1.0, -1.0};
 
       cpu_total = (tms_buf.tms_stime - last_kernel_ticks_) +
             (tms_buf.tms_utime - last_user_ticks_);
-        //ret /= (ticks - last_ticks_);
+      cpu_total /= (ticks - last_ticks_);
         //ret /= num_processors_;
 	
 			std::string line;

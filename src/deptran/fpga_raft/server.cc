@@ -132,10 +132,10 @@ void FpgaRaftServer::OnVote2FPGA(const slotid_t& lst_log_idx,
 }
 
 
-void FpgaRaftServer::RequestVote() {
+bool FpgaRaftServer::RequestVote() {
 
   // currently don't request vote if no log
-  if(this->commo_ == NULL || lastLogIndex == 0 ) return ;
+  if(this->commo_ == NULL || lastLogIndex == 0 ) return false;
 
   parid_t par_id = this->frame_->site_info_->partition_id_ ;
   parid_t loc_id = this->frame_->site_info_->locale_id ;
@@ -145,7 +145,7 @@ void FpgaRaftServer::RequestVote() {
       Log_debug("fpga raft server %d request vote rejected due to paused", loc_id );
       resetTimer() ;
       // req_voting_ = false ;
-      return ;
+      return false;
   }
 
   Log_debug("fpga raft server %d in request vote", loc_id );
@@ -179,16 +179,20 @@ void FpgaRaftServer::RequestVote() {
     auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
     ((CoordinatorFpgaRaft*)co)->Submit(sp_m);
     
-    RequestVote2FPGA() ;
+    //RequestVote2FPGA() ;
     if(IsLeader())
     {
+	  	for(int i = 0; i < 100; i++) Log_info("wait wait wait");
       Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
+  		req_voting_ = false ;
+			return true;
     }
     else
     {
       Log_debug("fpga vote rejected %d curterm %d, do rollback", loc_id, currentTerm);
       setIsLeader(false) ;
-    }
+    	return false;
+		}
   } else if (sp_quorum->No()) {
     // become a follower
     Log_debug("vote rejected %d", loc_id);
@@ -196,11 +200,14 @@ void FpgaRaftServer::RequestVote() {
     //reset cur term if new term is higher
     ballot_t new_term = sp_quorum->Term() ;
     currentTerm = new_term > currentTerm? new_term : currentTerm ;
+  	req_voting_ = false ;
+		return false;
   } else {
     // TODO process timeout.
     Log_debug("vote timeout %d", loc_id);
+  	req_voting_ = false ;
+		return false;
   }
-  req_voting_ = false ;
 }
 
 void FpgaRaftServer::OnVote(const slotid_t& lst_log_idx,

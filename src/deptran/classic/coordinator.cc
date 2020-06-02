@@ -434,6 +434,16 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
+	Log_info("commo window avg: %d", commo()->window_avg);
+	Log_info("commo total avg: %d", commo()->total_avg);
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*1.5){
+		if(commo()->cpu <= 0.9){
+			Log_info("Reelection started");
+			sp_quorum_event = commo()->SendReelect();
+			sp_quorum_event->Wait();
+			Log_info("Reelection complete");
+		}
+	}
 }
 
 void CoordinatorClassic::CommitAck(phase_t phase) {

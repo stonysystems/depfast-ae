@@ -70,8 +70,9 @@ abstract service Classic {
 //                 i32 res,
 //                 TxnOutput output);
 
+	defer ReElect(| bool_t success);
   defer Dispatch(i64 tid, MarshallDeputy cmd |
-                 i32 res, TxnOutput output, uint64_t coro_id, Profiling profile);
+                 i32 res, TxnOutput output, uint64_t coro_id);
 
   defer Prepare(i64 tid, 
                 vector<i32> sids,
@@ -79,9 +80,9 @@ abstract service Classic {
                 i32 res,
                 uint64_t coro_id);
 
-  defer Commit(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id);
+  defer Commit(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
 
-  defer Abort(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id);
+  defer Abort(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
                      int32_t res)

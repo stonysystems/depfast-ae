@@ -86,11 +86,16 @@ class Communicator {
   map<parid_t, vector<SiteProxyPair>> rpc_par_proxies_{};
   map<parid_t, SiteProxyPair> leader_cache_ = {};
   unordered_map<uint64_t, pair<rrr::i64, rrr::i64>> outbound_{};
-  int index;
+  locid_t leader_ = 0;
+	int index;
   int total;
   rrr::i64 window[100];
   rrr::i64 window_time;
   rrr::i64 total_time;
+	rrr::i64 window_avg;
+	rrr::i64 total_avg;
+	double cpu;
+	double tx;
   vector<ClientSiteProxyPair> client_leaders_;
   std::atomic_bool client_leaders_connected_;
   std::vector<std::thread> threads;
@@ -130,6 +135,8 @@ class Communicator {
   void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
+
+	shared_ptr<QuorumEvent> SendReelect();
 
   shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
                         Coordinator* coo,

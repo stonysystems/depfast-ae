@@ -544,9 +544,9 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if (progress <= lower_cutoff_pct and not self.once):
+            if (progress >= lower_cutoff_pct and not self.once):
                 try:
-                    stdout = subprocess.check_output('ss -tulpn | grep 0.0.0.0:8001',
+                    stdout = subprocess.check_output('ss -tulpn | grep 0.0.0.0:8000',
                                                      stderr=subprocess.STDOUT,
                                                      shell=True,
                                                      timeout=10)
