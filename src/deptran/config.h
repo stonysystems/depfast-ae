@@ -68,6 +68,15 @@ class Config {
   bool forwarding_enabled_ = false;
   int timestamp_{TimestampType::CLOCK};
 
+  // failover configuration
+  bool failover_;
+  bool failover_soft_;
+  bool failover_random_;
+  bool failover_leader_;
+  int32_t failover_srv_idx_ ;
+  int32_t failover_run_int_ ;
+  int32_t failover_stop_int_ ;  
+
   // TODO remove, will cause problems.
   uint32_t num_site_;
   uint32_t start_coordinator_id_;
@@ -170,6 +179,7 @@ class Config {
   void LoadShardingYML(YAML::Node config);
   void LoadClientYML(YAML::Node client);
   void LoadSchemaYML(YAML::Node config);
+  void LoadFailoverYML(YAML::Node config);
   void LoadSchemaTableColumnYML(Sharding::tb_info_t &tb_info,
                                 YAML::Node column);
 
@@ -231,6 +241,12 @@ class Config {
   bool do_logging();
   bool IsReplicated();
   int32_t get_tot_req();
+  bool get_failover() {return failover_;}
+  int32_t get_failover_stop_interval() {return failover_stop_int_;}
+  int32_t get_failover_run_interval() {return failover_run_int_;}
+  int32_t get_failover_srv_idx() {return failover_srv_idx_;}
+  bool get_failover_random() {return failover_random_;}
+  bool get_failover_leader() {return failover_leader_;}
 
   const char *log_path();
 

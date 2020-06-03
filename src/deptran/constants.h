@@ -23,6 +23,7 @@ namespace janus {
 #define txntype_t uint32_t
 #define cmdtype_t uint32_t
 #define groupid_t uint32_t
+#define bool_t int8_t
 
 /** read and write type */
 #define OP_WRITE   (0x01)
@@ -81,7 +82,8 @@ namespace janus {
 #define MODE_MDCC   (0x12)
 #define MODE_TROAD    (0x03)
 #define MODE_EXTERNC   (0x14)
-#define MODE_RPC_NULL   (64)
+#define MODE_RPC_NULL   (0x40)
+#define MODE_NOTX   (0x80)
 
     // deprecated.
 #define MODE_DEPTRAN (4)
@@ -90,6 +92,7 @@ namespace janus {
 #define MODE_EPAXOS        (0x80)
 #define MODE_TAPIR         (0x100)
 #define MODE_MENCIUS       (0x200)
+#define MODE_FPGA_RAFT     (0x400)
 #define MODE_NOT_READY     (0x00)
 
 #define OP_IR   (0x1)

@@ -19,11 +19,14 @@ namespace janus {
 
 class QuorumEvent : public Event {
  public:
-  int32_t n_voted_yes_{0}; // does this need to be private??? - keep always
-  int32_t n_voted_no_{0}; // does this need to be private??? - keep always
-  int32_t n_total_ = -1;
+  int32_t n_voted_yes_{0};
+  int32_t n_voted_no_{0};
+	int32_t n_total_ = -1;
   int32_t quorum_ = -1;
+  int64_t highest_term_{0} ;
   bool timeouted_ = false;
+  uint64_t cmt_idx_{0} ;
+  uint32_t leader_id_{0} ;
   uint64_t coro_id_ = -1;
   int64_t par_id_ = -1;
   uint64_t id_ = -1;
@@ -107,11 +110,11 @@ class QuorumEvent : public Event {
     }
   }
 
-  bool Yes() {
+  virtual bool Yes() {
     return n_voted_yes_ >= quorum_;
   }
 
-  bool No() {
+  virtual bool No() {
     verify(n_total_ >= quorum_);
     return n_voted_no_ > (n_total_ - quorum_);
   }
@@ -125,6 +128,10 @@ class QuorumEvent : public Event {
     n_voted_no_++;
     Test();
   }
+  int64_t Term() {
+    return highest_term_ ;
+  }
+
 
 
   bool IsReady() override {

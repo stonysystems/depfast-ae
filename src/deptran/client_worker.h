@@ -28,6 +28,7 @@ class ClientWorker {
   uint32_t duration;
   ClientControlServiceImpl *ccsi{nullptr};
   int32_t n_concurrent_;
+  map<cooid_t, bool> n_pause_concurrent_{};
   rrr::Mutex finish_mutex{};
   rrr::CondVar finish_cond{};
   bool forward_requests_to_leader_ = false;
@@ -37,6 +38,7 @@ class ClientWorker {
   std::mutex coordinator_mutex{};
   vector<Coordinator*> free_coordinators_{};
   vector<Coordinator*> created_coordinators_{};
+  Coordinator* fail_ctrl_coo_{nullptr} ;
 //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
 
   std::shared_ptr<TimeoutEvent> timeout_event;
@@ -50,18 +52,32 @@ class ClientWorker {
   Config* config_{nullptr};
   Config::SiteInfo& my_site_;
   vector<string> servers_;
+  bool* volatile failover_trigger_ ;
+  volatile bool* failover_server_quit_ ;
+  volatile locid_t* failover_server_idx_ ;
+  locid_t cur_leader_{0} ; // init leader is 0
+  bool failover_wait_leader_{false} ;
+  bool failover_trigger_loc{false} ;
+  bool failover_pause_start{false} ;
  public:
   ClientWorker(uint32_t id,
                Config::SiteInfo &site_info,
                Config *config,
                ClientControlServiceImpl *ccsi,
-               PollMgr* mgr);
+               PollMgr* mgr,
+               bool* volatile failover,
+               volatile bool* failover_server_quit,
+               volatile locid_t* failover_server_idx );
   ClientWorker() = delete;
   ~ClientWorker();
   // This is called from a different thread.
   void Work();
   Coordinator* FindOrCreateCoordinator();
   void DispatchRequest(Coordinator *coo);
+  void SearchLeader(Coordinator* coo);
+  void Pause(locid_t locid) ;
+  void Resume(locid_t locid) ;
+  Coordinator* CreateFailCtrlCoordinator() ;
   void AcceptForwardedRequest(TxRequest &request, TxReply* txn_reply, rrr::DeferredReply* defer);
 
  protected:

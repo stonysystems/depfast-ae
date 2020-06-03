@@ -30,6 +30,7 @@ class Coordinator {
   uint32_t n_start_ = 0;
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
+  uint32_t offset_;
   uint32_t cli_id_;
   uint32_t coro_id_;
   uint64_t dep_id_;
@@ -134,6 +135,8 @@ class Coordinator {
   }
 
   virtual void DoTxAsync(TxRequest &) = 0;
+  virtual void SetNewLeader(parid_t,volatile locid_t*) { verify(0); } ;
+  virtual void SendFailOverTrig(parid_t,locid_t, bool) { verify(0); } ;
   virtual void DoTxAsync(PollMgr*, TxRequest &) = 0;
   virtual void Submit(shared_ptr<Marshallable>& cmd,
                       const std::function<void()>& commit_callback = [](){},

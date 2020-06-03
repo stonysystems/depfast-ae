@@ -47,6 +47,8 @@ class Epoll {
  private:
   std::vector<Pollable*> pending{};
  public:
+   volatile bool* pause ;
+   volatile bool* stop ;
 
   Epoll() {
 #ifdef USE_KQUEUE

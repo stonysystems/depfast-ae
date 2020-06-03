@@ -58,6 +58,18 @@ class SchedulerClassic: public TxLogServer {
 
   virtual void Next(Marshallable&) override;
 
+	virtual bool RequestVote() override {
+		for(int i = 0; i < 100; i++) Log_info("loop2 loop2 loop2");
+		return rep_sched_->RequestVote();
+	}
+  virtual bool IsLeader() override {
+    return rep_sched_->IsLeader() ;
+  }  
+
+  virtual bool IsFPGALeader() override {
+    return rep_sched_->IsFPGALeader() ;
+  }  
+
   int PrepareReplicated(TpcPrepareCommand& prepare_cmd);
   int CommitReplicated(TpcCommitCommand& commit_cmd);
 

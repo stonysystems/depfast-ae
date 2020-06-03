@@ -11,8 +11,6 @@ namespace janus {
 class MultiPaxosCommo;
 class CoordinatorMultiPaxos : public Coordinator {
  public:
-//  static ballot_t next_slot_s;
- private:
   enum Phase { INIT_END = 0, PREPARE = 1, ACCEPT = 2, COMMIT = 3 };
   const int32_t n_phase_ = 4;
 
@@ -25,7 +23,6 @@ class CoordinatorMultiPaxos : public Coordinator {
   bool in_prepare_ = false; // debug
   bool in_accept = false; // debug
   bool in_forward = false; //debug
- public:
   shared_ptr<Marshallable> cmd_{nullptr};
   CoordinatorMultiPaxos(uint32_t coo_id,
                         int32_t benchmark,

@@ -11,6 +11,7 @@
 #include "misc/marshal.hpp"
 #include "misc/recorder.hpp"
 #include "misc/cpuinfo.hpp"
+#include "misc/netinfo.hpp"
 
 
 #include "reactor/reactor.h"

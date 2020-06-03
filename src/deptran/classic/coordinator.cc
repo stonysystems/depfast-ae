@@ -434,6 +434,17 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
+	Log_info("commo window avg: %d", commo()->window_avg);
+	Log_info("commo total avg: %d", commo()->total_avg);
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*2){
+		if(commo()->cpu <= 0.9){
+			Log_info("Reelection started");
+			commo()->ResetProfiles();
+			sp_quorum_event = commo()->SendReelect();
+			sp_quorum_event->Wait();
+			Log_info("Reelection complete");
+		}
+	}
 }
 
 void CoordinatorClassic::CommitAck(phase_t phase) {
@@ -540,5 +551,40 @@ void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {
   verify(it == ___phase_one_tids_.end());
   ___phase_one_tids_.insert(txn_id);
 }
+
+void CoordinatorClassic::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+    locid_t prev_pause_srv = *cur_pause ;
+retry:
+    Log_debug("start setting a new leader from %d", prev_pause_srv );
+    auto e = commo()->BroadcastGetLeader(par_id, prev_pause_srv); 
+    e->Wait() ;
+    if (e->Yes()) {
+      // assign new leader
+      Log_debug("set a new leader %d", e->leader_id_ );
+      commo()->SetNewLeaderProxy(par_id, e->leader_id_) ;
+      if ( prev_pause_srv != e->leader_id_ )
+      {
+        *cur_pause = e->leader_id_ ;
+      }
+    } else if (e->No()) {
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+        sp_e->Wait(300*1000) ;
+        //usleep(300 * 1000) ;  // 300 ms
+        goto retry ;
+    } else {
+        verify(0);
+    }      
+}
+
+void CoordinatorClassic::SendFailOverTrig(parid_t par_id,
+                                                locid_t loc_id, 
+                                                bool pause) {
+    auto e = commo()->SendFailOverTrig(par_id, loc_id, pause); 
+    e->Wait() ;
+    if (e->No()) {
+      verify(0) ;
+    }
+}
+
 
 } // namespace janus

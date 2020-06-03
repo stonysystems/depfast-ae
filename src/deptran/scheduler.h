@@ -156,6 +156,13 @@ class TxLogServer {
 
   virtual void Next(Marshallable& cmd) { verify(0); };
 
+  virtual bool IsLeader() { verify(0); } ;
+  virtual bool IsFPGALeader() { verify(0); } ;
+	
+	virtual bool RequestVote() { for(int i = 0; i < 100; i++) Log_info("what what what"); verify(0); return false;};
+  virtual void Pause() { verify(0); } ;
+  virtual void Resume() { verify(0); } ;
+
   // epoch related functions
   void TriggerUpgradeEpoch();
   void UpgradeEpochAck(parid_t par_id, siteid_t site_id, int res);

@@ -98,6 +98,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    if (piece_data.inn_id_ == 205) b2 = true;
 //  }
 //  verify(b1 == b2);
+  verify(cmd) ;
   if (!tx->cmd_) {
     tx->cmd_ = cmd;
   } else if (tx->cmd_ != cmd) {
@@ -146,14 +147,13 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
+    sp_tx->is_leader_hint_ = true;
     //Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
     auto coo = CreateRepCoord(dep_id);
     Log_info("The locale id: %d", coo->loc_id_);
     coo->Submit(sp_m);
-//    Log_debug("wait for prepare command replicated");
-    sp_tx->is_leader_hint_ = true;
     sp_tx->prepare_result->Wait();
 //    Log_debug("finished prepare command replication");
     return sp_tx->prepare_result->Get();
@@ -275,6 +275,8 @@ void SchedulerClassic::Next(Marshallable& cmd) {
   } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
     auto& c = dynamic_cast<TpcCommitCommand&>(cmd);
     CommitReplicated(c);
+  } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_EMPTY) {
+    // do nothing
   } else {
     verify(0);
   }

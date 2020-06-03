@@ -136,6 +136,7 @@ public:
 
 
 public:
+	 bool client_;
 
    virtual ~Client() {
      invalidate_pending_futures();
@@ -172,7 +173,7 @@ public:
         return *this;
     }
 
-    int connect(const char* addr);
+    int connect(const char* addr, bool client = false);
 
     void close_and_release() {
         close();

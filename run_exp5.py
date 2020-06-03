@@ -546,11 +546,11 @@ class ClientController(object):
         if (not self.recording_period):
             if(self.once == 0):
                 self.once += 1
-            if (progress >= 1 and self.once == 1):
+            if (progress >= 5 and self.once == 1):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev ens4 root netem delay 400ms'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'host1':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -889,10 +889,10 @@ class ServerController(object):
              "-t " + str(self.config['args'].s_timeout) + " " \
              "-r '" + self.config['args'].log_dir + "' " + \
              recording + \
-             "1>'" + self.log_dir + "/proc-" + process.name + ".log' " + \
-             "2>'" + self.log_dir + "/proc-" + process.name + ".err' " + \
+             ">'" + self.log_dir + "/proc-" + process.name + ".log' " + \
              "&"
 
+             #"2>'" + self.log_dir + "/proc-" + process.name + ".err' " + \
         host_process_counts[process.host_address] += 1
         cmd.append(s)
         return ' '.join(cmd)

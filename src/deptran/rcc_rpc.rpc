@@ -21,6 +21,43 @@ abstract service MultiPaxos {
   defer Decide(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd);
+
+	       
+}
+
+abstract service FpgaRaft {
+
+  defer Forward(MarshallDeputy cmd |
+                uint64_t cmt_idx );
+
+  defer Vote(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer Vote2FPGA(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer AppendEntries(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+
+  defer Decide(uint64_t slot,
+               ballot_t ballot,
+               MarshallDeputy cmd);
 }
 
 // below is for 2PL and OCC
@@ -33,6 +70,7 @@ abstract service Classic {
 //                 i32 res,
 //                 TxnOutput output);
 
+	defer ReElect(| bool_t success);
   defer Dispatch(i64 tid, MarshallDeputy cmd |
                  i32 res, TxnOutput output, uint64_t coro_id);
 
@@ -42,15 +80,20 @@ abstract service Classic {
                 i32 res,
                 uint64_t coro_id);
 
-  defer Commit(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id);
+  defer Commit(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
 
-  defer Abort(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id);
+  defer Abort(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
                      int32_t res)
 
   defer TruncateEpoch(uint32_t old_epoch)
-
+  
+  defer IsLeader(locid_t cur_pause| bool_t is_leader );
+  defer IsFPGALeader(locid_t cur_pause| bool_t is_leader );
+  defer SimpleCmd( SimpleCommand cmd| i32 res);
+  defer FailOverTrig(bool_t pause| i32 res);
+   
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
   // <input_0> <input_1> ... |
@@ -201,6 +244,12 @@ struct ClientResponse  {
     i64 period_nsec;   // running time in nano seconds
     i32 is_finish;  // if client finishs
     i64 n_asking;   // asking finish request count
+}
+
+struct Profiling {
+    double cpu_util;
+    double tx_util;
+    double rx_util;
 }
 
 abstract service ServerControl {
