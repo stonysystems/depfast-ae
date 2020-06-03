@@ -142,12 +142,11 @@ Communicator::ConnectToClientSite(Config::SiteInfo& site,
 
   auto start = std::chrono::steady_clock::now();
   rrr::Client* rpc_cli = new rrr::Client(rpc_poll_);
-	rpc_cli->client_ = true;
   double elapsed;
   int attempt = 0;
   do {
     Log_info("connect to client site: %s (attempt %d)", addr, attempt++);
-    auto connect_result = rpc_cli->connect(addr, true);
+    auto connect_result = rpc_cli->connect(addr, false);
     if (connect_result == SUCCESS) {
       ClientControlProxy* rpc_proxy = new ClientControlProxy(rpc_cli);
       rpc_clients_.insert(std::make_pair(site.id, rpc_cli));
@@ -175,7 +174,7 @@ Communicator::ConnectToSite(Config::SiteInfo& site,
   int attempt = 0;
   do {
     Log_debug("connect to site: %s (attempt %d)", addr.c_str(), attempt++);
-    auto connect_result = rpc_cli->connect(addr.c_str());
+    auto connect_result = rpc_cli->connect(addr.c_str(), false);
     if (connect_result == SUCCESS) {
       ClassicProxy* rpc_proxy = new ClassicProxy(rpc_cli.get());
       rpc_clients_.insert(std::make_pair(site.id, rpc_cli));
@@ -208,11 +207,13 @@ Communicator::NearestProxyForPartition(parid_t par_id) const {
 std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	int total = rpc_par_proxies_[0].size() - 1;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
+	auto pair_leader_proxy = LeaderProxyForPartition(0);
 
 	for(auto& pair: rpc_par_proxies_[0]){
 		rrr::FutureAttr fuattr;
 		int id = pair.first;
 		if(id == 0) continue;
+		Log_info("id: %d", id);
 		fuattr.callback = 
 			[e, this, id] (Future* fu) {
 				bool_t success = false;
@@ -341,7 +342,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			}
       };
     
-		Log_info("the parid is: %d", par_id);
     Log_debug("send dispatch to site %ld",
               pair_leader_proxy.first);
     auto proxy = pair_leader_proxy.second;
@@ -530,18 +530,18 @@ Communicator::SendCommit(Coordinator* coo,
 	  	curr /= 1000;
 	  	this->total_time += curr;
 	  	this->total++;
-      if(this->index < 100){
+      if(this->index < 200){
 	    	this->window[this->index];
 	    	this->index++;
 	    	this->window_time = this->total_time;
 	  	}
       else{
 	    	this->window_time = 0;
-	    	for(int i = 0; i < 99; i++){
+	    	for(int i = 0; i < 199; i++){
 	      	this->window[i] = this->window[i+1];
 	      	this->window_time += this->window[i];
 	    	}
-	    	this->window[99] = curr;
+	    	this->window[199] = curr;
 	    	this->window_time += curr;
 	  	}
 			this->window_avg = this->window_time/this->index;

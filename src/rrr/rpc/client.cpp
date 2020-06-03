@@ -113,6 +113,7 @@ int Client::connect(const char* addr, bool client) {
   }
   string host = addr_str.substr(0, idx);
   host_ = host;
+	client_ = client;
   string port = addr_str.substr(idx + 1);
 #ifdef USE_IPC
   struct sockaddr_un saun;
@@ -235,7 +236,10 @@ bool Client::handle_read_two() {
   //return true;
   bool done = false;
   int iters = 10;
-  if(client_) iters = INT_MAX;
+
+  if(client_){
+		iters = INT_MAX;
+	}
   for(int i = 0; i < iters; i++) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));

@@ -5,7 +5,6 @@
 #include "event.h"
 #include "reactor.h"
 #include "epoll_wrapper.h"
-#define EVENT_TIMEOUT_CHECK 1
 
 namespace rrr {
 using std::function;

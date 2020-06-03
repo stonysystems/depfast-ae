@@ -173,7 +173,7 @@ public:
         return *this;
     }
 
-    int connect(const char* addr, bool client = false);
+    int connect(const char* addr, bool client = true);
 
     void close_and_release() {
         close();

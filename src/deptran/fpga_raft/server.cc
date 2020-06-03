@@ -280,7 +280,7 @@ void FpgaRaftServer::StartTimer()
             while(!stop_)
             {
                 if ( !IsLeader() && timer_->elapsed() > duration) {
-                    Log_debug(" timer time out") ;
+                    Log_info(" timer time out") ;
                     // ask to vote
                     // req_voting_ = true ;
                     RequestVote() ;
@@ -318,7 +318,7 @@ void FpgaRaftServer::StartTimer()
                                      const function<void()> &cb) {
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
-        StartTimer() ;
+        //StartTimer() ;
         
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
@@ -326,7 +326,7 @@ void FpgaRaftServer::StartTimer()
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)
                 /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
-            resetTimer() ;
+            //resetTimer() ;
             if (leaderCurrentTerm > this->currentTerm) {
                 currentTerm = leaderCurrentTerm;
                 Log_debug("server %d, set to be follower", loc_id_ ) ;

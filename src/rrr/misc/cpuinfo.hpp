@@ -39,7 +39,6 @@ private:
 			char* token = strtok(&line[0], " ");
 			while(token != NULL){
 	 			token = strtok(NULL, " ");
-				if(token == NULL) continue;
 	 			Log_info("token here: %s", token);
 	 			if(i == 1){
 	   			txed = strtof(token, NULL);

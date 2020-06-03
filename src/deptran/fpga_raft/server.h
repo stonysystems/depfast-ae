@@ -85,7 +85,7 @@ class FpgaRaftServer : public TxLogServer {
           setIsLeader(false) ;
           vote_for_ = can_id ;
           //reset timeout
-          resetTimer() ;
+          //resetTimer() ;
       }
       n_vote_++ ;
       cb() ;

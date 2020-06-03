@@ -89,7 +89,7 @@ class Communicator {
   locid_t leader_ = 0;
 	int index;
   int total;
-  rrr::i64 window[100];
+  rrr::i64 window[200];
   rrr::i64 window_time;
   rrr::i64 total_time;
 	rrr::i64 window_avg;
