@@ -442,7 +442,7 @@ void CoordinatorClassic::Commit() {
 			commo()->ResetProfiles();
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
-			Log_info("Reelection complete");
+			for(int i = 0; i < 100; i++) Log_info("Reelection finished");
 		}
 	}
 }

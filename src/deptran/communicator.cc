@@ -220,10 +220,9 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 				fu->get_reply() >> success;
 				
 				if(success){
-					for(int i = 0; i < 100; i++) Log_info("success success");
+					for(int i = 0; i < 100; i++) Log_info("success success: %d", id);
 					e->VoteYes();
 					this->SetNewLeaderProxy(0, id);
-					e->Test();
 				}
 			};
 		auto f = pair.second->async_ReElect(fuattr);
@@ -515,7 +514,21 @@ Communicator::SendCommit(Coordinator* coo,
       fu->get_reply() >> res >> coro_id >> profile;
 
 	  	if(profile.cpu_util != -1.0){
-				Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);
+				if(this->cpu_index < 10){
+					this->cpu_stor[this->cpu_index] = profile.cpu_util;
+					this->cpu_index++;
+					this->cpu_total += profile.cpu_util;
+				}
+				else{
+					this->cpu_total = 0;
+					for(int i = 0; i < 9; i++){
+						this->cpu_stor[i] = this->cpu_stor[i+1];
+						this->cpu_total += this->cpu_stor[i];
+					}
+					this->cpu_stor[9] = profile.cpu_util;
+					this->cpu_total += profile.cpu_util;
+					Log_info("cpu: %f and network: %f", this->cpu_total/this->cpu_index, profile.tx_util);
+				}
 				this->cpu = profile.cpu_util;
 				this->tx = profile.tx_util;
 			}
@@ -531,7 +544,7 @@ Communicator::SendCommit(Coordinator* coo,
 	  	this->total_time += curr;
 	  	this->total++;
       if(this->index < 200){
-	    	this->window[this->index];
+	    	this->window[this->index] = curr;
 	    	this->index++;
 	    	this->window_time = this->total_time;
 	  	}
