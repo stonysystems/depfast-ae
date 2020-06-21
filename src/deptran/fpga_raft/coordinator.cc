@@ -26,7 +26,8 @@ bool CoordinatorFpgaRaft::IsFPGALeader() {
 void CoordinatorFpgaRaft::Forward(shared_ptr<Marshallable>& cmd,
                                    const function<void()>& func,
                                    const function<void()>& exe_callback) {
-    verify(0) ; // TODO delete it
+    //for(int i = 0; i < 100; i++) Log_info("inside forward");
+		verify(0) ; // TODO delete it
     auto e = commo()->SendForward(par_id_, loc_id_, cmd);
     e->Wait();
     uint64_t cmt_idx = e->CommitIdx() ;
@@ -92,6 +93,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
     sp_quorum->Wait();
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
+				Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
@@ -124,7 +126,7 @@ void CoordinatorFpgaRaft::LeaderLearn() {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     commit_callback_();
     uint64_t prevCommitIndex = this->sch_->commitIndex;
-    verify(minIndex >= prevCommitIndex) ;
+    verify(minIndex >= prevCommitIndex);
     this->sch_->commitIndex = std::max(this->sch_->commitIndex, minIndex);
     Log_debug("fpga-raft commit for partition: %d, slot %d, commit %d minIndex %d in loc:%d", 
       (int) par_id_, (int) slot_id_, sch_->commitIndex, minIndex, loc_id_);

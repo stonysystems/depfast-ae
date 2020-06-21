@@ -143,6 +143,7 @@ class FpgaRaftServer : public TxLogServer {
   }
   
   shared_ptr<FpgaRaftData> GetInstance(slotid_t id) {
+		//for(int i = 0; i < 100; i++) Log_info("what is id?: %d", id);
     verify(id >= min_active_slot_);
     auto& sp_instance = logs_[id];
     if(!sp_instance)

@@ -10,6 +10,7 @@
 #include "../base/all.hpp"
 
 #define SUCCESS (0)
+#define REPEAT (-5)
 #define REJECT (-10)
 
 namespace rrr {

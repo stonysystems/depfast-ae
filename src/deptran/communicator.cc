@@ -205,6 +205,9 @@ Communicator::NearestProxyForPartition(parid_t par_id) const {
 };
 
 std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
+	//paused = true;
+	//sleep(10);
+	Log_info("done sleeping");
 	int total = rpc_par_proxies_[0].size() - 1;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
 	auto pair_leader_proxy = LeaderProxyForPartition(0);
@@ -212,7 +215,7 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	for(auto& pair: rpc_par_proxies_[0]){
 		rrr::FutureAttr fuattr;
 		int id = pair.first;
-		if(id == 0) continue;
+		if(id == 0 || id == 2) continue;
 		Log_info("id: %d", id);
 		fuattr.callback = 
 			[e, this, id] (Future* fu) {
@@ -220,11 +223,12 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 				fu->get_reply() >> success;
 				
 				if(success){
-					for(int i = 0; i < 100; i++) Log_info("success success: %d", id);
+					for(int i = 0; i < 10; i++) Log_info("success success: %d", id);
 					e->VoteYes();
 					this->SetNewLeaderProxy(0, id);
-				}
+				} else Log_info("failure failure");
 			};
+		Log_info("sending reelect");
 		auto f = pair.second->async_ReElect(fuattr);
 		Future::safe_release(f);
 	}
@@ -394,7 +398,7 @@ shared_ptr<AndEvent>
 Communicator::SendPrepare(Coordinator* coo,
                           txnid_t tid,
                           std::vector<int32_t>& sids){
-  int32_t res_ = 10;
+	int32_t res_ = 10;
   TxData* cmd = (TxData*) coo->cmd_;
   auto n = cmd->partition_ids_.size();
   auto e = Reactor::CreateSpEvent<AndEvent>();
@@ -488,7 +492,7 @@ Communicator::SendCommit(Coordinator* coo,
 #ifdef LOG_LEVEL_AS_DEBUG
 //  ___LogSent(pid, tid);
 #endif
-  TxData* cmd = (TxData*) coo->cmd_;
+	TxData* cmd = (TxData*) coo->cmd_;
   int n_total = 1;
   auto n = cmd->GetPartitionIds().size();
   auto e = Reactor::CreateSpEvent<AndEvent>();
@@ -512,25 +516,12 @@ Communicator::SendCommit(Coordinator* coo,
       uint64_t coro_id = 0;
 			Profiling profile;
       fu->get_reply() >> res >> coro_id >> profile;
-
-	  	if(profile.cpu_util != -1.0){
-				if(this->cpu_index < 10){
-					this->cpu_stor[this->cpu_index] = profile.cpu_util;
-					this->cpu_index++;
-					this->cpu_total += profile.cpu_util;
-				}
-				else{
-					this->cpu_total = 0;
-					for(int i = 0; i < 9; i++){
-						this->cpu_stor[i] = this->cpu_stor[i+1];
-						this->cpu_total += this->cpu_stor[i];
-					}
-					this->cpu_stor[9] = profile.cpu_util;
-					this->cpu_total += profile.cpu_util;
-					Log_info("cpu: %f and network: %f", this->cpu_total/this->cpu_index, profile.tx_util);
-				}
-				this->cpu = profile.cpu_util;
-				this->tx = profile.tx_util;
+			if(profile.cpu_util >= 0.0){
+				cpu = profile.cpu_util;
+				Log_info("cpu: %f and network: %f and memory: %f", profile.cpu_util, profile.tx_util, profile.mem_util);
+			}
+			if(profile.tx_util != -1.0){
+				Log_info("making some progress");
 			}
 
       struct timespec end_;
@@ -610,7 +601,7 @@ Communicator::SendAbort(Coordinator* coo,
 #ifdef LOG_LEVEL_AS_DEBUG
 //  ___LogSent(pid, tid);
 #endif
-  TxData* cmd = (TxData*) coo->cmd_;
+	TxData* cmd = (TxData*) coo->cmd_;
   int n_total = 1;
   auto n = cmd->GetPartitionIds().size();
   auto e = Reactor::CreateSpEvent<AndEvent>();

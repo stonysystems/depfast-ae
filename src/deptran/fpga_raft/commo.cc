@@ -72,6 +72,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
       e->FeedResponse(y, index);
     };
     MarshallDeputy md(cmd);
+		verify(md.sp_data_ != nullptr);
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,

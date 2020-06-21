@@ -132,6 +132,11 @@ void CoordinatorClassic::GotoNextPhase() {
     case Phase::INIT_END:
       //Log_info("Dispatching for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::DISPATCH);
+			Log_info("total is: %d");
+			while(commo()->paused){
+				auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
+				t->Wait(0.1*1000*1000);
+			}
       DispatchAsync(true);
       break;
       //break;
@@ -157,7 +162,7 @@ void CoordinatorClassic::GotoNextPhase() {
         End();
       }
       else if (aborted_) {
-        //Log_info("Restarting for some reason");
+        Log_info("Restarting for some reason: %d", n_retry_);
         //phase_++;
         Restart();
       } else
@@ -182,6 +187,7 @@ void CoordinatorClassic::Reset() {
   dispatch_acks_.clear();
   committed_ = false;
   aborted_ = false;
+	repeat_ = false;
 }
 
 void CoordinatorClassic::Restart() {
@@ -341,6 +347,9 @@ void CoordinatorClassic::Prepare() {
     cmd->commit_.store(true);
     committed_ = true;
   }
+	if(repeat_) {
+		
+	}
 
     //verify(site_prepare_[partition_id] == 0);
     //site_prepare_[partition_id]++;
@@ -397,6 +406,7 @@ void CoordinatorClassic::Commit() {
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
+		
     else committed_ = true;
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
@@ -435,14 +445,18 @@ void CoordinatorClassic::Commit() {
     verify(0);
   }
 	Log_info("commo window avg: %d", commo()->window_avg);
-	Log_info("commo total avg: %d", commo()->total_avg);
-	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*2){
-		if(commo()->cpu <= 0.9){
+	Log_info("commo total_avg: %d", commo()->total_avg);
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*10.0){
+		if(commo()->cpu <= 1.9 && !commo()->paused){
 			Log_info("Reelection started");
 			commo()->ResetProfiles();
+			commo()->paused = true;
+			auto t = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
+			t->Wait(1*1000*1000);
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
-			for(int i = 0; i < 100; i++) Log_info("Reelection finished");
+			commo()->paused = false;
+			for(int i = 0; i < 10; i++) Log_info("Reelection finished");
 		}
 	}
 }

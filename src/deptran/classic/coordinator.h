@@ -11,6 +11,9 @@ class ClientControlServiceImpl;
 class CoordinatorClassic : public Coordinator {
  public:
   int debug_cnt = 0;
+	rrr::Mutex pre_mutex{};
+	rrr::CondVar pre_cond{};
+	map<parid_t, SiteProxyPair> leaders;
   enum Phase { INIT_END = 0, DISPATCH = 1, PREPARE = 2, COMMIT = 3 };
   CoordinatorClassic(uint32_t coo_id,
                      int benchmark,

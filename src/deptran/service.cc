@@ -125,8 +125,10 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 //  std::lock_guard<std::mutex> guard(mtx_);
   const auto& func = [res, coro_id, defer, tid, sids, dep_id, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    bool ret = sched->OnPrepare(tid, sids, dep_id);
+		bool null_cmd = false;
+    bool ret = sched->OnPrepare(tid, sids, dep_id, null_cmd);
     *res = ret ? SUCCESS : REJECT;
+		if(null_cmd) *res = REPEAT;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
@@ -162,7 +164,7 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, SUCCESS);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
-    *profile = {result[0], result[1], result[2]};
+    *profile = {result[0], result[1], result[2], result[3]};
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();

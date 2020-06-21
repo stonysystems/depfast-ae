@@ -68,6 +68,7 @@ class Coordinator {
   bool committed_ = false;
   bool validation_result_{true};
   bool aborted_ = false;
+	bool repeat_ = false;
   uint32_t n_dispatch_ = 0;
   uint32_t n_dispatch_ack_ = 0;
   uint32_t n_prepare_req_ = 0;

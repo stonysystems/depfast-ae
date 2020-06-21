@@ -136,9 +136,14 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //      dispatch the transaction command with paxos instance
 bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
                                  const std::vector<i32>& sids,
-                                 const uint64_t& dep_id) {
+                                 const uint64_t& dep_id,
+																 bool& null_cmd) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
+	/*if(sp_tx->cmd_ == NULL){
+		null_cmd = true;
+		return false;
+	}*/
   Log_debug("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
   if (Config::GetConfig()->IsReplicated()) {

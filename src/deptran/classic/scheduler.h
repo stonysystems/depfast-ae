@@ -41,7 +41,8 @@ class SchedulerClassic: public TxLogServer {
   // PrepareRequest
   virtual bool OnPrepare(txnid_t tx_id,
                          const std::vector<i32> &sids,
-                         const uint64_t& dep_id);
+                         const uint64_t& dep_id,
+												 bool& null_cmd);
 
   virtual bool DoPrepare(txnid_t tx_id) {
     verify(0);
