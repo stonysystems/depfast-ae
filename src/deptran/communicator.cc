@@ -520,9 +520,6 @@ Communicator::SendCommit(Coordinator* coo,
 				cpu = profile.cpu_util;
 				Log_info("cpu: %f and network: %f and memory: %f", profile.cpu_util, profile.tx_util, profile.mem_util);
 			}
-			if(profile.tx_util != -1.0){
-				Log_info("making some progress");
-			}
 
       struct timespec end_;
 	  	clock_gettime(CLOCK_REALTIME,&end_);

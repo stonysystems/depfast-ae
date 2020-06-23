@@ -91,6 +91,8 @@ class Communicator {
 	int index;
 	int cpu_index;
   int total;
+	int total_;
+	shared_ptr<QuorumEvent> qe;
   rrr::i64 window[200];
   rrr::i64 window_time;
   rrr::i64 total_time;

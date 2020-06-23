@@ -17,8 +17,9 @@ namespace rrr {
 
 class CPUInfo {
 private:
-    unsigned long last_bytes_rxed, last_bytes_txed, last_mem_usage;
+    unsigned long last_bytes_rxed[10], last_bytes_txed[10], last_mem_usage[10];
     clock_t last_ticks_[10], last_user_ticks_[10], last_kernel_ticks_[10];
+		double last_cpu, last_txed, last_rxed, last_mem;
 		long long total_mem;
 		long page_size;
 		int index = 0;
@@ -46,6 +47,7 @@ private:
 			
 			pid_ = ::getpid();
 			result = get_network(std::to_string(pid_), result, last_ticks_[index]);
+			result = get_memory(std::to_string(pid_), result, last_ticks_[index]);
 
 			index++;
 			//proc_cpuinfo = fopen("/proc/cpuinfo", "r");
@@ -79,14 +81,11 @@ private:
 			else last_ticks = last_ticks_[9];
 
       Log_info("ticks: %d -> %d", last_ticks, ticks);
-      if (ticks <= last_ticks + 100/* || num_processors_ <= 0*/){
+      if (ticks <= last_ticks + 10/* || num_processors_ <= 0*/){
 				if(index < 10){
 					return {-1.0, -1.0, -1.0, -1.0};
 				} else{
-      		cpu_total = (tms_buf.tms_stime - last_kernel_ticks_[0]) +
-            			(tms_buf.tms_utime - last_user_ticks_[0]);
-      		cpu_total /= (ticks - last_ticks_[0]);
-					return {cpu_total, -1.0, -1.0, -1.0};
+					return {last_cpu, last_txed, last_rxed, last_mem};
 				}
 			}
 			
@@ -95,8 +94,7 @@ private:
 				last_user_ticks_[index] = tms_buf.tms_utime;
 				last_ticks_[index] = ticks;
 				index++;
-			}
-			else{
+			} else{
 				for(int i = 0; i < 9; i++){
 					last_kernel_ticks_[i] = last_kernel_ticks_[i+1];
 					last_user_ticks_[i] = last_user_ticks_[i+1];
@@ -110,6 +108,7 @@ private:
       cpu_total = (tms_buf.tms_stime - last_kernel_ticks_[0]) +
             (tms_buf.tms_utime - last_user_ticks_[0]);
       cpu_total /= (ticks - last_ticks_[0]);
+			last_cpu = cpu_total;
         //ret /= num_processors_;
 	
 			result.push_back(cpu_total);
@@ -143,16 +142,28 @@ private:
 				i++;
 			}
 			
+			if(index < 10) {
+				last_bytes_txed[index] = txed;
+				last_bytes_rxed[index] = rxed;
+			} else{
+				for(int i = 0; i < 9; i++){
+					last_bytes_txed[i] = last_bytes_txed[i+1];
+					last_bytes_rxed[i] = last_bytes_rxed[i+1];
+				}
+				last_bytes_txed[9] = txed;
+				last_bytes_rxed[9] = rxed;
+			}
+
 			if(ticks != last_ticks_[0]){
-				tx_total = (txed-last_bytes_txed)/(ticks - last_ticks_[0]);
-				rx_total = (rxed-last_bytes_rxed)/(ticks - last_ticks_[0]);
+				tx_total = (txed-last_bytes_txed[0])/(ticks - last_ticks_[0]);
+				rx_total = (rxed-last_bytes_rxed[0])/(ticks - last_ticks_[0]);
 			}
 			
 			result.push_back(tx_total);
 			result.push_back(rx_total);
 
-			last_bytes_txed = txed;
-			last_bytes_rxed = rxed;
+			last_txed = tx_total;
+			last_rxed = rx_total;
 			return result;
 		}
 
@@ -169,12 +180,22 @@ private:
 			
 			mem_usage = rss * page_size;
 			
+			if(index < 10) {
+				last_mem_usage[index] = mem_usage;
+			} else{
+				for(int i = 0; i < 9; i++){
+					last_mem_usage[i] = last_mem_usage[i+1];
+				}
+				last_mem_usage[9] = mem_usage;
+			}
+
 			if(ticks != last_ticks_[0]){
-				mem_total = (mem_usage - last_mem_usage)/(ticks - last_ticks_[0]);
+				mem_total = (mem_usage - last_mem_usage[0])/(ticks - last_ticks_[0]);
 			}
 
 			result.push_back(mem_total);
-			last_mem_usage = mem_usage;
+
+			last_mem = mem_total;
 			return result;
 		}
 

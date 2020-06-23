@@ -126,14 +126,21 @@ void CoordinatorClassic::GotoNextPhase() {
   int n_phase = 4;
   int current_phase = phase_ % n_phase;
   phase_++;
+	bool first = true;
   //Log_info("Current phase is %d", current_phase);
   //Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (current_phase) {
     case Phase::INIT_END:
       //Log_info("Dispatching for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::DISPATCH);
-			Log_info("total is: %d");
 			while(commo()->paused){
+				if(first){
+					commo()->total_++;
+					commo()->qe->n_voted_yes_++;
+					commo()->qe->Test();
+					first = false;
+				}
+				Log_info("total: %d", commo()->total_);
 				auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
 				t->Wait(0.1*1000*1000);
 			}
@@ -446,17 +453,22 @@ void CoordinatorClassic::Commit() {
   }
 	Log_info("commo window avg: %d", commo()->window_avg);
 	Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*10.0){
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*2.0){
 		if(commo()->cpu <= 1.9 && !commo()->paused){
 			Log_info("Reelection started");
-			commo()->ResetProfiles();
 			commo()->paused = true;
-			auto t = Reactor::CreateSpEvent<TimeoutEvent>(1*1000*1000);
-			t->Wait(1*1000*1000);
+
+			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
+			commo()->qe->n_voted_yes_ = commo()->total_;
+			commo()->qe->Wait();
+			commo()->qe = NULL;
+
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
 			for(int i = 0; i < 10; i++) Log_info("Reelection finished");
+			commo()->ResetProfiles();
+			commo()->total_ = 0;
 		}
 	}
 }

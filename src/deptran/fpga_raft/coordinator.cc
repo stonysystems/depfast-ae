@@ -93,7 +93,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
     sp_quorum->Wait();
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
+				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;

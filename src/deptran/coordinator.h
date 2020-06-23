@@ -34,6 +34,7 @@ class Coordinator {
   uint32_t cli_id_;
   uint32_t coro_id_;
   uint64_t dep_id_;
+	int concurrent;
   std::vector<int> ids_;
   parid_t par_id_ = -1;
   std::shared_ptr<SingleRPCEvent> rpc_event;

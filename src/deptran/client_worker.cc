@@ -317,7 +317,8 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
                               defer,
                               std::placeholders::_1);
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
-    coo->DoTxAsync(req);
+    coo->concurrent = n_concurrent_;
+		coo->DoTxAsync(req);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -401,6 +402,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               this,
                               coo,
                               std::placeholders::_1);
+		coo->concurrent = n_concurrent_;
     coo->DoTxAsync(req);
   };
   task();
