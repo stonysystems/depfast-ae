@@ -37,7 +37,7 @@ private:
 			total_mem = mem_info.totalram;
 			total_mem *= mem_info.mem_unit;
 			total_mem /= 1024;
-			Log_info("total amount of ram is: %lld", total_mem);
+			Log_debug("total amount of ram is: %lld", total_mem);
 
 			page_size = sysconf(_SC_PAGE_SIZE) / 1024;
 
@@ -80,7 +80,7 @@ private:
 			if(index < 10) last_ticks = last_ticks_[index-1];
 			else last_ticks = last_ticks_[9];
 
-      Log_info("ticks: %d -> %d", last_ticks, ticks);
+      Log_debug("ticks: %d -> %d", last_ticks, ticks);
       if (ticks <= last_ticks + 10/* || num_processors_ <= 0*/){
 				if(index < 10){
 					return {-1.0, -1.0, -1.0, -1.0};
@@ -111,7 +111,9 @@ private:
 			last_cpu = cpu_total;
         //ret /= num_processors_;
 	
-			result.push_back(cpu_total);
+			if(index < 10) result.push_back(-1.0);
+			else result.push_back(cpu_total);
+			
 			result = get_network(std::to_string(pid_), result, ticks);
 			result = get_memory(std::to_string(pid_), result, ticks);
     	return result;
@@ -159,8 +161,13 @@ private:
 				rx_total = (rxed-last_bytes_rxed[0])/(ticks - last_ticks_[0]);
 			}
 			
-			result.push_back(tx_total);
-			result.push_back(rx_total);
+			if(index < 10){
+				result.push_back(-1.0);
+				result.push_back(-1.0);
+			} else{
+				result.push_back(tx_total);
+				result.push_back(rx_total);
+			}
 
 			last_txed = tx_total;
 			last_rxed = rx_total;
@@ -192,8 +199,9 @@ private:
 			if(ticks != last_ticks_[0]){
 				mem_total = (mem_usage - last_mem_usage[0])/(ticks - last_ticks_[0]);
 			}
-
-			result.push_back(mem_total);
+			
+			if(index < 10) result.push_back(-1.0);
+			else result.push_back(mem_total);
 
 			last_mem = mem_total;
 			return result;

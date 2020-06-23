@@ -453,9 +453,9 @@ void CoordinatorClassic::Commit() {
   }
 	Log_info("commo window avg: %d", commo()->window_avg);
 	Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*2.0){
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*10.0){
 		if(commo()->cpu <= 1.9 && !commo()->paused){
-			Log_info("Reelection started");
+			//Log_info("Reelection started");
 			commo()->paused = true;
 
 			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
@@ -466,7 +466,7 @@ void CoordinatorClassic::Commit() {
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
-			for(int i = 0; i < 10; i++) Log_info("Reelection finished");
+			//for(int i = 0; i < 10; i++) Log_info("Reelection finished");
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}

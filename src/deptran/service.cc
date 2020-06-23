@@ -165,6 +165,7 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     sched->OnCommit(tid, dep_id, SUCCESS);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2], result[3]};
+		//*profile = {0.0, 0.0, 0.0, 0.0};
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();

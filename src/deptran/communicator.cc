@@ -207,7 +207,7 @@ Communicator::NearestProxyForPartition(parid_t par_id) const {
 std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	//paused = true;
 	//sleep(10);
-	Log_info("done sleeping");
+	//Log_info("done sleeping");
 	int total = rpc_par_proxies_[0].size() - 1;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
 	auto pair_leader_proxy = LeaderProxyForPartition(0);
@@ -223,12 +223,12 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 				fu->get_reply() >> success;
 				
 				if(success){
-					for(int i = 0; i < 10; i++) Log_info("success success: %d", id);
+					//for(int i = 0; i < 10; i++) Log_info("success success: %d", id);
 					e->VoteYes();
 					this->SetNewLeaderProxy(0, id);
-				} else Log_info("failure failure");
+				}
 			};
-		Log_info("sending reelect");
+		//Log_info("sending reelect");
 		auto f = pair.second->async_ReElect(fuattr);
 		Future::safe_release(f);
 	}
@@ -653,8 +653,8 @@ Communicator::SendAbort(Coordinator* coo,
 	    	this->window_time += curr;
 	  	}
 			Log_info("this time is: %d", curr);
-	  	Log_info("average time of RPC is: %d", this->total_time/this->total);
-	 		Log_info("window time of RPC is: %d", this->window_time/this->index);
+	  	//Log_info("average time of RPC is: %d", this->total_time/this->total);
+	 		//Log_info("window time of RPC is: %d", this->window_time/this->index);
 
       qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id); 
 
