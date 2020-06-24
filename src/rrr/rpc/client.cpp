@@ -235,7 +235,7 @@ bool Client::handle_read_two() {
 
   //return true;
   bool done = false;
-  int iters = INT_MAX;
+  int iters = 10;
 
   if(client_){
 		iters = INT_MAX;
