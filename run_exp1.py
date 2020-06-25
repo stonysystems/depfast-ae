@@ -387,7 +387,7 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
-        self.once = False
+        self.once = 0
         self.recording_period = False
         self.print_max = False
 
@@ -544,23 +544,20 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if (progress >= lower_cutoff_pct and not self.once):
+            if self.once == 0:
+                self.once += 1
+            if (progress >= 5 and self.once == 1):
                 try:
-                    stdout = subprocess.check_output('ss -tulpn | grep 0.0.0.0:8000',
-                                                     stderr=subprocess.STDOUT,
-                                                     shell=True,
-                                                     timeout=10)
-                    self.once = True
-                    stdout = stdout.decode()
-                    pid_split = stdout.split('pid=')[1]
-                    self.pid = pid_split.split(',')[0]
-
-                    #cmd = ['echo', apid, 
-                    stdout2 = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs',
-                                                      stderr=subprocess.STDOUT,
-                                                      shell=True,
-                                                      timeout=10)
-                    logger.debug('successfully added process to cgroup?: {0}, {1}'.format(stdout2.decode(), self.pid))
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo mkdir /sys/fs/cgroup/cpu/janus; \
+                           echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
+                           echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs"
+                    for process_name, process in self.process_infos.items():
+                        if process_name == 'host2':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                    self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
@@ -583,11 +580,12 @@ class ClientController(object):
                     v.print_mid(self.config, self.num_proxies)
                 
                 try:
-                    stdout = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/cgroup.procs',
-                                                     stderr=subprocess.STDOUT,
-                                                     shell=True,
-                                                     timeout=10)
-                    logger.debug('successfully removed process from cgroup?: {0}, {1}'.format(stdout.decode(), self.pid))
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == 'host2':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:

@@ -81,7 +81,10 @@ private:
 			else last_ticks = last_ticks_[9];
 
       Log_debug("ticks: %d -> %d", last_ticks, ticks);
-      if (ticks <= last_ticks + 10/* || num_processors_ <= 0*/){
+			//clock_t last_secs = last_ticks/CLOCKS_PER_SEC;
+			//clock_t secs = ticks/CLOCKS_PER_SEC;
+      //Log_info("sec: %d -> %d", last_secs, secs);
+			if (ticks <= last_ticks + 60/* || num_processors_ <= 0*/){
 				if(index < 10){
 					return {-1.0, -1.0, -1.0, -1.0};
 				} else{
@@ -104,10 +107,14 @@ private:
 				last_user_ticks_[9] = tms_buf.tms_utime;
 				last_ticks_[9] = ticks;
 			}
-
-      cpu_total = (tms_buf.tms_stime - last_kernel_ticks_[0]) +
-            (tms_buf.tms_utime - last_user_ticks_[0]);
-      cpu_total /= (ticks - last_ticks_[0]);
+			
+			if(index < 10){
+				cpu_total = -1.0;
+			} else{	
+      	cpu_total = (tms_buf.tms_stime - last_kernel_ticks_[8]) +
+        	    (tms_buf.tms_utime - last_user_ticks_[8]);
+      	cpu_total /= (ticks - last_ticks_[8]);
+			}
 			last_cpu = cpu_total;
         //ret /= num_processors_;
 	
@@ -157,17 +164,17 @@ private:
 			}
 
 			if(ticks != last_ticks_[0]){
-				tx_total = (txed-last_bytes_txed[0])/(ticks - last_ticks_[0]);
-				rx_total = (rxed-last_bytes_rxed[0])/(ticks - last_ticks_[0]);
+				if(index < 10){
+					tx_total = -1.0;
+					rx_total = -1.0;
+				} else{
+					tx_total = (txed-last_bytes_txed[8])/(ticks - last_ticks_[8]);
+					rx_total = (rxed-last_bytes_rxed[8])/(ticks - last_ticks_[8]);
+				}
 			}
 			
-			if(index < 10){
-				result.push_back(-1.0);
-				result.push_back(-1.0);
-			} else{
-				result.push_back(tx_total);
-				result.push_back(rx_total);
-			}
+			result.push_back(tx_total);
+			result.push_back(rx_total);
 
 			last_txed = tx_total;
 			last_rxed = rx_total;
@@ -197,11 +204,11 @@ private:
 			}
 
 			if(ticks != last_ticks_[0]){
-				mem_total = (mem_usage - last_mem_usage[0])/(ticks - last_ticks_[0]);
+				if(index < 10) mem_total = -1;
+				else mem_total = (mem_usage - last_mem_usage[8])/(ticks - last_ticks_[8]);
 			}
 			
-			if(index < 10) result.push_back(-1.0);
-			else result.push_back(mem_total);
+			result.push_back(mem_total);
 
 			last_mem = mem_total;
 			return result;

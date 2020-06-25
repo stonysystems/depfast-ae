@@ -451,11 +451,11 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
-	Log_info("commo window avg: %d", commo()->window_avg);
-	Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*10.0){
+	//Log_info("commo window avg: %d", commo()->window_avg);
+	//Log_info("commo total_avg: %d", commo()->total_avg);
+	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*100.0){
 		if(commo()->cpu <= 1.9 && !commo()->paused){
-			//Log_info("Reelection started");
+			Log_info("Reelection started");
 			commo()->paused = true;
 
 			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);

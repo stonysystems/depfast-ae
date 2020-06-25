@@ -547,9 +547,6 @@ Communicator::SendCommit(Coordinator* coo,
 	  	}
 			this->window_avg = this->window_time/this->index;
 			this->total_avg = this->total_time/this->total;
-			Log_info("this time is: %d", curr);
-	  	//Log_info("average time of RPC is: %d", this->total_avg);
-	 		//Log_info("window time of RPC is: %d", this->window_avg);
 
       qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id);
 
