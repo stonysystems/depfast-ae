@@ -551,7 +551,7 @@ class ClientController(object):
                 try:
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 0 ~/inf & export inf=$!; \
+                           taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
                            echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
@@ -574,17 +574,13 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
-        else:
-            if (progress >= upper_cutoff_pct):
-                logger.info("done with recording period")
-                self.recording_period = False
 
-                for k, v in self.txn_infos.items():
-                    v.print_mid(self.config, self.num_proxies)
-                
+            if (progress >= upper_cutoff_pct + 5):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
+                           kill -9 $pid2;"
                     for process_name, process in self.process_infos.items():
                         if process.name == 'host2':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
@@ -594,6 +590,14 @@ class ClientController(object):
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
+        else:
+            if (progress >= upper_cutoff_pct):
+                logger.info("done with recording period")
+                self.recording_period = False
+
+                for k, v in self.txn_infos.items():
+                    v.print_mid(self.config, self.num_proxies)
+                
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()

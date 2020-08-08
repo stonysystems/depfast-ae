@@ -550,7 +550,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 400ms'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host1':
+                        if process_name == 'host2':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1

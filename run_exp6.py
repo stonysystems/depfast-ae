@@ -387,6 +387,7 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
+        self.pid2 = 0
         self.once = 0
         self.recording_period = False
         self.print_max = False
@@ -522,6 +523,20 @@ class ClientController(object):
             else:
                 time.sleep(self.timeout)
 
+        try:
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   sudo swapoff swapfile; \
+                   sudo cgdelete memory:janus;"
+            for process_name, process in self.process_infos.items():
+                if process.name == 'host2':
+                    subprocess.call(['ssh', '-f', process.host_address, cmd])
+                
+        except subprocess.CalledProcessError as e:
+            logger.fatal('error')
+        except subprocess.TimeoutExpired as e:
+            logger.fatal('timeout')
+
     def print_stage_result(self, do_sample, do_sample_lock):
         # sites = ProcessInfo.get_sites(self.process_infos,
         #                               SiteInfo.SiteType.Client)
@@ -549,10 +564,10 @@ class ClientController(object):
             if (progress >= 5 and self.once == 1):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           sudo mkdir /sys/fs/cgroup/cpu/janus; \
-                           echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
-                           echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs"
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo mkdir /sys/fs/cgroup/memory/janus; \
+                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2':
                             time.sleep(0.1)
@@ -571,6 +586,7 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
         else:
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
@@ -578,19 +594,7 @@ class ClientController(object):
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-            
-            if (progress >= upper_cutoff_pct + 5):
-                try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
-                    for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                        self.once += 1
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
+                
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
