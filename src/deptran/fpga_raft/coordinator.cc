@@ -90,7 +90,13 @@ void CoordinatorFpgaRaft::AppendEntries() {
                                                      /* ents, */
                                                      this->sch_->commitIndex,
                                                      cmd_);
+		/*struct timespec start_;
+		clock_gettime(CLOCK_REALTIME, &start_);*/
     sp_quorum->Wait();
+		/*struct timespec end_;
+		clock_gettime(CLOCK_REALTIME, &end_);
+
+		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);*/
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);

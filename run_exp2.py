@@ -541,23 +541,23 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 10
+        lower_cutoff_pct = 60
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 5 and self.once == 1):
+            if (progress >= 50 and self.once == 1):
                 try:
 
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 0 ~/inf & export inf=$!; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
                            echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'host1':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -574,6 +574,22 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
+            if (progress >= upper_cutoff_pct + 3):
+                try:
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
+                           kill -9 $pid2;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == 'host1':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        self.once += 1
+                
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
         else:
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
@@ -582,18 +598,6 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
                 
-                try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
-                    for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                        self.once += 1
-                
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()

@@ -451,10 +451,19 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
-	//Log_info("commo window avg: %d", commo()->window_avg);
+	Log_info("commo window avg: %d", commo()->window_avg);
 	//Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 1000 && commo()->window_avg >= commo()->total_avg*100.0){
-		if(commo()->cpu <= 1.9 && !commo()->paused){
+	if(commo()->total > 1000/* && commo()->window_avg >= commo()->total_avg*2.0*/){
+		uint64_t range = ((uint64_t)commo()->window_avg/500)*500;
+		//if(commo()->window_avg >= 1800 && commo()->cpu <= 0.50 && !commo()->paused){
+		double cpu_thres = 0.95/(1 + exp(-0.000404250382*(commo()->window_avg - 600)));
+		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		if(commo()->cpu <= (cpu_thres*0.5) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+			commo()->last_cpu = commo()->cpu;
+			commo()->low_util++;
+		} else if(commo()->cpu > cpu_thres) commo()->low_util = 0;
+		if(commo()->low_util >= 10){
+			commo()->low_util = 0;
 			Log_info("Reelection started");
 			commo()->paused = true;
 
@@ -466,7 +475,7 @@ void CoordinatorClassic::Commit() {
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
-			//for(int i = 0; i < 10; i++) Log_info("Reelection finished");
+			Log_info("Reelection finished");
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}

@@ -540,21 +540,21 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 10
+        lower_cutoff_pct = 60
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 5 and self.once == 1):
+            if (progress >= 50 and self.once == 1):
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo mkdir /sys/fs/cgroup/cpu/janus; \
                            echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
                            echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs"
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'host1':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -580,10 +580,10 @@ class ClientController(object):
                     v.print_mid(self.config, self.num_proxies)
                 
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
                     for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
+                        if process.name == 'host1':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         self.once += 1
                 except subprocess.CalledProcessError as e:

@@ -194,6 +194,7 @@ void Client::handle_write() {
   out_l_.lock();
   //auto start = chrono::steady_clock::now();
   out_.write_to_fd(sock_);
+	
   //auto end = chrono::steady_clock::now();
   //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
 
@@ -235,7 +236,11 @@ bool Client::handle_read_two() {
 
   //return true;
   bool done = false;
-  int iters = 10;
+	int iters = 0;
+	//Log_info("content: %ld", in_.content_size());
+	//if(in_.content_size() > 0){
+  iters = 10;
+	//Log_info("iters: %ld", iters);
 
   if(client_){
 		iters = INT_MAX;
@@ -267,7 +272,7 @@ bool Client::handle_read_two() {
         fu->reply_.read_from_marshal(in_,
 	    	                     packet_size - v_reply_xid.val_size()
 				         - v_error_code.val_size());
-
+				
         fu->notify_ready();
 
         fu->release();

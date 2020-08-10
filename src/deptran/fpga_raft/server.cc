@@ -320,6 +320,8 @@ void FpgaRaftServer::StartTimer()
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         //StartTimer() ;
         
+				struct timespec start_;
+				clock_gettime(CLOCK_REALTIME, &start_);
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
@@ -353,6 +355,11 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
         cb();
+
+				struct timespec end_;
+				clock_gettime(CLOCK_REALTIME, &end_);
+
+				Log_info("time of OAE: %d", end_.tv_nsec-start_.tv_nsec);
     }
 
     void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd, 

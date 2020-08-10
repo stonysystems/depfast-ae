@@ -120,7 +120,9 @@ public:
     enum {
         NEW, CONNECTED, CLOSED
     } status_;
-
+		
+		uint64_t packets;
+		bool clean;
     Marshal::bookmark* bmark_;
 
     Counter xid_counter_;
