@@ -578,7 +578,8 @@ class ClientController(object):
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-                
+            
+            if (progress >= upper_cutoff_pct + 5):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
@@ -745,7 +746,7 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                site.rpc_proxy.async_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -864,6 +865,7 @@ class ServerController(object):
             logger.info("AVG_LOG_FLUSH_CNT: " + str(avg_r_cnt))
             logger.info("AVG_LOG_FLUSH_SZ: " + str(avg_r_sz))
             logger.info("BENCHMARK SUCCESS!")
+            self.shutdown_sites(sites)
         except:
             logger.error(traceback.format_exc())
             cond.acquire()
@@ -1242,8 +1244,11 @@ def main():
         logging.info("shutting down...")
         if server_controller is not None:
             try:
+                clients = ProcessInfo.get_sites(process_infos, SiteInfo.SiteType.Client)
+                for site in clients:
+                    site.rpc_proxy.async_client_shutdown()
                 #comment the following line when doing profiling
-                server_controller.server_kill()
+                #server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())

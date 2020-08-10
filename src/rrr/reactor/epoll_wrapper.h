@@ -192,7 +192,6 @@ class Epoll {
       Pollable* poll = (Pollable *) evlist[i].udata;
       if (evlist[i].filter & EVFILT_READ){
         poll->handle_read();
-	Log_info("pushing back");
         pending.push_back(poll);
       }
       if (evlist[i].filter & EVFILT_WRITE){
@@ -206,7 +205,7 @@ class Epoll {
 #else
     struct epoll_event evlist[max_nev];
     int timeout = 1; // milli, 0.001 sec
-//    int timeout = 0; // busy loop
+    //int timeout = 0; // busy loop
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
     
     //if(nev != 0) Log_info("the number of events: %d", nev);

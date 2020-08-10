@@ -134,9 +134,12 @@ void ServerConnection::end_reply() {
     server_->pollmgr_->update_mode(shared_from_this(), Pollable::READ | Pollable::WRITE);
 
     out_l_.unlock();
+
 }
 
 bool ServerConnection::handle_read() {
+  struct timespec start_;
+  clock_gettime(CLOCK_REALTIME, &start_);
     //Log_info("Server's addr is: %s", server_->addr_.c_str());
     if (status_ == CLOSED) {
         return false;
@@ -240,6 +243,10 @@ bool ServerConnection::handle_read() {
             delete req;
         }
     }
+
+struct timespec end_;
+  clock_gettime(CLOCK_REALTIME, &end_);
+  Log_info("Time for Write: %d", end_.tv_nsec-start_.tv_nsec);
     return false;
 }
 
@@ -248,12 +255,19 @@ void ServerConnection::handle_write() {
         return;
     }
 
+    /*struct timespec start_;
+    clock_gettime(CLOCK_REALTIME, &start_);*/
+
     out_l_.lock();
     out_.write_to_fd(socket_);
     if (out_.empty()) {
         server_->pollmgr_->update_mode(shared_from_this(), Pollable::READ);
     }
     out_l_.unlock();
+
+    /*struct timespec end_;
+    clock_gettime(CLOCK_REALTIME, &end_);;
+    Log_info("Time for Write: %d", end_.tv_nsec-start_.tv_nsec);*/
 }
 
 void ServerConnection::handle_error() {
@@ -400,10 +414,19 @@ void Server::server_loop(struct addrinfo* svr_addr) {
         if (clnt_socket >= 0 && status_ == RUNNING) {
             Log_debug("server@%s got new client, fd=%d", this->addr_.c_str(), clnt_socket);
             verify(set_nonblocking(clnt_socket, true) == 0);
-            int buf_len = 1024 * 1024; // 1M buffer
-            setsockopt(clnt_socket, SOL_SOCKET, SO_RCVBUF, &buf_len, sizeof(buf_len));
-            setsockopt(clnt_socket, SOL_SOCKET, SO_SNDBUF, &buf_len, sizeof(buf_len));
-            sconns_l_.lock();
+            int buf_len = 128 * 1024 * 1024; // 1M buffer
+            verify(setsockopt(clnt_socket, SOL_SOCKET, SO_RCVBUF, &buf_len, sizeof(buf_len)) == 0);
+            verify(setsockopt(clnt_socket, SOL_SOCKET, SO_SNDBUF, &buf_len, sizeof(buf_len)) == 0);
+    	    
+	    socklen_t optlen;
+    	    int res = 0;
+  	    optlen = sizeof(buf_len);
+    	    res = getsockopt(clnt_socket, SOL_SOCKET, SO_RCVBUFFORCE, &buf_len, &optlen);
+    	    Log_info("size of receive buffer: %d", buf_len);
+    	    res = getsockopt(clnt_socket, SOL_SOCKET, SO_SNDBUFFORCE, &buf_len, &optlen);
+    	    Log_info("size of send buffer: %d", buf_len);
+            
+	    sconns_l_.lock();
             auto sconn = std::make_shared<ServerConnection>(this, clnt_socket);
 
             sconns_.insert(sconn);

@@ -60,6 +60,10 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     if (p.first == this->loc_id_)
         continue;
     auto proxy = (FpgaRaftProxy*) p.second;
+    /*struct timespec start_; //rl
+    clock_gettime(CLOCK_REALTIME, &start_); //rl
+
+    auto id = p.first; //remove line*/
     FutureAttr fuattr;
     fuattr.callback = [e, isLeader, currentTerm] (Future* fu) {
       uint64_t accept = 0;
@@ -68,6 +72,10 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
       fu->get_reply() >> accept;
       fu->get_reply() >> term;
       fu->get_reply() >> index;
+      /*struct timespec end_;
+      clock_gettime(CLOCK_REALTIME, &end_);
+      Log_info("Time for AE for %d: %d", id, end_.tv_nsec-start_.tv_nsec);*/
+
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index);
     };

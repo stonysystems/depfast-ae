@@ -550,7 +550,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 400ms'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host1':
+                        if process_name == 'host2':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -740,7 +740,7 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                site.rpc_proxy.async_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -859,6 +859,7 @@ class ServerController(object):
             logger.info("AVG_LOG_FLUSH_CNT: " + str(avg_r_cnt))
             logger.info("AVG_LOG_FLUSH_SZ: " + str(avg_r_sz))
             logger.info("BENCHMARK SUCCESS!")
+            self.shutdown_sites(sites)
         except:
             logger.error(traceback.format_exc())
             cond.acquire()
@@ -1237,8 +1238,11 @@ def main():
         logging.info("shutting down...")
         if server_controller is not None:
             try:
+                clients = ProcessInfo.get_sites(process_infos, SiteInfo.SiteType.Client)
+                for site in clients:
+                    site.rpc_proxy.async_client_shutdown()
                 #comment the following line when doing profiling
-                server_controller.server_kill()
+                #server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())

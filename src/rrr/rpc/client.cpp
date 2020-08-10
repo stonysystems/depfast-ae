@@ -150,13 +150,23 @@ int Client::connect(const char* addr, bool client) {
     }
     //Log_info("host port host port: %s:%s and socket: %d", host, port, sock_);
 
+    int buf_len = 128 * 1024 * 1024;
+    setsockopt(sock_, SOL_SOCKET, SO_RCVBUFFORCE, &buf_len, sizeof(buf_len));
+    Log_info("error here is: %s", strerror(errno));
+    setsockopt(sock_, SOL_SOCKET, SO_SNDBUFFORCE, &buf_len, sizeof(buf_len));
+    
+    socklen_t optlen;
+    int res = 0;
+    optlen = sizeof(buf_len);
+    res = getsockopt(sock_, SOL_SOCKET, SO_RCVBUF, &buf_len, &optlen);
+    Log_info("size of receive buffer: %d", buf_len);
+    res = getsockopt(sock_, SOL_SOCKET, SO_SNDBUF, &buf_len, &optlen);
+    Log_info("size of send buffer: %d", buf_len);
+    
     const int yes = 1;
     verify(setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == 0);
     verify(setsockopt(sock_, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == 0);
-    int buf_len = 1024 * 1024;
-    setsockopt(sock_, SOL_SOCKET, SO_RCVBUF, &buf_len, sizeof(buf_len));
-    setsockopt(sock_, SOL_SOCKET, SO_SNDBUF, &buf_len, sizeof(buf_len));
-
+    
     if (::connect(sock_, rp->ai_addr, rp->ai_addrlen) == 0) {
       break;
     }
@@ -185,8 +195,8 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
-  //auto start = chrono::steady_clock::now();
-  //Log_info("Handling write");
+  struct timespec start_;
+  clock_gettime(CLOCK_REALTIME, &start_);
   if (status_ != CONNECTED) {
     return;
   }
@@ -194,18 +204,12 @@ void Client::handle_write() {
   out_l_.lock();
   //auto start = chrono::steady_clock::now();
   out_.write_to_fd(sock_);
-  //auto end = chrono::steady_clock::now();
-  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
-
-  //Log_info("The Time of Writing to Socket is: %d", duration);
 
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
- // auto end = chrono::steady_clock::now();
- // auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
- // Log_info("Duration of handle_write() is: %d", duration);
+
 }
 
 size_t Client::content_size() {
@@ -218,9 +222,7 @@ bool Client::handle_read(){
     return false;
   }
 
-  //Log_info("failing here");
   int bytes_read = in_.read_from_fd(sock_);
-  //Log_info("bytes read: %d", bytes_read);
   if (bytes_read == 0) {
     Log_info("sure");
     return false;
@@ -237,9 +239,9 @@ bool Client::handle_read_two() {
   bool done = false;
   int iters = 10;
 
-  if(client_){
+  /*if(client_){
 		iters = INT_MAX;
-	}
+	}*/
   for(int i = 0; i < iters; i++) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));

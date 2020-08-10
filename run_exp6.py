@@ -385,7 +385,10 @@ class ClientController(object):
         self.pre_run_nsec = 0
         self.n_asking = 0
         self.max_tps = 0
-
+        
+        self.pid = 0
+        self.pid2 = 0
+        self.once = 0
         self.recording_period = False
         self.print_max = False
 
@@ -520,6 +523,20 @@ class ClientController(object):
             else:
                 time.sleep(self.timeout)
 
+        try:
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   sudo swapoff swapfile; \
+                   sudo cgdelete memory:janus;"
+            for process_name, process in self.process_infos.items():
+                if process.name == 'host2':
+                    subprocess.call(['ssh', '-f', process.host_address, cmd])
+                
+        except subprocess.CalledProcessError as e:
+            logger.fatal('error')
+        except subprocess.TimeoutExpired as e:
+            logger.fatal('timeout')
+
     def print_stage_result(self, do_sample, do_sample_lock):
         # sites = ProcessInfo.get_sites(self.process_infos,
         #                               SiteInfo.SiteType.Client)
@@ -542,6 +559,25 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
+            if self.once == 0:
+                self.once += 1
+            if (progress >= 5 and self.once == 1):
+                try:
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo mkdir /sys/fs/cgroup/memory/janus; \
+                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
+                    for process_name, process in self.process_infos.items():
+                        if process_name == 'host2':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                    self.once += 1
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
                 self.recording_period = True
@@ -550,6 +586,7 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
         else:
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
@@ -557,7 +594,7 @@ class ClientController(object):
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-
+                
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
@@ -713,7 +750,7 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.async_server_shutdown()
+                site.rpc_proxy.sync_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -832,7 +869,6 @@ class ServerController(object):
             logger.info("AVG_LOG_FLUSH_CNT: " + str(avg_r_cnt))
             logger.info("AVG_LOG_FLUSH_SZ: " + str(avg_r_sz))
             logger.info("BENCHMARK SUCCESS!")
-            self.shutdown_sites(sites)
         except:
             logger.error(traceback.format_exc())
             cond.acquire()
@@ -1211,11 +1247,8 @@ def main():
         logging.info("shutting down...")
         if server_controller is not None:
             try:
-                clients = ProcessInfo.get_sites(process_infos, SiteInfo.SiteType.Client)
-                for site in clients:
-                    site.rpc_proxy.async_client_shutdown()
                 #comment the following line when doing profiling
-                #server_controller.server_kill()
+                server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())
