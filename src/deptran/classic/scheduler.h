@@ -60,7 +60,6 @@ class SchedulerClassic: public TxLogServer {
   virtual void Next(Marshallable&) override;
 
 	virtual bool RequestVote() override {
-		for(int i = 0; i < 100; i++) Log_info("loop2 loop2 loop2");
 		return rep_sched_->RequestVote();
 	}
   virtual bool IsLeader() override {

@@ -207,7 +207,6 @@ Communicator::NearestProxyForPartition(parid_t par_id) const {
 std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	//paused = true;
 	//sleep(10);
-	//Log_info("done sleeping");
 	int total = rpc_par_proxies_[0].size() - 1;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
 	auto pair_leader_proxy = LeaderProxyForPartition(0);
@@ -216,14 +215,12 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 		rrr::FutureAttr fuattr;
 		int id = pair.first;
 		if(id == 0 || id == 2) continue;
-		Log_info("id: %d", id);
 		fuattr.callback = 
 			[e, this, id] (Future* fu) {
 				bool_t success = false;
 				fu->get_reply() >> success;
 				
 				if(success){
-					//for(int i = 0; i < 10; i++) Log_info("success success: %d", id);
 					e->VoteYes();
 					this->SetNewLeaderProxy(0, id);
 				}
@@ -353,7 +350,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
     MarshallDeputy md(sp_vpd); // ????
     CoordinatorClassic* classic_coo = (CoordinatorClassic*) coo;
     //classic_coo->debug_cnt++;
-    //Log_info("debug_cnt: %d", classic_coo->debug_cnt);
 
     struct timespec start_;
     clock_gettime(CLOCK_REALTIME, &start_);
@@ -649,7 +645,6 @@ Communicator::SendAbort(Coordinator* coo,
 	    	this->window[99] = curr;
 	    	this->window_time += curr;
 	  	}
-			Log_info("this time is: %d", curr);
 	  	//Log_info("average time of RPC is: %d", this->total_time/this->total);
 	 		//Log_info("window time of RPC is: %d", this->window_time/this->index);
 

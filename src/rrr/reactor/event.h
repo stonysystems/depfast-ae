@@ -255,7 +255,6 @@ class DispatchEvent: public Event{
           return true;
         }
         else{
-          Log_info("DONE DONE: %p", this);
           return std::all_of(dispatch_acks_.begin(),
                              dispatch_acks_.end(),
                              [](std::pair<uint32_t, bool> pair) {
@@ -266,7 +265,6 @@ class DispatchEvent: public Event{
       else if(more){
         return true;
       }
-      Log_info("FALSE");
       return false;
     }
 
@@ -286,7 +284,6 @@ class SingleRPCEvent: public Event{
     void add_dep(int tgtId){
       auto index = dep.find(tgtId);
       if(index == dep.end()) dep.insert(tgtId);
-      //Log_info("size of dependencies: %d", dep.size());
     }
     void log() override {
       std::ofstream of(log_file, std::fstream::app);
@@ -299,7 +296,6 @@ class SingleRPCEvent: public Event{
       of.close();
     }
     bool IsReady() override{
-      //Log_info("READY");
       return res_ == SUCCESS || res_ == REJECT;
     }
 };

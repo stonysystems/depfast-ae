@@ -215,7 +215,6 @@ size_t Client::content_size() {
 
 bool Client::handle_read(){
   if (status_ != CONNECTED) {
-    Log_info("NOT CONNECTED");
     return false;
   }
 
@@ -223,7 +222,6 @@ bool Client::handle_read(){
   int bytes_read = in_.read_from_fd(sock_);
   //Log_info("bytes read: %d", bytes_read);
   if (bytes_read == 0) {
-    Log_info("sure");
     return false;
   }
   return true;
@@ -239,7 +237,7 @@ bool Client::handle_read_two() {
 	int iters = 0;
 	//Log_info("content: %ld", in_.content_size());
 	//if(in_.content_size() > 0){
-  iters = 10;
+  iters = 20;
 	//Log_info("iters: %ld", iters);
 
   if(client_){
@@ -441,7 +439,6 @@ ClientPool::ClientPool(PollMgr* pollmgr /* =? */,
 ClientPool::~ClientPool() {
   for (auto& it : cache_) {
     for (int i = 0; i < parallel_connections_; i++) {
-      Log_info("CLOSING CONNECTIONS");
       it.second[i]->close_and_release();
     }
     delete[] it.second;

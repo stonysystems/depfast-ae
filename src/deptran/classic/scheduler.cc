@@ -157,7 +157,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
     auto coo = CreateRepCoord(dep_id);
-    Log_info("The locale id: %d", coo->loc_id_);
+    //Log_info("The locale id: %d", coo->loc_id_);
     coo->Submit(sp_m);
     sp_tx->prepare_result->Wait();
 //    Log_debug("finished prepare command replication");

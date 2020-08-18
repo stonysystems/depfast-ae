@@ -159,7 +159,7 @@ class TxLogServer {
   virtual bool IsLeader() { verify(0); } ;
   virtual bool IsFPGALeader() { verify(0); } ;
 	
-	virtual bool RequestVote() { for(int i = 0; i < 100; i++) Log_info("what what what"); verify(0); return false;};
+	virtual bool RequestVote() { verify(0); return false;};
   virtual void Pause() { verify(0); } ;
   virtual void Resume() { verify(0); } ;
 

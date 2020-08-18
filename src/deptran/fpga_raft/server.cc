@@ -133,7 +133,7 @@ void FpgaRaftServer::OnVote2FPGA(const slotid_t& lst_log_idx,
 
 
 bool FpgaRaftServer::RequestVote() {
-	for(int i = 0; i < 100; i++) Log_info("not calling the wrong method");
+  //for(int i = 0; i < 100; i++) Log_info("not calling the wrong method");
 
   // currently don't request vote if no log
   if(this->commo_ == NULL || lastLogIndex == 0 ) return false;
@@ -183,7 +183,7 @@ bool FpgaRaftServer::RequestVote() {
     //RequestVote2FPGA() ;
     if(IsLeader())
     {
-	  	for(int i = 0; i < 100; i++) Log_info("wait wait wait");
+	  	//for(int i = 0; i < 100; i++) Log_info("wait wait wait");
       Log_debug("vote accepted %d curterm %d", loc_id, currentTerm);
   		req_voting_ = false ;
 			return true;
@@ -320,8 +320,6 @@ void FpgaRaftServer::StartTimer()
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         //StartTimer() ;
         
-				struct timespec start_;
-				clock_gettime(CLOCK_REALTIME, &start_);
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
@@ -356,10 +354,8 @@ void FpgaRaftServer::StartTimer()
         }
         cb();
 
-				struct timespec end_;
-				clock_gettime(CLOCK_REALTIME, &end_);
 
-				Log_info("time of OAE: %d", end_.tv_nsec-start_.tv_nsec);
+				//Log_info("time of OAE: %d", end_.tv_nsec-start_.tv_nsec);
     }
 
     void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd, 

@@ -140,7 +140,7 @@ void CoordinatorClassic::GotoNextPhase() {
 					commo()->qe->Test();
 					first = false;
 				}
-				Log_info("total: %d", commo()->total_);
+				//Log_info("total: %d", commo()->total_);
 				auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
 				t->Wait(0.1*1000*1000);
 			}
@@ -169,7 +169,7 @@ void CoordinatorClassic::GotoNextPhase() {
         End();
       }
       else if (aborted_) {
-        Log_info("Restarting for some reason: %d", n_retry_);
+        //Log_info("Restarting for some reason: %d", n_retry_);
         //phase_++;
         Restart();
       } else
@@ -215,7 +215,7 @@ void CoordinatorClassic::Restart() {
       ccsi_->txn_give_up_one(this->thread_id_, txn->type_);
     End();
   } else {
-    Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
+    //Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
     Reset();
     txn->Reset();
     //could be a problem or maybe not???
@@ -451,20 +451,20 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
-	Log_info("commo window avg: %d", commo()->window_avg);
+	//Log_info("commo window avg: %d", commo()->window_avg);
 	//Log_info("commo total_avg: %d", commo()->total_avg);
 	if(commo()->total > 1000/* && commo()->window_avg >= commo()->total_avg*2.0*/){
 		uint64_t range = ((uint64_t)commo()->window_avg/500)*500;
 		//if(commo()->window_avg >= 1800 && commo()->cpu <= 0.50 && !commo()->paused){
 		double cpu_thres = 0.95/(1 + exp(-0.000404250382*(commo()->window_avg - 600)));
-		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
 		if(commo()->cpu <= (cpu_thres*0.5) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
 		} else if(commo()->cpu > cpu_thres) commo()->low_util = 0;
 		if(commo()->low_util >= 10){
 			commo()->low_util = 0;
-			Log_info("Reelection started");
+			//Log_info("Reelection started");
 			commo()->paused = true;
 
 			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
@@ -475,7 +475,7 @@ void CoordinatorClassic::Commit() {
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
-			Log_info("Reelection finished");
+			//Log_info("Reelection finished");
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}

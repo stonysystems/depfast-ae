@@ -192,7 +192,6 @@ class Epoll {
       Pollable* poll = (Pollable *) evlist[i].udata;
       if (evlist[i].filter & EVFILT_READ){
         poll->handle_read();
-	Log_info("pushing back");
         pending.push_back(poll);
       }
       if (evlist[i].filter & EVFILT_WRITE){
@@ -209,7 +208,6 @@ class Epoll {
 //    int timeout = 0; // busy loop
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
     
-    //if(nev != 0) Log_info("the number of events: %d", nev);
     for (int i = 0; i < nev; i++) {
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
       verify(poll != nullptr);
@@ -231,12 +229,10 @@ class Epoll {
 
   void Wait_Two() {
     /*if (pending.size() != 0) {
-       Log_info("WAITING TM: %d", pending.size());
        //pending.clear();
     }*/
     //return;
     for(auto it = pending.begin(); it != pending.end();){
-      //Log_info("CRAZY");
       Pollable* poll = *it;
 
       bool done = poll->handle_read_two();
@@ -295,7 +291,6 @@ class Epoll {
       Log_info("not stuck here");*/
     }
     
-    Log_info("the number of events: %d", nev);
     
     for (int i = 0; i < nev; i++) {
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
