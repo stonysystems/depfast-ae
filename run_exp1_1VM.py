@@ -548,7 +548,7 @@ class ClientController(object):
                 self.once += 1
             if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:8001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo mkdir /sys/fs/cgroup/cpu/janus; \
                            echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
                            echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \

@@ -57,7 +57,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   vector<Future*> fus;
   WAN_WAIT;
   for (auto& p : proxies) {
-    if (p.first == this->loc_id_)
+    if (p.first == this->loc_id_ || p.first == this->loc_id_+1)
         continue;
     auto proxy = (FpgaRaftProxy*) p.second;
     /*struct timespec start_; //rl

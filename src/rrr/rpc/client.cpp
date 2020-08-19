@@ -150,22 +150,22 @@ int Client::connect(const char* addr, bool client) {
     }
     //Log_info("host port host port: %s:%s and socket: %d", host, port, sock_);
 
-    int buf_len = 128 * 1024 * 1024;
-    setsockopt(sock_, SOL_SOCKET, SO_RCVBUFFORCE, &buf_len, sizeof(buf_len));
-    Log_info("error here is: %s", strerror(errno));
-    setsockopt(sock_, SOL_SOCKET, SO_SNDBUFFORCE, &buf_len, sizeof(buf_len));
-    
-    socklen_t optlen;
-    int res = 0;
-    optlen = sizeof(buf_len);
-    res = getsockopt(sock_, SOL_SOCKET, SO_RCVBUF, &buf_len, &optlen);
-    Log_info("size of receive buffer: %d", buf_len);
-    res = getsockopt(sock_, SOL_SOCKET, SO_SNDBUF, &buf_len, &optlen);
-    Log_info("size of send buffer: %d", buf_len);
-    
     const int yes = 1;
     verify(setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == 0);
     verify(setsockopt(sock_, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == 0);
+    
+    int buf_len = 1024 * 1024;
+    setsockopt(sock_, SOL_SOCKET, SO_RCVBUF, &buf_len, sizeof(buf_len));
+    //Log_info("error here is: %s", strerror(errno));
+    setsockopt(sock_, SOL_SOCKET, SO_SNDBUF, &buf_len, sizeof(buf_len));
+    
+    /*socklen_t optlen;
+    int res = 0;
+    optlen = sizeof(buf_len);
+    res = getsockopt(sock_, SOL_SOCKET, SO_RCVBUF, &buf_len, &optlen);
+    //Log_info("size of receive buffer: %d", buf_len);
+    res = getsockopt(sock_, SOL_SOCKET, SO_SNDBUF, &buf_len, &optlen);
+    //Log_info("size of send buffer: %d", buf_len);*/
     
     if (::connect(sock_, rp->ai_addr, rp->ai_addrlen) == 0) {
       break;
