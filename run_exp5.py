@@ -540,17 +540,17 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 60
+        lower_cutoff_pct = 10
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if(self.once == 0):
                 self.once += 1
-            if (progress >= 50 and self.once == 1):
+            if (progress >= 5 and self.once == 1):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 400ms'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host1':
+                        if process_name == 'host2':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -578,7 +578,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc del dev eth0 root'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host1':
+                        if process_name == 'host2':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once = True
                 except subprocess.CalledProcessError as e:

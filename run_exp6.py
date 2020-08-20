@@ -524,12 +524,12 @@ class ClientController(object):
                 time.sleep(self.timeout)
 
         try:
-            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
                    sudo swapoff swapfile; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():
-                if process.name == 'host1':
+                if process.name == 'host2':
                     subprocess.call(['ssh', '-f', process.host_address, cmd])
                 
         except subprocess.CalledProcessError as e:
@@ -555,21 +555,21 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 60
+        lower_cutoff_pct = 10
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 50 and self.once == 1):
+            if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
                            sudo mkdir /sys/fs/cgroup/memory/janus; \
                            echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
                            echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host1':
+                        if process_name == 'host2':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
