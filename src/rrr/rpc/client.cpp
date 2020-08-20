@@ -237,7 +237,7 @@ bool Client::handle_read_two() {
 	int iters = 0;
 	//Log_info("content: %ld", in_.content_size());
 	//if(in_.content_size() > 0){
-  iters = 20;
+  iters = 5;
 	//Log_info("iters: %ld", iters);
 
   if(client_){

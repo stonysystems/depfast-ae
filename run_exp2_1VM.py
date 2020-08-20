@@ -580,7 +580,7 @@ class ClientController(object):
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:8001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
                            pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
-                           kill -9 $pid2;"
+                           sudo kill -9 $pid2;"
                     for process_name, process in self.process_infos.items():
                         if process.name == 'p2':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
