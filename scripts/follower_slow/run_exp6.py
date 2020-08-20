@@ -387,7 +387,8 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
-        self.once = False
+        self.pid2 = 0
+        self.once = 0
         self.recording_period = False
         self.print_max = False
 
@@ -522,6 +523,27 @@ class ClientController(object):
             else:
                 time.sleep(self.timeout)
 
+        try:
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   sudo swapoff swapfile; \
+                   sudo cgdelete memory:janus;"
+            
+            cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   sudo swapoff swapfile; \
+                   sudo cgdelete memory:janus;"
+            for process_name, process in self.process_infos.items():
+                if process.name == 'host2':
+                    subprocess.call(['ssh', '-f', process.host_address, cmd])
+                if process.name == 'host5':
+                    subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                
+        except subprocess.CalledProcessError as e:
+            logger.fatal('error')
+        except subprocess.TimeoutExpired as e:
+            logger.fatal('timeout')
+
     def print_stage_result(self, do_sample, do_sample_lock):
         # sites = ProcessInfo.get_sites(self.process_infos,
         #                               SiteInfo.SiteType.Client)
@@ -544,23 +566,29 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if (progress <= lower_cutoff_pct and not self.once):
+            if self.once == 0:
+                self.once += 1
+            if (progress >= 5 and self.once == 1):
                 try:
-                    stdout = subprocess.check_output('ss -tulpn | grep 0.0.0.0:8001',
-                                                     stderr=subprocess.STDOUT,
-                                                     shell=True,
-                                                     timeout=10)
-                    self.once = True
-                    stdout = stdout.decode()
-                    pid_split = stdout.split('pid=')[1]
-                    self.pid = pid_split.split(',')[0]
-
-                    #cmd = ['echo', apid, 
-                    stdout2 = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs',
-                                                      stderr=subprocess.STDOUT,
-                                                      shell=True,
-                                                      timeout=10)
-                    logger.debug('successfully added process to cgroup?: {0}, {1}'.format(stdout2.decode(), self.pid))
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo mkdir /sys/fs/cgroup/memory/janus; \
+                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
+                    
+                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo mkdir /sys/fs/cgroup/memory/janus; \
+                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
+                    for process_name, process in self.process_infos.items():
+                        if process_name == 'host2':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        if process_name == 'host5':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                    self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
@@ -574,6 +602,7 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
         else:
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
@@ -582,16 +611,6 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
                 
-                try:
-                    stdout = subprocess.check_output('echo ' + self.pid + ' | sudo tee /sys/fs/cgroup/cpu/cgroup.procs',
-                                                     stderr=subprocess.STDOUT,
-                                                     shell=True,
-                                                     timeout=10)
-                    logger.debug('successfully removed process from cgroup?: {0}, {1}'.format(stdout.decode(), self.pid))
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()

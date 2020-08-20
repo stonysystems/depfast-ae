@@ -457,7 +457,7 @@ void CoordinatorClassic::Commit() {
 		uint64_t range = ((uint64_t)commo()->window_avg/500)*500;
 		//if(commo()->window_avg >= 1800 && commo()->cpu <= 0.50 && !commo()->paused){
 		double cpu_thres = 0.95/(1 + exp(-0.000404250382*(commo()->window_avg - 600)));
-		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
 		if(commo()->cpu <= (cpu_thres*0.5) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;

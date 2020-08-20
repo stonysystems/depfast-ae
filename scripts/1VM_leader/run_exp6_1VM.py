@@ -387,6 +387,7 @@ class ClientController(object):
         self.max_tps = 0
         
         self.pid = 0
+        self.pid2 = 0
         self.once = 0
         self.recording_period = False
         self.print_max = False
@@ -522,6 +523,20 @@ class ClientController(object):
             else:
                 time.sleep(self.timeout)
 
+        try:
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:8000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   sudo swapoff swapfile; \
+                   sudo cgdelete memory:janus;"
+            for process_name, process in self.process_infos.items():
+                if process.name == 'p1':
+                    subprocess.call(['ssh', '-f', process.host_address, cmd])
+                
+        except subprocess.CalledProcessError as e:
+            logger.fatal('error')
+        except subprocess.TimeoutExpired as e:
+            logger.fatal('timeout')
+
     def print_stage_result(self, do_sample, do_sample_lock):
         # sites = ProcessInfo.get_sites(self.process_infos,
         #                               SiteInfo.SiteType.Client)
@@ -544,13 +559,17 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if(self.once == 0):
+            if self.once == 0:
                 self.once += 1
-            if (progress >= 1 and self.once == 1):
+            if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = 'sudo /sbin/tc qdisc add dev ens4 root netem delay 400ms'
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:8000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo mkdir /sys/fs/cgroup/memory/janus; \
+                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'p1':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -567,6 +586,7 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
         else:
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
@@ -575,16 +595,6 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
                 
-                try:
-                    cmd = 'sudo /sbin/tc qdisc del dev ens4 root'
-                    for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                    self.once = True
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
@@ -686,7 +696,7 @@ class ServerController(object):
             logger.info("Setting servers on CPU 1")
         elif (taskset == 2):
             # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 1)
+            self.taskset_func = lambda x: "taskset -ac " + str(x)
             logger.info("Setting servers on CPU 0, odd number cores")
         elif (taskset == 3):
             # set task on CPU 0, even number cores, overlapping with irq cores
