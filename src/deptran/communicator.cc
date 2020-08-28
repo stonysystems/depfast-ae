@@ -210,11 +210,12 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	int total = rpc_par_proxies_[0].size() - 1;
   std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, 1);
 	auto pair_leader_proxy = LeaderProxyForPartition(0);
+	int new_leader = (pair_leader_proxy.first + 1) % total;
 
 	for(auto& pair: rpc_par_proxies_[0]){
 		rrr::FutureAttr fuattr;
 		int id = pair.first;
-		if(id == 0 || id == 2) continue;
+		if(id != new_leader) continue;
 		fuattr.callback = 
 			[e, this, id] (Future* fu) {
 				bool_t success = false;

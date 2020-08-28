@@ -451,20 +451,19 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
-	//Log_info("commo window avg: %d", commo()->window_avg);
+	Log_info("commo window avg: %d", commo()->window_avg);
 	//Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 1000/* && commo()->window_avg >= commo()->total_avg*2.0*/){
-		uint64_t range = ((uint64_t)commo()->window_avg/500)*500;
+	if(commo()->total > 10000/* && commo()->window_avg >= commo()->total_avg*2.0*/){
 		//if(commo()->window_avg >= 1800 && commo()->cpu <= 0.50 && !commo()->paused){
-		double cpu_thres = 0.95/(1 + exp(-0.000404250382*(commo()->window_avg - 600)));
-		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
-		if(commo()->cpu <= (cpu_thres*0.5) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+		double cpu_thres = 0.90/(1 + exp(-0.000839005006*(commo()->window_avg - 2334.28188)));
+		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		if(commo()->cpu <= (cpu_thres*0.9) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
 		} else if(commo()->cpu > cpu_thres) commo()->low_util = 0;
 		if(commo()->low_util >= 10){
 			commo()->low_util = 0;
-			//Log_info("Reelection started");
+			Log_info("Reelection started");
 			commo()->paused = true;
 
 			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
