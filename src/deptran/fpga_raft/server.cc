@@ -5,7 +5,6 @@
 #include "exec.h"
 #include "frame.h"
 #include "coordinator.h"
-#include "../classic/tpc_command.h"
 
 namespace janus {
 
@@ -338,7 +337,12 @@ void FpgaRaftServer::StartTimer()
             /* TODO: Replace entries after s.log[prev] w/ ents */
             /* TODO: it should have for loop for multiple entries */
             auto instance = GetFpgaRaftInstance(lastLogIndex);
-            instance->log_ = cmd; 
+            instance->log_ = cmd;
+
+
+            // Pass the content to a thread that is always running
+            // Disk write event
+            // Wait on the event
             instance->term = this->currentTerm;
             //app_next_(*instance->log_); 
             verify(lastLogIndex > commitIndex);
@@ -346,6 +350,21 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 1;
             *followerCurrentTerm = this->currentTerm;
             *followerLastLogIndex = this->lastLogIndex;
+            if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+              auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+              auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+              map<int, i32> key_values {};
+              for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+                auto cmd_input = (*it)->input.values_;
+                for(auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++){
+                  key_values[it2->first] = it2->second.get_i64();
+                }
+              }
+              
+              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+              de->AddToList();
+              de->Wait();
+            }
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",

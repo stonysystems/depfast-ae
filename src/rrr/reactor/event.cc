@@ -6,6 +6,7 @@
 #include "reactor.h"
 #include "epoll_wrapper.h"
 
+#define EVENT_TIMEOUT_CHECK 1
 namespace rrr {
 using std::function;
 
@@ -45,6 +46,7 @@ void Event::Wait(uint64_t timeout) {
 #endif
     if (timeout > 0) {
       wakeup_time_ = Time::now() + timeout;
+      //Log_info("WAITING: %p", shared_from_this());
       auto& timeout_events = Reactor::GetReactor()->timeout_events_;
       timeout_events.push_back(shared_from_this());
     }
@@ -89,7 +91,6 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
-      //Log_info("READY: %p", this);
       Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
@@ -113,6 +114,18 @@ Event::Event() {
   auto coro = Coroutine::CurrentCoroutine();
 //  verify(coro);
   wp_coro_ = coro;
+}
+
+DiskEvent::DiskEvent(std::map<int, i32> cmd_): Event(),
+                                cmd(cmd_){
+}
+
+void DiskEvent::AddToList(){
+  rrr::Reactor::GetReactor()->disk_job_.lock();
+  auto& disk_events = rrr::Reactor::GetReactor()->disk_events_;
+  disk_events.push_back(shared_from_this());
+  //Log_info("thread of disk events: %d", rrr::Reactor::GetReactor()->thread_id_);
+  rrr::Reactor::GetReactor()->disk_job_.unlock();
 }
 
 bool IntEvent::TestTrigger() {

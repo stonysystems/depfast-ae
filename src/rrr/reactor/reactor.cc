@@ -14,7 +14,11 @@
 namespace rrr {
 
 thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
+thread_local std::shared_ptr<Reactor> Reactor::sp_disk_reactor_th_{};
 thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
+//std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
+//std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
+SpinLock Reactor::disk_job_;
 
 std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
   // TODO re-enable this verify
@@ -38,6 +42,16 @@ Reactor::GetReactor() {
     sp_reactor_th_->thread_id_ = std::this_thread::get_id();
   }
   return sp_reactor_th_;
+}
+
+std::shared_ptr<Reactor>
+Reactor::GetDiskReactor() {
+  if (!sp_disk_reactor_th_) {
+    Log_debug("create a coroutine scheduler");
+    sp_disk_reactor_th_ = std::make_shared<Reactor>();
+    sp_disk_reactor_th_->thread_id_ = std::this_thread::get_id();
+  }
+  return sp_disk_reactor_th_;
 }
 
 /**
@@ -75,6 +89,16 @@ void Reactor::Loop(bool infinite) {
     for (auto ev : ready_events) {
       verify(ev->status_ == Event::READY);
     }
+    
+
+    disk_job_.lock();
+    auto it = ready_disk_events_.begin();
+    while (it != ready_disk_events_.end()){
+      auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
+      it = ready_disk_events_.erase(it);
+      disk_event->Test();
+    }
+    disk_job_.unlock();
 
     auto time_now = Time::now();
     //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
@@ -85,6 +109,7 @@ void Reactor::Loop(bool infinite) {
         case Event::INIT:
           verify(0);
         case Event::WAIT: {
+          //Log_info("READY???: %p", *it);
           const auto &wakeup_time = event.wakeup_time_;
           verify(wakeup_time > 0);
           if (time_now > wakeup_time) {
@@ -140,6 +165,21 @@ void Reactor::Loop(bool infinite) {
   verify(ready_events_.empty());
 }
 
+void Reactor::DiskLoop(){
+  Reactor::GetReactor()->disk_job_.lock();
+  auto disk_events = Reactor::GetReactor()->disk_events_;
+  auto it = Reactor::GetReactor()->disk_events_.begin();
+  while(it != Reactor::GetReactor()->disk_events_.end()){
+    auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
+    //Log_info("size of disk_events before: %d", disk_events.size());
+    disk_event->Write();
+    it = Reactor::GetReactor()->disk_events_.erase(it);
+    Reactor::GetReactor()->ready_disk_events_.push_back(disk_event);
+  }
+  //Log_info("size of disk_events after: %d", Reactor::GetReactor()->disk_events_.size());
+  Reactor::GetReactor()->disk_job_.unlock();
+}
+
 void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 //  verify(!sp_running_coro_th_); // disallow nested coros
   verify(sp_running_coro_th_ != sp_coro);
@@ -168,6 +208,10 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 // TODO PollMgr -> ReactorFactory
 class PollMgr::PollThread {
 
+  struct thread_params{
+    PollThread* thread;
+    std::shared_ptr<Reactor> reactor_th;
+  };
   friend class PollMgr;
 
   Epoll poll_{};
@@ -180,18 +224,45 @@ class PollMgr::PollThread {
   std::unordered_set<shared_ptr<Pollable>> pending_remove_{};
   SpinLock pending_remove_l_;
   SpinLock lock_job_;
+  static SpinLock disk_job_;
 
   pthread_t th_;
+  pthread_t disk_th_;
   bool stop_flag_;
   bool pause_flag_ ;
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
+    
+    Log_info("started poll loop: %d", Reactor::GetReactor()->thread_id_);
+    //Put disk I/O thread here for now, but we should move it to clean up code
+    
+    struct thread_params* args = new struct thread_params;
+    args->thread = thiz;
+    args->reactor_th = Reactor::GetReactor();
+
+    pthread_t disk_th;
+    Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    
     thiz->poll_loop();
+    delete args;
     pthread_exit(nullptr);
     return nullptr;
   }
 
+  static void* start_disk_loop(void* arg){
+    struct thread_params* args = (struct thread_params*) arg;
+
+    PollThread* thiz =  args->thread;
+    Reactor::sp_reactor_th_ = args->reactor_th;
+    Log_info("started disk loop: %d", Reactor::GetDiskReactor()->thread_id_);
+    
+    while(!thiz->stop_flag_){
+      Reactor::GetDiskReactor()->DiskLoop();
+    }
+    pthread_exit(nullptr);
+    return nullptr;
+  }
   void poll_loop();
 
   void start(PollMgr* poll_mgr) {

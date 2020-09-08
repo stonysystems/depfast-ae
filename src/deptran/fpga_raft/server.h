@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../scheduler.h"
+#include "../classic/tpc_command.h"
 
 namespace janus {
 class Command;
@@ -139,6 +140,21 @@ class FpgaRaftServer : public TxLogServer {
     auto instance = GetFpgaRaftInstance(lastLogIndex);
     instance->log_ = cmd;
     instance->term = currentTerm;
+    if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+      auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+      auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+      map<int, i32> key_values {};
+      for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+        auto cmd_input = (*it)->input.values_;
+        for(auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++){
+          key_values[it2->first] = it2->second.get_i64();
+        }
+      }
+              
+      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+      de->AddToList();
+      de->Wait();
+    }
     *term = currentTerm ;
   }
   

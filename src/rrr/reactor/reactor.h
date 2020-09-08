@@ -20,7 +20,9 @@ class Coroutine;
 class Reactor {
  public:
   static std::shared_ptr<Reactor> GetReactor();
+  static std::shared_ptr<Reactor> GetDiskReactor();
   static thread_local std::shared_ptr<Reactor> sp_reactor_th_;
+  static thread_local std::shared_ptr<Reactor> sp_disk_reactor_th_;
   static thread_local std::shared_ptr<Coroutine> sp_running_coro_th_;
 
   /*struct eventComp{
@@ -37,11 +39,14 @@ class Reactor {
   std::list<std::shared_ptr<Event>> waiting_events_{};
   std::vector<std::shared_ptr<Event>> ready_events_{};
   std::list<std::shared_ptr<Event>> timeout_events_{};
+  std::vector<std::shared_ptr<Event>> disk_events_{};
+  std::vector<std::shared_ptr<Event>> ready_disk_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
   std::thread::id thread_id_{};
+  static SpinLock disk_job_;
 #ifdef REUSE_CORO
 #define REUSING_CORO (true)
 #else
@@ -53,6 +58,7 @@ class Reactor {
    */
   std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
   void Loop(bool infinite = false);
+  void DiskLoop();
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);
 
   ~Reactor() {
@@ -60,6 +66,7 @@ class Reactor {
   }
   friend Event;
 
+  
   template <typename Ev, typename... Args>
   static shared_ptr<Ev> CreateSpEvent(Args&&... args) {
     auto sp_ev = make_shared<Ev>(args...);

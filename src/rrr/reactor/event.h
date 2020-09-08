@@ -58,6 +58,28 @@ class Event : public std::enable_shared_from_this<Event> {
   Event();
 };
 
+class DiskEvent : public Event {
+ public:
+  bool handled = false;
+  std::map<int, i32> cmd;
+  
+  DiskEvent(std::map<int, i32> cmd_);
+
+  void AddToList();
+
+  void Write() {    
+    std::ofstream of("../db/data.txt", std::fstream::app);
+    for(auto it2 = cmd.begin(); it2 != cmd.end(); it2++){
+      of << it2->first << ": " << it2->second << "\n";
+    }
+    of.close();
+    handled = true;
+  }
+  bool IsReady() {
+    return handled;
+  }
+};
+
 template <class Type>
 class BoxEvent : public Event {
  public:
@@ -249,6 +271,7 @@ class DispatchEvent: public Event{
     DispatchEvent() : Event(){
     
     }
+
     bool IsReady() override{
       if(n_dispatch_ == n_dispatch_ack_){
         if(aborted_){
