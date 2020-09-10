@@ -350,6 +350,7 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 1;
             *followerCurrentTerm = this->currentTerm;
             *followerLastLogIndex = this->lastLogIndex;
+
             if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
               auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
               auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
@@ -361,6 +362,12 @@ void FpgaRaftServer::StartTimer()
                 }
               }
               
+              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+              de->AddToList();
+              de->Wait();
+            } else {
+              map<int, i32> key_values {};
+              key_values[1] = 1;
               auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
               de->AddToList();
               de->Wait();

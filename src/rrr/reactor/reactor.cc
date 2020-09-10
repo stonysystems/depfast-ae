@@ -84,21 +84,32 @@ void Reactor::Loop(bool infinite) {
   looping_ = infinite;
 
   do {
+    disk_job_.lock();
+    if (ready_disk_events_.empty()) {
+      disk_job_.unlock();
+    } else {
+      auto sp_event = ready_disk_events_.front();
+      auto& event = *sp_event;
+      ready_disk_events_.pop_front();
+      disk_job_.unlock();
+      auto sp_coro = event.wp_coro_.lock();
+      verify(sp_coro);
+      verify(sp_coro->status_ == Coroutine::PAUSED);
+      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
+      event.status_ = Event::READY;
+      if (event.status_ == Event::READY) {
+        event.status_ = Event::DONE;
+      } else {
+        verify(event.status_ == Event::TIMEOUT);
+      }
+      ContinueCoro(sp_coro);
+    }
+
     std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
     verify(ready_events_.empty());
     for (auto ev : ready_events) {
       verify(ev->status_ == Event::READY);
     }
-    
-
-    disk_job_.lock();
-    auto it = ready_disk_events_.begin();
-    while (it != ready_disk_events_.end()){
-      auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
-      it = ready_disk_events_.erase(it);
-      disk_event->Test();
-    }
-    disk_job_.unlock();
 
     auto time_now = Time::now();
     //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
@@ -161,7 +172,7 @@ void Reactor::Loop(bool infinite) {
 //        verify(event.status_ != Event::READY);
 //      }
 //    }
-  } while (looping_ || !ready_events_.empty());
+  } while (looping_ || !ready_events_.empty() || !ready_disk_events_.empty());
   verify(ready_events_.empty());
 }
 
@@ -259,7 +270,7 @@ class PollMgr::PollThread {
     
     while(!thiz->stop_flag_){
       Reactor::GetDiskReactor()->DiskLoop();
-      sleep(1);
+      sleep(0);
     }
     pthread_exit(nullptr);
     return nullptr;

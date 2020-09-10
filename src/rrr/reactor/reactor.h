@@ -40,7 +40,7 @@ class Reactor {
   std::vector<std::shared_ptr<Event>> ready_events_{};
   std::list<std::shared_ptr<Event>> timeout_events_{};
   std::vector<std::shared_ptr<Event>> disk_events_{};
-  std::vector<std::shared_ptr<Event>> ready_disk_events_{};
+  std::list<std::shared_ptr<Event>> ready_disk_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};

@@ -140,6 +140,7 @@ class FpgaRaftServer : public TxLogServer {
     auto instance = GetFpgaRaftInstance(lastLogIndex);
     instance->log_ = cmd;
     instance->term = currentTerm;
+
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
       auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
       auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
@@ -151,6 +152,12 @@ class FpgaRaftServer : public TxLogServer {
         }
       }
               
+      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+      de->AddToList();
+      de->Wait();
+    } else {
+      map<int, i32> key_values {};
+      key_values[1] = 1;
       auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
       de->AddToList();
       de->Wait();
