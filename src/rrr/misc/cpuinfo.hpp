@@ -7,9 +7,9 @@
 #include <sstream>
 #include <vector>
 #include "sys/times.h"
-#include "sys/sysinfo.h"
 
 #ifndef __APPLE__
+#include "sys/sysinfo.h"
 #include "sys/vtimes.h"
 #endif
 

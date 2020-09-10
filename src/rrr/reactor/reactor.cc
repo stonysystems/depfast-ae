@@ -259,6 +259,7 @@ class PollMgr::PollThread {
     
     while(!thiz->stop_flag_){
       Reactor::GetDiskReactor()->DiskLoop();
+      sleep(1);
     }
     pthread_exit(nullptr);
     return nullptr;
