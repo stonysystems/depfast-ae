@@ -95,7 +95,7 @@ void Reactor::Loop(bool infinite) {
       auto sp_coro = event.wp_coro_.lock();
       verify(sp_coro);
 //      verify(sp_coro->status_ == Coroutine::PAUSED);
-      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
+//      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
       event.status_ = Event::READY;
       if (event.status_ == Event::READY) {
         event.status_ = Event::DONE;
