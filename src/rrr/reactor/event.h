@@ -73,11 +73,15 @@ class DiskEvent : public Event {
       of << it2->first << ": " << it2->second << "\n";
     }
     of.close();
-    handled = true;
+    //handled = true;
   }
   bool IsReady() {
     return handled;
   }
+	bool Test(){
+		verify(0);
+		return false;
+	}
 };
 
 template <class Type>

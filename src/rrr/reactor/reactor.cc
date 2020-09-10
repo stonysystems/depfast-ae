@@ -94,8 +94,8 @@ void Reactor::Loop(bool infinite) {
       disk_job_.unlock();
       auto sp_coro = event.wp_coro_.lock();
       verify(sp_coro);
-//      verify(sp_coro->status_ == Coroutine::PAUSED);
-//      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
+      verify(sp_coro->status_ == Coroutine::PAUSED);
+      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
       event.status_ = Event::READY;
       if (event.status_ == Event::READY) {
         event.status_ = Event::DONE;
@@ -124,6 +124,7 @@ void Reactor::Loop(bool infinite) {
           const auto &wakeup_time = event.wakeup_time_;
           verify(wakeup_time > 0);
           if (time_now > wakeup_time) {
+						verify(0);
             if (event.IsReady()) {
               // This is because our event mechanism is not perfect, some events
               // don't get triggered with arbitrary condition change.

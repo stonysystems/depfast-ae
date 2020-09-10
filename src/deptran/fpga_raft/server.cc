@@ -367,7 +367,7 @@ void FpgaRaftServer::StartTimer()
               de->Wait();
             } else {
               map<int, i32> key_values {};
-              key_values[1] = 1;
+              key_values[-1] = -1;
               auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
               de->AddToList();
               de->Wait();
