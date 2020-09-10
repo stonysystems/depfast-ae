@@ -61,14 +61,15 @@ class Event : public std::enable_shared_from_this<Event> {
 class DiskEvent : public Event {
  public:
   bool handled = false;
+	int server = 0;
   std::map<int, i32> cmd;
   
-  DiskEvent(std::map<int, i32> cmd_);
+  DiskEvent(std::map<int, i32> cmd_, int server_);
 
   void AddToList();
 
   void Write() {    
-    std::ofstream of("../db/data.txt", std::fstream::app);
+    std::ofstream of("/db/data" + std::to_string(server) + ".txt", std::fstream::app);
     for(auto it2 = cmd.begin(); it2 != cmd.end(); it2++){
       of << it2->first << ": " << it2->second << "\n";
     }

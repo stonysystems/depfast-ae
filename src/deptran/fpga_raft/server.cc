@@ -322,7 +322,8 @@ void FpgaRaftServer::StartTimer()
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
-        if ((leaderCurrentTerm >= this->currentTerm) &&
+				if(!IsLeader()){
+					if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)
                 /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
             //resetTimer() ;
@@ -350,9 +351,27 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 1;
             *followerCurrentTerm = this->currentTerm;
             *followerLastLogIndex = this->lastLogIndex;
+					}
+					else {
+            Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
+                this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
+            *followerAppendOK = 0;
+					}
+        } else {
+					*followerAppendOK = 1;
+					*followerCurrentTerm = this->currentTerm;
+					*followerLastLogIndex = this->lastLogIndex;
+				}
 
-            if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
-              auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+
+        if (((leaderCurrentTerm >= this->currentTerm) &&
+                (leaderPrevLogIndex <= this->lastLogIndex)) ||
+						 IsLeader()){
+            auto instance = GetFpgaRaftInstance(lastLogIndex);
+            if (instance->log_->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+							verify(instance->log_);
+              auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(instance->log_);
+							verify(p_cmd->cmd_);
               auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
               map<int, i32> key_values {};
               for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
@@ -362,26 +381,19 @@ void FpgaRaftServer::StartTimer()
                 }
               }
               
-              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values, loc_id_);
               de->AddToList();
               de->Wait();
+							prev_map_ = key_values;
             } else {
               map<int, i32> key_values {};
-              key_values[1] = 1;
-              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+							key_values[-1] = -1;
+              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values, loc_id_);
               de->AddToList();
               de->Wait();
             }
-        }
-        else {
-            Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
-                this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
-            *followerAppendOK = 0;
-        }
+				}
         cb();
-
-
-				//Log_info("time of OAE: %d", end_.tv_nsec-start_.tv_nsec);
     }
 
     void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd, 

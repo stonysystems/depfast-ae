@@ -140,15 +140,15 @@ class QuorumEvent : public Event {
       return true;
     }
     if (Yes()) {
-//      Log_info("voted: %d is equal or greater than quorum: %d",
-//                (int)n_voted_yes_, (int) quorum_);
+      //Log_info("voted: %d is equal or greater than quorum: %d at %d",
+      //          (int)n_voted_yes_, (int) quorum_, shared_from_this());
       ready_time = std::chrono::steady_clock::now();
       return true;
     } else if (No()) {
       return true;
     }
-//    Log_debug("voted: %d is smaller than quorum: %d",
-//              (int)n_voted_, (int) quorum_);
+    //Log_info("voted: %d is smaller than quorum: %d at %d",
+    //          (int)n_voted_yes_, (int) quorum_, shared_from_this());
     return false;
   }
 

@@ -97,9 +97,11 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		clock_gettime(CLOCK_REALTIME, &end_);
 
 		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);*/
-    if (sp_quorum->Yes()) {
+    
+
+		std::lock_guard<std::recursive_mutex> lock1(mtx_);
+		if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
@@ -116,6 +118,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
     else {
         verify(0);
     }
+
 }
 
 void CoordinatorFpgaRaft::Commit() {

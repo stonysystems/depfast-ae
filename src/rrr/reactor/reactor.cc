@@ -84,34 +84,46 @@ void Reactor::Loop(bool infinite) {
   looping_ = infinite;
 
   do {
-    disk_job_.lock();
+    /*disk_job_.lock();
     if (ready_disk_events_.empty()) {
       disk_job_.unlock();
     } else {
       auto sp_event = ready_disk_events_.front();
-      auto& event = *sp_event;
+      auto& disk_event = *sp_event;
       ready_disk_events_.pop_front();
       disk_job_.unlock();
-      auto sp_coro = event.wp_coro_.lock();
+      auto sp_coro = disk_event.wp_coro_.lock();
+			if (!sp_coro) Log_info("failing here??");
       verify(sp_coro);
       verify(sp_coro->status_ == Coroutine::PAUSED);
       verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
-      event.status_ = Event::READY;
-      if (event.status_ == Event::READY) {
-        event.status_ = Event::DONE;
+      disk_event.status_ = Event::READY;
+      if (disk_event.status_ == Event::READY) {
+        disk_event.status_ = Event::DONE;
       } else {
-        verify(event.status_ == Event::TIMEOUT);
+        verify(disk_event.status_ == Event::TIMEOUT);
       }
       ContinueCoro(sp_coro);
-    }
+    }*/
 
     std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
     verify(ready_events_.empty());
     for (auto ev : ready_events) {
       verify(ev->status_ == Event::READY);
     }
-
-    auto time_now = Time::now();
+		
+		disk_job_.lock();
+    //auto it = ready_disk_events_.begin();
+    while (!ready_disk_events_.empty()){
+      //Log_info("infinite looping here: %ld", thread_id_);
+			auto sp_event = ready_disk_events_.front();
+      auto disk_event = std::static_pointer_cast<DiskEvent>(sp_event);
+      ready_disk_events_.pop_front();
+      disk_event->Test();
+    }
+    disk_job_.unlock();
+    
+		auto time_now = Time::now();
     //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;

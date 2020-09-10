@@ -52,13 +52,13 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2);
+  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2+1);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
   WAN_WAIT;
   for (auto& p : proxies) {
-    if (p.first == this->loc_id_)
-        continue;
+    /*if (p.first == this->loc_id_)
+        continue;*/
     auto proxy = (FpgaRaftProxy*) p.second;
     FutureAttr fuattr;
     fuattr.callback = [e, isLeader, currentTerm] (Future* fu) {

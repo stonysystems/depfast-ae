@@ -111,6 +111,7 @@ class FpgaRaftServer : public TxLogServer {
   int n_prepare_ = 0;
   int n_accept_ = 0;
   int n_commit_ = 0;
+	std::mutex mtx1_{};
 
   /* NOTE: I think I should move these to the FpgaRaftData class */
   /* TODO: talk to Shuai about it */
@@ -119,6 +120,7 @@ class FpgaRaftServer : public TxLogServer {
   uint64_t commitIndex = 0;
   uint64_t executeIndex = 0;
   map<slotid_t, shared_ptr<FpgaRaftData>> raft_logs_{};
+	map<int, i32> prev_map_{};
 //  vector<shared_ptr<FpgaRaftData>> raft_logs_{};
 
   void StartTimer() ;
@@ -141,27 +143,6 @@ class FpgaRaftServer : public TxLogServer {
     instance->log_ = cmd;
     instance->term = currentTerm;
 
-    if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
-      auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
-      auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
-      map<int, i32> key_values {};
-      for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
-        auto cmd_input = (*it)->input.values_;
-        for(auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++){
-          key_values[it2->first] = it2->second.get_i64();
-        }
-      }
-              
-      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
-      de->AddToList();
-      de->Wait();
-    } else {
-      map<int, i32> key_values {};
-      key_values[1] = 1;
-      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
-      de->AddToList();
-      de->Wait();
-    }
     *term = currentTerm ;
   }
   

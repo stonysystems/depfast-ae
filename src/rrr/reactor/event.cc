@@ -116,8 +116,9 @@ Event::Event() {
   wp_coro_ = coro;
 }
 
-DiskEvent::DiskEvent(std::map<int, i32> cmd_): Event(),
-                                cmd(cmd_){
+DiskEvent::DiskEvent(std::map<int, i32> cmd_, int server_): Event(),
+																														cmd(cmd_),
+																														server(server_){
 }
 
 void DiskEvent::AddToList(){
