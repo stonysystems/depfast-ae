@@ -97,6 +97,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		clock_gettime(CLOCK_REALTIME, &end_);
 
 		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);*/
+    verify(sp_quorum->status_ != Event::TIMEOUT);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
