@@ -68,7 +68,7 @@ class DiskEvent : public Event {
   void AddToList();
 
   void Write() {    
-    std::ofstream of("../db/data.txt", std::fstream::app);
+    std::ofstream of("/db/data.txt", std::fstream::app);
     for(auto it2 = cmd.begin(); it2 != cmd.end(); it2++){
       of << it2->first << ": " << it2->second << "\n";
     }

@@ -457,7 +457,7 @@ void CoordinatorClassic::Commit() {
 		//if(commo()->window_avg >= 1800 && commo()->cpu <= 0.50 && !commo()->paused){
 		double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
 		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
-		if(commo()->cpu <= (cpu_thres*0.70) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+		if(commo()->cpu <= (cpu_thres*0.00) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
 		} else if(commo()->cpu > (cpu_thres*0.70)) commo()->low_util = 0;

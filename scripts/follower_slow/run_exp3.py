@@ -551,19 +551,19 @@ class ClientController(object):
                 try:
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           maj_min = lsblk | grep sdc | awk '{print $2}'; \
-                           sync; echo 3 > /proc/sys/vm/drop_caches; \
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
                            sudo mkdir /sys/fs/cgroup/blkio/janus; \
-                           echo '$maj_min 524288' > /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
-                           echo '$maj_min 524288' > /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           echo '8:32 524288' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_iops_device; \
+                           echo '8:32 524288' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_iops_device; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           maj_min = lsblk | grep sdc | awk '{print $2}'; \
-                           sync; echo 3 > /proc/sys/vm/drop_caches; \
+                           maj_min=`lsblk | grep sdc | awk '{print $2}'`; \
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
                            sudo mkdir /sys/fs/cgroup/blkio/janus; \
-                           echo '$maj_min 524288' > /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
-                           echo '$maj_min 524288' > /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           input=`echo $maj_min 524288`; \
+                           echo $input | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo $input | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     for process_name, process in self.process_infos.items():

@@ -550,12 +550,29 @@ class ClientController(object):
             if (progress >= 5 and self.once == 1):
                 try:
 
-                    cmd = "sudo nohup taskset -ac 1 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
+                           sudo mkdir /sys/fs/cgroup/blkio/janus; \
+                           echo '8:32 524288' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_iops_device; \
+                           echo '8:32 524288' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_iops_device; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
+                    
+                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           maj_min=`lsblk | grep sdc | awk '{print $2}'`; \
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
+                           sudo mkdir /sys/fs/cgroup/blkio/janus; \
+                           input=`echo $maj_min 524288`; \
+                           echo $input | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo $input | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2' or process_name == 'host5':
+                        if process_name == 'host1':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        if process_name == 'host5':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
                     self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
@@ -573,14 +590,17 @@ class ClientController(object):
 
             if (progress >= upper_cutoff_pct + 3):
                 try:
-                    cmd = "pid=`ps aux | grep dd | head -1 | awk '{print $2}'`; \
-                           pid2=`ps aux | grep dd | head -2 | tail -1 | awk '{print $2}'`; \
-                           kill -9 $pid; \
-                           kill -9 $pid2;"
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
                     
+                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
+
                     for process_name, process in self.process_infos.items():
-                        if process.name == 'host2' or process.name == 'host5':
+                        if process.name == 'host1':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        if process_name == 'host5':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
                         self.once += 1
                 
                 except subprocess.CalledProcessError as e:
