@@ -354,20 +354,24 @@ void FpgaRaftServer::StartTimer()
             if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
               auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
               auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
-              map<int, i32> key_values {};
-              for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
-                auto cmd_input = (*it)->input.values_;
-                for(auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++){
-                  key_values[it2->first] = it2->second.get_i64();
-                }
-              }
+							vector<map<int, i32>> key_values {};
+							for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+								auto cmd_input = (*it)->input.values_;
+								map<int, i32> curr_map {};
+								for(auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++){
+									curr_map[it2->first] = it2->second.get_i64();
+								}
+								key_values.push_back(curr_map);
+							}
               
               auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
               de->AddToList();
               de->Wait();
             } else {
-              map<int, i32> key_values {};
-              key_values[-1] = -1;
+              vector<map<int, i32>> key_values {};
+							map<int, i32> curr_map {};
+              curr_map[-1] = -1;
+							key_values.push_back(curr_map);
               auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
               de->AddToList();
               de->Wait();
