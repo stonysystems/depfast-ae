@@ -550,7 +550,7 @@ class ClientController(object):
             if (progress >= 5 and self.once == 1):
                 try:
 
-                    cmd = "sudo nohup taskset -ac 1 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
+                    cmd = "sudo nohup taskset -ac 2 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
                     
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2' or process_name == 'host5':
@@ -575,8 +575,8 @@ class ClientController(object):
                 try:
                     cmd = "pid=`ps aux | grep dd | head -1 | awk '{print $2}'`; \
                            pid2=`ps aux | grep dd | head -2 | tail -1 | awk '{print $2}'`; \
-                           kill -9 $pid; \
-                           kill -9 $pid2;"
+                           sudo kill -9 $pid; \
+                           sudo kill -9 $pid2;"
                     
                     for process_name, process in self.process_infos.items():
                         if process.name == 'host2' or process.name == 'host5':

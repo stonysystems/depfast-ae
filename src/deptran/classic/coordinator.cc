@@ -347,6 +347,7 @@ void CoordinatorClassic::Prepare() {
                                           cmd_->id_,
                                           sids);
 
+
   quorum_event->Wait();
   quorum_event->log();
 

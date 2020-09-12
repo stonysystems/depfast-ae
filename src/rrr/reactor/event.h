@@ -6,6 +6,11 @@
 #include <fstream>
 #include <unordered_set>
 #include <map>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 //#include "../../deptran/client_worker.h"
 #include "../base/all.hpp"
 
@@ -67,14 +72,28 @@ class DiskEvent : public Event {
 
   void AddToList();
 
-  void Write() {    
-    std::ofstream of("/db/data.txt", std::fstream::app);
-    for(int i = 0; i < cmd.size(); i++){
-			for(auto it2 = cmd[i].begin(); it2 != cmd[i].end(); it2++){
-				of << it2->first << ": " << it2->second << "\n";
+  void Write() {
+
+		int fd = ::open("/db/data.txt", O_WRONLY | O_APPEND | O_CREAT);
+		std::string str;	
+		int num1;
+		i32 num2;
+		for(int i = 0; i < cmd.size(); i++){
+			for(auto it2 = cmd[i].begin(); it2 != cmd[i].end(); it2++){	
+				num1 = it2->first;
+				::write(fd, &num1, sizeof(int));
+				str = ": ";
+				::write(fd, str.c_str(), str.length());
+				num2 = it2->second;
+				::write(fd, &num2, sizeof(i32));
+				str = "\n";
+				::write(fd, str.c_str(), str.length());
 			}
 		}
-    of.close();
+		
+		::fsync(fd);
+		::close(fd);
+
     //handled = true;
   }
   bool IsReady() {

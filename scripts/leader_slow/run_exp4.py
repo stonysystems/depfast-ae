@@ -550,7 +550,7 @@ class ClientController(object):
             if (progress >= 5 and self.once == 1):
                 try:
 
-                    cmd = "sudo nohup taskset -ac 1 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
+                    cmd = "sudo nohup taskset -ac 2 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
                     
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host1' or process_name == 'host5':

@@ -181,15 +181,22 @@ void Reactor::DiskLoop(){
   Reactor::GetReactor()->disk_job_.lock();
   auto disk_events = Reactor::GetReactor()->disk_events_;
   auto it = Reactor::GetReactor()->disk_events_.begin();
+	std::vector<std::shared_ptr<DiskEvent>> pending_disk_events_{};
   while(it != Reactor::GetReactor()->disk_events_.end()){
     auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
-    //Log_info("size of disk_events before: %d", disk_events.size());
-    disk_event->Write();
+    //disk_event->Write();
     it = Reactor::GetReactor()->disk_events_.erase(it);
-    Reactor::GetReactor()->ready_disk_events_.push_back(disk_event);
+    //Reactor::GetReactor()->ready_disk_events_.push_back(disk_event);
+    pending_disk_events_.push_back(disk_event);
   }
-  //Log_info("size of disk_events after: %d", Reactor::GetReactor()->disk_events_.size());
   Reactor::GetReactor()->disk_job_.unlock();
+	
+	for(int i = 0; i < pending_disk_events_.size(); i++){
+		pending_disk_events_[i]->Write();
+		Reactor::GetReactor()->disk_job_.lock();
+    Reactor::GetReactor()->ready_disk_events_.push_back(pending_disk_events_[i]);
+		Reactor::GetReactor()->disk_job_.unlock();
+	}
 }
 
 void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
@@ -246,7 +253,6 @@ class PollMgr::PollThread {
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
     
-    Log_info("started poll loop: %d", Reactor::GetReactor()->thread_id_);
     //Put disk I/O thread here for now, but we should move it to clean up code
     
     struct thread_params* args = new struct thread_params;
@@ -267,7 +273,6 @@ class PollMgr::PollThread {
 
     PollThread* thiz =  args->thread;
     Reactor::sp_reactor_th_ = args->reactor_th;
-    Log_info("started disk loop: %d", Reactor::GetDiskReactor()->thread_id_);
     
     while(!thiz->stop_flag_){
       Reactor::GetDiskReactor()->DiskLoop();
