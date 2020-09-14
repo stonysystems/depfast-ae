@@ -237,7 +237,7 @@ class Epoll {
 
       bool done = poll->handle_read_two();
       if(done){
-        pending.erase(it);
+        it = pending.erase(it);
       } else{
         it++;
       }
