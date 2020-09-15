@@ -91,7 +91,6 @@ class DiskEvent : public Event {
 			}
 		}
 		
-		::fsync(fd);
 		::close(fd);
 
     //handled = true;

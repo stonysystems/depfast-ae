@@ -193,6 +193,14 @@ void Reactor::DiskLoop(){
 	
 	for(int i = 0; i < pending_disk_events_.size(); i++){
 		pending_disk_events_[i]->Write();
+	}
+	
+
+	int fd = ::open("/db/data.txt", O_WRONLY | O_APPEND | O_CREAT);
+	::fsync(fd);
+	::close(fd);
+
+	for(int i = 0; i < pending_disk_events_.size(); i++){
 		Reactor::GetReactor()->disk_job_.lock();
     Reactor::GetReactor()->ready_disk_events_.push_back(pending_disk_events_[i]);
 		Reactor::GetReactor()->disk_job_.unlock();
