@@ -137,14 +137,15 @@ void CoordinatorClassic::GotoNextPhase() {
 				if(first){
 					commo()->total_++;
 					commo()->qe->n_voted_yes_++;
+					Log_info("is it ready: %d", commo()->qe->IsReady());
 					commo()->qe->Test();
 					first = false;
 				}
-				//Log_info("total: %d", commo()->total_);
+				Log_info("total: %d", commo()->total_);
 				auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
 				t->Wait(0.1*1000*1000);
 			}
-      DispatchAsync(true);
+			DispatchAsync(true);
       break;
       //break;
     case Phase::DISPATCH:
@@ -453,14 +454,15 @@ void CoordinatorClassic::Commit() {
     verify(0);
   }
 	Log_info("commo window avg: %d", commo()->window_avg);
-	//Log_info("commo total_avg: %d", commo()->total_avg);
-	if(commo()->total > 10000/* && commo()->window_avg >= commo()->total_avg*2.0*/){
-		double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
-		Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
-		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+	if(commo()->total > 100 && !commo()->paused/* && commo()->window_avg >= commo()->total_avg*2.0*/){
+		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
+		double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
+		if(cpu_thres >= 0.75) cpu_thres = 0.75;
+		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		if(commo()->cpu <= (cpu_thres*0.70) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
-		} else if(commo()->cpu > (cpu_thres*100)) commo()->low_util = 0;
+		} else if(commo()->cpu > (cpu_thres*0.70)) commo()->low_util = 0;
 		if(commo()->low_util >= 10){
 			commo()->low_util = 0;
 			Log_info("Reelection started");
@@ -474,7 +476,7 @@ void CoordinatorClassic::Commit() {
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
-			Log_info("Reelection finished");
+			//Log_info("Reelection finished");
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}

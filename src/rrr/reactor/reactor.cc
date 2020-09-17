@@ -124,7 +124,6 @@ void Reactor::Loop(bool infinite) {
           const auto &wakeup_time = event.wakeup_time_;
           verify(wakeup_time > 0);
           if (time_now > wakeup_time) {
-						verify(0);
             if (event.IsReady()) {
               // This is because our event mechanism is not perfect, some events
               // don't get triggered with arbitrary condition change.

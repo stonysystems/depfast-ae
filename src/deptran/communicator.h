@@ -110,6 +110,9 @@ class Communicator {
   std::vector<std::thread> threads;
   bool broadcasting_to_leaders_only_{true};
   bool follower_forwarding{false};
+	std::mutex lock_;
+	std::condition_variable cv_;
+	bool waiting = false;
 
   Communicator(PollMgr* poll_mgr = nullptr);
   virtual ~Communicator();
