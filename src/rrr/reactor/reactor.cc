@@ -191,7 +191,7 @@ void Reactor::DiskLoop(){
   Reactor::GetReactor()->disk_job_.unlock();
 	
 	for(int i = 0; i < pending_disk_events_.size(); i++){
-		pending_disk_events_[i]->Write();
+		pending_disk_events_[i]->Handle();
 	}
 	
 
@@ -288,6 +288,7 @@ class PollMgr::PollThread {
     pthread_exit(nullptr);
     return nullptr;
   }
+
   void poll_loop();
 
   void start(PollMgr* poll_mgr) {

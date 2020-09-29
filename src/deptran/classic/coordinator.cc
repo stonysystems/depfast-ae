@@ -457,12 +457,12 @@ void CoordinatorClassic::Commit() {
 	if(commo()->total > 100 && !commo()->paused/* && commo()->window_avg >= commo()->total_avg*2.0*/){
 		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
 		double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
-		if(cpu_thres >= 0.75) cpu_thres = 0.75;
+		if(cpu_thres >= 1.0) cpu_thres = 1.0;
 		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
-		if(commo()->cpu <= (cpu_thres*0.70) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
-		} else if(commo()->cpu > (cpu_thres*0.70)) commo()->low_util = 0;
+		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;
 		if(commo()->low_util >= 10){
 			commo()->low_util = 0;
 			Log_info("Reelection started");

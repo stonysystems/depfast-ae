@@ -364,16 +364,18 @@ void FpgaRaftServer::StartTimer()
 								key_values.push_back(curr_map);
 							}
               
-              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+              auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
               de->AddToList();
               de->Wait();
             } else {
-              vector<map<int, i32>> key_values {};
+              /*vector<map<int, i32>> key_values {};
 							map<int, i32> curr_map {};
               curr_map[-1] = -1;
 							key_values.push_back(curr_map);
-              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
-              de->AddToList();
+              auto de = Reactor::CreateSpEvent<DiskEvent>(key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
+              de->AddToList();*/
+							int value = -1;
+							auto de = IO::write("/db/data.txt", &value, sizeof(int));
               de->Wait();
             }
         }
@@ -383,9 +385,6 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
         cb();
-
-
-				//Log_info("time of OAE: %d", end_.tv_nsec-start_.tv_nsec);
     }
 
     void FpgaRaftServer::OnForward(shared_ptr<Marshallable> &cmd, 

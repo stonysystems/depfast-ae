@@ -21,6 +21,13 @@ struct FpgaRaftData {
   shared_ptr<Marshallable> log_{nullptr};
 };
 
+struct KeyValue {
+	int key;
+	string colon;
+	int value;
+	string newline;
+}
+
 class FpgaRaftServer : public TxLogServer {
  private:
    std::vector<std::thread> timer_threads_ = {};
@@ -154,16 +161,18 @@ class FpgaRaftServer : public TxLogServer {
 	key_values.push_back(curr_map);
       }
               
-      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
+      auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
       de->AddToList();
       de->Wait();
     } else {
-      vector<map<int, i32>> key_values {};
+      /*vector<map<int, i32>> key_values {};
       map<int, i32> curr_map {};
       curr_map[-1] = -1;
       key_values.push_back(curr_map);
-      auto de = Reactor::CreateSpEvent<DiskEvent>(key_values);
-      de->AddToList();
+      auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
+      de->AddToList();*/
+			int value = -1;
+			auto de = IO::write("db/data.txt", &value, sizeof(int));
       de->Wait();
     }
     *term = currentTerm ;

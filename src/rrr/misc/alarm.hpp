@@ -49,7 +49,7 @@ class Alarm: public FrequentJob {
 
   ~Alarm() {
   }
-
+	
   void set_holder(rrr::PollMgr *mgr) {
   }
 

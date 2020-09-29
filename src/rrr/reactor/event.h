@@ -65,16 +65,33 @@ class Event : public std::enable_shared_from_this<Event> {
 
 class DiskEvent : public Event {
  public:
+	//maybe, instead of enum, this should be a queue
+	enum Operation {WRITE=1, READ=2, FSYNC=4, WRITE_SPEC=8};
   bool handled = false;
+	bool sync = false;
+	std::string file;
+	Operation op;
+	void* buffer;
+	size_t size_;
+	size_t count_;
+	//create a more generic write instead of a map
   std::vector<std::map<int, i32>> cmd;
+	
+	friend inline Operation operator | (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) | static_cast<int>(op2));
+	}
   
-  DiskEvent(std::vector<std::map<int, i32>> cmd_);
+	friend inline Operation operator & (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) & static_cast<int>(op2));
+	}
+
+  DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_);
+	DiskEvent(std::string file_, void* ptr, size_t size, Operation op_);
 
   void AddToList();
 
   void Write() {
-
-		int fd = ::open("/db/data.txt", O_WRONLY | O_APPEND | O_CREAT);
+		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
 		std::string str;	
 		int num1;
 		i32 num2;
@@ -90,11 +107,32 @@ class DiskEvent : public Event {
 				::write(fd, str.c_str(), str.length());
 			}
 		}
-		
 		::close(fd);
-
     //handled = true;
   }
+
+	void Write_Spec() {
+		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		::write(fd, buffer, size_);
+		::close(fd);
+	}
+
+	void Handle() {
+		if (op & WRITE) {
+			Write();
+		}
+		if (op & READ) {
+			//TODO
+		}
+		if (op & FSYNC) {
+			sync = true;
+		}
+		if (op & WRITE_SPEC) {
+			Log_info("special");
+			Write_Spec();
+		}
+		//add more operations here
+	}
   bool IsReady() {
     return handled;
   }

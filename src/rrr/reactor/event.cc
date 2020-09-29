@@ -114,8 +114,18 @@ Event::Event() {
   wp_coro_ = coro;
 }
 
-DiskEvent::DiskEvent(std::vector<std::map<int, i32>> cmd_): Event(),
-                                cmd(cmd_){
+DiskEvent::DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_): Event(),
+																																															cmd(cmd_),
+																																															op(op_),
+																																															file(file_){
+}
+
+DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, Operation op_): Event(),
+																																								buffer(ptr),
+																																								size_(size),
+																																								op(op_),
+																																								file(file_){
+
 }
 
 void DiskEvent::AddToList(){
