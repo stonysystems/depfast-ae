@@ -120,11 +120,12 @@ DiskEvent::DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Op
 																																															file(file_){
 }
 
-DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, Operation op_): Event(),
-																																								buffer(ptr),
-																																								size_(size),
-																																								op(op_),
-																																								file(file_){
+DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Operation op_): Event(),
+																																															buffer(ptr),
+																																															size_(size),
+																																															count_(count),
+																																															op(op_),
+																																															file(file_){
 
 }
 

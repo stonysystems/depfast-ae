@@ -74,6 +74,8 @@ class DiskEvent : public Event {
 	void* buffer;
 	size_t size_;
 	size_t count_;
+	size_t read_;
+	size_t written_;
 	//create a more generic write instead of a map
   std::vector<std::map<int, i32>> cmd;
 	
@@ -86,7 +88,7 @@ class DiskEvent : public Event {
 	}
 
   DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_);
-	DiskEvent(std::string file_, void* ptr, size_t size, Operation op_);
+	DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Operation op_);
 
   void AddToList();
 
@@ -111,10 +113,36 @@ class DiskEvent : public Event {
     //handled = true;
   }
 
-	void Write_Spec() {
+	void Read() {
+		FILE* f = fopen(file.c_str(), "rb");
+		if (f != NULL) {
+			read_ = fread(buffer, size_, count_, f);
+			Log_info("read: %d", read_);
+			fclose(f);
+		}
+	}
+	
+	void FSync() {
 		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
-		::write(fd, buffer, size_);
+		::fsync(fd);
 		::close(fd);
+	}
+
+	void Write_Spec() {
+		/*int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		::write(fd, buffer, size_);
+		::close(fd);*/
+
+		FILE* f = fopen(file.c_str(), "ab");
+		Log_info("appending");
+		if (f != NULL){
+			int written = fwrite(buffer, size_, count_, f);
+			Log_info("written: %d", written);
+			fclose(f);
+		} else {
+			Log_info("file: %s", file.c_str());
+			Log_info("error is: %s", strerror(errno)); 
+		}
 	}
 
 	void Handle() {
@@ -123,12 +151,14 @@ class DiskEvent : public Event {
 		}
 		if (op & READ) {
 			//TODO
+			Read();
 		}
 		if (op & FSYNC) {
 			sync = true;
+			FSync();
 		}
 		if (op & WRITE_SPEC) {
-			Log_info("special");
+			//Log_info("special");
 			Write_Spec();
 		}
 		//add more operations here

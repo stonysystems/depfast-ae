@@ -23,10 +23,8 @@ struct FpgaRaftData {
 
 struct KeyValue {
 	int key;
-	string colon;
-	int value;
-	string newline;
-}
+	i32 value;
+};
 
 class FpgaRaftServer : public TxLogServer {
  private:
@@ -151,7 +149,20 @@ class FpgaRaftServer : public TxLogServer {
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
       auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
       auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
-      vector<map<int, i32>> key_values {};
+			vector<struct KeyValue> kv_vector;
+			int index = 0;
+			for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+				auto cmd_input = (*it)->input.values_;
+				for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
+					struct KeyValue key_value = {it2->first, it2->second.get_i32()};
+					kv_vector.push_back(key_value);
+				}
+			}
+
+			struct KeyValue key_values[kv_vector.size()];
+			std::copy(kv_vector.begin(), kv_vector.end(), key_values);
+
+      /*vector<map<int, i32>> key_values {};
       for(auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
         auto cmd_input = (*it)->input.values_;
 	map<int, i32> curr_map {};
@@ -162,18 +173,25 @@ class FpgaRaftServer : public TxLogServer {
       }
               
       auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
-      de->AddToList();
-      de->Wait();
-    } else {
-      /*vector<map<int, i32>> key_values {};
-      map<int, i32> curr_map {};
-      curr_map[-1] = -1;
-      key_values.push_back(curr_map);
-      auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
       de->AddToList();*/
-			int value = -1;
-			auto de = IO::write("db/data.txt", &value, sizeof(int));
+
+			struct KeyValue key_value_[2];
+			auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
       de->Wait();
+			auto de2 = IO::read("/db/data.txt", &key_value_, sizeof(struct KeyValue), 2);
+			de2->Wait();
+			if (key_value_) {
+				Log_info("the key is: %d", key_value_[0].key);
+				Log_info("the value is: %d", key_value_[0].value);
+			}
+    } else {
+			int value = -1;
+			int value_;
+			auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+      de->Wait();
+			de = IO::read("/db/data.txt", &value_, sizeof(int), 1);
+			de->Wait();
+			Log_info("placeholder is: %d", value_);
     }
     *term = currentTerm ;
   }

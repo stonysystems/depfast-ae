@@ -364,7 +364,7 @@ void FpgaRaftServer::StartTimer()
 								key_values.push_back(curr_map);
 							}
               
-              auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
+              auto de = Reactor::CreateSpEvent<DiskEvent>("/db/data.txt", key_values, DiskEvent::WRITE);
               de->AddToList();
               de->Wait();
             } else {
@@ -375,7 +375,7 @@ void FpgaRaftServer::StartTimer()
               auto de = Reactor::CreateSpEvent<DiskEvent>(key_values, DiskEvent::WRITE | DiskEvent::FSYNC);
               de->AddToList();*/
 							int value = -1;
-							auto de = IO::write("/db/data.txt", &value, sizeof(int));
+							auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
               de->Wait();
             }
         }
