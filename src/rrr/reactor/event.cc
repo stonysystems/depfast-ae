@@ -129,12 +129,36 @@ DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Op
 
 }
 
+DiskEvent::DiskEvent(std::function<void()> f): Event(),
+																							 func_(f){
+}
+
 void DiskEvent::AddToList(){
   rrr::Reactor::GetReactor()->disk_job_.lock();
   auto& disk_events = rrr::Reactor::GetReactor()->disk_events_;
   disk_events.push_back(shared_from_this());
   //Log_info("thread of disk events: %d", rrr::Reactor::GetReactor()->thread_id_);
   rrr::Reactor::GetReactor()->disk_job_.unlock();
+}
+
+NetworkEvent::NetworkEvent(int sock_, void* ptr, size_t size, Operation op_): Event(),
+																																							buffer(ptr),
+																																							size_(size),
+																																							op(op_),
+																																							sock(sock_){
+																																							
+}
+NetworkEvent::NetworkEvent(std::function<void()> f): Event(),
+																										 func_(f){
+		
+}
+
+void NetworkEvent::AddToList(){
+  rrr::Reactor::GetReactor()->network_job_.lock();
+  auto& network_events = rrr::Reactor::GetReactor()->network_events_;
+  network_events.push_back(shared_from_this());
+  //Log_info("thread of disk events: %d", rrr::Reactor::GetReactor()->thread_id_);
+  rrr::Reactor::GetReactor()->network_job_.unlock();
 }
 
 bool IntEvent::TestTrigger() {

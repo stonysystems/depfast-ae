@@ -66,7 +66,7 @@ class Event : public std::enable_shared_from_this<Event> {
 class DiskEvent : public Event {
  public:
 	//maybe, instead of enum, this should be a queue
-	enum Operation {WRITE=1, READ=2, FSYNC=4, WRITE_SPEC=8};
+	enum Operation {WRITE=1, READ=2, FSYNC=4, WRITE_SPEC=8, SPECIAL=16};
   bool handled = false;
 	bool sync = false;
 	std::string file;
@@ -76,6 +76,7 @@ class DiskEvent : public Event {
 	size_t count_;
 	size_t read_;
 	size_t written_;
+	std::function<void()> func_;
 	//create a more generic write instead of a map
   std::vector<std::map<int, i32>> cmd;
 	
@@ -89,6 +90,7 @@ class DiskEvent : public Event {
 
   DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_);
 	DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Operation op_);
+	DiskEvent(std::function<void()> f);
 
   void AddToList();
 
@@ -117,7 +119,6 @@ class DiskEvent : public Event {
 		FILE* f = fopen(file.c_str(), "rb");
 		if (f != NULL) {
 			read_ = fread(buffer, size_, count_, f);
-			Log_info("read: %d", read_);
 			fclose(f);
 		}
 	}
@@ -128,16 +129,17 @@ class DiskEvent : public Event {
 		::close(fd);
 	}
 
+	void Special() {
+		func_();
+	}
 	void Write_Spec() {
 		/*int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
 		::write(fd, buffer, size_);
 		::close(fd);*/
 
 		FILE* f = fopen(file.c_str(), "ab");
-		Log_info("appending");
 		if (f != NULL){
 			int written = fwrite(buffer, size_, count_, f);
-			Log_info("written: %d", written);
 			fclose(f);
 		} else {
 			Log_info("file: %s", file.c_str());
@@ -150,16 +152,74 @@ class DiskEvent : public Event {
 			Write();
 		}
 		if (op & READ) {
-			//TODO
 			Read();
 		}
 		if (op & FSYNC) {
 			sync = true;
-			FSync();
 		}
 		if (op & WRITE_SPEC) {
-			//Log_info("special");
 			Write_Spec();
+		}
+	}
+  bool IsReady() {
+    return handled;
+  }
+	bool Test(){
+		verify(0);
+		return false;
+	}
+};
+
+class NetworkEvent : public Event {
+ public:
+	//maybe, instead of enum, this should be a queue
+	enum Operation {WRITE=1, READ=2, SPECIAL=4};
+  bool handled = false;
+	bool sync = false;
+	int sock;
+	Operation op;
+	void* buffer;
+	size_t size_;
+	size_t read_;
+	size_t written_;
+	std::function<void()> func_;
+	//create a more generic write instead of a map
+  std::vector<std::map<int, i32>> cmd;
+	
+	friend inline Operation operator | (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) | static_cast<int>(op2));
+	}
+  
+	friend inline Operation operator & (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) & static_cast<int>(op2));
+	}
+
+	NetworkEvent(int sock_, void* ptr, size_t size, Operation op_);
+	NetworkEvent(std::function<void()> f);
+
+  void AddToList();
+
+	void Read() {
+		read_ = ::read(sock, buffer, size_);
+	}
+
+	void Write() {
+		written_ = ::write(sock, buffer, size_);
+	}
+
+	void Special() {
+		func_();
+	}
+
+	void Handle() {
+		if (op & WRITE) {
+			Write();
+		}
+		if (op & READ) {
+			Read();
+		}
+		if (op & SPECIAL) {
+			Special();
 		}
 		//add more operations here
 	}
@@ -171,7 +231,6 @@ class DiskEvent : public Event {
 		return false;
 	}
 };
-
 template <class Type>
 class BoxEvent : public Event {
  public:

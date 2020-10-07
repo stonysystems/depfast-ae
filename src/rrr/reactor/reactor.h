@@ -41,12 +41,15 @@ class Reactor {
   std::list<std::shared_ptr<Event>> timeout_events_{};
   std::vector<std::shared_ptr<Event>> disk_events_{};
   std::list<std::shared_ptr<Event>> ready_disk_events_{};
+  std::vector<std::shared_ptr<Event>> network_events_{};
+  std::list<std::shared_ptr<Event>> ready_network_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
   std::thread::id thread_id_{};
   static SpinLock disk_job_;
+  static SpinLock network_job_;
 #ifdef REUSE_CORO
 #define REUSING_CORO (true)
 #else
@@ -59,6 +62,7 @@ class Reactor {
   std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
   void Loop(bool infinite = false);
   void DiskLoop();
+	void NetworkLoop();
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);
 
   ~Reactor() {

@@ -19,6 +19,7 @@ thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
+SpinLock Reactor::network_job_;
 
 std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
   // TODO re-enable this verify
@@ -93,14 +94,25 @@ void Reactor::Loop(bool infinite) {
       ready_disk_events_.pop_front();
       disk_job_.unlock();
       auto sp_coro = event.wp_coro_.lock();
-      verify(sp_coro);
-      verify(sp_coro->status_ == Coroutine::PAUSED);
-      verify(coros_.find(sp_coro) != coros_.end()); // TODO ?????????
       event.status_ = Event::READY;
       if (event.status_ == Event::READY) {
         event.status_ = Event::DONE;
-      } else {
-        verify(event.status_ == Event::TIMEOUT);
+      }
+      ContinueCoro(sp_coro);
+    }
+
+    network_job_.lock();
+    if (ready_network_events_.empty()) {
+      network_job_.unlock();
+    } else {
+      auto sp_event = ready_network_events_.front();
+      auto& event = *sp_event;
+      ready_network_events_.pop_front();
+      network_job_.unlock();
+      auto sp_coro = event.wp_coro_.lock();
+      event.status_ = Event::READY;
+      if (event.status_ == Event::READY) {
+        event.status_ = Event::DONE;
       }
       ContinueCoro(sp_coro);
     }
@@ -177,33 +189,64 @@ void Reactor::Loop(bool infinite) {
 }
 
 void Reactor::DiskLoop(){
-  Reactor::GetReactor()->disk_job_.lock();
+  
+	Reactor::GetReactor()->disk_job_.lock();
   auto disk_events = Reactor::GetReactor()->disk_events_;
   auto it = Reactor::GetReactor()->disk_events_.begin();
 	std::vector<std::shared_ptr<DiskEvent>> pending_disk_events_{};
   while(it != Reactor::GetReactor()->disk_events_.end()){
     auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
-    //disk_event->Write();
     it = Reactor::GetReactor()->disk_events_.erase(it);
-    //Reactor::GetReactor()->ready_disk_events_.push_back(disk_event);
     pending_disk_events_.push_back(disk_event);
   }
   Reactor::GetReactor()->disk_job_.unlock();
 	
-	for(int i = 0; i < pending_disk_events_.size(); i++){
+	unordered_set<std::string> sync_set{};
+	for (int i = 0; i < pending_disk_events_.size(); i++) {
 		pending_disk_events_[i]->Handle();
+		if (pending_disk_events_[i]->sync) {
+			auto it = sync_set.find(pending_disk_events_[i]->file);
+			if (it == sync_set.end()) {
+				sync_set.insert(pending_disk_events_[i]->file);
+			}
+		}
 	}
-	
 
-	int fd = ::open("/db/data.txt", O_WRONLY | O_APPEND | O_CREAT);
-	::fsync(fd);
-	::close(fd);
+	for (auto it = sync_set.begin(); it != sync_set.end(); it++) {
+		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		::fsync(fd);
+		::close(fd);
+	}
 
 	for(int i = 0; i < pending_disk_events_.size(); i++){
 		Reactor::GetReactor()->disk_job_.lock();
     Reactor::GetReactor()->ready_disk_events_.push_back(pending_disk_events_[i]);
 		Reactor::GetReactor()->disk_job_.unlock();
 	}
+}
+
+void Reactor::NetworkLoop() {
+	Reactor::GetReactor()->network_job_.lock();
+  auto network_events = Reactor::GetReactor()->network_events_;
+  auto it = Reactor::GetReactor()->network_events_.begin();
+	std::vector<std::shared_ptr<NetworkEvent>> pending_network_events_{};
+  while(it != Reactor::GetReactor()->network_events_.end()){
+    auto network_event = std::static_pointer_cast<NetworkEvent>(*it);
+    it = Reactor::GetReactor()->network_events_.erase(it);
+    pending_network_events_.push_back(network_event);
+  }
+  Reactor::GetReactor()->network_job_.unlock();
+
+	for (int i = 0; i < pending_network_events_.size(); i++) {
+		pending_network_events_[i]->Handle();
+	}
+	
+	for (int i = 0; i < pending_network_events_.size(); i++) {
+		Reactor::GetReactor()->network_job_.lock();
+		Reactor::GetReactor()->ready_network_events_.push_back(pending_network_events_[i]);
+		Reactor::GetReactor()->network_job_.unlock();
+	}
+
 }
 
 void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
@@ -283,6 +326,7 @@ class PollMgr::PollThread {
     
     while(!thiz->stop_flag_){
       Reactor::GetDiskReactor()->DiskLoop();
+			Reactor::GetDiskReactor()->NetworkLoop();
       sleep(0);
     }
     pthread_exit(nullptr);
