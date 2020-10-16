@@ -178,8 +178,10 @@ class Epoll {
   }
 
 
-  void Wait_One() {
+	std::vector<struct timespec> Wait_One() {
     const int max_nev = 100;
+		bool found = false;
+		std::vector<struct timespec> result{};
 #ifdef USE_KQUEUE
     struct kevent evlist[max_nev];
     struct timespec timeout;
@@ -189,6 +191,7 @@ class Epoll {
     int nev = kevent(poll_fd_, nullptr, 0, evlist, max_nev, &timeout);
 
     for (int i = 0; i < nev; i++){
+			found = true;
       Pollable* poll = (Pollable *) evlist[i].udata;
       if (evlist[i].filter & EVFILT_READ){
         poll->handle_read();
@@ -206,13 +209,18 @@ class Epoll {
     struct epoll_event evlist[max_nev];
     int timeout = 1; // milli, 0.001 sec
 //    int timeout = 0; // busy loop
+    
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
     
+		struct timespec begin_cpu, end_cpu, begin, end;
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_cpu);
+		clock_gettime(CLOCK_MONOTONIC, &begin);
     for (int i = 0; i < nev; i++) {
+			found = true;
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
       verify(poll != nullptr);
       if (evlist[i].events & EPOLLIN) {
-	  bool push = poll->handle_read();
+					bool push = poll->handle_read();
           if(push) pending.push_back(poll);
       }
       if (evlist[i].events & EPOLLOUT) {
@@ -224,7 +232,14 @@ class Epoll {
           poll->handle_error();
       }
     }
+		
+		if (found) {
+			result.push_back(begin);
+			result.push_back(begin_cpu);
+		}
+    
 #endif
+		return result;
   }
 
   void Wait_Two() {
@@ -234,7 +249,6 @@ class Epoll {
     //return;
     for(auto it = pending.begin(); it != pending.end();){
       Pollable* poll = *it;
-
       bool done = poll->handle_read_two();
       if(done){
         it = pending.erase(it);
@@ -252,9 +266,9 @@ class Epoll {
     timeout.tv_sec = 0;
     timeout.tv_nsec = 50 * 1000 * 1000; // 0.05 sec
 
-    int nev = kevent(poll_fd_, nullptr, 0, evlist, max_nev, &timeout);
+		int nev = kevent(poll_fd_, nullptr, 0, evlist, max_nev, &timeout);
 
-    for (int i = 0; i < nev; i++) {
+		for (int i = 0; i < nev; i++) {
       Pollable* poll = (Pollable*) evlist[i].udata;
       verify(poll != nullptr);
 

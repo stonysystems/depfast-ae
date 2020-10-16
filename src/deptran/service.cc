@@ -120,13 +120,15 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
                                  const uint64_t& dep_id,
                                  rrr::i32* res,
+																 bool_t* slow,
                                  uint64_t* coro_id,
                                  rrr::DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [res, coro_id, defer, tid, sids, dep_id, this]() {
+  const auto& func = [res, slow, coro_id, defer, tid, sids, dep_id, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
 		bool null_cmd = false;
     bool ret = sched->OnPrepare(tid, sids, dep_id, null_cmd);
+		*slow = sched->slow_;
     *res = ret ? SUCCESS : REJECT;
 		if(null_cmd) *res = REPEAT;
     *coro_id = Coroutine::CurrentCoroutine()->id;
@@ -156,16 +158,18 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 void ClassicServiceImpl::Commit(const rrr::i64& tid,
                                 const uint64_t& dep_id,
                                 rrr::i32* res,
+																bool_t* slow,
                                 uint64_t* coro_id,
 																Profiling* profile,
                                 rrr::DeferredReply* defer) {
   //std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [tid, res, coro_id, dep_id, profile, defer, this]() {
+  const auto& func = [tid, res, slow, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, SUCCESS);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2], result[3]};
 		//*profile = {0.0, 0.0, 0.0, 0.0};
+		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
@@ -176,18 +180,19 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
 void ClassicServiceImpl::Abort(const rrr::i64& tid,
                                const uint64_t& dep_id,
                                rrr::i32* res,
+															 bool_t* slow,
                                uint64_t* coro_id,
 															 Profiling* profile,
                                rrr::DeferredReply* defer) {
 
   Log_debug("get abort_txn: tid: %ld", tid);
   //std::lock_guard<std::mutex> guard(mtx_);
-  const auto& func = [tid, res, coro_id, dep_id, profile, defer, this]() {
+  const auto& func = [tid, res, slow, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
     sched->OnCommit(tid, dep_id, REJECT);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2]};
-		
+		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();

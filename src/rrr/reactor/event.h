@@ -53,6 +53,7 @@ class Event : public std::enable_shared_from_this<Event> {
   virtual void log(){return;}
   virtual uint64_t GetCoroId();
   virtual bool Test();
+	virtual bool IsSlow();
   virtual bool IsReady() {
     verify(test_);
     return test_(0);
@@ -170,67 +171,6 @@ class DiskEvent : public Event {
 	}
 };
 
-class NetworkEvent : public Event {
- public:
-	//maybe, instead of enum, this should be a queue
-	enum Operation {WRITE=1, READ=2, SPECIAL=4};
-  bool handled = false;
-	bool sync = false;
-	int sock;
-	Operation op;
-	void* buffer;
-	size_t size_;
-	size_t read_;
-	size_t written_;
-	std::function<void()> func_;
-	//create a more generic write instead of a map
-  std::vector<std::map<int, i32>> cmd;
-	
-	friend inline Operation operator | (Operation op1, Operation op2) {
-		return static_cast<Operation>(static_cast<int>(op1) | static_cast<int>(op2));
-	}
-  
-	friend inline Operation operator & (Operation op1, Operation op2) {
-		return static_cast<Operation>(static_cast<int>(op1) & static_cast<int>(op2));
-	}
-
-	NetworkEvent(int sock_, void* ptr, size_t size, Operation op_);
-	NetworkEvent(std::function<void()> f);
-
-  void AddToList();
-
-	void Read() {
-		read_ = ::read(sock, buffer, size_);
-	}
-
-	void Write() {
-		written_ = ::write(sock, buffer, size_);
-	}
-
-	void Special() {
-		func_();
-	}
-
-	void Handle() {
-		if (op & WRITE) {
-			Write();
-		}
-		if (op & READ) {
-			Read();
-		}
-		if (op & SPECIAL) {
-			Special();
-		}
-		//add more operations here
-	}
-  bool IsReady() {
-    return handled;
-  }
-	bool Test(){
-		verify(0);
-		return false;
-	}
-};
 template <class Type>
 class BoxEvent : public Event {
  public:

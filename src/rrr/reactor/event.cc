@@ -14,6 +14,9 @@ uint64_t Event::GetCoroId(){
   return sp_coro->id;
 }
 
+bool Event::IsSlow() {
+	return Reactor::GetReactor()->slow_;
+}
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
@@ -141,25 +144,6 @@ void DiskEvent::AddToList(){
   rrr::Reactor::GetReactor()->disk_job_.unlock();
 }
 
-NetworkEvent::NetworkEvent(int sock_, void* ptr, size_t size, Operation op_): Event(),
-																																							buffer(ptr),
-																																							size_(size),
-																																							op(op_),
-																																							sock(sock_){
-																																							
-}
-NetworkEvent::NetworkEvent(std::function<void()> f): Event(),
-																										 func_(f){
-		
-}
-
-void NetworkEvent::AddToList(){
-  rrr::Reactor::GetReactor()->network_job_.lock();
-  auto& network_events = rrr::Reactor::GetReactor()->network_events_;
-  network_events.push_back(shared_from_this());
-  //Log_info("thread of disk events: %d", rrr::Reactor::GetReactor()->thread_id_);
-  rrr::Reactor::GetReactor()->network_job_.unlock();
-}
 
 bool IntEvent::TestTrigger() {
   if (status_ > WAIT) {

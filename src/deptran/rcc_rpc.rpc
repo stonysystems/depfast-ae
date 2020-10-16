@@ -78,11 +78,12 @@ abstract service Classic {
                 vector<i32> sids,
                 uint64_t dep_id | 
                 i32 res,
+								bool_t slow,
                 uint64_t coro_id);
 
-  defer Commit(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
+  defer Commit(i64 tid, uint64_t dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
 
-  defer Abort(i64 tid, uint64_t dep_id | i32 res, uint64_t coro_id, Profiling profile);
+  defer Abort(i64 tid, uint64_t dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
                      int32_t res)

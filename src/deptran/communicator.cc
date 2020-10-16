@@ -414,11 +414,13 @@ Communicator::SendPrepare(Coordinator* coo,
     qe->id_ = Communicator::global_id;
     qe->par_id_ = quorum_id++;
     FutureAttr fuattr;
-    fuattr.callback = [e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
+    fuattr.callback = [this, e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
+			bool_t slow;
       uint64_t coro_id = 0;
-      fu->get_reply() >> res >> coro_id;
-
+      fu->get_reply() >> res >> slow >>coro_id;
+			
+			this->slow = slow;
       qe->add_dep(coo->cli_id_, src_coroid, site_id, coro_id); 
       
       if(phase != coo->phase_){
@@ -510,9 +512,11 @@ Communicator::SendCommit(Coordinator* coo,
     auto phase = coo->phase_;
     fuattr.callback = [this, e, qe, src_coroid, site_id, coo, phase, cmd](Future* fu) {
       int32_t res;
+			bool_t slow;
       uint64_t coro_id = 0;
 			Profiling profile;
-      fu->get_reply() >> res >> coro_id >> profile;
+      fu->get_reply() >> res >> slow >> coro_id >> profile;
+			this->slow = slow;
 			if(profile.cpu_util >= 0.0){
 				cpu = profile.cpu_util;
 				Log_info("cpu: %f and network: %f and memory: %f", profile.cpu_util, profile.tx_util, profile.mem_util);
@@ -612,9 +616,11 @@ Communicator::SendAbort(Coordinator* coo,
     auto phase = coo->phase_;
     fuattr.callback = [this, e, qe, coo, src_coroid, site_id, phase, cmd](Future* fu) {
       int32_t res;
+			bool_t slow;
       uint64_t coro_id = 0;
 			Profiling profile;
-      fu->get_reply() >> res >> coro_id >> profile;
+      fu->get_reply() >> res >> slow >> coro_id >> profile;
+			this->slow = slow;
 
 	  	if(profile.cpu_util != -1.0){
 				Log_info("cpu: %f and network: %f", profile.cpu_util, profile.tx_util);

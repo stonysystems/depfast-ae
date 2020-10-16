@@ -89,6 +89,7 @@ class Communicator {
 	map<uint64_t, double> lat_util_{};
   locid_t leader_ = 0;
 	bool paused = false;
+	bool slow = false;
 	int index;
 	int cpu_index;
 	int low_util;

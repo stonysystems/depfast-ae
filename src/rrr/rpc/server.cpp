@@ -137,7 +137,10 @@ void ServerConnection::end_reply() {
 }
 
 bool ServerConnection::handle_read() {
-    //Log_info("Server's addr is: %s", server_->addr_.c_str());
+		struct timespec begin, end;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
+    
+		//Log_info("Server's addr is: %s", server_->addr_.c_str());
     if (status_ == CLOSED) {
         return false;
     }
@@ -240,6 +243,8 @@ bool ServerConnection::handle_read() {
             delete req;
         }
     }
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("elapsed time of read: %d", end.tv_nsec - begin.tv_nsec);
     return false;
 }
 

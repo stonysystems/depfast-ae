@@ -164,12 +164,21 @@ class FpgaRaftServer : public TxLogServer {
 
 			struct KeyValue key_value_[2];
 			auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
+			
+			struct timespec begin, end;
+			clock_gettime(CLOCK_MONOTONIC, &begin);
       de->Wait();
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {
 			int value = -1;
 			int value_;
 			auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+			struct timespec begin, end;
+			clock_gettime(CLOCK_MONOTONIC, &begin);
       de->Wait();
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     }
     *term = currentTerm ;
   }

@@ -44,6 +44,7 @@ class Coordinator {
   ClientControlServiceImpl *ccsi_ = nullptr;
   uint32_t thread_id_;
   bool batch_optimal_ = false;
+	bool slow_ = false;
   bool retry_wait_;
 
   std::atomic<uint64_t> next_pie_id_;

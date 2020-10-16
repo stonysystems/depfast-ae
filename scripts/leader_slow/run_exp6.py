@@ -573,13 +573,13 @@ class ClientController(object):
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
                            sudo mkdir /sys/fs/cgroup/memory/janus; \
-                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo 524288 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
                            echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
                            sudo mkdir /sys/fs/cgroup/memory/janus; \
-                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+                           echo 524288 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
                            echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host1':

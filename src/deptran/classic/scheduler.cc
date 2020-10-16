@@ -160,6 +160,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     //Log_info("The locale id: %d", coo->loc_id_);
     coo->Submit(sp_m);
     sp_tx->prepare_result->Wait();
+		slow_ = coo->slow_;
 //    Log_debug("finished prepare command replication");
     return sp_tx->prepare_result->Get();
   } else if (Config::GetConfig()->do_logging()) {
@@ -208,9 +209,11 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
     //Log_info("This is dep_id: %d", dep_id);
-    CreateRepCoord(dep_id)->Submit(sp_m);
+    auto coo = CreateRepCoord(dep_id);
+    coo->Submit(sp_m);
     //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
+		slow_ = coo->slow_;
   } else {
     if (commit_or_abort == SUCCESS) {
       DoCommit(*sp_tx);

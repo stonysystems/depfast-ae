@@ -4,7 +4,7 @@ import os.path
 import sys
 
 lats = []
-with open('../log/proc-host6.log') as f:
+with open('../log/proc-host4.log') as f:
     for line in f:
         if 'commo window avg:' in line:
             if len(line.split(': ')) > 1:
@@ -13,7 +13,7 @@ with open('../log/proc-host6.log') as f:
 cpus = []
 first_cpu = 0.0
 index = 0
-with open('../log/proc-host6.log') as f:
+with open('../log/proc-host4.log') as f:
     for line in f:
         if 'cpu: ' in line:
             if line.split(': ')[1] != '':

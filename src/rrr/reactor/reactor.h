@@ -47,9 +47,9 @@ class Reactor {
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
+	bool slow_{false};
   std::thread::id thread_id_{};
   static SpinLock disk_job_;
-  static SpinLock network_job_;
 #ifdef REUSE_CORO
 #define REUSING_CORO (true)
 #else

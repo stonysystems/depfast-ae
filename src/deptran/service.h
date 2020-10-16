@@ -69,12 +69,14 @@ class ClassicServiceImpl : public ClassicService {
                const std::vector<i32>& sids,
                const uint64_t& dep_id,
                i32* res,
+							 bool_t* slow,
                uint64_t* coro_id,
                DeferredReply* defer) override;
 
   void Commit(const i64& tid,
               const uint64_t& dep_id,
               i32* res,
+							bool_t* slow,
               uint64_t* coro_id,
 	        		Profiling* profile,
               DeferredReply* defer) override;
@@ -82,6 +84,7 @@ class ClassicServiceImpl : public ClassicService {
   void Abort(const i64& tid,
              const uint64_t& dep_id,
              i32* res,
+						 bool_t* slow,
              uint64_t* coro_id,
 	        	 Profiling* profile,
              DeferredReply* defer) override;

@@ -348,10 +348,10 @@ void CoordinatorClassic::Prepare() {
                                           cmd_->id_,
                                           sids);
 
-
-  quorum_event->Wait();
+	quorum_event->Wait();
+	Log_info("slow inside Prepare is: %d", commo()->slow);
   quorum_event->log();
-
+	
   if(!aborted_){
     cmd->commit_.store(true);
     committed_ = true;
@@ -411,9 +411,9 @@ void CoordinatorClassic::Commit() {
     tx_data().reply_.res_ = SUCCESS;
     auto quorum_event = commo()->SendCommit(this,
                                             tx_data().id_);
-    quorum_event->Wait();
+		quorum_event->Wait();
     quorum_event->log();
-
+		
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
 		
     else committed_ = true;
@@ -453,11 +453,13 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
+	Log_info("slow inside Commit is: %d", commo()->slow);
 	Log_info("commo window avg: %d", commo()->window_avg);
 	if(commo()->total > 100 && !commo()->paused/* && commo()->window_avg >= commo()->total_avg*2.0*/){
 		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
-		double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
-		if(cpu_thres >= 1.0) cpu_thres = 1.0;
+		//double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
+		double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
+		if(cpu_thres >= 0.85) cpu_thres = 0.85;
 		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
 		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;

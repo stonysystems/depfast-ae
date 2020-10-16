@@ -79,6 +79,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
     this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex) ;
+		
 
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
                                                      slot_id_,
@@ -90,13 +91,15 @@ void CoordinatorFpgaRaft::AppendEntries() {
                                                      /* ents, */
                                                      this->sch_->commitIndex,
                                                      cmd_);
-		/*struct timespec start_;
-		clock_gettime(CLOCK_REALTIME, &start_);*/
+		struct timespec start_;
+		clock_gettime(CLOCK_MONOTONIC, &start_);
     sp_quorum->Wait();
-		/*struct timespec end_;
-		clock_gettime(CLOCK_REALTIME, &end_);
+		struct timespec end_;
+		clock_gettime(CLOCK_MONOTONIC, &end_);
 
-		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);*/
+		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);
+		Log_info("slow?: %d", sp_quorum->IsSlow());
+		slow_ = sp_quorum->IsSlow();
     verify(sp_quorum->status_ != Event::TIMEOUT);
     verify(sp_quorum->status_ == Event::DONE);
     if (sp_quorum->Yes()) {

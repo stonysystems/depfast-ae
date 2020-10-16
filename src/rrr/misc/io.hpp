@@ -25,16 +25,6 @@ class IO {
 			return de;
 		}
 
-		static std::shared_ptr<NetworkEvent> write(int sock_, void* ptr, size_t size){
-			auto ne = Reactor::CreateSpEvent<NetworkEvent>(sock_, ptr, size, NetworkEvent::WRITE);
-			ne->AddToList();
-			return ne;
-		}
-		static std::shared_ptr<NetworkEvent> read(int sock_, void* ptr, size_t size){
-			auto ne = Reactor::CreateSpEvent<NetworkEvent>(sock_, ptr, size, NetworkEvent::READ);
-			ne->AddToList();
-			return ne;
-		}
 };
 }
 

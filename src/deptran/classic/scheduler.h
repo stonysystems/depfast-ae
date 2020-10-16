@@ -15,6 +15,8 @@ class SchedulerClassic: public TxLogServer {
  using TxLogServer::TxLogServer;
  public:
 
+  bool slow_ = false;
+
   void MergeCommands(vector<shared_ptr<TxPieceData>>&,
                      shared_ptr<Marshallable>);
 

@@ -10,6 +10,7 @@
 #include "coroutine.h"
 #include "event.h"
 #include "epoll_wrapper.h"
+#include "sys/times.h" 
 
 namespace rrr {
 
@@ -19,7 +20,6 @@ thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
-SpinLock Reactor::network_job_;
 
 std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
   // TODO re-enable this verify
@@ -93,22 +93,6 @@ void Reactor::Loop(bool infinite) {
       auto& event = *sp_event;
       ready_disk_events_.pop_front();
       disk_job_.unlock();
-      auto sp_coro = event.wp_coro_.lock();
-      event.status_ = Event::READY;
-      if (event.status_ == Event::READY) {
-        event.status_ = Event::DONE;
-      }
-      ContinueCoro(sp_coro);
-    }
-
-    network_job_.lock();
-    if (ready_network_events_.empty()) {
-      network_job_.unlock();
-    } else {
-      auto sp_event = ready_network_events_.front();
-      auto& event = *sp_event;
-      ready_network_events_.pop_front();
-      network_job_.unlock();
       auto sp_coro = event.wp_coro_.lock();
       event.status_ = Event::READY;
       if (event.status_ == Event::READY) {
@@ -225,30 +209,6 @@ void Reactor::DiskLoop(){
 	}
 }
 
-void Reactor::NetworkLoop() {
-	Reactor::GetReactor()->network_job_.lock();
-  auto network_events = Reactor::GetReactor()->network_events_;
-  auto it = Reactor::GetReactor()->network_events_.begin();
-	std::vector<std::shared_ptr<NetworkEvent>> pending_network_events_{};
-  while(it != Reactor::GetReactor()->network_events_.end()){
-    auto network_event = std::static_pointer_cast<NetworkEvent>(*it);
-    it = Reactor::GetReactor()->network_events_.erase(it);
-    pending_network_events_.push_back(network_event);
-  }
-  Reactor::GetReactor()->network_job_.unlock();
-
-	for (int i = 0; i < pending_network_events_.size(); i++) {
-		pending_network_events_[i]->Handle();
-	}
-	
-	for (int i = 0; i < pending_network_events_.size(); i++) {
-		Reactor::GetReactor()->network_job_.lock();
-		Reactor::GetReactor()->ready_network_events_.push_back(pending_network_events_[i]);
-		Reactor::GetReactor()->network_job_.unlock();
-	}
-
-}
-
 void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 //  verify(!sp_running_coro_th_); // disallow nested coros
   verify(sp_running_coro_th_ != sp_coro);
@@ -326,7 +286,6 @@ class PollMgr::PollThread {
     
     while(!thiz->stop_flag_){
       Reactor::GetDiskReactor()->DiskLoop();
-			Reactor::GetDiskReactor()->NetworkLoop();
       sleep(0);
     }
     pthread_exit(nullptr);
@@ -404,15 +363,44 @@ PollMgr::~PollMgr() {
 }
 
 void PollMgr::PollThread::poll_loop() {
-  while (!stop_flag_) {
+	std::vector<struct timespec> begins;
+	long total_cpu;
+	long total_time;
+	int total = 0;
+
+	while (!stop_flag_) {
     TriggerJob();
-    //poll_.Wait();
+
+		if (!begins.empty()) {
+			struct timespec end, end_cpu;
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			
+			total_cpu += (end_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end_cpu.tv_nsec - begins[1].tv_nsec);
+			total_time += (end.tv_sec - begins[0].tv_sec)*1000000000 + (end.tv_nsec - begins[0].tv_nsec);
+			total++;
+			
+			if (total == 10) {
+				double util = (double)total_cpu/total_time;
+				Log_info("elapsed time: %d", total_time);
+				if (util < 0.9) {
+					Reactor::GetReactor()->slow_ = true;
+					Log_info("elapsed CPU time: %f", util);
+				}
+				total = 0;
+				total_cpu = 0;
+				total_time = 0;
+			}
+		}
+
 #ifdef USE_KQUEUE
-    poll_.Wait();
+		begins = poll_.Wait();
 #else
-    poll_.Wait_One();
+		begins = poll_.Wait_One();
     poll_.Wait_Two();
 #endif
+		
+
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
     // after each poll loop, remove uninterested pollables
@@ -435,6 +423,7 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     verify(Reactor::GetReactor()->ready_events_.empty());
     Reactor::GetReactor()->Loop();
+		
   }
 }
 
