@@ -56,3 +56,68 @@ gmake: *** [Makefile:121: cmTC_f988d/fast] Error 2
 
 
 
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_65853/fast && /usr/bin/make  -f CMakeFiles/cmTC_65853.dir/build.make CMakeFiles/cmTC_65853.dir/build
+make[1]: Entering directory '/home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_65853.dir/src.c.o
+/usr/bin/cc   -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_65853.dir/src.c.o   -c /home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_65853
+/home/fl/Downloads/clion-2020.2.4/bin/cmake/linux/bin/cmake -E cmake_link_script CMakeFiles/cmTC_65853.dir/link.txt --verbose=1
+/usr/bin/cc  -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_65853.dir/src.c.o  -o cmTC_65853 
+CMakeFiles/cmTC_65853.dir/src.c.o: In function `main':
+src.c:(.text+0x3e): undefined reference to `pthread_create'
+src.c:(.text+0x4a): undefined reference to `pthread_detach'
+src.c:(.text+0x56): undefined reference to `pthread_cancel'
+src.c:(.text+0x67): undefined reference to `pthread_join'
+src.c:(.text+0x7b): undefined reference to `pthread_atfork'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_65853.dir/build.make:106: recipe for target 'cmTC_65853' failed
+make[1]: *** [cmTC_65853] Error 1
+make[1]: Leaving directory '/home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp'
+Makefile:141: recipe for target 'cmTC_65853/fast' failed
+make: *** [cmTC_65853/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_322d5/fast && /usr/bin/make  -f CMakeFiles/cmTC_322d5.dir/build.make CMakeFiles/cmTC_322d5.dir/build
+make[1]: Entering directory '/home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_322d5.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_322d5.dir/CheckFunctionExists.c.o   -c /home/fl/Downloads/clion-2020.2.4/bin/cmake/linux/share/cmake-3.17/Modules/CheckFunctionExists.c
+Linking C executable cmTC_322d5
+/home/fl/Downloads/clion-2020.2.4/bin/cmake/linux/bin/cmake -E cmake_link_script CMakeFiles/cmTC_322d5.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_322d5.dir/CheckFunctionExists.c.o  -o cmTC_322d5  -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_322d5.dir/build.make:106: recipe for target 'cmTC_322d5' failed
+make[1]: *** [cmTC_322d5] Error 1
+make[1]: Leaving directory '/home/fl/janus-gray-yuanli/cmake-build-debug/CMakeFiles/CMakeTmp'
+Makefile:141: recipe for target 'cmTC_322d5/fast' failed
+make: *** [cmTC_322d5/fast] Error 2
+
+
+

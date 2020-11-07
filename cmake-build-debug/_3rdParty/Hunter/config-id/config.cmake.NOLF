@@ -69,7 +69,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "Boost"
-    VERSION "1.72.0-p1"
+    VERSION "1.72.0-p0"
 )
 hunter_final_config(
     PACKAGE "BoostCompute"
@@ -200,10 +200,6 @@ hunter_final_config(
     VERSION "1.1.1-hunter"
 )
 hunter_final_config(
-    PACKAGE "IlmBase"
-    VERSION "2.4.0-p1"
-)
-hunter_final_config(
     PACKAGE "Immer"
     VERSION "0.6.2-cf44615"
 )
@@ -293,7 +289,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "OpenAL"
-    VERSION "1.19.1"
+    VERSION "1.18.2"
 )
 hunter_final_config(
     PACKAGE "OpenBLAS"
@@ -314,10 +310,6 @@ hunter_final_config(
 hunter_final_config(
     PACKAGE "OpenCV-Extra"
     VERSION "4.1.1"
-)
-hunter_final_config(
-    PACKAGE "OpenEXR"
-    VERSION "2.4.0-p1"
 )
 hunter_final_config(
     PACKAGE "OpenNMTTokenizer"
@@ -345,7 +337,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "PocoCpp"
-    VERSION "1.10.1-p0"
+    VERSION "1.7.9-p1"
 )
 hunter_final_config(
     PACKAGE "PostgreSQL"
@@ -353,11 +345,11 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "Protobuf"
-    VERSION "3.11.2-p0"
+    VERSION "3.10.0-p0"
 )
 hunter_final_config(
     PACKAGE "Qt"
-    VERSION "5.11.3"
+    VERSION "5.5.1-cvpixelbuffer-2-p9"
 )
 hunter_final_config(
     PACKAGE "QtAndroidCMake"
@@ -408,10 +400,6 @@ hunter_final_config(
     VERSION "2.0.14-p0"
 )
 hunter_final_config(
-    PACKAGE "SFML"
-    VERSION "2.5.1-p0"
-)
-hunter_final_config(
     PACKAGE "SPIRV-Headers"
     VERSION "1.5.1"
 )
@@ -457,7 +445,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "Vulkan-Headers"
-    VERSION "1.2.133-p0"
+    VERSION "1.1.127-p0"
 )
 hunter_final_config(
     PACKAGE "VulkanMemoryAllocator"
@@ -601,7 +589,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "benchmark"
-    VERSION "1.5.0"
+    VERSION "1.4.0"
 )
 hunter_final_config(
     PACKAGE "bento4"
@@ -689,7 +677,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "corrade"
-    VERSION "2019.10"
+    VERSION "2019.01"
 )
 hunter_final_config(
     PACKAGE "cpp_redis"
@@ -749,7 +737,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "cxxopts"
-    VERSION "2.2.0"
+    VERSION "2.1.1-pre"
 )
 hunter_final_config(
     PACKAGE "czmq"
@@ -761,7 +749,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "date"
-    VERSION "2.4.1-e12095f"
+    VERSION "2.4.1"
 )
 hunter_final_config(
     PACKAGE "dbus"
@@ -789,7 +777,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "doctest"
-    VERSION "2.3.7"
+    VERSION "2.2.0"
 )
 hunter_final_config(
     PACKAGE "double-conversion"
@@ -920,10 +908,6 @@ hunter_final_config(
     VERSION "5.1.4-p1"
 )
 hunter_final_config(
-    PACKAGE "gl4es"
-    VERSION "1.1.2-p0"
-)
-hunter_final_config(
     PACKAGE "glbinding"
     VERSION "3.1.0-p0"
 )
@@ -958,10 +942,6 @@ hunter_final_config(
 hunter_final_config(
     PACKAGE "glslang"
     VERSION "7.12.3352-p1"
-)
-hunter_final_config(
-    PACKAGE "glu"
-    VERSION "9.0.1-p0"
 )
 hunter_final_config(
     PACKAGE "gst_plugins_bad"
@@ -1013,7 +993,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "hunter_venv"
-    VERSION "1.0.2"
+    VERSION "1.0.1"
 )
 hunter_final_config(
     PACKAGE "ice"
@@ -1109,15 +1089,11 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "lehrfempp"
-    VERSION "0.7.21"
+    VERSION "0.7.20"
 )
 hunter_final_config(
     PACKAGE "leveldb"
     VERSION "1.22"
-)
-hunter_final_config(
-    PACKAGE "libbacktrace"
-    VERSION "1.0.0-ca0de051"
 )
 hunter_final_config(
     PACKAGE "libcpuid"
@@ -1505,7 +1481,7 @@ hunter_final_config(
 )
 hunter_final_config(
     PACKAGE "rabbitmq-c"
-    VERSION "0.10.0"
+    VERSION "0.7.0-p1"
 )
 hunter_final_config(
     PACKAGE "rabit"
@@ -1618,10 +1594,6 @@ hunter_final_config(
 hunter_final_config(
     PACKAGE "s3"
     VERSION "0.0.0-287e4be-p1"
-)
-hunter_final_config(
-    PACKAGE "scelta"
-    VERSION "0.1.0-a0f4f70-p0"
 )
 hunter_final_config(
     PACKAGE "sds"
@@ -1744,10 +1716,6 @@ hunter_final_config(
     VERSION "1.2-p0"
 )
 hunter_final_config(
-    PACKAGE "tinyrefl"
-    VERSION "0.4.1-p0"
-)
-hunter_final_config(
     PACKAGE "tinyxml2"
     VERSION "6.2.0-p1"
 )
@@ -1786,10 +1754,6 @@ hunter_final_config(
 hunter_final_config(
     PACKAGE "util_linux"
     VERSION "2.30.1"
-)
-hunter_final_config(
-    PACKAGE "uuid"
-    VERSION "1.0.3"
 )
 hunter_final_config(
     PACKAGE "v8"
