@@ -181,6 +181,8 @@ class FpgaRaftServer : public TxLogServer {
 			Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     }
     *term = currentTerm ;
+
+    save2file();    //TODO: just a sample
   }
   
   shared_ptr<FpgaRaftData> GetInstance(slotid_t id) {
@@ -265,5 +267,67 @@ class FpgaRaftServer : public TxLogServer {
                                vector<string>& conflicts) {
     verify(0);
   };
-};
+
+
+    template <class T>
+    string val2string(const T& x){
+        ostringstream obuff;
+        obuff << x;
+        return(obuff.str());
+    };
+    template <class T>
+    T string2val(const string& x){
+        T val;
+        istringstream ibuff(x);
+        ibuff >> val;
+        return(val);
+    };
+
+    void save2file(){
+        Log_info("Write yaml start");
+        YAML::Node root;
+        //assert(root.IsNull());
+
+        root["currentTerm"]=val2string(currentTerm);
+        root["vote_for_"]=val2string(vote_for_);
+        YAML::Node _raft_logs_;
+        int _raft_logs_cnt=0;
+
+        for(map<slotid_t, shared_ptr<FpgaRaftData>>::iterator iter=raft_logs_.begin(); iter!=raft_logs_.end(); iter++){
+            slotid_t key=iter->first;
+            shared_ptr<FpgaRaftData> val=iter->second;
+            YAML::Node _raft_logs_item;
+            _raft_logs_item["term"]=val2string(val->term);
+            _raft_logs_item["logs_"]["kind_"]=val2string(val->log_->kind_);
+
+            root["raft_logs_"][val2string(key)]=_raft_logs_item;
+            _raft_logs_cnt+=1;
+        }
+
+        ofstream ofs("/home/fl/FpgaRaftServerres.yaml");
+        ofs<<root<<endl;
+        ofs.close();
+        Log_info("Write yaml end");
+    }
+
+    void read4file(){
+        YAML::Node root = YAML::LoadFile("/home/fl/FpgaRaftServerres.yaml");
+
+        currentTerm=string2val<uint64_t>(root["currentTerm"].as<string>());
+        vote_for_=string2val<parid_t>(root["vote_for_"].as<string>());
+        //for(auto i : root["raft_logs_"].getMemberNames()){
+        for(YAML::const_iterator it= root["raft_logs_"].begin(); it != root["raft_logs_"].end();++it){
+
+            slotid_t id=string2val<slotid_t>(it->first.as<string>());
+            auto inst=GetFpgaRaftInstance(id);
+            shared_ptr<Marshallable> cmd(new Marshallable(0));
+            cmd->kind_=string2val<int32_t>(it->second["logs_"]["kind_"].as<string>());
+            inst->log_= cmd;
+            inst->term = string2val<ballot_t>(it->second["term"].as<string>());
+        }
+    }
+
+
+
+    };
 } // namespace janus
