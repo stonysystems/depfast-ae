@@ -298,10 +298,10 @@ class FpgaRaftServer : public TxLogServer {
             shared_ptr<FpgaRaftData> val=iter->second;
             YAML::Node _raft_logs_item;
             _raft_logs_item["term"]=val2string(val->term);
-            _raft_logs_item["logs_"]["kind_"]=val2string(val->log_->kind_);
 
             //TODO: write key-val pairs
-            shared_ptr<Marshallable> &cmd=val->log_;
+            shared_ptr<Marshallable> &cmd=val->log_;    // a command
+            _raft_logs_item["logs_"]["kind_"]=val2string(val->log_->kind_);
             if(val->log_->kind_==MarshallDeputy::CMD_TPC_PREPARE){
                 YAML::Node _kv_item;
                 auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
@@ -333,10 +333,12 @@ class FpgaRaftServer : public TxLogServer {
         vote_for_=string2val<parid_t>(root["vote_for_"].as<string>());
         //for(auto i : root["raft_logs_"].getMemberNames()){
         for(YAML::const_iterator it= root["raft_logs_"].begin(); it != root["raft_logs_"].end();++it){
-
             slotid_t id=string2val<slotid_t>(it->first.as<string>());
             auto inst=GetFpgaRaftInstance(id);
             shared_ptr<Marshallable> cmd(new Marshallable(0));
+
+            //TODO: read key-val pairs
+
             cmd->kind_=string2val<int32_t>(it->second["logs_"]["kind_"].as<string>());
             inst->log_= cmd;
             inst->term = string2val<ballot_t>(it->second["term"].as<string>());
