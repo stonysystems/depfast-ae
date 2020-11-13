@@ -300,6 +300,22 @@ class FpgaRaftServer : public TxLogServer {
             _raft_logs_item["term"]=val2string(val->term);
             _raft_logs_item["logs_"]["kind_"]=val2string(val->log_->kind_);
 
+            //TODO: write key-val pairs
+            shared_ptr<Marshallable> &cmd=val->log_;
+            if(val->log_->kind_==MarshallDeputy::CMD_TPC_PREPARE){
+                YAML::Node _kv_item;
+                auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+                auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+                int index = 0;
+                for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+                    auto cmd_input = (*it)->input.values_;
+                    for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
+                        _kv_item[val2string(it2->first)]=val2string(it2->second.get_i32());
+                    }
+                }
+                _raft_logs_item["logs_"]["kv"]=_kv_item;
+            }
+
             root["raft_logs_"][val2string(key)]=_raft_logs_item;
             _raft_logs_cnt+=1;
         }
