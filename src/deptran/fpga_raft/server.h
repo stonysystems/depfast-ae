@@ -19,6 +19,12 @@ struct FpgaRaftData {
 
   ballot_t term;
   shared_ptr<Marshallable> log_{nullptr};
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version){
+        ar & term;
+        ar & log_;
+    }
 };
 
 struct KeyValue {
@@ -47,6 +53,19 @@ class FpgaRaftServer : public TxLogServer {
 
   bool RequestVote() ;
   void RequestVote2FPGA() ;
+
+//    template<class Archive>
+//    void serialize(Archive & ar, const unsigned int version){
+//        ar & currentTerm;
+//        ar & vote_for_;
+//        ar & raft_logs_;
+//        // for(map<slotid_t, shared_ptr<FpgaRaftData>>::iterator iter=raft_logs_.begin(); iter!=raft_logs_.end(); iter++){
+//        // 	slotid_t key=iter->first;
+//        // 	shared_ptr<FpgaRaftData> val=iter->second;
+//        // 	ar & key;
+//        // 	ar & val;
+//        // }
+//    }
 
   void setIsLeader(bool isLeader)
   {
@@ -182,7 +201,7 @@ class FpgaRaftServer : public TxLogServer {
     }
     *term = currentTerm ;
 
-    save2file();    //TODO: just a sample
+    //save2file();    //TODO: just a sample
   }
   
   shared_ptr<FpgaRaftData> GetInstance(slotid_t id) {
@@ -284,67 +303,20 @@ class FpgaRaftServer : public TxLogServer {
     };
 
     void save2file(){
-        Log_info("Write yaml start");
-        YAML::Node root;
-        //assert(root.IsNull());
-
-        root["currentTerm"]=val2string(currentTerm);
-        root["vote_for_"]=val2string(vote_for_);
-        YAML::Node _raft_logs_;
-        int _raft_logs_cnt=0;
-
-        for(map<slotid_t, shared_ptr<FpgaRaftData>>::iterator iter=raft_logs_.begin(); iter!=raft_logs_.end(); iter++){
-            slotid_t key=iter->first;
-            shared_ptr<FpgaRaftData> val=iter->second;
-            YAML::Node _raft_logs_item;
-            _raft_logs_item["term"]=val2string(val->term);
-
-            //TODO: write key-val pairs
-            shared_ptr<Marshallable> &cmd=val->log_;    // a command
-            _raft_logs_item["logs_"]["kind_"]=val2string(val->log_->kind_);
-            if(val->log_->kind_==MarshallDeputy::CMD_TPC_PREPARE){
-                YAML::Node _kv_item;
-                auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
-                auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
-                int index = 0;
-                for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
-                    auto cmd_input = (*it)->input.values_;
-                    for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
-                        _kv_item[val2string(it2->first)]=val2string(it2->second.get_i32());
-                    }
-                }
-                _raft_logs_item["logs_"]["kv"]=_kv_item;
-            }
-
-            root["raft_logs_"][val2string(key)]=_raft_logs_item;
-            _raft_logs_cnt+=1;
-        }
-
-        ofstream ofs("/home/fl/FpgaRaftServerres.yaml");
-        ofs<<root<<endl;
-        ofs.close();
-        Log_info("Write yaml end");
-    }
-
-    void read4file(){
-        YAML::Node root = YAML::LoadFile("/home/fl/FpgaRaftServerres.yaml");
-
-        currentTerm=string2val<uint64_t>(root["currentTerm"].as<string>());
-        vote_for_=string2val<parid_t>(root["vote_for_"].as<string>());
-        //for(auto i : root["raft_logs_"].getMemberNames()){
-        for(YAML::const_iterator it= root["raft_logs_"].begin(); it != root["raft_logs_"].end();++it){
-            slotid_t id=string2val<slotid_t>(it->first.as<string>());
-            auto inst=GetFpgaRaftInstance(id);
-            shared_ptr<Marshallable> cmd(new Marshallable(0));
-
-            //TODO: read key-val pairs
-
-            cmd->kind_=string2val<int32_t>(it->second["logs_"]["kind_"].as<string>());
-            inst->log_= cmd;
-            inst->term = string2val<ballot_t>(it->second["term"].as<string>());
+        {
+            std::ofstream ofs("testfile2");
+            boost::archive::text_oarchive oa(ofs);
+            oa << raft_logs_;
         }
     }
 
+    void read2file(){
+        {
+            std::ifstream ifs("testfile2");
+            boost::archive::text_iarchive ia(ifs);
+            ia >> raft_logs_;
+        }
+    }
 
 
     };

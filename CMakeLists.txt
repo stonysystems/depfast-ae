@@ -184,7 +184,7 @@ link_directories(
 
 
 #set (CMAKE_SHARED_LINKER_FLAGS "-Wl, -lyaml-cpp")
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_serialization")
 
 file(GLOB RRR_SRC
     "src/rrr/base/*.hpp"

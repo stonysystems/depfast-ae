@@ -18,7 +18,34 @@ class Marshallable {
   };
   virtual Marshal& ToMarshal(Marshal& m) const;
   virtual Marshal& FromMarshal(Marshal& m);
+
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version){
+        ar & kind_;
+    }
 };
+
+ //   namespace boost { namespace serialization {
+    template<class Archive>
+    inline void save_construct_data(
+            Archive & ar, const Marshallable * t, const unsigned int file_version
+    ){
+        // save data required to construct instance
+        ar << t->kind_;
+    }
+
+    template<class Archive>
+    inline void load_construct_data(
+            Archive & ar, Marshallable * t, const unsigned int file_version
+    ){
+        // retrieve data from archive required to construct new instance
+        int attribute;
+        ar >> attribute;
+        // invoke inplace constructor to initialize instance of Marshallable
+        ::new(t)Marshallable(attribute);
+    }
+   //     }} // namespace ...
 
 class MarshallDeputy {
  public:

@@ -53,6 +53,16 @@ using namespace std;
 //#include <boost/random/mersenne_twister.hpp>
 //#include <boost/random/uniform_int_distribution.hpp>
 
+
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/map.hpp>
+
+#include <boost/serialization/shared_ptr.hpp>
+
+
 // yaml-cpp
 #include <yaml-cpp/yaml.h>
 

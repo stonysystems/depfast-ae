@@ -74,6 +74,7 @@ def configure(conf):
     _enable_reuse_coroutine(conf)
     _enable_simulate_wan(conf)
     _enable_db_checksum(conf)
+    _enable_serialization(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -256,6 +257,9 @@ def _enable_db_checksum(conf):
     if Options.options.db_checksum:
         Logs.pprint("PINK", "db checksum")
         conf.env.append_value("CXXFLAGS", "-DDB_CHECKSUM")
+
+def _enable_serialization(conf):
+    conf.env.append_value("LDFLAGS", "-lboost_serialization")
 
 def _enable_pic(conf):
     conf.env.append_value("CXXFLAGS", "-fPIC")
