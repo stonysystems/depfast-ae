@@ -201,7 +201,7 @@ class FpgaRaftServer : public TxLogServer {
     }
     *term = currentTerm ;
 
-    //save2file();    //TODO: just a sample
+    save2file();    //TODO: just a sample
   }
   
   shared_ptr<FpgaRaftData> GetInstance(slotid_t id) {
@@ -304,7 +304,7 @@ class FpgaRaftServer : public TxLogServer {
 
     void save2file(){
         {
-            std::ofstream ofs("testfile2");
+            std::ofstream ofs("/db/testfile2");
             boost::archive::text_oarchive oa(ofs);
             oa << raft_logs_;
         }
@@ -312,7 +312,7 @@ class FpgaRaftServer : public TxLogServer {
 
     void read2file(){
         {
-            std::ifstream ifs("testfile2");
+            std::ifstream ifs("/db/testfile2");
             boost::archive::text_iarchive ia(ifs);
             ia >> raft_logs_;
         }
