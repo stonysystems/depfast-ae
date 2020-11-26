@@ -46,6 +46,9 @@ public:
 class Epoll {
  private:
   std::vector<Pollable*> pending{};
+	int zero_count = 0;
+	int count = 0;
+	int first = 0;
  public:
    volatile bool* pause ;
    volatile bool* stop ;
@@ -178,7 +181,7 @@ class Epoll {
   }
 
 
-	std::vector<struct timespec> Wait_One() {
+	std::vector<struct timespec> Wait_One(int& num_ev, bool& slow) {
     const int max_nev = 100;
 		bool found = false;
 		std::vector<struct timespec> result{};
@@ -211,10 +214,11 @@ class Epoll {
 //    int timeout = 0; // busy loop
     
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
+		num_ev = nev;
     
 		struct timespec begin_cpu, end_cpu, begin, end;
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_cpu);
-		clock_gettime(CLOCK_MONOTONIC, &begin);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
     for (int i = 0; i < nev; i++) {
 			found = true;
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
@@ -233,6 +237,7 @@ class Epoll {
       }
     }
 		
+		count++;
 		if (found) {
 			result.push_back(begin);
 			result.push_back(begin_cpu);
@@ -243,10 +248,10 @@ class Epoll {
   }
 
   void Wait_Two() {
-    /*if (pending.size() != 0) {
-       //pending.clear();
-    }*/
-    //return;
+		struct timespec begin2, begin2_cpu, end2, end2_cpu;
+		clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+    
     for(auto it = pending.begin(); it != pending.end();){
       Pollable* poll = *it;
       bool done = poll->handle_read_two();
@@ -256,6 +261,14 @@ class Epoll {
         it++;
       }
     }
+		if (pending.size() != 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end2);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+			long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+			long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+			double util2 = (double) total_cpu2/total_time2;
+			Log_info("elapsed CPU time (client read2): %f", util2);
+		}
   }
 
   void Wait() {

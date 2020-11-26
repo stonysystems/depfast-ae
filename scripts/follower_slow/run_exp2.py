@@ -547,7 +547,7 @@ class ClientController(object):
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 5 and self.once == 1):
+            if (progress >= 2 and self.once == 1):
                 try:
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
@@ -585,7 +585,7 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
 
-            if (progress >= upper_cutoff_pct + 3):
+            if (progress >= upper_cutoff_pct + 5):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \

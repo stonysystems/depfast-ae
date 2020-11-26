@@ -550,13 +550,13 @@ class ClientController(object):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo mkdir /sys/fs/cgroup/cpu/janus; \
-                           echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
+                           echo 406250 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
                            echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sudo mkdir /sys/fs/cgroup/cpu/janus; \
-                           echo 50000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
+                           echo 500000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_quota_us; \
                            echo 1000000 | sudo tee /sys/fs/cgroup/cpu/janus/cpu.cfs_period_us; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/janus/cgroup.procs"
                     for process_name, process in self.process_infos.items():

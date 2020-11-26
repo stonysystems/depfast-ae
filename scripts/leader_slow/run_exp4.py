@@ -573,8 +573,8 @@ class ClientController(object):
 
             if (progress >= upper_cutoff_pct + 3):
                 try:
-                    cmd = "pid=`ps aux | grep dd | head -1 | awk '{print $2}'`; \
-                           pid2=`ps aux | grep dd | head -2 | tail -1 | awk '{print $2}'`; \
+                    cmd = "pid=`ps aux | grep 'dd if' | head -1 | awk '{print $2}'`; \
+                           pid2=`ps aux | grep 'dd if' | head -2 | tail -1 | awk '{print $2}'`; \
                            sudo kill -9 $pid; \
                            sudo kill -9 $pid2;"
                     

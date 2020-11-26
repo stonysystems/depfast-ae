@@ -117,6 +117,10 @@ public:
     
     std::string host_;
     int sock_;
+		long times[100];
+		long total_time;
+		int index = 0;
+		int count_ = 0;
     enum {
         NEW, CONNECTED, CLOSED
     } status_;
@@ -127,6 +131,7 @@ public:
 
     Counter xid_counter_;
     std::unordered_map<i64, Future*> pending_fu_;
+		std::unordered_map<i64, struct timespec> rpc_starts;
 
     SpinLock pending_fu_l_;
     SpinLock out_l_;
@@ -139,6 +144,7 @@ public:
 
 public:
 	 bool client_;
+	 long time_;
 
    virtual ~Client() {
      invalidate_pending_futures();

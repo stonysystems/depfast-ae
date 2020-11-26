@@ -64,14 +64,24 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-  auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
+	Log_info("CreateRunning2");
+  /*auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
     *res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
     }
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
-  });
+  });*/
+  auto func = [cmd_id, sp, output, res, coro_id, this, defer]() {
+    *res = SUCCESS;
+    if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
+      *res = REJECT;
+    }
+    *coro_id = Coroutine::CurrentCoroutine()->id;
+    defer->reply();
+  };
+	func();
 }
 
 void ClassicServiceImpl::FailOverTrig(const bool_t& pause, 
@@ -128,13 +138,17 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
 		bool null_cmd = false;
     bool ret = sched->OnPrepare(tid, sids, dep_id, null_cmd);
+		//Log_info("slow1: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = ret ? SUCCESS : REJECT;
 		if(null_cmd) *res = REPEAT;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-  auto coro = Coroutine::CreateRun(func);
+
+	Log_info("CreateRunning2");
+	func();
+  //auto coro = Coroutine::CreateRun(func);
   //Log_info("coro id on service side: %d", coro->id);
 // TODO move the stat to somewhere else.
 #ifdef PIECE_COUNT
@@ -169,12 +183,15 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2], result[3]};
 		//*profile = {0.0, 0.0, 0.0, 0.0};
+		//Log_info("slow2: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-  Coroutine::CreateRun(func);
+	Log_info("CreateRunning2");
+  //Coroutine::CreateRun(func);
+	func();
 }
 
 void ClassicServiceImpl::Abort(const rrr::i64& tid,
@@ -192,12 +209,15 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
     sched->OnCommit(tid, dep_id, REJECT);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2]};
+		Log_info("slow3: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-  Coroutine::CreateRun(func);
+	Log_info("CreateRunning2");
+  //Coroutine::CreateRun(func);
+	func();
 }
 
 void ClassicServiceImpl::rpc_null(rrr::DeferredReply* defer) {

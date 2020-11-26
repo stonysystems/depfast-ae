@@ -48,6 +48,10 @@ class Reactor {
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
 	bool slow_{false};
+	long disk_times[50];
+	int disk_count{0};
+	int disk_index{0};
+	int slow_count{0};
   std::thread::id thread_id_{};
   static SpinLock disk_job_;
 #ifdef REUSE_CORO

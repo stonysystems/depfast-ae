@@ -136,19 +136,25 @@ void ServerConnection::end_reply() {
     out_l_.unlock();
 }
 
+
+//compute the latency of every rpc to each connection and send it to the application
+//application can then compare the rpc with expected latency
 bool ServerConnection::handle_read() {
-		struct timespec begin, end;
-		clock_gettime(CLOCK_MONOTONIC, &begin);
-    
 		//Log_info("Server's addr is: %s", server_->addr_.c_str());
     if (status_ == CLOSED) {
         return false;
     }
+		struct timespec begin2, begin2_cpu, end2, end2_cpu;
+		struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
+		struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
+		clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
 
     //time this part, we can check the rpc_id by hardcoding
     int bytes_read = in_.read_from_fd(socket_);
     
     if (bytes_read == 0) {
+				Log_info("no bytes read");
         return false;
     }
 
@@ -202,6 +208,7 @@ bool ServerConnection::handle_read() {
             // the handler should delete req, and release server_connection refcopy.
             auto x = dynamic_pointer_cast<ServerConnection>(shared_from_this());
             auto y = it->second;
+						Log_info("CreateRunning: %x", rpc_id);
             Coroutine::CreateRun([y, req, x, this, rpc_id] () {
 //              verify(x);
               verify(x->connected());
@@ -243,12 +250,19 @@ bool ServerConnection::handle_read() {
             delete req;
         }
     }
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		Log_info("elapsed time of read: %d", end.tv_nsec - begin.tv_nsec);
+		clock_gettime(CLOCK_MONOTONIC, &end2);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+		long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+		long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+		double util2 = (double) total_cpu2/total_time2;
+		Log_info("elapsed CPU time (server read): %f", util2);
     return false;
 }
 
 void ServerConnection::handle_write() {
+		struct timespec begin2, begin2_cpu, end2, end2_cpu;
+		clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
     if (status_ == CLOSED) {
         return;
     }
@@ -259,6 +273,12 @@ void ServerConnection::handle_write() {
         server_->pollmgr_->update_mode(shared_from_this(), Pollable::READ);
     }
     out_l_.unlock();
+		clock_gettime(CLOCK_MONOTONIC, &end2);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+		long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+		long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+		double util2 = (double) total_cpu2/total_time2;
+		Log_info("elapsed CPU time (client write): %f", util2);
 }
 
 void ServerConnection::handle_error() {

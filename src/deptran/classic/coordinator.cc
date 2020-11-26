@@ -359,10 +359,39 @@ void CoordinatorClassic::Prepare() {
 	if(repeat_) {
 		
 	}
+	if (commo()->slow) {
+		Log_info("prep_slow");
+		prep_slow = true;
+	}
+	//if(commo()->slow  && commo()->total > 100 && !commo()->paused){
+		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
+		//double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
+		/*double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
+		if(cpu_thres >= 0.85) cpu_thres = 0.85;
+		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
+		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+			commo()->last_cpu = commo()->cpu;
+			commo()->low_util++;
+		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;*/
+		/*if(commo()->slow){
+			commo()->low_util = 0;
+			Log_info("Reelection started");
+			commo()->paused = true;
 
-    //verify(site_prepare_[partition_id] == 0);
-    //site_prepare_[partition_id]++;
-    //verify(site_prepare_[partition_id] == 1);
+			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
+			commo()->qe->n_voted_yes_ = commo()->total_;
+			commo()->qe->Wait();
+			commo()->qe = NULL;
+
+			sp_quorum_event = commo()->SendReelect();
+			sp_quorum_event->Wait();
+			commo()->paused = false;
+			commo()->slow = false;
+			Log_info("Reelection finished");
+			commo()->ResetProfiles();
+			commo()->total_ = 0;
+		}
+	}*/
 }
 
 void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
@@ -455,17 +484,17 @@ void CoordinatorClassic::Commit() {
   }
 	Log_info("slow inside Commit is: %d", commo()->slow);
 	Log_info("commo window avg: %d", commo()->window_avg);
-	if(commo()->total > 100 && !commo()->paused/* && commo()->window_avg >= commo()->total_avg*2.0*/){
+	if((prep_slow || commo()->slow)  && commo()->total > 10000 && !commo()->paused){
 		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
 		//double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
-		double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
+		/*double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
 		if(cpu_thres >= 0.85) cpu_thres = 0.85;
 		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
 		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
 			commo()->last_cpu = commo()->cpu;
 			commo()->low_util++;
-		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;
-		if(commo()->low_util >= 10){
+		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;*/
+		if(commo()->slow || prep_slow){
 			commo()->low_util = 0;
 			Log_info("Reelection started");
 			commo()->paused = true;
@@ -475,14 +504,17 @@ void CoordinatorClassic::Commit() {
 			commo()->qe->Wait();
 			commo()->qe = NULL;
 
+			Log_info("Reelection: done waiting for commits");
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;
-			//Log_info("Reelection finished");
+			commo()->slow = false;
+			Log_info("Reelection finished");
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}
 	}
+	prep_slow = false;
 }
 
 void CoordinatorClassic::CommitAck(phase_t phase) {

@@ -12,6 +12,7 @@ class CoordinatorClassic : public Coordinator {
  public:
   int debug_cnt = 0;
 	int total = 0;
+	bool prep_slow = false;
 	rrr::Mutex pre_mutex{};
 	rrr::CondVar pre_cond{};
 	map<parid_t, SiteProxyPair> leaders;

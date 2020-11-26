@@ -22,6 +22,7 @@ Communicator::Communicator(PollMgr* poll_mgr) {
     rpc_poll_ = poll_mgr;
   auto config = Config::GetConfig();
   vector<parid_t> partitions = config->GetAllPartitionIds();
+	Log_info("size of partitions: %d", partitions.size());
   for (auto& par_id : partitions) {
     auto site_infos = config->SitesByPartitionId(par_id);
     vector<std::pair<siteid_t, ClassicProxy*>> proxies;
@@ -145,7 +146,7 @@ Communicator::ConnectToClientSite(Config::SiteInfo& site,
   double elapsed;
   int attempt = 0;
   do {
-    Log_info("connect to client site: %s (attempt %d)", addr, attempt++);
+    Log_debug("connect to client site: %s (attempt %d)", addr, attempt++);
     auto connect_result = rpc_cli->connect(addr, false);
     if (connect_result == SUCCESS) {
       ClientControlProxy* rpc_proxy = new ClientControlProxy(rpc_cli);
@@ -215,7 +216,7 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	for(auto& pair: rpc_par_proxies_[0]){
 		rrr::FutureAttr fuattr;
 		int id = pair.first;
-		if(id != new_leader) continue;
+		if(id != 1) continue;
 		fuattr.callback = 
 			[e, this, id] (Future* fu) {
 				bool_t success = false;

@@ -547,20 +547,20 @@ class ClientController(object):
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 5 and self.once == 1):
+            if (progress >= 2 and self.once == 1):
                 try:
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo 704 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo 704 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
@@ -585,7 +585,7 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
 
-            if (progress >= upper_cutoff_pct + 3):
+            if (progress >= upper_cutoff_pct + 6):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \

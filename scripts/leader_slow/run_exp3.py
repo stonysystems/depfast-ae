@@ -553,14 +553,14 @@ class ClientController(object):
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
                            sudo mkdir /sys/fs/cgroup/blkio/janus; \
-                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
-                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           echo '8:32 917504' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo '8:32 917504' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
                            sudo mkdir /sys/fs/cgroup/blkio/janus; \
-                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo '8:32 917504' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
                            echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     

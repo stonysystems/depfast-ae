@@ -88,6 +88,10 @@ class Communicator {
   unordered_map<uint64_t, pair<rrr::i64, rrr::i64>> outbound_{};
 	map<uint64_t, double> lat_util_{};
   locid_t leader_ = 0;
+	int outbound = 0;
+	int outbounds[100];
+	int ob_index = 0;
+	int begin_index = 0;
 	bool paused = false;
 	bool slow = false;
 	int index;

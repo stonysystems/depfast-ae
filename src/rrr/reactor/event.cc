@@ -15,7 +15,9 @@ uint64_t Event::GetCoroId(){
 }
 
 bool Event::IsSlow() {
-	return Reactor::GetReactor()->slow_;
+	bool result = Reactor::GetReactor()->slow_;
+	Reactor::GetReactor()->slow_ = false;
+	return result;
 }
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.

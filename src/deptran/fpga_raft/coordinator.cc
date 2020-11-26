@@ -97,11 +97,46 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		struct timespec end_;
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
-		Log_info("time of Wait(): %d", end_.tv_nsec-start_.tv_nsec);
-		Log_info("slow?: %d", sp_quorum->IsSlow());
+		//Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
 		slow_ = sp_quorum->IsSlow();
-    verify(sp_quorum->status_ != Event::TIMEOUT);
-    verify(sp_quorum->status_ == Event::DONE);
+		
+		long leader_time;
+		std::vector<long> follower_times {};
+
+		int total_ob = 0;
+		int avg_ob = 0;
+		//Log_info("begin_index: %d", commo()->begin_index);
+		if (commo()->begin_index >= 1000) {
+			if (commo()->ob_index < 100) {
+				commo()->outbounds[commo()->ob_index] = commo()->outbound;
+				commo()->ob_index++;
+			} else {
+				for (int i = 0; i < 99; i++) {
+					commo()->outbounds[i] = commo()->outbounds[i+1];
+					total_ob += commo()->outbounds[i];
+				}
+				commo()->outbounds[99] = commo()->outbound;
+				total_ob += commo()->outbounds[99];
+			}
+			commo()->begin_index = 0;
+		} else {
+			commo()->begin_index++;
+		}
+		avg_ob = total_ob/100;
+		//Log_info("number of rpcs: %d", avg_ob);
+
+		for (auto it = commo()->rpc_clients_.begin(); it != commo()->rpc_clients_.end(); it++) {
+			if (avg_ob > 0 && it->second->time_ > 0) Log_info("time for %d is: %d", it->first, it->second->time_/avg_ob);
+			if (it->first != loc_id_) {
+				follower_times.push_back(it->second->time_);
+			}
+		}
+		if (avg_ob > 0 && !slow_) {
+			//Log_info("%d and %d", follower_times[0], follower_times[1]);
+			slow_ = follower_times[0]/avg_ob > 70000 && follower_times[1]/avg_ob > 70000;
+		}
+
+		//Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);

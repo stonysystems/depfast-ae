@@ -57,6 +57,7 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
+	Log_info("CreateRunning2");
   Coroutine::CreateRun([&] () {
     sched_->OnAppendEntries(slot,
                             ballot,
@@ -78,11 +79,17 @@ void FpgaRaftServiceImpl::Decide(const uint64_t& slot,
                                    const MarshallDeputy& md_cmd,
                                    rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
+	Log_info("CreateRunning2");
   Coroutine::CreateRun([&] () {
     sched_->OnCommit(slot,
                      ballot,
                      const_cast<MarshallDeputy&>(md_cmd).sp_data_);
+		
+		struct timespec begin, end;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
     defer->reply();
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of decide reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
   });
 }
 

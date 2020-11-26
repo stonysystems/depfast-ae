@@ -53,10 +53,16 @@ Coordinator *FpgaRaftFrame::CreateCoordinator(cooid_t coo_id,
                                                 shared_ptr<TxnRegistry> txn_reg) {
   verify(config != nullptr);
   CoordinatorFpgaRaft *coo;
+	
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
   coo = new CoordinatorFpgaRaft(coo_id,
                                   benchmark,
                                   ccsi,
                                   id);
+	
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of prepare on CreateCoordinator: %d", end.tv_nsec-begin.tv_nsec);
   coo->frame_ = this;
   verify(commo_ != nullptr);
   coo->commo_ = commo_;

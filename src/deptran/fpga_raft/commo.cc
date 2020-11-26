@@ -11,6 +11,7 @@ namespace janus {
 
 FpgaRaftCommo::FpgaRaftCommo(PollMgr* poll) : Communicator(poll) {
 //  verify(poll != nullptr);
+	Log_info("called from commo");
 }
 
 shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id, 
@@ -60,19 +61,28 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     if (p.first == this->loc_id_)
         continue;
     auto proxy = (FpgaRaftProxy*) p.second;
+
     FutureAttr fuattr;
-    fuattr.callback = [e, isLeader, currentTerm] (Future* fu) {
+    fuattr.callback = [this, e, isLeader, currentTerm] (Future* fu) {
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
-      fu->get_reply() >> accept;
+			
+			fu->get_reply() >> accept;
       fu->get_reply() >> term;
       fu->get_reply() >> index;
+			
+			struct timespec begin, end;
+			clock_gettime(CLOCK_MONOTONIC, &begin);
+			this->outbound--;
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index);
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			Log_info("time of reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
+		outbound++;
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,

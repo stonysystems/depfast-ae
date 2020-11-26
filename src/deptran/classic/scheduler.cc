@@ -54,6 +54,8 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
 //  verify(!tx.inuse);
 //  tx.inuse = true;
 
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
   for (auto& c: conflicts) {
     vector<Value> pkeys;
     for (int i = 0; i < c.primary_keys.size(); i++) {
@@ -73,6 +75,8 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
       }
     }
   }
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of dispatch: %d", end.tv_nsec-begin.tv_nsec);
 //  tx.inuse = false;
   return true;
 }
@@ -112,6 +116,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    verify(0);
   }
 
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
   bool ret = true;
   for (const auto& sp_piece_data : *sp_vec_piece) {
     verify(sp_piece_data);
@@ -120,6 +126,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
       break;
     }
   }
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of dispatch2: %d", end.tv_nsec-begin.tv_nsec);
   // TODO reimplement this.
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
@@ -153,10 +161,16 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
     sp_tx->is_leader_hint_ = true;
+		
+		struct timespec begin, end;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
     //Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
     auto coo = CreateRepCoord(dep_id);
+		
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of prepare on server: %d", end.tv_nsec-begin.tv_nsec);
     //Log_info("The locale id: %d", coo->loc_id_);
     coo->Submit(sp_m);
     sp_tx->prepare_result->Wait();
@@ -206,10 +220,16 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, const uint64_t& dep_id, int commit
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
     cmd->ret_ = commit_or_abort;
+		
+		struct timespec begin, end;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
     //Log_info("This is dep_id: %d", dep_id);
     auto coo = CreateRepCoord(dep_id);
+		
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
     coo->Submit(sp_m);
     //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();

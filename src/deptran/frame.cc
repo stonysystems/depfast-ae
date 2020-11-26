@@ -297,7 +297,10 @@ Communicator* Frame::CreateCommo(PollMgr* pollmgr) {
 shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
                                bool ro, TxLogServer *mgr) {
   shared_ptr<Tx> sp_tx;
-  switch (mode_) {
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+  
+	switch (mode_) {
     case MODE_2PL:
       sp_tx.reset(new Tx2pl(epoch, tid, mgr));
       break;
@@ -319,6 +322,8 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
       sp_tx.reset(new TxClassic(epoch, tid, mgr));
       break;
   }
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of CreateTx on server: %d", end.tv_nsec-begin.tv_nsec);
   return sp_tx;
 }
 

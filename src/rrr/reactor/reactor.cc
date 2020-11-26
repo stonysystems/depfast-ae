@@ -31,7 +31,8 @@ std::shared_ptr<Coroutine>
 Coroutine::CreateRun(std::function<void()> func) {
   auto& reactor = *Reactor::GetReactor();
   auto coro = reactor.CreateRunCoroutine(func);
-  // some events might be triggered in the last coroutine.
+
+	// some events might be triggered in the last coroutine.
   return coro;
 }
 
@@ -73,8 +74,9 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     sp_coro = std::make_shared<Coroutine>(func);
   }
   coros_.insert(sp_coro);
-  ContinueCoro(sp_coro);
-  Loop();
+  
+	ContinueCoro(sp_coro);
+	Loop();
   return sp_coro;
 }
 
@@ -154,6 +156,7 @@ void Reactor::Loop(bool infinite) {
       } else {
         verify(event.status_ == Event::TIMEOUT);
       }
+
       ContinueCoro(sp_coro);
     }
 
@@ -185,9 +188,10 @@ void Reactor::DiskLoop(){
   }
   Reactor::GetReactor()->disk_job_.unlock();
 	
+	int total_written = 0;
 	unordered_set<std::string> sync_set{};
 	for (int i = 0; i < pending_disk_events_.size(); i++) {
-		pending_disk_events_[i]->Handle();
+		total_written += pending_disk_events_[i]->Handle();
 		if (pending_disk_events_[i]->sync) {
 			auto it = sync_set.find(pending_disk_events_[i]->file);
 			if (it == sync_set.end()) {
@@ -196,10 +200,43 @@ void Reactor::DiskLoop(){
 		}
 	}
 
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 	for (auto it = sync_set.begin(); it != sync_set.end(); it++) {
 		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT);
 		::fsync(fd);
 		::close(fd);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	if (total_written > 0) {
+		long disk_time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
+		//Log_info("time of fsync: %d", disk_time);
+		//Log_info("total written: %d", total_written);
+
+		long total_time = 0;
+		long avg_time = 0;
+		if (disk_count >= 100) {
+			if (disk_index < 50) {
+				disk_times[disk_index] = disk_time;
+				disk_index++;
+			} else {
+				for (int i = 0; i < 49; i++) {
+					disk_times[i] = disk_times[i+1];
+					total_time += disk_times[i];
+				}
+				disk_times[49] = disk_time;
+				total_time += disk_times[49];
+				avg_time = total_time/disk_index;
+				//Log_info("time of fsync: %d", avg_time);
+			}
+			disk_count = 0;
+		} else {
+			disk_count++;
+		}
+
+		if (avg_time > 6500000) {
+			Reactor::GetReactor()->slow_ = true;
+		}
 	}
 
 	for(int i = 0; i < pending_disk_events_.size(); i++){
@@ -215,12 +252,29 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
   auto sp_old_coro = sp_running_coro_th_;
   sp_running_coro_th_ = sp_coro;
   verify(!sp_running_coro_th_->Finished());
-  if (sp_coro->status_ == Coroutine::INIT) {
+
+	struct timespec begin_marshal, begin_marshal_cpu, end_marshal, end_marshal_cpu;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin_marshal);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_marshal_cpu);
+  //Log_info("start of %d", sp_coro->id);
+
+	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
   } else {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_marshal_cpu);
+	long total_cpu = (end_marshal_cpu.tv_sec - begin_marshal_cpu.tv_sec)*1000000000 + (end_marshal_cpu.tv_nsec - begin_marshal_cpu.tv_nsec);
+	long total_time = (end_marshal.tv_sec - begin_marshal.tv_sec)*1000000000 + (end_marshal.tv_nsec - begin_marshal.tv_nsec);
+	double util = (double) total_cpu/total_time;
+	if (total_time > 10000) {
+		Log_info("marshal time: %d with %d coros", total_time, coros_.size());
+		Log_info("marshal CPU: %f at %d", util, sp_coro->id);
+	}
+
   verify(sp_running_coro_th_ == sp_coro);
   if (sp_running_coro_th_->Finished()) {
     if (REUSING_CORO) {
@@ -367,39 +421,83 @@ void PollMgr::PollThread::poll_loop() {
 	long total_cpu;
 	long total_time;
 	int total = 0;
+	int num_events = 0;
+	int count = 0;
+	int diff_count = 0;
+	int first = 0;
+	int second = 0;
+	bool slow = false;
 
+	struct timespec begin2, begin2_cpu, end2, end2_cpu, begin3, begin3_cpu, end3, end3_cpu;
 	while (!stop_flag_) {
     TriggerJob();
+		//if (num_events > 0) Log_info("number of events: %d", num_events);
+		if (!begins.empty() && num_events >= 5) {
+			//Log_info("number of events: %d", num_events);
 
-		if (!begins.empty()) {
 			struct timespec end, end_cpu;
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
-			clock_gettime(CLOCK_MONOTONIC, &end);
+			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 			
 			total_cpu += (end_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end_cpu.tv_nsec - begins[1].tv_nsec);
 			total_time += (end.tv_sec - begins[0].tv_sec)*1000000000 + (end.tv_nsec - begins[0].tv_nsec);
-			total++;
-			
-			if (total == 10) {
-				double util = (double)total_cpu/total_time;
-				Log_info("elapsed time: %d", total_time);
-				if (util < 0.9) {
-					Reactor::GetReactor()->slow_ = true;
-					Log_info("elapsed CPU time: %f", util);
+			count++;
+			double util = (double)total_cpu/total_time;
+			Log_info("elapsed CPU: %d", total_cpu);
+			Log_info("elapsed time: %d", total_time);
+			Log_info("elapsed CPU time: %f", util);
+			if (util < 0.40) {
+				if (first == 0) first = count;
+				else {
+					if (count-first < 1000) {
+						if (diff_count >= 5) {
+							Reactor::GetReactor()->slow_ = true;
+							diff_count = 0;
+						} else {
+							diff_count++;
+						}
+					} else {
+						diff_count = 0;
+					}
+					//if (count-first < 1000) Log_info("slow slow");
+					first = count;
 				}
-				total = 0;
-				total_cpu = 0;
-				total_time = 0;
 			}
+			total_cpu = 0;
+			total_time = 0;
+		}
+
+		if (num_events >= 5) {
+			clock_gettime(CLOCK_MONOTONIC, &end2);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+			long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+			long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+			double util2 = (double) total_cpu2/total_time2;
+			Log_info("elapsed CPU3: %d", total_cpu2);
+			Log_info("elapsed time3: %d", total_time2);
+			Log_info("elapsed CPU time3: %f", util2);
 		}
 
 #ifdef USE_KQUEUE
 		begins = poll_.Wait();
 #else
-		begins = poll_.Wait_One();
+		begins = poll_.Wait_One(num_events, slow);
+		if (num_events >= 5) {
+			clock_gettime(CLOCK_MONOTONIC, &end3);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end3_cpu);
+			long total_cpu3 = (end3_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end3_cpu.tv_nsec - begins[1].tv_nsec);
+			long total_time3 = (end3.tv_sec - begins[0].tv_sec)*1000000000 + (end3.tv_nsec - begins[0].tv_nsec);
+			double util3 = (double) total_cpu3/total_time3;
+			Log_info("elapsed CPU4: %d", total_cpu3);
+			Log_info("elapsed time4: %d", total_time3);
+			Log_info("elapsed CPU time4: %f", util3);
+		}
     poll_.Wait_Two();
 #endif
-		
+
+    clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+		if (slow) Reactor::GetReactor()->slow_ = slow;
 
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
@@ -423,7 +521,6 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     verify(Reactor::GetReactor()->ready_events_.empty());
     Reactor::GetReactor()->Loop();
-		
   }
 }
 

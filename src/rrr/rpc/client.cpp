@@ -163,6 +163,7 @@ int Client::connect(const char* addr, bool client) {
     ::close(sock_);
     sock_ = -1;
   }
+
   freeaddrinfo(result);
 
   if (rp == nullptr) {
@@ -187,26 +188,26 @@ void Client::handle_error() {
 void Client::handle_write() {
   //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
+	struct timespec begin2, begin2_cpu, end2, end2_cpu;
+  clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
   if (status_ != CONNECTED) {
     return;
   }
 
   out_l_.lock();
-  //auto start = chrono::steady_clock::now();
   out_.write_to_fd(sock_);
 	
-  //auto end = chrono::steady_clock::now();
-  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
-
-  //Log_info("The Time of Writing to Socket is: %d", duration);
-
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
- // auto end = chrono::steady_clock::now();
- // auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
- // Log_info("Duration of handle_write() is: %d", duration);
+	clock_gettime(CLOCK_MONOTONIC, &end2);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+	double util2 = (double) total_cpu2/total_time2;
+	Log_info("elapsed CPU time (client write): %f", util2);
 }
 
 size_t Client::content_size() {
@@ -214,16 +215,23 @@ size_t Client::content_size() {
 }
 
 bool Client::handle_read(){
+	struct timespec begin2, begin2_cpu, end2, end2_cpu;
+  clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
   if (status_ != CONNECTED) {
     return false;
   }
 
-  //Log_info("failing here");
   int bytes_read = in_.read_from_fd(sock_);
-  //Log_info("bytes read: %d", bytes_read);
   if (bytes_read == 0) {
     return false;
   }
+	clock_gettime(CLOCK_MONOTONIC, &end2);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+	double util2 = (double) total_cpu2/total_time2;
+	Log_info("elapsed CPU time (client read): %f", util2);
   return true;
 }
 
@@ -232,6 +240,8 @@ bool Client::handle_read_two() {
     return false;
   }
 
+	struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
+	struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
   //return true;
   bool done = false;
 	int iters = 0;
@@ -243,13 +253,17 @@ iters = 5;
   if(client_){
 		iters = INT_MAX;
 	}
-  for(int i = 0; i < iters; i++) {
+  
+	for(int i = 0; i < iters; i++) {
     i32 packet_size;
+
     int n_peek = in_.peek(&packet_size, sizeof(i32));
+
     if (n_peek == sizeof(i32)
         && in_.content_size() >= packet_size + sizeof(i32)) {
-      verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
-
+			
+			verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+			
       v64 v_reply_xid;
       v32 v_error_code;
 
@@ -263,16 +277,43 @@ iters = 5;
         Future* fu = it->second;
         verify(fu->xid_ == v_reply_xid.get());
 
+				struct timespec end;
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;
+				if (count_ >= 1000) {
+					if (index < 100) {
+						times[index] = curr;
+						index++;
+					} else {
+						total_time = 0;
+						for (int i = 0; i < 99; i++) {
+							times[i] = times[i+1];
+							total_time += times[i];
+						}
+						times[99] = curr;
+						total_time += times[99];
+					}
+					count_ = 0;
+				} else {
+					count_++;
+				}
+				
+				if (index == 100) {
+					time_ = total_time/index;
+				} else {
+					time_ = 0;
+				}
+
         pending_fu_.erase(it);
         pending_fu_l_.unlock();
-
-        fu->error_code_ = v_error_code.get();
+				
+				fu->error_code_ = v_error_code.get();
         fu->reply_.read_from_marshal(in_,
 	    	                     packet_size - v_reply_xid.val_size()
 				         - v_error_code.val_size());
 				
-        fu->notify_ready();
-
+        
+				fu->notify_ready();
         fu->release();
       } else{
         pending_fu_l_.unlock();
@@ -285,7 +326,7 @@ iters = 5;
 
 
   Reactor::GetReactor()->Loop();
-  return done;
+	return done;
 }
 
 /*void Client::handle_read() {
@@ -365,6 +406,8 @@ int Client::poll_mode() {
 
 Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   //auto start = chrono::steady_clock::now();
+	
+
   out_l_.lock();
 
   if (status_ != CONNECTED) {
@@ -376,6 +419,10 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   pending_fu_l_.lock();
   pending_fu_[fu->xid_] = fu;
   pending_fu_l_.unlock();
+
+	struct timespec begin;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	rpc_starts[fu->xid_] = begin;
 
   // check if the client gets closed in the meantime
   if (status_ != CONNECTED) {
