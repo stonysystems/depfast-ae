@@ -100,6 +100,8 @@ class Communicator {
   void SendAbort(parid_t pid,
                  txnid_t tid,
                  const std::function<void()> &callback) ;
+  void SendEarlyAbort(parid_t pid,
+                      txnid_t tid) ;
 
   // for debug
   std::set<std::pair<parid_t, txnid_t>> phase_three_sent_;

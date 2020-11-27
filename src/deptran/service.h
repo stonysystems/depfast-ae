@@ -56,6 +56,10 @@ class ClassicServiceImpl : public ClassicService {
              i32* res,
              DeferredReply* defer) override;
 
+  void EarlyAbort(const i64& tid,
+                  i32* res,
+                  DeferredReply* defer) override;
+
   void UpgradeEpoch(const uint32_t& curr_epoch,
                     int32_t* res,
                     DeferredReply* defer) override;

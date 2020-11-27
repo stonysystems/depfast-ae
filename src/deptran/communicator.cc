@@ -281,6 +281,18 @@ void Communicator::SendCommit(parid_t pid,
   Future::safe_release(proxy->async_Commit(tid, fuattr));
 }
 
+void Communicator::SendEarlyAbort(parid_t pid,
+                                  txnid_t tid) {
+#ifdef LOG_LEVEL_AS_DEBUG
+  ___LogSent(pid, tid);
+#endif
+  FutureAttr fuattr;
+  fuattr.callback = [](Future*) {};
+  ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
+  Log_debug("SendAbort to %ld tid:%ld\n", pid, tid);
+  Future::safe_release(proxy->async_EarlyAbort(tid, fuattr));
+}
+
 void Communicator::SendAbort(parid_t pid, txnid_t tid,
                              const function<void()>& callback) {
 #ifdef LOG_LEVEL_AS_DEBUG

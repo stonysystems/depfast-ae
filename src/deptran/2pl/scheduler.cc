@@ -50,6 +50,12 @@ bool Scheduler2pl::Guard(Tx &tx_box, Row *row, int col_idx, bool write) {
   mdb::FineLockedRow* fl_row = (mdb::FineLockedRow*) row;
   ALock* lock = fl_row->get_alock(col_idx);
   auto sp_tx = dynamic_pointer_cast<Tx2pl>(tx_box.shared_from_this());
+  verify(!sp_tx->aborted_);
+  verify(!sp_tx->committed_);
+  if (sp_tx->wounded_) {
+    return false;
+  }
+  sp_tx->_debug_n_lock_requested_++;
   uint64_t lock_req_id = lock->Lock(0, ALock::WLOCK, tx_box.tid_, [sp_tx]()->int{
     if (sp_tx->woundable_) {
       sp_tx->wounded_ = true;
@@ -58,11 +64,16 @@ bool Scheduler2pl::Guard(Tx &tx_box, Row *row, int col_idx, bool write) {
       return 1;
     }
   });
-//  verify(!sp_tx->aborted_);
   verify(!sp_tx->committed_);
   if (lock_req_id > 0) {
-    sp_tx->locked_locks_.emplace_back(lock, lock_req_id);
-    return true;
+    sp_tx->_debug_n_lock_granted_++;
+    if (sp_tx->aborted_) {
+      lock->abort(lock_req_id);
+      return false;
+    } else {
+      sp_tx->locked_locks_.emplace_back(lock, lock_req_id);
+      return true;
+    }
   } else {
     return false;
   }
@@ -72,6 +83,7 @@ bool Scheduler2pl::DoPrepare(txnid_t tx_id) {
   // do nothing here?
   auto tx_box = dynamic_pointer_cast<Tx2pl>(GetOrCreateTx(tx_id));
   verify(!tx_box->inuse);
+  verify(tx_box->_debug_n_lock_granted_ == tx_box->_debug_n_lock_requested_);
   tx_box->inuse = true;
   bool ret = true;
   if (tx_box->wounded_) {

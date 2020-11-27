@@ -35,7 +35,8 @@ void Event::Wait(uint64_t timeout) {
 //    waiting_events.push_back(shared_from_this());
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
-      timeout = 300 * 1000 * 1000;
+      __debug_timeout_ = true;
+      timeout = 100 * 1000 * 1000;
 //#ifdef SIMULATE_WAN
 //      timeout = 600 * 1000 * 1000;
 //#endif
@@ -63,7 +64,7 @@ void Event::Wait(uint64_t timeout) {
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
-    if (status_ == TIMEOUT) {
+    if (__debug_timeout_ && status_ == TIMEOUT) {
       verify(0);
     }
 #endif
@@ -136,7 +137,7 @@ int SharedIntEvent::Set(const int& v) {
   return ret;
 }
 
-void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x) {
+void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
   if (value_ >= x) {
     return;
   }
@@ -144,9 +145,8 @@ void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x) {
   sp_ev->value_ = value_;
   sp_ev->target_ = x;
   events_.push_back(sp_ev);
-//  sp_ev->Wait(1000*1000*1000);
-//  verify(sp_ev->status_ != Event::TIMEOUT);
-  sp_ev->Wait();
+  sp_ev->Wait(timeout);
+  verify(sp_ev->status_ != Event::TIMEOUT);
 }
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {

@@ -180,8 +180,7 @@ void ClientWorker::Work() {
         this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
-          ev->Wait();
-//          ev->Wait(300*1000*1000);
+          ev->Wait(600*1000*1000);
           verify(ev->status_ != Event::TIMEOUT);
         } else {
           auto sp_event = Reactor::CreateSpEvent<NeverEvent>();
@@ -213,7 +212,8 @@ void ClientWorker::Work() {
   }
   poll_mgr_->add(dynamic_pointer_cast<Job>(std::make_shared<OneTimeJob>([this](){
     Log_info("wait for all virtual clients to stop issuing new requests.");
-    n_ceased_client_.WaitUntilGreaterOrEqualThan(n_concurrent_);
+    n_ceased_client_.WaitUntilGreaterOrEqualThan(n_concurrent_,
+                                                 (duration+500)*1000000);
     Log_info("wait for all outstanding requests to finish.");
     // TODO uncomment this, otherwise many requests are still outstanding there.
     sp_n_tx_done_.WaitUntilGreaterOrEqualThan(n_tx_issued_);

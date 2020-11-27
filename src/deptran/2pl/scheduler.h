@@ -26,16 +26,15 @@ class Scheduler2pl: public SchedulerClassic {
   virtual bool DispatchPiece(Tx& tx,
                              SimpleCommand& cmd,
                              TxnOutput& ret_output) override {
-//    if (tx.aborted_) {
-    if (false) {
-      return false; // TODO bug here. 2pl won't finish.
+    if (tx.aborted_) {
+      return false;
     } else {
       auto ret = SchedulerClassic::DispatchPiece(tx, cmd, ret_output);
-      ExecutePiece(tx, cmd, ret_output);
       if (!ret) {
         tx.aborted_ = true;
         return false;
       }
+      ExecutePiece(tx, cmd, ret_output);
       return true;
     }
   }

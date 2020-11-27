@@ -99,12 +99,12 @@ void CoordinatorClassic::GotoNextPhase() {
     case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
-//      if (aborted_) {
-//        phase_++;
-//        Commit();
-//      } else {
+      if (!aborted_) {
         Prepare();
-//      }
+      } else {
+        phase_++;
+        EarlyAbort();
+      }
       break;
     case Phase::PREPARE:
       verify(phase_ % n_phase == Phase::COMMIT);
@@ -172,7 +172,7 @@ void CoordinatorClassic::DispatchAsync() {
 
   int cnt = 0;
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
-  n_pd = 1;
+  n_pd = 100;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par) {
@@ -219,6 +219,8 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
               txn->root_id_);
     aborted_ = true;
     txn->commit_.store(false);
+    GotoNextPhase();
+    return;
   }
   n_dispatch_ack_ += outputs.size();
 //  if (aborted_) {
@@ -304,6 +306,20 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
   } else {
     // Do nothing.
   }
+}
+
+void CoordinatorClassic::EarlyAbort() {
+  std::lock_guard<std::recursive_mutex> lock(this->mtx_);
+  tx_data().reply_.res_ = REJECT;
+  for (auto& rp : tx_data().partition_ids_) {
+    n_finish_req_++;
+    Log_debug("send abort for txn_id %"
+                  PRIx64
+                  " to %d", tx_data().id_, rp);
+    commo()->SendEarlyAbort(rp, cmd_->id_);
+    site_abort_[rp]++;
+  }
+  GotoNextPhase();
 }
 
 void CoordinatorClassic::Commit() {

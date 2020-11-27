@@ -18,6 +18,10 @@ class Event : public std::enable_shared_from_this<Event> {
   int __debug_creator{0};
   enum EventStatus { INIT = 0, WAIT = 1, READY = 2,
       DONE = 3, TIMEOUT = 4, DEBUG};
+
+#ifdef EVENT_TIMEOUT_CHECK
+  bool __debug_timeout_{false};
+#endif
   EventStatus status_{INIT};
   void* _dbg_p_scheduler_{nullptr};
   uint64_t type_{0};
@@ -107,7 +111,7 @@ class SharedIntEvent {
   vector<shared_ptr<IntEvent>> events_{};
   int Set(const int& v);
   void Wait(function<bool(int)> f);
-  void WaitUntilGreaterOrEqualThan(int x);
+  void WaitUntilGreaterOrEqualThan(int x, int timeout=0);
 };
 
 class NeverEvent: public Event {
