@@ -62,6 +62,8 @@ using namespace std;
 
 #include <boost/serialization/shared_ptr.hpp>
 
+#include <boost/serialization/export.hpp>
+
 
 // yaml-cpp
 #include <yaml-cpp/yaml.h>

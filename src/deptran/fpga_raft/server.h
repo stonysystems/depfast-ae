@@ -5,6 +5,9 @@
 #include "../scheduler.h"
 #include "../classic/tpc_command.h"
 
+//BOOST_CLASS_EXPORT_KEY(janus::Marshallable);
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(janus::Marshallable)
+
 namespace janus {
 class Command;
 class CmdData;
@@ -20,12 +23,13 @@ struct FpgaRaftData {
   ballot_t term;
   shared_ptr<Marshallable> log_{nullptr};
 
-    template<class Archive>
+    template<typename Archive>
     void serialize(Archive & ar, const unsigned int version){
         ar & term;
         ar & log_;
-    }
+   }
 };
+
 
 struct KeyValue {
 	int key;
@@ -34,6 +38,8 @@ struct KeyValue {
 
 class FpgaRaftServer : public TxLogServer {
  private:
+  //friend class boost::serialization::access; 
+
    std::vector<std::thread> timer_threads_ = {};
   void timer_thread(bool *vote) ;
   Timer *timer_;
@@ -53,6 +59,7 @@ class FpgaRaftServer : public TxLogServer {
 
   bool RequestVote() ;
   void RequestVote2FPGA() ;
+
 
 //    template<class Archive>
 //    void serialize(Archive & ar, const unsigned int version){
@@ -306,7 +313,15 @@ class FpgaRaftServer : public TxLogServer {
         {
             std::ofstream ofs("/db/testfile2");
             boost::archive::text_oarchive oa(ofs);
-            oa << raft_logs_;
+//            oa.template register_type<FpgaRaftData>(NULL);
+	    //oa << raft_logs_;
+
+		for(map<slotid_t, shared_ptr<FpgaRaftData>>::iterator iter=raft_logs_.begin(); iter!=raft_logs_.end(); iter++){
+			slotid_t key=iter->first;
+			shared_ptr<FpgaRaftData> val=iter->second;
+			oa << val->term;
+		}
+
         }
     }
 

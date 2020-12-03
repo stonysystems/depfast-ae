@@ -19,7 +19,7 @@ class Marshallable {
   virtual Marshal& ToMarshal(Marshal& m) const;
   virtual Marshal& FromMarshal(Marshal& m);
 
-
+    friend class boost::serialization::access;
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version){
         ar & kind_;
