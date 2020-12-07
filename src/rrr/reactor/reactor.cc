@@ -426,6 +426,7 @@ void PollMgr::PollThread::poll_loop() {
 	int diff_count = 0;
 	int first = 0;
 	int second = 0;
+	long wait_time = 0;
 	bool slow = false;
 
 	struct timespec begin2, begin2_cpu, end2, end2_cpu, begin3, begin3_cpu, end3, end3_cpu;
@@ -436,8 +437,8 @@ void PollMgr::PollThread::poll_loop() {
 			//Log_info("number of events: %d", num_events);
 
 			struct timespec end, end_cpu;
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
 			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
 			
 			total_cpu += (end_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end_cpu.tv_nsec - begins[1].tv_nsec);
 			total_time += (end.tv_sec - begins[0].tv_sec)*1000000000 + (end.tv_nsec - begins[0].tv_nsec);
@@ -446,7 +447,7 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed CPU: %d", total_cpu);
 			Log_info("elapsed time: %d", total_time);
 			Log_info("elapsed CPU time: %f", util);
-			if (util < 0.40) {
+			/*if (util < 0.40) {
 				if (first == 0) first = count;
 				else {
 					if (count-first < 1000) {
@@ -462,16 +463,16 @@ void PollMgr::PollThread::poll_loop() {
 					//if (count-first < 1000) Log_info("slow slow");
 					first = count;
 				}
-			}
+			}*/
 			total_cpu = 0;
 			total_time = 0;
 		}
 
 		if (num_events >= 5) {
-			clock_gettime(CLOCK_MONOTONIC, &end2);
+			clock_gettime(CLOCK_MONOTONIC_RAW, &end2);
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
-			long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
-			long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+			long total_cpu2 = (end2_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end2_cpu.tv_nsec - begins[1].tv_nsec);
+			long total_time2 = (end2.tv_sec - begins[0].tv_sec)*1000000000 + (end2.tv_nsec - begins[0].tv_nsec);
 			double util2 = (double) total_cpu2/total_time2;
 			Log_info("elapsed CPU3: %d", total_cpu2);
 			Log_info("elapsed time3: %d", total_time2);
