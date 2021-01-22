@@ -67,6 +67,8 @@ class CoordinatorClassic : public Coordinator {
 
   /** do it asynchronously, thread safe. */
   virtual void DoTxAsync(TxRequest&) override;
+  virtual void SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) override;
+  virtual void SendFailOverTrig(parid_t, locid_t, bool) override;
   virtual void Reset() override;
   void Restart() override;
 
@@ -78,7 +80,7 @@ class CoordinatorClassic : public Coordinator {
   void PrepareAck(phase_t phase, int res);
   virtual void Commit();
   virtual void EarlyAbort();
-  void CommitAck(phase_t phase);
+  virtual void CommitAck(phase_t phase);
   void Abort() {
     verify(0);
   }

@@ -1,8 +1,9 @@
 
-#include <memory>
-#include <unordered_map>
-#include <mutex>
 #include "marshallable.h"
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include "carousel/tx.h"
 #include "rcc/dep_graph.h"
 
 namespace janus {
@@ -57,6 +58,9 @@ Marshal& MarshallDeputy::CreateActualObjectFrom(Marshal& m) {
       break;
     case EMPTY_GRAPH:
       sp_data_.reset(new EmptyGraph());
+      break;
+    case CMD_TPC_PREPARE_CAROUSEL:
+      sp_data_.reset(new TpcPrepareCarouselCommand());
       break;
     case UNKNOWN:
       verify(0);

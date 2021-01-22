@@ -310,6 +310,7 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
       sp_tx.reset(new TxSnow(tid, mgr, ro));
       break;
     case MODE_MULTI_PAXOS:
+    case MODE_FPGA_RAFT:
       break;
     case MODE_NONE:
     default:
@@ -404,6 +405,7 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
     case MODE_NONE:
     case MODE_TAPIR:
     case MODE_JANUS:
+    case MODE_CAROUSEL:
     case MODE_RCC:
     default:
       result.push_back(new ClassicServiceImpl(dtxn_sched, poll_mgr, scsi));
@@ -412,26 +414,14 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
   return result;
 }
 map<string, int> &Frame::FrameNameToMode() {
-  static map<string, int> frame_name_mode_s = {
-      {"none",          MODE_NONE},
-      {"2pl",           MODE_2PL},
-      {"occ",           MODE_OCC},
-      {"snow",           MODE_RO6},
-      {"rpc_null",      MODE_RPC_NULL},
-      {"deptran",       MODE_DEPTRAN},
-      {"deptran_er",    MODE_DEPTRAN},
-      {"2pl_w",         MODE_2PL},
-      {"2pl_wait_die",  MODE_2PL},
-      {"2pl_wd",        MODE_2PL},
-      {"2pl_ww",        MODE_2PL},
-      {"2pl_wound_die", MODE_2PL},
-      {"externc",       MODE_EXTERNC},
-      {"extern_c",      MODE_EXTERNC},
-      {"mdcc",          MODE_MDCC},
-      {"multi_paxos",   MODE_MULTI_PAXOS},
-      {"epaxos",        MODE_NOT_READY},
-      {"rep_commit",    MODE_NOT_READY}
-  };
+  static map<string, int> frame_name_mode_s = {{"none", MODE_NONE}, {"2pl", MODE_2PL},
+      {"occ", MODE_OCC}, {"snow", MODE_RO6}, {"rpc_null", MODE_RPC_NULL},
+      {"deptran", MODE_DEPTRAN}, {"deptran_er", MODE_DEPTRAN}, {"2pl_w", MODE_2PL},
+      {"2pl_wait_die", MODE_2PL}, {"2pl_wd", MODE_2PL}, {"2pl_ww", MODE_2PL},
+      {"2pl_wound_die", MODE_2PL}, {"externc", MODE_EXTERNC}, {"extern_c", MODE_EXTERNC},
+      {"mdcc", MODE_MDCC}, {"multi_paxos", MODE_MULTI_PAXOS},
+      {"fpga_raft", MODE_FPGA_RAFT}, {"epaxos", MODE_NOT_READY},
+      {"rep_commit", MODE_NOT_READY}};
   return frame_name_mode_s;
 }
 

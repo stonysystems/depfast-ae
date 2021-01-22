@@ -30,6 +30,8 @@ class ClassicServiceImpl : public ClassicService {
   Communicator* comm_{nullptr};
 
   TxLogServer* dtxn_sched_;
+  rrr::PollMgr* poll_mgr_;
+  std::atomic<int32_t> clt_cnt_{0};
 
   TxLogServer* dtxn_sched() {
     return dtxn_sched_;
@@ -42,6 +44,17 @@ class ClassicServiceImpl : public ClassicService {
                 int32_t* res,
                 TxnOutput* output,
                 DeferredReply* defer_reply) override;
+
+  void FailOverTrig(
+      const bool_t& pause, rrr::i32* res, rrr::DeferredReply* defer) override;
+
+  void IsLeader(
+      const locid_t& can_id, bool_t* is_leader, DeferredReply* defer_reply) override;
+
+  void IsFPGALeader(
+      const locid_t& can_id, bool_t* is_leader, DeferredReply* defer_reply) override;
+
+  void SimpleCmd(const SimpleCommand& cmd, i32* res, DeferredReply* defer_reply) override;
 
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
@@ -78,6 +91,16 @@ class ClassicServiceImpl : public ClassicService {
   void TapirDecide(const txid_t& cmd_id,
                    const rrr::i32& decision,
                    rrr::DeferredReply* defer) override;
+
+  void CarouselReadAndPrepare(const i64& cmd_id, const MarshallDeputy& cmd,
+      const bool_t& leader, int32_t* res, TxnOutput* output,
+      DeferredReply* defer_reply) override;
+  void CarouselAccept(const txid_t& cmd_id, const ballot_t& ballot,
+      const int32_t& decision, rrr::DeferredReply* defer) override;
+  void CarouselFastAccept(const txid_t& cmd_id, const vector<SimpleCommand>& txn_cmds,
+      rrr::i32* res, rrr::DeferredReply* defer) override;
+  void CarouselDecide(
+      const txid_t& cmd_id, const rrr::i32& decision, rrr::DeferredReply* defer) override;
 
   void MsgString(const string& arg,
                  string* ret,

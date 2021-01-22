@@ -20,6 +20,10 @@ static rrr::Server *cli_hb_server_g = nullptr;
 static vector<ServerWorker> svr_workers_g = {};
 vector<unique_ptr<ClientWorker>> client_workers_g = {};
 static std::vector<std::thread> client_threads_g = {}; // TODO remove this?
+static std::vector<std::thread> failover_threads_g = {};
+bool* volatile failover_triggers;
+volatile bool failover_server_quit = false;
+volatile locid_t failover_server_idx;
 
 void client_setup_heartbeat(int num_clients) {
   Log_info("%s", __FUNCTION__);
@@ -48,12 +52,11 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
   // start client workers in new threads.
   Log_info("client enabled, number of sites: %d", client_sites.size());
   vector<ClientWorker*> workers;
-
+  failover_triggers = new bool[client_sites.size()]();
   for (uint32_t client_id = 0; client_id < client_sites.size(); client_id++) {
-    ClientWorker* worker = new ClientWorker(client_id,
-                                            client_sites[client_id],
-                                            Config::GetConfig(),
-                                            ccsi_g, nullptr);
+    ClientWorker* worker = new ClientWorker(client_id, client_sites[client_id],
+        Config::GetConfig(), ccsi_g, nullptr, &(failover_triggers[client_id]),
+        &failover_server_quit, &failover_server_idx);
     workers.push_back(worker);
     client_threads_g.push_back(std::thread(&ClientWorker::Work, worker));
     client_workers_g.push_back(std::unique_ptr<ClientWorker>(worker));
@@ -182,6 +185,7 @@ int main(int argc, char *argv[]) {
     client_launch_workers(client_infos);
     sleep(Config::GetConfig()->duration_);
     wait_for_clients();
+    failover_server_quit = true;
     Log_info("all clients have shut down.");
   }
 
@@ -192,6 +196,11 @@ int main(int argc, char *argv[]) {
   for (auto& worker : svr_workers_g) {
     worker.WaitForShutdown();
   }
+
+  for (auto& ft : failover_threads_g) {
+    ft.join();
+  }
+
 #ifdef DB_CHECKSUM
   map<parid_t, vector<int>> checksum_results = {};
   for (auto& worker : svr_workers_g) {

@@ -1,26 +1,28 @@
-#include "__dep__.h"
-#include "config.h"
-#include "scheduler.h"
-#include "command.h"
-#include "procedure.h"
-#include "communicator.h"
-#include "command_marshaler.h"
-#include "rcc/dep_graph.h"
 #include "service.h"
-#include "classic/scheduler.h"
-#include "tapir/scheduler.h"
-#include "rcc/server.h"
-#include "janus/scheduler.h"
-#include "februus/scheduler.h"
+#include "__dep__.h"
 #include "benchmark_control_rpc.h"
+#include "carousel/scheduler.h"
+#include "classic/scheduler.h"
+#include "classic/tpc_command.h"
+#include "classic/tx.h"
+#include "command.h"
+#include "command_marshaler.h"
+#include "communicator.h"
+#include "config.h"
+#include "coordinator.h"
+#include "februus/scheduler.h"
+#include "janus/scheduler.h"
+#include "procedure.h"
+#include "rcc/dep_graph.h"
+#include "rcc/server.h"
+#include "scheduler.h"
+#include "tapir/scheduler.h"
 
 namespace janus {
 
-ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
-                                       rrr::PollMgr* poll_mgr,
-                                       ServerControlServiceImpl* scsi) : scsi_(
-    scsi), dtxn_sched_(sched) {
-
+ClassicServiceImpl::ClassicServiceImpl(
+    TxLogServer* sched, rrr::PollMgr* poll_mgr, ServerControlServiceImpl* scsi)
+  : scsi_(scsi), dtxn_sched_(sched), poll_mgr_(poll_mgr) {
 #ifdef PIECE_COUNT
   piece_count_timer_.start();
   piece_count_prepare_fail_ = 0;
@@ -62,6 +64,70 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::FailOverTrig(
+    const bool_t& pause, rrr::i32* res, rrr::DeferredReply* defer) {
+  if (pause && clt_cnt_ == 0) {
+    // TODO temp solution yidawu
+    auto client_infos = Config::GetConfig()->GetMyClients();
+    unordered_set<string> clt_set;
+    for (auto c : client_infos) {
+      clt_set.insert(c.host);
+    }
+
+    clt_cnt_.store(clt_set.size());
+  }
+
+  Coroutine::CreateRun([&]() {
+    if (pause) {
+      // TODO: yidawu need to test with multi clients in diff machines
+      int wait_int = 50 * 1000; // 50ms
+      while (clt_cnt_.load() == 0) {
+        auto e = Reactor::CreateSpEvent<NeverEvent>();
+        e->Wait(wait_int);
+      }
+      clt_cnt_--;
+      while (clt_cnt_.load() != 0) {
+        auto e = Reactor::CreateSpEvent<NeverEvent>();
+        e->Wait(wait_int);
+      }
+      dtxn_sched_->rep_sched_->Pause();
+      poll_mgr_->pause();
+    } else {
+      poll_mgr_->resume();
+      dtxn_sched_->rep_sched_->Resume();
+    }
+    *res = SUCCESS;
+    defer->reply();
+  });
+}
+
+void ClassicServiceImpl::SimpleCmd(
+    const SimpleCommand& cmd, rrr::i32* res, rrr::DeferredReply* defer) {
+  Coroutine::CreateRun([res, defer, this]() {
+    auto empty_cmd = std::make_shared<TpcEmptyCommand>();
+    verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
+    auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
+    auto sched = (SchedulerClassic*)dtxn_sched_;
+    sched->CreateRepCoord()->Submit(sp_m);
+    empty_cmd->Wait();
+    *res = SUCCESS;
+    defer->reply();
+  });
+}
+
+void ClassicServiceImpl::IsLeader(
+    const locid_t& can_id, bool_t* is_leader, rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*)dtxn_sched_;
+  *is_leader = sched->IsLeader();
+  defer->reply();
+}
+
+void ClassicServiceImpl::IsFPGALeader(
+    const locid_t& can_id, bool_t* is_leader, rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*)dtxn_sched_;
+  *is_leader = sched->IsFPGALeader();
+  defer->reply();
+}
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
                                  rrr::i32* res,
@@ -71,7 +137,7 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
     bool ret = sched->OnPrepare(tid, sids);
     *res = ret ? SUCCESS : REJECT;
-    defer->reply();
+    if (defer != nullptr) defer->reply();
   };
   Coroutine::CreateRun(func);
 // TODO move the stat to somewhere else.
@@ -170,6 +236,57 @@ void ClassicServiceImpl::TapirDecide(const cmdid_t& cmd_id,
                                      const rrr::i32& decision,
                                      rrr::DeferredReply* defer) {
   SchedulerTapir* sched = (SchedulerTapir*) dtxn_sched_;
+  sched->OnDecide(cmd_id, decision, [defer]() { defer->reply(); });
+}
+
+void ClassicServiceImpl::CarouselReadAndPrepare(const i64& cmd_id,
+    const MarshallDeputy& md, const bool_t& leader, int32_t* res, TxnOutput* output,
+    rrr::DeferredReply* defer) {
+  // TODO: yidawu
+  shared_ptr<Marshallable> sp = md.sp_data_;
+  *res = SUCCESS;
+  auto sched = (SchedulerCarousel*)dtxn_sched();
+  if (!sched->Dispatch(cmd_id, sp, *output)) {
+    *res = REJECT;
+  }
+  if (*res == SUCCESS) {
+    std::vector<i32> sids;
+    if (leader) {
+      *res = sched->OnPrepare(cmd_id) ? SUCCESS : REJECT;
+    } else {
+      // Followers try to do prepare directly.
+      bool ret = sched->DoPrepare(cmd_id);
+      if (!ret) {
+        const auto& func = [res, defer, cmd_id, sids, sched, this]() {
+          auto sp_tx = dynamic_pointer_cast<TxClassic>(sched->GetOrCreateTx(cmd_id));
+          sp_tx->prepare_result->Wait();
+          bool ret2 = sp_tx->prepare_result->Get();
+          *res = ret2 ? SUCCESS : REJECT;
+          defer->reply();
+        };
+        Coroutine::CreateRun(func);
+        return;
+      }
+    }
+  }
+  defer->reply();
+}
+
+void ClassicServiceImpl::CarouselAccept(const cmdid_t& cmd_id, const ballot_t& ballot,
+    const int32_t& decision, rrr::DeferredReply* defer) {
+  verify(0);
+}
+
+void ClassicServiceImpl::CarouselFastAccept(const txid_t& tx_id,
+    const vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) {
+  /*SchedulerCarousel* sched = (SchedulerCarousel*) dtxn_sched_;
+  *res = sched->OnFastAccept(tx_id, txn_cmds);
+  defer->reply();*/
+}
+
+void ClassicServiceImpl::CarouselDecide(
+    const cmdid_t& cmd_id, const rrr::i32& decision, rrr::DeferredReply* defer) {
+  SchedulerCarousel* sched = (SchedulerCarousel*)dtxn_sched_;
   sched->OnDecide(cmd_id, decision, [defer]() { defer->reply(); });
 }
 

@@ -268,6 +268,10 @@ void SchedulerClassic::Next(Marshallable& cmd) {
   } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
     auto& c = dynamic_cast<TpcCommitCommand&>(cmd);
     CommitReplicated(c);
+  } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_EMPTY) {
+    // do nothing
+    auto& c = dynamic_cast<TpcEmptyCommand&>(cmd);
+    c.Done();
   } else {
     verify(0);
   }

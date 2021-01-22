@@ -466,4 +466,35 @@ void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {
   ___phase_one_tids_.insert(txn_id);
 }
 
+void CoordinatorClassic::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+  locid_t prev_pause_srv = *cur_pause;
+retry:
+  Log_debug("start setting a new leader from %d", prev_pause_srv);
+  auto e = commo()->BroadcastGetLeader(par_id, prev_pause_srv);
+  e->Wait();
+  if (e->Yes()) {
+    // assign new leader
+    Log_debug("set a new leader %d", e->leader_id_);
+    commo()->SetNewLeaderProxy(par_id, e->leader_id_);
+    if (prev_pause_srv != e->leader_id_) {
+      *cur_pause = e->leader_id_;
+    }
+  } else if (e->No()) {
+    auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
+    sp_e->Wait(300 * 1000);
+    // usleep(300 * 1000) ;  // 300 ms
+    goto retry;
+  } else {
+    verify(0);
+  }
+}
+
+void CoordinatorClassic::SendFailOverTrig(parid_t par_id, locid_t loc_id, bool pause) {
+  auto e = commo()->SendFailOverTrig(par_id, loc_id, pause);
+  e->Wait();
+  if (e->No()) {
+    verify(0);
+  }
+}
+
 } // namespace janus

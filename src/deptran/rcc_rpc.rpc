@@ -18,6 +18,41 @@ abstract service MultiPaxos {
                MarshallDeputy cmd);
 }
 
+abstract service FpgaRaft {
+
+  defer Forward(MarshallDeputy cmd |
+                uint64_t cmt_idx );
+
+  defer Vote(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer Vote2FPGA(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer AppendEntries(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+
+  defer Decide(uint64_t slot,
+               ballot_t ballot,
+               MarshallDeputy cmd);
+}
+
 // below is for 2PL and OCC
 abstract service Classic {
   defer MsgString(string arg | string ret);
@@ -45,7 +80,12 @@ abstract service Classic {
                      int32_t res)
 
   defer TruncateEpoch(uint32_t old_epoch)
-
+  
+  defer IsLeader(locid_t cur_pause| bool_t is_leader );
+  defer IsFPGALeader(locid_t cur_pause| bool_t is_leader );
+  defer SimpleCmd( SimpleCommand cmd| i32 res);
+  defer FailOverTrig(bool_t pause| i32 res);
+   
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
   // <input_0> <input_1> ... |
@@ -64,6 +104,19 @@ abstract service Classic {
                         i32 res);
   // works as a 2PC commit/abort with a paxos decision
   defer TapirDecide(uint64_t cmd_id, i32 commit);
+  
+  defer CarouselReadAndPrepare(i64 tid, MarshallDeputy cmd, bool_t leader |
+                 i32 res, TxnOutput output);
+
+  defer CarouselAccept(uint64_t cmd_id,
+                    int64_t ballot,
+	                int32_t decision);
+  // works as 2PC prepare on a paxos fast-accept
+  defer CarouselFastAccept(uint64_t cmd_id,
+                        vector<SimpleCommand> txn_cmds |
+                        i32 res);
+  // works as a 2PC commit/abort with a paxos decision
+  defer CarouselDecide(uint64_t cmd_id, i32 commit);  
 
   defer RccDispatch(vector<SimpleCommand> cmd |
                     i32 res,

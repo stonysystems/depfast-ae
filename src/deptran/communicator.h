@@ -47,6 +47,30 @@ class MessageEvent : public IntEvent {
   }
 };
 
+class GetLeaderQuorumEvent : public QuorumEvent {
+ public:
+  using QuorumEvent::QuorumEvent;
+  void FeedResponse(bool y, locid_t leader_id) {
+    if (y) {
+      leader_id_ = leader_id;
+      VoteYes();
+    } else {
+      VoteNo();
+    }
+  }
+
+  bool No() override { return n_voted_no_ == n_total_; }
+
+  bool IsReady() override {
+    if (Yes()) {
+      return true;
+    } else if (No()) {
+      return true;
+    }
+
+    return false;
+  }
+};
 
 class Communicator {
  public:
@@ -69,8 +93,14 @@ class Communicator {
   SiteProxyPair RandomProxyForPartition(parid_t partition_id) const;
   SiteProxyPair LeaderProxyForPartition(parid_t) const;
   SiteProxyPair NearestProxyForPartition(parid_t) const;
+  void SetLeaderCache(parid_t par_id, SiteProxyPair& proxy) {
+    leader_cache_[par_id] = proxy;
+  }
   virtual SiteProxyPair DispatchProxyForPartition(parid_t par_id) const {
     return LeaderProxyForPartition(par_id);
+  };
+  locid_t GenerateNewLeaderId(parid_t par_id) {
+    return leader_cache_[par_id].first = leader_cache_[par_id].first + 1;
   };
   std::pair<int, ClassicProxy*> ConnectToSite(Config::SiteInfo &site,
                                               std::chrono::milliseconds timeout_ms);
@@ -130,6 +160,11 @@ class Communicator {
   void AddMessageHandler(std::function<bool(const string&, string&)>);
   void AddMessageHandler(std::function<bool(const MarshallDeputy&,
                                             MarshallDeputy&)>);
+  shared_ptr<GetLeaderQuorumEvent> BroadcastGetLeader(parid_t par_id, locid_t cur_pause);
+  shared_ptr<QuorumEvent> SendFailOverTrig(parid_t par_id, locid_t loc_id, bool pause);
+  void SetNewLeaderProxy(parid_t par_id, locid_t loc_id);
+  void SendSimpleCmd(groupid_t gid, SimpleCommand& cmd, std::vector<int32_t>& sids,
+      const function<void(int)>& callback);
 };
 
 } // namespace janus

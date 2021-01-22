@@ -312,6 +312,9 @@ void Config::LoadYML(std::string &filename) {
   if (config["client"]) {
     LoadClientYML(config["client"]);
   }
+  if (config["failover"]) {
+    LoadFailoverYML(config["failover"]);
+  }
   if (config["n_concurrent"]) {
     n_concurrent_ = config["n_concurrent"].as<uint16_t>();
     Log_info("# of concurrent requests: %d", n_concurrent_);
@@ -523,6 +526,9 @@ void Config::LoadModeYML(YAML::Node config) {
       verify(0);
     }
   }
+  if (config["carousel_basic_mode"]) {
+    carousel_basic_mode_ = config["carousel_basic_mode"].as<bool>();
+  }
 }
 
 void Config::LoadBenchYML(YAML::Node config) {
@@ -673,6 +679,30 @@ void Config::LoadClientYML(YAML::Node client) {
   }
   forwarding_enabled_ = client["forwarding"].as<bool>(false);
   Log_info("client forwarding: %d", forwarding_enabled_);
+}
+
+void Config::LoadFailoverYML(YAML::Node config) {
+  auto mode_str = config["method"].as<string>();
+  boost::algorithm::to_lower(mode_str);
+  auto fail_srv_str = config["failserver"].as<string>();
+  boost::algorithm::to_lower(mode_str);
+  failover_srv_idx_ = -1;
+  if (mode_str == "none") {
+    failover_ = false;
+  } else {
+    failover_ = true;
+    failover_soft_ = mode_str == "soft";
+    failover_random_ = fail_srv_str == "random";
+    if (!failover_random_) {
+      failover_leader_ = fail_srv_str == "leader";
+      if (!failover_leader_ && fail_srv_str != "follower") {
+        // should be the server index
+        std::istringstream(fail_srv_str) >> failover_srv_idx_;
+      }
+    }
+  }
+  failover_run_int_ = config["run_interval"].as<int32_t>();
+  failover_stop_int_ = config["stop_interval"].as<int32_t>();
 }
 
 void Config::InitTPCCD() {

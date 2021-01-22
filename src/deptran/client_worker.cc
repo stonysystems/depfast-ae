@@ -73,7 +73,11 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
 //    finish_mutex.lock();
+    if (coo->offset_ == 0) {
+      *failover_server_quit_ = true;
+    }
     n_concurrent_--;
+    n_pause_concurrent_[coo->coo_id_] = true;
     verify(n_concurrent_ >= 0);
     if (n_concurrent_ == 0) {
       Log_debug("all coordinators finished... signal done");
@@ -115,6 +119,20 @@ Coordinator* ClientWorker::FindOrCreateCoordinator() {
   return coo;
 }
 
+Coordinator* ClientWorker::CreateFailCtrlCoordinator() {
+  cooid_t coo_id = cli_id_;
+  uint64_t offset_id = 1000000; // TODO temp value
+  coo_id = (coo_id << 16) + offset_id;
+  auto coo = frame_->CreateCoordinator(coo_id, config_, benchmark, ccsi, id, txn_reg_);
+  coo->loc_id_ = my_site_.locale_id;
+  coo->commo_ = commo_;
+  coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
+  coo->offset_ = offset_id;
+  Log_debug("coordinator %d created at site %d: forward %d", coo->coo_id_,
+      this->my_site_.id, coo->forward_status_);
+  return coo;
+}
+
 Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
 
   cooid_t coo_id = cli_id_;
@@ -128,11 +146,13 @@ Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
   coo->loc_id_ = my_site_.locale_id;
   coo->commo_ = commo_;
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
+  coo->offset_ = offset_id;
   Log_debug("coordinator %d created at site %d: forward %d",
             coo->coo_id_,
             this->my_site_.id,
             coo->forward_status_);
   created_coordinators_.push_back(coo);
+  n_pause_concurrent_[coo_id] = false;
   return coo;
 }
 
@@ -150,7 +170,45 @@ void ClientWorker::Work() {
   }
   Log_debug("after wait for start");
 
+  bool failover = Config::GetConfig()->get_failover();
+  if (failover) {
+    auto p_job = (Job*)new OneTimeJob([this]() {
+      int run_int = Config::GetConfig()->get_failover_run_interval() * pow(10, 6);
+      int stop_int = Config::GetConfig()->get_failover_stop_interval() * pow(10, 6);
+      int wait_int = 50 * pow(10, 3);
 
+      if (!fail_ctrl_coo_) {
+        fail_ctrl_coo_ = CreateFailCtrlCoordinator();
+      }
+      locid_t idx = 0;
+      while (!*failover_server_quit_) {
+        auto r = Reactor::CreateSpEvent<NeverEvent>();
+        r->Wait(run_int);
+        *failover_trigger_ = true;
+        while (*failover_trigger_) {
+          auto e = Reactor::CreateSpEvent<NeverEvent>();
+          e->Wait(wait_int);
+          if (*failover_server_quit_) return;
+        }
+        Pause(idx);
+        *failover_trigger_ = true;
+        Log_info("server %d paused for failover test", idx);
+        auto s = Reactor::CreateSpEvent<NeverEvent>();
+        s->Wait(stop_int);
+        while (*failover_trigger_) {
+          auto e = Reactor::CreateSpEvent<NeverEvent>();
+          e->Wait(wait_int);
+          if (*failover_server_quit_) return;
+        }
+        Resume(idx);
+        Log_info("server %d resumed for failover test", idx);
+        // set the new leader
+        idx = cur_leader_;
+      }
+    });
+    shared_ptr<Job> sp_job(p_job);
+    poll_mgr_->add(sp_job);
+  }
   for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
     auto sp_job = std::make_shared<OneTimeJob>([this] () {
       // this wait tries to avoid launching clients all at once, especially for open-loop clients.
@@ -168,7 +226,8 @@ void ClientWorker::Work() {
           if (n_undone_tx % 1000 == 0) {
             Log_debug("unfinished tx %d", n_undone_tx);
           }
-          if (config_->client_max_undone_ > 0 && n_undone_tx > config_->client_max_undone_) {
+          if (config_->client_max_undone_ > 0
+              && n_undone_tx > config_->client_max_undone_) {
             Reactor::CreateSpEvent<NeverEvent>()->Wait(pow(10, 4));
           } else {
             break;
@@ -207,6 +266,7 @@ void ClientWorker::Work() {
           coo->sp_ev_commit_.reset();
           free_coordinators_.push_back(coo);
           coo->_inuse_ = false;
+          n_pause_concurrent_[coo->coo_id_] = true;
         });
       }
       n_ceased_client_.Set(n_ceased_client_.value_+1);
@@ -222,15 +282,21 @@ void ClientWorker::Work() {
     sp_n_tx_done_.WaitUntilGreaterOrEqualThan(n_tx_issued_);
     // for debug purpose
 //    Reactor::CreateSpEvent<NeverEvent>()->Wait(5*1000*1000);
+    *failover_server_quit_ = true;
     all_done_ = 1;
   })));
 
   while (all_done_ == 0) {
-    Log_debug("wait for finish... n_ceased_cleints: %d,  "
+    // TODO: yidawu comment for test
+    /*Log_debug("wait for finish... n_ceased_cleints: %d,  "
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
-              (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
+              (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());*/
     sleep(1);
+  }
+
+  if (failover_server_quit_ && !*failover_server_quit_) {
+    *failover_server_quit_ = true;
   }
 
   Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
@@ -364,7 +430,60 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
 //  dispatch_pool_->run_async(task); // this causes bug
 }
 
+void ClientWorker::FailoverPreprocess(Coordinator* coo) {
+  if (*failover_trigger_ || failover_trigger_loc) {
+    if (coo->offset_ == 0) {
+      failover_wait_leader_ = true;
+    }
+    n_pause_concurrent_[coo->coo_id_] = true;
+
+    if (coo->offset_ == 0) {
+      failover_pause_start = false;
+      for (auto it = n_pause_concurrent_.begin(); it != n_pause_concurrent_.end(); it++) {
+        while (!it->second) {
+          auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
+          sp_e->Wait(300 * 1000);
+        }
+      }
+      failover_pause_start = true;
+    } else {
+      while (!failover_pause_start) {
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
+        sp_e->Wait(300 * 1000);
+      }
+    }
+
+    Log_debug("client worker start dispatch request pause: %d with cur leader %d",
+        coo->coo_id_, cur_leader_);
+    if (coo->offset_ == 0) {
+      failover_trigger_loc = true;
+      *failover_trigger_ = false;
+    }
+    while (!*failover_trigger_) {
+      auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
+      sp_e->Wait(300 * 1000);
+      if (*failover_server_quit_) break;
+    }
+    if (coo->offset_ == 0) {
+      SearchLeader(coo);
+      *failover_trigger_ = false;
+      failover_trigger_loc = false;
+      failover_pause_start = false;
+      failover_wait_leader_ = false;
+    } else {
+      while (failover_wait_leader_ && !*failover_server_quit_) {
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(500 * 1000);
+        sp_e->Wait(500 * 1000);
+      }
+    }
+    n_pause_concurrent_[coo->coo_id_] = false;
+    Log_debug("client worker end dispatch request pause: %d with cur leader %d",
+        coo->coo_id_, cur_leader_);
+  }
+}
+
 void ClientWorker::DispatchRequest(Coordinator* coo) {
+  FailoverPreprocess(coo);
   const char* f = __FUNCTION__;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);
@@ -414,13 +533,19 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
 
 */
 
-ClientWorker::ClientWorker(
-    uint32_t id,
-    Config::SiteInfo& site_info,
-    Config* config,
-    ClientControlServiceImpl* ccsi,
-    PollMgr* poll_mgr) :
-    id(id),
+void ClientWorker::SearchLeader(Coordinator* coo) {
+  // TODO multiple par_id yidawu
+  parid_t par_id = 0;
+  coo->SetNewLeader(par_id, failover_server_idx_);
+  cur_leader_ = *failover_server_idx_;
+  Log_debug("client %d set cur_leader_ %d failover_server_idx_ %d", cli_id_, cur_leader_,
+      *failover_server_idx_);
+}
+
+ClientWorker::ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* config,
+    ClientControlServiceImpl* ccsi, PollMgr* poll_mgr, bool* volatile failover_trigger,
+    volatile bool* failover_server_quit, volatile locid_t* failover_server_idx)
+  : id(id),
     my_site_(site_info),
     config_(config),
     cli_id_(site_info.id),
@@ -428,7 +553,10 @@ ClientWorker::ClientWorker(
     mode(config->get_mode()),
     duration(config->get_duration()),
     ccsi(ccsi),
-    n_concurrent_(config->get_concurrent_txn()) {
+    n_concurrent_(config->get_concurrent_txn()),
+    failover_trigger_(failover_trigger),
+    failover_server_quit_(failover_server_quit),
+    failover_server_idx_(failover_server_idx) {
   poll_mgr_ = poll_mgr == nullptr ? new PollMgr(1) : poll_mgr;
   frame_ = Frame::GetFrame(config->tx_proto_);
   tx_generator_ = frame_->CreateTxGenerator();
@@ -439,11 +567,24 @@ ClientWorker::ClientWorker(
   commo_ = frame_->CreateCommo(poll_mgr_);
   commo_->loc_id_ = my_site_.locale_id;
   forward_requests_to_leader_ =
+      (config->replica_proto_ == MODE_FPGA_RAFT && site_info.locale_id != 0) ? true :
+                                                                               false;
+  forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
                                                                          : false;
   Log_debug("client %d created; forward %d",
             cli_id_,
             forward_requests_to_leader_);
+}
+
+void ClientWorker::Pause(locid_t locid) {
+  // TODO modify it locid and parid
+  fail_ctrl_coo_->SendFailOverTrig(0, locid, true);
+}
+
+void ClientWorker::Resume(locid_t locid) {
+  // TODO modify it locid and parid
+  fail_ctrl_coo_->SendFailOverTrig(0, locid, false);
 }
 
 } // namespace janus
