@@ -40,7 +40,7 @@ abstract service FpgaRaft {
   defer Vote2FPGA(uint64_t lst_log_idx,
                 ballot_t lst_log_term,
                 parid_t par_id,
-                ballot_t cur_term|
+                ballot_t cur_term |
                 ballot_t max_ballot,
                 bool_t vote_granted );
 
@@ -50,6 +50,7 @@ abstract service FpgaRaft {
                       uint64_t leaderPrevLogIndex,
                       uint64_t leaderPrevLogTerm,
                       uint64_t leaderCommitIndex,
+											DepId dep_id,
                       MarshallDeputy cmd |
                       uint64_t followerAppendOK,
                       uint64_t followerCurrentTerm,
@@ -57,6 +58,7 @@ abstract service FpgaRaft {
 
   defer Decide(uint64_t slot,
                ballot_t ballot,
+							 DepId dep_id,
                MarshallDeputy cmd);
 }
 
@@ -71,19 +73,19 @@ abstract service Classic {
 //                 TxnOutput output);
 
 	defer ReElect(| bool_t success);
-  defer Dispatch(i64 tid, MarshallDeputy cmd |
+  defer Dispatch(i64 tid, DepId dep_id, MarshallDeputy cmd |
                  i32 res, TxnOutput output, uint64_t coro_id);
 
   defer Prepare(i64 tid, 
                 vector<i32> sids,
-                uint64_t dep_id | 
+                DepId dep_id | 
                 i32 res,
 								bool_t slow,
                 uint64_t coro_id);
 
-  defer Commit(i64 tid, uint64_t dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
+  defer Commit(i64 tid, DepId dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
 
-  defer Abort(i64 tid, uint64_t dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
+  defer Abort(i64 tid, DepId dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
                      int32_t res)
@@ -212,6 +214,11 @@ abstract service Classic {
 struct ValueTimesPair {
     i64 value;
     i64 times;
+}
+
+struct DepId {
+	string str;
+	i64 id;
 }
 
 struct TxnInfoRes {

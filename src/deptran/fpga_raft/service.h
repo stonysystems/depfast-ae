@@ -44,6 +44,7 @@ class FpgaRaftServiceImpl : public FpgaRaftService {
                      const uint64_t& leaderPrevLogIndex,
                      const uint64_t& leaderPrevLogTerm,
                      const uint64_t& leaderCommitIndex,
+										 const DepId& dep_id,
                      const MarshallDeputy& cmd,
                      uint64_t *followerAppendOK,
                      uint64_t *followerCurrentTerm,
@@ -52,6 +53,7 @@ class FpgaRaftServiceImpl : public FpgaRaftService {
 
   void Decide(const uint64_t& slot,
               const ballot_t& ballot,
+							const DepId& dep_id,
               const MarshallDeputy& cmd,
               rrr::DeferredReply* defer) override;
 

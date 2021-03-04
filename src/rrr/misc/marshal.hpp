@@ -151,8 +151,8 @@ class Marshal: public NoCopy {
     int write_to_fd(int fd) {
       assert(write_idx <= data->size);
 			struct timespec begin2, begin2_cpu, end2, end2_cpu;
-			clock_gettime(CLOCK_MONOTONIC, &begin2);		
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+			/*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
       int cnt = ::write(fd, data->ptr + read_idx, write_idx - read_idx);
 
 #ifdef RPC_STATISTICS
@@ -160,12 +160,12 @@ class Marshal: public NoCopy {
 #endif // RPC_STATISTICS
 
       if (cnt > 0) {
-				clock_gettime(CLOCK_MONOTONIC, &end2);
+				/*clock_gettime(CLOCK_MONOTONIC, &end2);
 				clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 				long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
 				long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 				double util2 = (double) total_cpu2/total_time2;
-				Log_info("elapsed CPU time (fd write of %d): %f", write_idx - read_idx, util2);
+				Log_info("elapsed CPU time (fd write of %d): %f", write_idx - read_idx, util2);*/
         read_idx += cnt;
       }
 
@@ -220,7 +220,10 @@ class Marshal: public NoCopy {
 
  public:
 
-  struct bookmark: public NoCopy {
+	bool found_dep;
+  bool valid_id;
+
+	struct bookmark: public NoCopy {
     size_t size;
     char **ptr;
 
@@ -446,6 +449,12 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::i32 &v) {
 
 inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::i64 &v) {
   verify(m.read(&v, sizeof(v)) == sizeof(v));
+	if (m.found_dep) {
+		if (v != -1) {
+			m.valid_id = true;
+		}
+		m.found_dep = false;
+	}
   return m;
 }
 
@@ -470,6 +479,7 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::v64 &v) {
   v.set(val);
   return m;
 }
+
 
 inline rrr::Marshal &operator>>(rrr::Marshal &m, uint8_t &u) {
   verify(m.read(&u, sizeof(u)) == sizeof(u));
@@ -503,6 +513,9 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, std::string &v) {
   if (v_len.get() > 0) {
     verify(m.read(&v[0], v_len.get()) == (size_t) v_len.get());
   }
+	if (v == "dep") {
+		m.found_dep = true;
+	}
   return m;
 }
 

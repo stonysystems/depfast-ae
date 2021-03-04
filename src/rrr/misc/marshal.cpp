@@ -289,9 +289,9 @@ size_t Marshal::read_from_marshal(Marshal& m, size_t n) {
             //       that only one Marshal should be able to write to it! For the
             //       given 2 use cases, it works.
 						struct timespec begin, end;
-						clock_gettime(CLOCK_MONOTONIC, &begin);
+						//clock_gettime(CLOCK_MONOTONIC, &begin);
             chunk* chnk = m.head_->shared_copy();
-						clock_gettime(CLOCK_MONOTONIC, &end);
+						//clock_gettime(CLOCK_MONOTONIC, &end);
 						//Log_info("time of shared_copy: %d", (end.tv_sec-begin.tv_sec)*1000000000 + end.tv_nsec-begin.tv_nsec);
             if (n_fetch + chnk->content_size() > n) {
                 // only fetch enough bytes we need

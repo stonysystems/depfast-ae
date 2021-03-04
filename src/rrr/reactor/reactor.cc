@@ -85,6 +85,7 @@ void Reactor::Loop(bool infinite) {
 
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
+	int print = 0;
 
   do {
     disk_job_.lock();
@@ -110,7 +111,14 @@ void Reactor::Loop(bool infinite) {
     }
 
     auto time_now = Time::now();
-    //Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
+		if (timeout_events_.size() > 0) {
+			if (print == 100) {
+				print = 0;
+				Log_info("Size of timeout_events_ is: %d", timeout_events_.size());
+			} else {
+				print++;
+			}
+		}
     for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
       Event& event = **it;
       auto status = event.status_;
@@ -227,15 +235,15 @@ void Reactor::DiskLoop(){
 				disk_times[49] = disk_time;
 				total_time += disk_times[49];
 				avg_time = total_time/disk_index;
-				//Log_info("time of fsync: %d", avg_time);
+				Log_info("time of fsync: %d", avg_time);
 			}
 			disk_count = 0;
 		} else {
 			disk_count++;
 		}
 
-		if (avg_time > 6500000) {
-			Reactor::GetReactor()->slow_ = true;
+		if (avg_time > 7500000) {
+			//Reactor::GetReactor()->slow_ = true;
 		}
 	}
 
@@ -254,8 +262,8 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
   verify(!sp_running_coro_th_->Finished());
 
 	struct timespec begin_marshal, begin_marshal_cpu, end_marshal, end_marshal_cpu;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &begin_marshal);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_marshal_cpu);
+	/*clock_gettime(CLOCK_MONOTONIC_RAW, &begin_marshal);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_marshal_cpu);*/
   //Log_info("start of %d", sp_coro->id);
 
 	if (sp_coro->status_ == Coroutine::INIT) {
@@ -265,7 +273,7 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
     sp_coro->Continue();
   }
 
-	clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
+	/*clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_marshal_cpu);
 	long total_cpu = (end_marshal_cpu.tv_sec - begin_marshal_cpu.tv_sec)*1000000000 + (end_marshal_cpu.tv_nsec - begin_marshal_cpu.tv_nsec);
 	long total_time = (end_marshal.tv_sec - begin_marshal.tv_sec)*1000000000 + (end_marshal.tv_nsec - begin_marshal.tv_nsec);
@@ -273,7 +281,7 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 	if (total_time > 10000) {
 		Log_info("marshal time: %d with %d coros", total_time, coros_.size());
 		Log_info("marshal CPU: %f at %d", util, sp_coro->id);
-	}
+	}*/
 
   verify(sp_running_coro_th_ == sp_coro);
   if (sp_running_coro_th_->Finished()) {
@@ -427,9 +435,12 @@ void PollMgr::PollThread::poll_loop() {
 	int first = 0;
 	int second = 0;
 	long wait_time = 0;
+	long wait_cpu = 0;
 	bool slow = false;
+	int index = 0;
 
 	struct timespec begin2, begin2_cpu, end2, end2_cpu, begin3, begin3_cpu, end3, end3_cpu;
+	struct timespec first_begin, first_cpu;
 	while (!stop_flag_) {
     TriggerJob();
 		//if (num_events > 0) Log_info("number of events: %d", num_events);
@@ -440,13 +451,22 @@ void PollMgr::PollThread::poll_loop() {
 			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
 			
-			total_cpu += (end_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end_cpu.tv_nsec - begins[1].tv_nsec);
-			total_time += (end.tv_sec - begins[0].tv_sec)*1000000000 + (end.tv_nsec - begins[0].tv_nsec);
-			count++;
-			double util = (double)total_cpu/total_time;
-			Log_info("elapsed CPU: %d", total_cpu);
-			Log_info("elapsed time: %d", total_time);
-			Log_info("elapsed CPU time: %f", util);
+			if (index == 99) {
+				total_cpu += (end_cpu.tv_sec - first_cpu.tv_sec)*1000000000 + (end_cpu.tv_nsec - first_cpu.tv_nsec);
+				total_time += (end.tv_sec - first_begin.tv_sec)*1000000000 + (end.tv_nsec - first_begin.tv_nsec);
+				total_time -= wait_time;
+				total_cpu -= wait_cpu;
+				wait_time = 0;
+				wait_cpu = 0;
+				index = 0;
+				count++;
+				double util = (double)total_cpu/total_time;
+				Log_info("elapsed CPU: %d", total_cpu);
+				Log_info("elapsed time: %d", total_time);
+				Log_info("elapsed CPU time: %f", util);
+
+				if (util < 0.85) Reactor::GetReactor()->slow_ = true;
+			}
 			/*if (util < 0.40) {
 				if (first == 0) first = count;
 				else {
@@ -468,7 +488,7 @@ void PollMgr::PollThread::poll_loop() {
 			total_time = 0;
 		}
 
-		if (num_events >= 5) {
+		/*if (num_events >= 5) {
 			clock_gettime(CLOCK_MONOTONIC_RAW, &end2);
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 			long total_cpu2 = (end2_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end2_cpu.tv_nsec - begins[1].tv_nsec);
@@ -477,13 +497,32 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed CPU3: %d", total_cpu2);
 			Log_info("elapsed time3: %d", total_time2);
 			Log_info("elapsed CPU time3: %f", util2);
-		}
+		}*/
 
 #ifdef USE_KQUEUE
 		begins = poll_.Wait();
 #else
 		begins = poll_.Wait_One(num_events, slow);
-		if (num_events >= 5) {
+		
+		if (begins.size() == 4) {
+			if (index != 0) {
+				wait_time += (begins[1].tv_sec - begins[0].tv_sec)*1000000000 + (begins[1].tv_nsec - begins[0].tv_nsec);
+				wait_cpu += (begins[3].tv_sec - begins[2].tv_sec)*1000000000 + (begins[3].tv_nsec - begins[2].tv_nsec);
+			}
+		} else {
+			if (num_events >= 5) {
+				if (index == 0) {
+					first_begin = begins[0];
+					first_cpu = begins[1];
+				}
+				index++;
+			}
+			if (index != 0) {
+				wait_time += (begins[3].tv_sec - begins[2].tv_sec)*1000000000 + (begins[3].tv_nsec - begins[2].tv_nsec);
+				wait_cpu += (begins[5].tv_sec - begins[4].tv_sec)*1000000000 + (begins[5].tv_nsec - begins[4].tv_nsec);
+			}
+		}
+		/*if (num_events >= 5) {
 			clock_gettime(CLOCK_MONOTONIC, &end3);
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end3_cpu);
 			long total_cpu3 = (end3_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end3_cpu.tv_nsec - begins[1].tv_nsec);
@@ -492,12 +531,10 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed CPU4: %d", total_cpu3);
 			Log_info("elapsed time4: %d", total_time3);
 			Log_info("elapsed CPU time4: %f", util3);
-		}
+		}*/
     poll_.Wait_Two();
 #endif
 
-    clock_gettime(CLOCK_MONOTONIC, &begin2);		
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
 		if (slow) Reactor::GetReactor()->slow_ = slow;
 
     verify(Reactor::GetReactor()->ready_events_.empty());

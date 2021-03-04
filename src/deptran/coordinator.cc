@@ -37,7 +37,7 @@ Coordinator::Coordinator(uint32_t coo_id,
   retry_wait_ = Config::GetConfig()->retry_wait();
 
 	struct timespec begin, end;
-	clock_gettime(CLOCK_MONOTONIC, &begin);
+	//clock_gettime(CLOCK_MONOTONIC, &begin);
   
 	// TODO this would be slow.
   vector<string> addrs;
@@ -49,8 +49,8 @@ Coordinator::Coordinator(uint32_t coo_id,
   site_abort_.resize(addrs.size(), 0);
   site_piece_.resize(addrs.size(), 0);
 	
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	Log_info("time of 2nd part of CreateCoordinator: %d", end.tv_nsec-begin.tv_nsec);
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of 2nd part of CreateCoordinator: %d", end.tv_nsec-begin.tv_nsec);*/
 }
 
 Coordinator::~Coordinator() {

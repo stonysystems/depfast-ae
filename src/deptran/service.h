@@ -43,6 +43,7 @@ class ClassicServiceImpl : public ClassicService {
 							 DeferredReply* defer) override;
 
   void Dispatch(const i64& cmd_id,
+								const DepId& dep_id,
                 const MarshallDeputy& cmd,
                 int32_t* res,
                 TxnOutput* output,
@@ -67,14 +68,14 @@ class ClassicServiceImpl : public ClassicService {
 
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
-               const uint64_t& dep_id,
+               const DepId& dep_id,
                i32* res,
 							 bool_t* slow,
                uint64_t* coro_id,
                DeferredReply* defer) override;
 
   void Commit(const i64& tid,
-              const uint64_t& dep_id,
+              const DepId& dep_id,
               i32* res,
 							bool_t* slow,
               uint64_t* coro_id,
@@ -82,7 +83,7 @@ class ClassicServiceImpl : public ClassicService {
               DeferredReply* defer) override;
 
   void Abort(const i64& tid,
-             const uint64_t& dep_id,
+             const DepId& dep_id,
              i32* res,
 						 bool_t* slow,
              uint64_t* coro_id,

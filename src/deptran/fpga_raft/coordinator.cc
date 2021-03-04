@@ -123,7 +123,6 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			commo()->begin_index++;
 		}
 		avg_ob = total_ob/100;
-		//Log_info("number of rpcs: %d", avg_ob);
 
 		for (auto it = commo()->rpc_clients_.begin(); it != commo()->rpc_clients_.end(); it++) {
 			if (avg_ob > 0 && it->second->time_ > 0) Log_info("time for %d is: %d", it->first, it->second->time_/avg_ob);
@@ -132,11 +131,12 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			}
 		}
 		if (avg_ob > 0 && !slow_) {
-			//Log_info("%d and %d", follower_times[0], follower_times[1]);
-			slow_ = follower_times[0]/avg_ob > 70000 && follower_times[1]/avg_ob > 70000;
+			Log_info("number of rpcs: %d", avg_ob);
+			Log_info("%d and %d", follower_times[0]/avg_ob, follower_times[1]/avg_ob);
+			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
 		}
 
-		//Log_info("slow?: %d", slow_);
+		Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);

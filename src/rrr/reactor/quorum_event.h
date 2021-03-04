@@ -40,9 +40,10 @@ class QuorumEvent : public Event {
   QuorumEvent() = delete;
 
   QuorumEvent(int n_total,
-              int quorum) : Event(),
-                            n_total_(n_total),
-                            quorum_(quorum){
+              int quorum,
+							int dep_id = -1) : Event(),
+																 n_total_(n_total),
+																 quorum_(quorum){
   }
 
   void set_sites(vector<int> sites){

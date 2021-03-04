@@ -46,6 +46,7 @@ void ClassicServiceImpl::ReElect(bool_t* success,
 	defer->reply();
 }
 void ClassicServiceImpl::Dispatch(const i64& cmd_id,
+																	const DepId& dep_id,
                                   const MarshallDeputy& md,
                                   int32_t* res,
                                   TxnOutput* output,
@@ -64,7 +65,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   piece_count_tid_.insert(header.tid);
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
-	Log_info("CreateRunning2");
+	//Log_info("CreateRunning2");
   /*auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
     *res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
@@ -73,9 +74,10 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   });*/
-  auto func = [cmd_id, sp, output, res, coro_id, this, defer]() {
+  auto func = [cmd_id, sp, output, dep_id, res, coro_id, this, defer]() {
     *res = SUCCESS;
-    if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
+    auto sched = (SchedulerClassic*) dtxn_sched_;
+    if (!sched->Dispatch(cmd_id, dep_id, sp, *output)) {
       *res = REJECT;
     }
     *coro_id = Coroutine::CurrentCoroutine()->id;
@@ -128,7 +130,7 @@ void ClassicServiceImpl::IsFPGALeader(const locid_t& can_id,
 
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
-                                 const uint64_t& dep_id,
+                                 const DepId& dep_id,
                                  rrr::i32* res,
 																 bool_t* slow,
                                  uint64_t* coro_id,
@@ -146,7 +148,7 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     defer->reply();
   };
 
-	Log_info("CreateRunning2");
+	//Log_info("CreateRunning2");
 	func();
   //auto coro = Coroutine::CreateRun(func);
   //Log_info("coro id on service side: %d", coro->id);
@@ -170,7 +172,7 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 }
 
 void ClassicServiceImpl::Commit(const rrr::i64& tid,
-                                const uint64_t& dep_id,
+                                const DepId& dep_id,
                                 rrr::i32* res,
 																bool_t* slow,
                                 uint64_t* coro_id,
@@ -189,13 +191,13 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-	Log_info("CreateRunning2");
+	//Log_info("CreateRunning2");
   //Coroutine::CreateRun(func);
 	func();
 }
 
 void ClassicServiceImpl::Abort(const rrr::i64& tid,
-                               const uint64_t& dep_id,
+                               const DepId& dep_id,
                                rrr::i32* res,
 															 bool_t* slow,
                                uint64_t* coro_id,
@@ -215,7 +217,7 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   };
-	Log_info("CreateRunning2");
+	//Log_info("CreateRunning2");
   //Coroutine::CreateRun(func);
 	func();
 }

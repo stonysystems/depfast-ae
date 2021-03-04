@@ -60,10 +60,11 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   for (auto& p : proxies) {
     if (p.first == this->loc_id_)
         continue;
+		auto follower_id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
 
     FutureAttr fuattr;
-    fuattr.callback = [this, e, isLeader, currentTerm] (Future* fu) {
+    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n] (Future* fu) {
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
@@ -73,22 +74,48 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
       fu->get_reply() >> index;
 			
 			struct timespec begin, end;
-			clock_gettime(CLOCK_MONOTONIC, &begin);
+			//clock_gettime(CLOCK_MONOTONIC, &begin);
 			this->outbound--;
+			Log_info("reply from server: %d and is_ready: %d", follower_id, e->IsReady());
+			
+			if (!e->IsReady()) {
+				auto it = this->counts.find(follower_id);
+				if (it != this->counts.end()) {
+					this->counts[follower_id]++;
+				} else {
+					this->counts[follower_id] = 0;
+				}
+				this->index++;
+				if (this->index == 10000) {
+					int threshold = (int)(this->index/(n-1));
+					verify(n > 1);
+					for (auto it = this->counts.begin(); it != this->counts.end(); it++) {
+						if (it->second < (int)(threshold/10)) {
+							Log_info("Warning: the follower with ID %d is slower than usual", it->first);
+						}
+						it->second = 0;
+					}
+					this->index = 0;
+				}
+			}
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index);
-			clock_gettime(CLOCK_MONOTONIC, &end);
-			Log_info("time of reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
+			/*clock_gettime(CLOCK_MONOTONIC, &end);
+			Log_info("time of reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
 		outbound++;
+		DepId di;
+		di.str = "dep";
+		di.id = 0;
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
                                         prevLogIndex,
                                         prevLogTerm,
                                         commitIndex,
+																				di,
                                         md, 
                                         fuattr);
     Future::safe_release(f);
@@ -113,12 +140,16 @@ void FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = cb;
     MarshallDeputy md(cmd);
+		DepId di;
+		di.str = "dep";
+		di.id = 0;
     auto f = proxy->async_AppendEntries(slot_id, 
                                         ballot, 
                                         currentTerm,
                                         prevLogIndex,
                                         prevLogTerm,
                                         commitIndex,
+																				di,
                                         md, 
                                         fuattr);
     Future::safe_release(f);
@@ -137,7 +168,10 @@ void FpgaRaftCommo::BroadcastDecide(const parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = [](Future* fu) {};
     MarshallDeputy md(cmd);
-    auto f = proxy->async_Decide(slot_id, ballot, md, fuattr);
+		DepId di;
+		di.str = "dep";
+		di.id = 0;
+    auto f = proxy->async_Decide(slot_id, ballot, di, md, fuattr);
     Future::safe_release(f);
   }
 }

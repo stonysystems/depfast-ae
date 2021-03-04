@@ -258,7 +258,11 @@ void Communicator::BroadcastDispatch(
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
   MarshallDeputy md(sp_vpd); // ????
 
-  auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
+	DepId di;
+	di.str = "dep";
+	di.id = Communicator::global_id++;
+  
+	auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
   Future::safe_release(future);
   if (!broadcasting_to_leaders_only_) {
     for (auto& pair : rpc_par_proxies_[par_id]) {
@@ -271,7 +275,12 @@ void Communicator::BroadcastDispatch(
               fu->get_reply() >> ret >> outputs;
               // do nothing
             };
-        Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fu2));
+				
+				DepId di2;
+				di2.str = "dep";
+				di2.id = Communicator::global_id++;
+        
+				Future::safe_release(pair.second->async_Dispatch(cmd_id, di2, md, fu2));
       }
     }
   }
@@ -358,7 +367,11 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 
     outbound_[src_coroid] = make_pair((rrr::i64)start_.tv_sec, (rrr::i64)start_.tv_nsec);
 
-    auto future = proxy->async_Dispatch(cmd_id, md, fuattr);
+		DepId di;
+		di.str = "dep";
+		di.id = Communicator::global_id++;
+    
+		auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
     Future::safe_release(future);
     if(!broadcasting_to_leaders_only_){
       for (auto& pair : rpc_par_proxies_[par_id]) {
@@ -376,7 +389,11 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
                 //coo->ids_.push_back(follower_id);
                 // do nothing
               };
-          Future::safe_release(pair.second->async_Dispatch(cmd_id, md, fuattr));
+					DepId di2;
+					di2.str = "dep";
+					di2.id = Communicator::global_id++;
+          
+					Future::safe_release(pair.second->async_Dispatch(cmd_id, di2, md, fuattr));
         }
       }
     }
@@ -408,7 +425,7 @@ Communicator::SendPrepare(Coordinator* coo,
     auto site_id = leader_id;
     auto proxies = rpc_par_proxies_[partition_id];
     if(follower_forwarding) n_total = 3;
-    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
+    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1, Communicator::global_id);
     e->AddEvent(qe);
     auto src_coroid = qe->GetCoroId();
       
@@ -441,13 +458,22 @@ Communicator::SendPrepare(Coordinator* coo,
               sids.size(),
               partition_id,
               tid);
-    Future::safe_release(proxy->async_Prepare(tid, sids, Communicator::global_id++, fuattr));
+		DepId di;
+		di.str = "dep";
+		di.id = Communicator::global_id++;
+    
+		Future::safe_release(proxy->async_Prepare(tid, sids, di, fuattr));
     if(follower_forwarding){
       for(auto& pair : rpc_par_proxies_[partition_id]){
         if(pair.first != leader_id){
           site_id = pair.first;
           proxy = pair.second;
-          Future::safe_release(proxy->async_Prepare(tid, sids, Communicator::global_id++, fuattr));  
+					
+					DepId di2;
+					di2.str = "dep";
+					di2.id = Communicator::global_id++;
+          
+					Future::safe_release(proxy->async_Prepare(tid, sids, di2, fuattr));  
         }
       }
     }
@@ -557,16 +583,23 @@ Communicator::SendCommit(Coordinator* coo,
       e->Test();
     };
 
+		DepId di;
+		di.str = "dep";
+		di.id = Communicator::global_id++;
     ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
     Log_debug("SendCommit to %ld tid:%ld\n", rp, tid);
-    Future::safe_release(proxy->async_Commit(tid, Communicator::global_id++, fuattr));
+    Future::safe_release(proxy->async_Commit(tid, di, fuattr));
     
     if(follower_forwarding){
       for(auto& pair : rpc_par_proxies_[rp]){
         if(pair.first != leader_id){
-          site_id = pair.first;
+					DepId di2;
+					di2.str = "dep";
+					di2.id = Communicator::global_id++;
+          
+					site_id = pair.first;
           proxy = pair.second;
-          Future::safe_release(proxy->async_Commit(tid, Communicator::global_id++, fuattr));  
+          Future::safe_release(proxy->async_Commit(tid, di2, fuattr));  
         }
       }
     }
@@ -663,16 +696,23 @@ Communicator::SendAbort(Coordinator* coo,
       e->Test();
     };
 
+		DepId di;
+		di.str = "dep";
+		di.id = Communicator::global_id++;
     ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
     Log_debug("SendAbort to %ld tid:%ld\n", rp, tid);
-    Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));
+    Future::safe_release(proxy->async_Abort(tid, di, fuattr));
 
     if(follower_forwarding){
       for(auto& pair : rpc_par_proxies_[rp]){
         if(pair.first != leader_id){
-          site_id = pair.first;
+					DepId di2;
+					di2.str = "dep";
+					di2.id = Communicator::global_id++;
+          
+					site_id = pair.first;
           proxy = pair.second;
-          Future::safe_release(proxy->async_Abort(tid, Communicator::global_id++, fuattr));  
+          Future::safe_release(proxy->async_Abort(tid, di2, fuattr));  
         }
       }
 

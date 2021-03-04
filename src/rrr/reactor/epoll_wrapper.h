@@ -213,12 +213,17 @@ class Epoll {
     int timeout = 1; // milli, 0.001 sec
 //    int timeout = 0; // busy loop
     
+		struct timespec begin_cpu, begin, begin_wait, end_wait, begin_wait_cpu, end_wait_cpu;
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_cpu);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin_wait);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_wait_cpu);
     int nev = epoll_wait(poll_fd_, evlist, max_nev, timeout);
+		
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end_wait);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_wait_cpu);
 		num_ev = nev;
     
-		struct timespec begin_cpu, end_cpu, begin, end;
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_cpu);
-		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
     for (int i = 0; i < nev; i++) {
 			found = true;
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
@@ -242,6 +247,10 @@ class Epoll {
 			result.push_back(begin);
 			result.push_back(begin_cpu);
 		}
+		result.push_back(begin_wait);
+		result.push_back(end_wait);
+		result.push_back(begin_wait_cpu);
+		result.push_back(end_wait_cpu);
     
 #endif
 		return result;
@@ -249,8 +258,8 @@ class Epoll {
 
   void Wait_Two() {
 		struct timespec begin2, begin2_cpu, end2, end2_cpu;
-		clock_gettime(CLOCK_MONOTONIC, &begin2);		
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+		/*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
     
     for(auto it = pending.begin(); it != pending.end();){
       Pollable* poll = *it;
@@ -261,14 +270,14 @@ class Epoll {
         it++;
       }
     }
-		if (pending.size() != 0) {
+		/*if (pending.size() != 0) {
 			clock_gettime(CLOCK_MONOTONIC, &end2);
 			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 			long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
 			long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 			double util2 = (double) total_cpu2/total_time2;
 			Log_info("elapsed CPU time (client read2): %f", util2);
-		}
+		}*/
   }
 
   void Wait() {

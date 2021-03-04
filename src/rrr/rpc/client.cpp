@@ -189,8 +189,8 @@ void Client::handle_write() {
   //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
 	struct timespec begin2, begin2_cpu, end2, end2_cpu;
-  clock_gettime(CLOCK_MONOTONIC, &begin2);		
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
   if (status_ != CONNECTED) {
     return;
   }
@@ -202,12 +202,12 @@ void Client::handle_write() {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
-	clock_gettime(CLOCK_MONOTONIC, &end2);
+	/*clock_gettime(CLOCK_MONOTONIC, &end2);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
 	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 	double util2 = (double) total_cpu2/total_time2;
-	Log_info("elapsed CPU time (client write): %f", util2);
+	Log_info("elapsed CPU time (client write): %f", util2);*/
 }
 
 size_t Client::content_size() {
@@ -216,8 +216,8 @@ size_t Client::content_size() {
 
 bool Client::handle_read(){
 	struct timespec begin2, begin2_cpu, end2, end2_cpu;
-  clock_gettime(CLOCK_MONOTONIC, &begin2);		
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);
+  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
   if (status_ != CONNECTED) {
     return false;
   }
@@ -226,12 +226,12 @@ bool Client::handle_read(){
   if (bytes_read == 0) {
     return false;
   }
-	clock_gettime(CLOCK_MONOTONIC, &end2);
+	/*clock_gettime(CLOCK_MONOTONIC, &end2);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
 	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 	double util2 = (double) total_cpu2/total_time2;
-	Log_info("elapsed CPU time (client read): %f", util2);
+	Log_info("elapsed CPU time (client read): %f", util2);*/
   return true;
 }
 
@@ -254,6 +254,8 @@ iters = 5;
 		iters = INT_MAX;
 	}
   
+  //Log_info("pending size: %d", pending_fu_.size());
+	
 	for(int i = 0; i < iters; i++) {
     i32 packet_size;
 
@@ -272,11 +274,11 @@ iters = 5;
       pending_fu_l_.lock();
       unordered_map<i64, Future*>::iterator
         it = pending_fu_.find(v_reply_xid.get());
-      //Log_info("pending size: %d", pending_fu_.size());
       if(it != pending_fu_.end()){
         Future* fu = it->second;
         verify(fu->xid_ == v_reply_xid.get());
 
+				
 				struct timespec end;
 				clock_gettime(CLOCK_MONOTONIC, &end);
 				long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;

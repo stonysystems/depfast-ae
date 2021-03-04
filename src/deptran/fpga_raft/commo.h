@@ -116,6 +116,9 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
 
 class FpgaRaftCommo : public Communicator {
  public:
+	std::unordered_map<siteid_t, int> counts {};
+	int index;
+	
   FpgaRaftCommo() = delete;
   FpgaRaftCommo(PollMgr*);
   shared_ptr<FpgaRaftForwardQuorumEvent>

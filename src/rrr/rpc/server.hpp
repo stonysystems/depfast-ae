@@ -107,6 +107,8 @@ class ServerConnection: public Pollable {
 
 
 public:
+	int count = 0;
+	
   // Protected destructor as required by RefCounted.
   ~ServerConnection();
 

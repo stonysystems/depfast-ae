@@ -127,6 +127,7 @@ void CoordinatorMultiPaxos::Accept() {
   auto start = chrono::system_clock::now();
   auto sp_quorum = commo()->BroadcastAccept(par_id_, slot_id_, curr_ballot_, cmd_);
   sp_quorum->id_ = dep_id_;
+	Log_info("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
   //Log_info("Accept(): %d", dep_id_);
 
   sp_quorum->Wait();

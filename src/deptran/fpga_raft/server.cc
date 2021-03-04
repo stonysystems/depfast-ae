@@ -310,6 +310,7 @@ void FpgaRaftServer::StartTimer()
                                      const uint64_t leaderPrevLogIndex,
                                      const uint64_t leaderPrevLogTerm,
                                      const uint64_t leaderCommitIndex,
+																		 const struct DepId dep_id,
                                      shared_ptr<Marshallable> &cmd,
                                      uint64_t *followerAppendOK,
                                      uint64_t *followerCurrentTerm,
@@ -408,7 +409,7 @@ void FpgaRaftServer::StartTimer()
                               shared_ptr<Marshallable> &cmd) {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
 		struct timespec begin, end;
-		clock_gettime(CLOCK_MONOTONIC, &begin);
+		//clock_gettime(CLOCK_MONOTONIC, &begin);
 
     // This prevents the log entry from being applied twice
     if (in_applying_logs_) {
@@ -430,8 +431,8 @@ void FpgaRaftServer::StartTimer()
     }
     in_applying_logs_ = false;
 
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		Log_info("time of decide on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
+		/*clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of decide on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
   }
   void FpgaRaftServer::SpCommit(const uint64_t cmt_idx) {
       verify(0) ; // TODO delete it
