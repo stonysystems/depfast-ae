@@ -85,6 +85,7 @@ class TxLogServer {
   TxLogServer(int mode);
   virtual ~TxLogServer();
 
+
   virtual void SetPartitionId(parid_t par_id) {
     partition_id_ = par_id;
   }
@@ -105,7 +106,7 @@ class TxLogServer {
   virtual void Execute(Tx &txn_box,
                        innid_t inn_id);
 
-  Coordinator *CreateRepCoord(const uint64_t& dep_id);
+  Coordinator *CreateRepCoord(const i64& dep_id);
   virtual shared_ptr<Tx> GetTx(txnid_t tx_id);
   virtual shared_ptr<Tx> CreateTx(txnid_t tx_id,
                                   bool ro = false);
@@ -156,6 +157,7 @@ class TxLogServer {
 
   virtual void Next(Marshallable& cmd) { verify(0); };
 
+	virtual void Setup() { verify(0); } ;
   virtual bool IsLeader() { verify(0); } ;
   virtual bool IsFPGALeader() { verify(0); } ;
 	

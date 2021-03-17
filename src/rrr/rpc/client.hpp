@@ -191,6 +191,10 @@ public:
         return sock_;
     }
 
+		std::string host() {
+			return host_;
+		}
+
     int poll_mode();
     size_t content_size();
     //void handle_read_one();

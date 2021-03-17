@@ -8,12 +8,15 @@
 
 namespace janus {
 
+
+
 CoordinatorFpgaRaft::CoordinatorFpgaRaft(uint32_t coo_id,
                                              int32_t benchmark,
                                              ClientControlServiceImpl* ccsi,
                                              uint32_t thread_id)
     : Coordinator(coo_id, benchmark, ccsi, thread_id) {
 }
+
 
 bool CoordinatorFpgaRaft::IsLeader() {
    return this->sch_->IsLeader() ;
@@ -48,7 +51,8 @@ void CoordinatorFpgaRaft::Submit(shared_ptr<Marshallable>& cmd,
     return ;
   }
 
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  
+	std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(!in_submission_);
   verify(cmd_ == nullptr);
 //  verify(cmd.self_cmd_ != nullptr);
@@ -83,6 +87,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
                                                      slot_id_,
+																										 dep_id_,
                                                      curr_ballot_,
                                                      this->sch_->IsLeader(),
                                                      this->sch_->currentTerm,
@@ -163,7 +168,7 @@ void CoordinatorFpgaRaft::Commit() {
   commit_callback_();
   Log_debug("fpga-raft broadcast commit for partition: %d, slot %d",
             (int) par_id_, (int) slot_id_);
-  commo()->BroadcastDecide(par_id_, slot_id_, curr_ballot_, cmd_);
+  commo()->BroadcastDecide(par_id_, slot_id_, dep_id_, curr_ballot_, cmd_);
   verify(phase_ == Phase::COMMIT);
   GotoNextPhase();
 }
@@ -182,7 +187,7 @@ void CoordinatorFpgaRaft::LeaderLearn() {
     /*     this->sch_->app_next_(*instance->log_); */
     /* } */
 
-    commo()->BroadcastDecide(par_id_, slot_id_, curr_ballot_, cmd_);
+    commo()->BroadcastDecide(par_id_, slot_id_, dep_id_, curr_ballot_, cmd_);
     verify(phase_ == Phase::COMMIT);
     GotoNextPhase();
 }

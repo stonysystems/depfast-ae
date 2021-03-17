@@ -2,16 +2,28 @@
 
 #include <vector>
 #include <unordered_map>
+#include <boost/container_hash/hash.hpp>
 //#include <unordered_set>
 //#include <fstream>
 #include <iostream>
 #include "event.h"
 #include <chrono>
 
+template <typename Container> // we can make this generic for any container [1]
+struct container_hash {
+    std::size_t operator()(Container const& c) const {
+        return boost::hash_range(c.begin(), c.end());
+    }
+};
+
 using rrr::Event;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
+
+typedef std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> dependencies_t;
+typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, int>, container_hash<unordered_set<std::string>>> history_t;
+typedef std::unordered_map<unordered_set<std::string>, int, container_hash<unordered_set<std::string>>> count_t;
 
 #define logging 0
 
@@ -30,11 +42,15 @@ class QuorumEvent : public Event {
   uint64_t coro_id_ = -1;
   int64_t par_id_ = -1;
   uint64_t id_ = -1;
+	uint64_t server_id_ = -1;
   std::chrono::steady_clock::time_point ready_time;
   // fast vote result.
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{};
-  std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> deps{};
+	unordered_set<std::string> ips_{};
+  dependencies_t deps{};
+	static history_t history;
+	static count_t counts;
   std::string log_file = "logs.txt";
 
   QuorumEvent() = delete;
@@ -46,6 +62,8 @@ class QuorumEvent : public Event {
 																 quorum_(quorum){
   }
 
+	void recordHistory(unordered_set<std::string> ip_addrs);
+	void updateHistory(std::string ip_addr);
   void set_sites(vector<int> sites){
     sites_ = sites;
   }
@@ -120,12 +138,13 @@ class QuorumEvent : public Event {
     return n_voted_no_ > (n_total_ - quorum_);
   }
 
-  void VoteYes() {
+  void VoteYes(std::string ip_addr = "") {
+		updateHistory(ip_addr);
     n_voted_yes_++;
     Test();
   }
 
-  void VoteNo() {
+  void VoteNo(std::string ip_addr = "") {
     n_voted_no_++;
     Test();
   }

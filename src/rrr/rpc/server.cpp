@@ -222,13 +222,17 @@ bool ServerConnection::handle_read() {
 	      }*/
 //#endif
               y(req, x.get());
-							if (!req->m.valid_id) {
+							/*if (req != nullptr && !req->m.valid_id) {
 								if (count % 100000 == 0) {
-									Log_info("dependency not found");
+									if (req->m.found_dep) {
+										Log_info("Warning: dependency not found: true and %x", rpc_id);
+									} else {
+										Log_info("Warning: dependency not found: false and %x", rpc_id);
+									}
 								} else {
 									count++;
 								}
-							}
+							}*/
               // this line of code actually relies on the stack outside.
 //              auto f = it->second;
 //              auto r = req;

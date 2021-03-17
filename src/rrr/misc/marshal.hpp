@@ -451,7 +451,10 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::i64 &v) {
   verify(m.read(&v, sizeof(v)) == sizeof(v));
 	if (m.found_dep) {
 		if (v != -1) {
+			//Log_info("valid id: %d", v);
 			m.valid_id = true;
+		} else {
+			//Log_info("invalid id: %d", v);
 		}
 		m.found_dep = false;
 	}
@@ -514,7 +517,10 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, std::string &v) {
     verify(m.read(&v[0], v_len.get()) == (size_t) v_len.get());
   }
 	if (v == "dep") {
+		Log_info("dep: %s", v.c_str());
 		m.found_dep = true;
+	} else {
+		Log_info("not dep: %s", v.c_str());
 	}
   return m;
 }

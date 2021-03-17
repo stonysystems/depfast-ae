@@ -26,6 +26,9 @@ abstract service MultiPaxos {
 }
 
 abstract service FpgaRaft {
+	defer Heartbeat(uint64_t leaderPrevLogIndex,
+									DepId dep_id |
+									uint64_t followerPrevLogIndex);
 
   defer Forward(MarshallDeputy cmd |
                 uint64_t cmt_idx );

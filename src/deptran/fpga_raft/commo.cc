@@ -42,9 +42,62 @@ shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id
     return e;
 }
 
+void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
+																			 uint64_t logIndex) {
+	Log_info("heartbeat for log index: %d", logIndex);
+  auto proxies = rpc_par_proxies_[par_id];
+  vector<Future*> fus;
+  for (auto& p : proxies) {
+    if (p.first == this->loc_id_)
+        continue;
+		auto follower_id = p.first;
+    auto proxy = (FpgaRaftProxy*) p.second;
+    FutureAttr fuattr;
+    
+		fuattr.callback = [this, follower_id, logIndex] (Future* fu) {
+      uint64_t index = 0;
+			
+      fu->get_reply() >> index;
+			this->matchedIndex[follower_id] = index;
+			
+			Log_info("follower_index for %d: %d and leader_index: %d", follower_id, index, logIndex);
+			
+    };
+
+		DepId di;
+		di.str = "dep";
+		di.id = -1;
+    auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
+    Future::safe_release(f);
+  }
+}
+
+void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
+																	siteid_t site_id,
+																  uint64_t logIndex) {
+	Log_info("heartbeat2 for log index: %d", logIndex);
+  auto proxies = rpc_par_proxies_[par_id];
+  vector<Future*> fus;
+  for (auto& p : proxies) {
+    if (p.first != site_id)
+        continue;
+		auto follower_id = p.first;
+    auto proxy = (FpgaRaftProxy*) p.second;
+    FutureAttr fuattr;
+    fuattr.callback = [](Future* fu) {};
+    
+		DepId di;
+		di.str = "dep";
+		di.id = -1;
+    auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
+    Future::safe_release(f);
+  }
+}
+
 shared_ptr<FpgaRaftAppendQuorumEvent>
 FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       slotid_t slot_id,
+																			i64 dep_id,
                                       ballot_t ballot,
                                       bool isLeader,
                                       uint64_t currentTerm,
@@ -55,6 +108,9 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2);
   auto proxies = rpc_par_proxies_[par_id];
+
+	unordered_set<std::string> ip_addrs {};
+
   vector<Future*> fus;
   WAN_WAIT;
   for (auto& p : proxies) {
@@ -63,8 +119,16 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		auto follower_id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
 
+		auto cli_it = rpc_clients_.find(follower_id);
+		std::string ip = "";
+		if (cli_it != rpc_clients_.end()) {
+			ip = cli_it->second->host();
+		}
+		
+		ip_addrs.insert(ip);
+
     FutureAttr fuattr;
-    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n] (Future* fu) {
+    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip] (Future* fu) {
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
@@ -76,30 +140,10 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
 			this->outbound--;
-			Log_info("reply from server: %d and is_ready: %d", follower_id, e->IsReady());
+			Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
 			
-			if (!e->IsReady()) {
-				auto it = this->counts.find(follower_id);
-				if (it != this->counts.end()) {
-					this->counts[follower_id]++;
-				} else {
-					this->counts[follower_id] = 0;
-				}
-				this->index++;
-				if (this->index == 10000) {
-					int threshold = (int)(this->index/(n-1));
-					verify(n > 1);
-					for (auto it = this->counts.begin(); it != this->counts.end(); it++) {
-						if (it->second < (int)(threshold/10)) {
-							Log_info("Warning: the follower with ID %d is slower than usual", it->first);
-						}
-						it->second = 0;
-					}
-					this->index = 0;
-				}
-			}
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
-      e->FeedResponse(y, index);
+      e->FeedResponse(y, index, ip);
 			/*clock_gettime(CLOCK_MONOTONIC, &end);
 			Log_info("time of reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
     };
@@ -108,7 +152,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		outbound++;
 		DepId di;
 		di.str = "dep";
-		di.id = 0;
+		di.id = dep_id;
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
@@ -120,11 +164,14 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                         fuattr);
     Future::safe_release(f);
   }
+
+	e->recordHistory(ip_addrs);
   return e;
 }
 
 void FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                            slotid_t slot_id,
+																					 i64 dep_id,
                                            ballot_t ballot,
                                            uint64_t currentTerm,
                                            uint64_t prevLogIndex,
@@ -142,7 +189,7 @@ void FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     MarshallDeputy md(cmd);
 		DepId di;
 		di.str = "dep";
-		di.id = 0;
+		di.id = dep_id;
     auto f = proxy->async_AppendEntries(slot_id, 
                                         ballot, 
                                         currentTerm,
@@ -159,6 +206,7 @@ void FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 
 void FpgaRaftCommo::BroadcastDecide(const parid_t par_id,
                                       const slotid_t slot_id,
+																			const i64 dep_id,
                                       const ballot_t ballot,
                                       const shared_ptr<Marshallable> cmd) {
   auto proxies = rpc_par_proxies_[par_id];
@@ -170,7 +218,7 @@ void FpgaRaftCommo::BroadcastDecide(const parid_t par_id,
     MarshallDeputy md(cmd);
 		DepId di;
 		di.str = "dep";
-		di.id = 0;
+		di.id = dep_id;
     auto f = proxy->async_Decide(slot_id, ballot, di, md, fuattr);
     Future::safe_release(f);
   }

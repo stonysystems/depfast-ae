@@ -95,16 +95,16 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
  public:
     uint64_t minIndex;
     using QuorumEvent::QuorumEvent;
-    void FeedResponse(bool appendOK, uint64_t index) {
+    void FeedResponse(bool appendOK, uint64_t index, std::string ip_addr = "") {
         if (appendOK) {
             if ((n_voted_yes_ == 0) && (n_voted_no_ == 0))
                 minIndex = index;
             else
                 minIndex = std::min(minIndex, index);
 
-             VoteYes();
+             VoteYes(ip_addr);
         } else {
-             VoteNo();
+             VoteNo(ip_addr);
         }
         /*Log_debug("fpga-raft comm accept event, "
                   "yes vote: %d, no vote: %d, min index: %d",
@@ -115,14 +115,22 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
 
 
 class FpgaRaftCommo : public Communicator {
+
+friend class FpgaRaftProxy;
  public:
 	std::unordered_map<siteid_t, int> counts {};
+	std::unordered_map<siteid_t, uint64_t> matchedIndex {};
 	int index;
 	
   FpgaRaftCommo() = delete;
   FpgaRaftCommo(PollMgr*);
   shared_ptr<FpgaRaftForwardQuorumEvent>
   SendForward(parid_t par_id, parid_t self_id, shared_ptr<Marshallable> cmd);  
+	void BroadcastHeartbeat(parid_t par_id,
+													uint64_t logIndex);
+	void SendHeartbeat(parid_t par_id,
+										 siteid_t site_id,
+										 uint64_t logIndex);
   shared_ptr<FpgaRaftPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    slotid_t slot_id,
@@ -168,6 +176,7 @@ class FpgaRaftCommo : public Communicator {
   shared_ptr<FpgaRaftAppendQuorumEvent>
   BroadcastAppendEntries(parid_t par_id,
                          slotid_t slot_id,
+												 i64 dep_id,
                          ballot_t ballot,
                          bool isLeader,
                          uint64_t currentTerm,
@@ -177,6 +186,7 @@ class FpgaRaftCommo : public Communicator {
                          shared_ptr<Marshallable> cmd);
   void BroadcastAppendEntries(parid_t par_id,
                               slotid_t slot_id,
+															i64 dep_id,
                               ballot_t ballot,
                               uint64_t currentTerm,
                               uint64_t prevLogIndex,
@@ -186,6 +196,7 @@ class FpgaRaftCommo : public Communicator {
                               const function<void(Future*)> &callback);
   void BroadcastDecide(const parid_t par_id,
                        const slotid_t slot_id,
+											 const i64 dep_id,
                        const ballot_t ballot,
                        const shared_ptr<Marshallable> cmd);
 };

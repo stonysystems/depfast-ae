@@ -33,7 +33,7 @@ class Coordinator {
   uint32_t offset_;
   uint32_t cli_id_;
   uint32_t coro_id_;
-  uint64_t dep_id_ = -1;
+	i64 dep_id_ = -1;
 	int concurrent;
   std::vector<int> ids_;
   parid_t par_id_ = -1;

@@ -180,7 +180,7 @@ Communicator::ConnectToSite(Config::SiteInfo& site,
       ClassicProxy* rpc_proxy = new ClassicProxy(rpc_cli.get());
       rpc_clients_.insert(std::make_pair(site.id, rpc_cli));
       rpc_proxies_.insert(std::make_pair(site.id, rpc_proxy));
-      Log_debug("connect to site: %s success!", addr.c_str());
+      Log_info("connect to site: %s success!", addr.c_str());
       return std::make_pair(SUCCESS, rpc_proxy);
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(CONNECT_SLEEP_MS));

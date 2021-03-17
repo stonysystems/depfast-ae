@@ -9,6 +9,15 @@ FpgaRaftServiceImpl::FpgaRaftServiceImpl(TxLogServer *sched)
 
 }
 
+void FpgaRaftServiceImpl::Heartbeat(const uint64_t& leaderPrevLogIndex,
+																		const DepId& dep_id,
+																		uint64_t* followerPrevLogIndex,
+																		rrr::DeferredReply* defer) {
+	Log_info("received heartbeat");
+	*followerPrevLogIndex = sched_->lastLogIndex;
+	defer->reply();
+}
+
 void FpgaRaftServiceImpl::Forward(const MarshallDeputy& cmd,
                                     uint64_t* cmt_idx, 
                                     rrr::DeferredReply* defer) {
@@ -82,7 +91,7 @@ void FpgaRaftServiceImpl::Decide(const uint64_t& slot,
                                    const MarshallDeputy& md_cmd,
                                    rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
-	//Log_info("CreateRunning2");
+	Log_info("Deciding with string: %s and id: %d", dep_id.str.c_str(), dep_id.id);
   Coroutine::CreateRun([&] () {
     sched_->OnCommit(slot,
                      ballot,

@@ -45,10 +45,18 @@ class FpgaRaftServer : public TxLogServer {
   bool req_voting_ = false ;
   bool in_applying_logs_ = false ;
 
-  bool RequestVote() ;
+	static bool looping;
+	bool heartbeat_ = true;
+	enum { STOPPED, RUNNING } status_;
+	pthread_t loop_th_;
+  
+	bool RequestVote() ;
   void RequestVote2FPGA() ;
 
-  void setIsLeader(bool isLeader)
+	void Setup();
+	static void* HeartbeatLoop(void* args) ;
+  
+	void setIsLeader(bool isLeader)
   {
     Log_debug("set loc_id %d is leader %d", loc_id_, isLeader) ;
     is_leader_ = isLeader ;
