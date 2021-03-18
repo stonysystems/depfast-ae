@@ -299,6 +299,16 @@ inline rrr::Marshal &operator<<(rrr::Marshal &m, const rrr::i64 &v) {
   //auto end = std::chrono::steady_clock::now();
   //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
   //Log_info("Time of << for int64 is: %d", duration);
+	
+	if (m.found_dep) {
+		if (v != -1) {
+			//Log_info("valid id: %d and %d", m.found_dep, v);
+			m.valid_id = true;
+		} else {
+			//Log_info("invalid id: %d and %d", m.found_dep, v);
+		}
+		m.found_dep = false;
+	}
 
   return m;
 }
@@ -354,6 +364,16 @@ inline rrr::Marshal &operator<<(rrr::Marshal &m, const std::string &v) {
   if (v_len.get() > 0) {
     verify(m.write(v.c_str(), v_len.get()) == (size_t) v_len.get());
   }
+
+	if (v == "dep") {
+		//Log_info("dep: %s", v.c_str());
+		m.found_dep = true;
+	} else if (v == "hb") { 
+		m.valid_id = true;
+	} else {
+		Log_info("not dep: %s", v.c_str());
+	}
+
   return m;
 }
 
@@ -449,15 +469,16 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::i32 &v) {
 
 inline rrr::Marshal &operator>>(rrr::Marshal &m, rrr::i64 &v) {
   verify(m.read(&v, sizeof(v)) == sizeof(v));
-	if (m.found_dep) {
+	/*if (m.found_dep) {
 		if (v != -1) {
-			//Log_info("valid id: %d", v);
+			Log_info("valid id: %d", v);
 			m.valid_id = true;
 		} else {
-			//Log_info("invalid id: %d", v);
+			Log_info("invalid id: %d", v);
+			m.valid_id = false;
 		}
 		m.found_dep = false;
-	}
+	}*/
   return m;
 }
 
@@ -516,12 +537,12 @@ inline rrr::Marshal &operator>>(rrr::Marshal &m, std::string &v) {
   if (v_len.get() > 0) {
     verify(m.read(&v[0], v_len.get()) == (size_t) v_len.get());
   }
-	if (v == "dep") {
+	/*if (v == "dep") {
 		Log_info("dep: %s", v.c_str());
 		m.found_dep = true;
 	} else {
 		Log_info("not dep: %s", v.c_str());
-	}
+	}*/
   return m;
 }
 

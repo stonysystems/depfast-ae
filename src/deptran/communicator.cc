@@ -546,7 +546,7 @@ Communicator::SendCommit(Coordinator* coo,
 			this->slow = slow;
 			if(profile.cpu_util >= 0.0){
 				cpu = profile.cpu_util;
-				Log_info("cpu: %f and network: %f and memory: %f", profile.cpu_util, profile.tx_util, profile.mem_util);
+				//Log_info("cpu: %f and network: %f and memory: %f", profile.cpu_util, profile.tx_util, profile.mem_util);
 			}
 
       struct timespec end_;

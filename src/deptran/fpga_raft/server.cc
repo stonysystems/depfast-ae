@@ -21,6 +21,10 @@ FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   setIsLeader(frame_->site_info_->locale_id == 0) ;
   stop_ = false ;
   timer_ = new Timer() ;
+	
+	struct timespec curr_time;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &curr_time);
+	srand(curr_time.tv_nsec);
 }
 
 void FpgaRaftServer::Setup() {
@@ -50,7 +54,7 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 		for (auto it = matcheds.begin(); it != matcheds.end(); it++) {
 			if (prevLogIndex > it->second + 10000) {
 				Log_info("leader_id: %d vs follower_id for %d: %d", prevLogIndex, it->first, it->second);
-				hb_loop_args->commo->SendHeartbeat(partition_id, prevLogIndex, it->first);
+				hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
 			}
 		}
 	}
@@ -429,6 +433,11 @@ void FpgaRaftServer::StartTimer()
                 this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
             *followerAppendOK = 0;
         }
+
+				if (rand() % 1000 == 0) {
+					usleep(15*1000);
+				}
+
         cb();
     }
 

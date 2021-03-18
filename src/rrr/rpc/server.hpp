@@ -213,17 +213,6 @@ class DeferredReply: public NoCopy {
       }
 			
 			// move to client
-			if (req_ != nullptr && !req_->m.valid_id) {
-				if (sconn_->count % 100000 == 0) {
-					if (req_->m.found_dep) {
-						Log_info("Warning2: dependency not found: true");
-					} else {
-						Log_info("Warning2: dependency not found: false");
-					}
-				} else {
-					sconn_->count++;
-				}
-			}
       // CHECK
       // BUG here, this is deleted twice????
       delete this;

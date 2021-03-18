@@ -284,7 +284,7 @@ abstract service ClientControl {
     defer client_get_txn_names( | map<i32, string> txn_names);
     defer client_shutdown ( | );
     defer client_force_stop ( | );
-    defer client_response ( | ClientResponse res);
+    defer client_response ( DepId dep_id | ClientResponse res);
     defer client_ready ( | i32 res);
     defer client_ready_block ( | i32 res);
     defer client_start ( | );

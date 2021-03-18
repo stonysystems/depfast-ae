@@ -73,6 +73,10 @@ void Future::notify_ready() {
   }
 }
 
+void Client::set_valid(bool valid) {
+	out_.valid_id = valid;
+}
+
 void Client::invalidate_pending_futures() {
   list<Future*> futures;
   pending_fu_l_.lock();
@@ -411,9 +415,8 @@ int Client::poll_mode() {
 Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   //auto start = chrono::steady_clock::now();
 	
-
   out_l_.lock();
-
+	
   if (status_ != CONNECTED) {
     //Log_info("NOT CONNECTED");
     return nullptr;
@@ -446,6 +449,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
 
   *this << v64(fu->xid_);
   *this << rpc_id;
+	rpc_id_ = rpc_id;
 
   //auto end = chrono::steady_clock::now();
   //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
@@ -465,11 +469,28 @@ void Client::end_request() {
     bmark_ = nullptr;
   }
 
+	if (!out_.valid_id) {
+		if (count % 100 == 0) {
+			if (out_.found_dep) {
+				Log_info("Warning2: dependency not found: true");
+			} else {
+				Log_info("Warning2: dependency not found: false");
+			}
+		} else {
+			count++;
+		}
+	}
+
+	out_.found_dep = false;
+	out_.valid_id = false;
+
   // always enable write events since the code above gauranteed there
   // will be some data to send
   pollmgr_->update_mode(shared_from_this(), Pollable::READ | Pollable::WRITE);
 
   out_l_.unlock();
+			
+
   //auto end = chrono::steady_clock::now();
   //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
   //Log_info("The Time for end_request is: %d");

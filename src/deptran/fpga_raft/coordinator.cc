@@ -102,7 +102,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		struct timespec end_;
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
-		//Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
+		Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
 		slow_ = sp_quorum->IsSlow();
 		
 		long leader_time;
@@ -141,7 +141,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
 		}
 
-		Log_info("slow?: %d", slow_);
+		//Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);

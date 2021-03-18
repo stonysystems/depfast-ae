@@ -197,7 +197,7 @@ void ClientControlServiceImpl::client_force_stop(DeferredReply* defer) {
   defer->reply();
 }
 
-void ClientControlServiceImpl::client_response(ClientResponse *res, DeferredReply* defer) {
+void ClientControlServiceImpl::client_response(const DepId& dep_id, ClientResponse *res, DeferredReply* defer) {
   std::lock_guard<std::recursive_mutex> guard(mtx_);
   status_mutex_.lock();
   if (CCS_FINISH == status_)

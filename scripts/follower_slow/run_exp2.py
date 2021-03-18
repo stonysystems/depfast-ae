@@ -466,7 +466,8 @@ class ClientController(object):
             futures = []
             for proxy in rpc_proxy:
                 try:
-                    future = proxy.async_client_response()
+                    dep_id = (str.encode('dep'), 0)
+                    future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
@@ -566,6 +567,7 @@ class ClientController(object):
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2':
                             time.sleep(0.1)
+                            logger.info('slowing here')
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         if process_name == 'host5':
                             time.sleep(0.1)

@@ -145,6 +145,8 @@ public:
 public:
 	 bool client_;
 	 long time_;
+	 int count;
+	 i32 rpc_id_;
 
    virtual ~Client() {
      invalidate_pending_futures();
@@ -181,6 +183,7 @@ public:
         return *this;
     }
 
+		void set_valid(bool valid);
     int connect(const char* addr, bool client = true);
 
     void close_and_release() {

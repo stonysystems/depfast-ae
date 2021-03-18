@@ -46,7 +46,7 @@ class FpgaRaftServer : public TxLogServer {
   bool in_applying_logs_ = false ;
 
 	static bool looping;
-	bool heartbeat_ = true;
+	bool heartbeat_ = false;
 	enum { STOPPED, RUNNING } status_;
 	pthread_t loop_th_;
   

@@ -184,6 +184,7 @@ static PyObject* _pyrpc_client_async_call(PyObject* self, PyObject* args) {
         //       client side buffer. Here is the only place that we are using Marshal's
         //       read_from_marshal function with non-empty Marshal object.
         *clnt << *m;
+				clnt->set_valid(m->valid_id);
     }
     clnt->end_request();
 
@@ -432,8 +433,11 @@ static PyObject* _pyrpc_marshal_write_str(PyObject* self, PyObject* args) {
     GILHelper gil_helper;
     unsigned long u;
     PyObject* str_obj;
-    if (!PyArg_ParseTuple(args, "kO", &u, &str_obj))
+    if (!PyArg_ParseTuple(args, "kO", &u, &str_obj)){
         return NULL;
+		}
+		
+		//Log_info("writing string: %d", u);
     Marshal* m = (Marshal*) u;
     std::string str(PyBytes_AsString(str_obj), PyBytes_Size(str_obj));
     *m << str;

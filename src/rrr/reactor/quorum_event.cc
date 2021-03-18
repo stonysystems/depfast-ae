@@ -37,16 +37,19 @@ count_t QuorumEvent::counts{};
 						QuorumEvent::counts[ips_]++;
 						
 						int slow_nodes = 0;
-						if (QuorumEvent::counts[ips_] == 10000) {
-							int threshold = (int)(QuorumEvent::counts[ips_]/(n_total_-1));
+						int nodes = 0;
+						if (QuorumEvent::counts[ips_] == 50000) {
+							int threshold = (int)(QuorumEvent::counts[ips_]/(QuorumEvent::history[ips_].size()));
 							for (auto it = QuorumEvent::history[ips_].begin(); it != QuorumEvent::history[ips_].end(); it++) {
 								if (it->second < (int)(threshold/5)) {
 									slow_nodes++;
 									//Log_info("Warning: the follower with address %s is slower than usual", it->first.c_str());
+									//Log_info("Warning: information is %d and %d", n_total_, quorum_);
 								}
+								nodes++;
 								it->second = 0;
 							}
-							if (slow_nodes >= (n_total_-quorum_)) {
+							if (slow_nodes >= (nodes-quorum_)) {
 									Log_info("Warning: the replicated system is susceptible to transient performance");
 							}
 

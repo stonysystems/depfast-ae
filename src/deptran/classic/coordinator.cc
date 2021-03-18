@@ -349,7 +349,7 @@ void CoordinatorClassic::Prepare() {
                                           sids);
 
 	quorum_event->Wait();
-	Log_info("slow inside Prepare is: %d", commo()->slow);
+	//Log_info("slow inside Prepare is: %d", commo()->slow);
   quorum_event->log();
 	
   if(!aborted_){
@@ -482,8 +482,8 @@ void CoordinatorClassic::Commit() {
   } else {
     verify(0);
   }
-	Log_info("slow inside Commit is: %d", commo()->slow);
-	Log_info("commo window avg: %d", commo()->window_avg);
+	//Log_info("slow inside Commit is: %d", commo()->slow);
+	//Log_info("commo window avg: %d", commo()->window_avg);
 	if((prep_slow || commo()->slow)  && commo()->total > 10000 && !commo()->paused){
 		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
 		//double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;

@@ -44,7 +44,7 @@ shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id
 
 void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 																			 uint64_t logIndex) {
-	Log_info("heartbeat for log index: %d", logIndex);
+	//Log_info("heartbeat for log index: %d", logIndex);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
   for (auto& p : proxies) {
@@ -60,12 +60,12 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
       fu->get_reply() >> index;
 			this->matchedIndex[follower_id] = index;
 			
-			Log_info("follower_index for %d: %d and leader_index: %d", follower_id, index, logIndex);
+			//Log_info("follower_index for %d: %d and leader_index: %d", follower_id, index, logIndex);
 			
     };
 
 		DepId di;
-		di.str = "dep";
+		di.str = "hb";
 		di.id = -1;
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
     Future::safe_release(f);
@@ -75,7 +75,6 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
 																	siteid_t site_id,
 																  uint64_t logIndex) {
-	Log_info("heartbeat2 for log index: %d", logIndex);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
   for (auto& p : proxies) {
@@ -89,6 +88,8 @@ void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
 		DepId di;
 		di.str = "dep";
 		di.id = -1;
+		
+		//Log_info("heartbeat2 for log index: %d", logIndex);
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
     Future::safe_release(f);
   }
@@ -128,7 +129,11 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		ip_addrs.insert(ip);
 
     FutureAttr fuattr;
-    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip] (Future* fu) {
+
+		struct timespec begin;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
+
+    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
@@ -137,15 +142,15 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
       fu->get_reply() >> term;
       fu->get_reply() >> index;
 			
-			struct timespec begin, end;
+			struct timespec end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
 			this->outbound--;
-			Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
+			//Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
 			
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index, ip);
-			/*clock_gettime(CLOCK_MONOTONIC, &end);
-			Log_info("time of reply on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
