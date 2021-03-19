@@ -6,9 +6,21 @@
 #include "reactor.h"
 #include "epoll_wrapper.h"
 
+#define EVENT_TIMEOUT_CHECK 1
+
 namespace rrr {
 using std::function;
 
+uint64_t Event::GetCoroId(){
+  auto sp_coro = Coroutine::CurrentCoroutine();
+  return sp_coro->id;
+}
+
+bool Event::IsSlow() {
+	bool result = Reactor::GetReactor()->slow_;
+	Reactor::GetReactor()->slow_ = false;
+	return result;
+}
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
@@ -40,6 +52,7 @@ void Event::Wait(uint64_t timeout) {
 #endif
     if (timeout > 0) {
       wakeup_time_ = Time::now() + timeout;
+      //Log_info("WAITING: %p", shared_from_this());
       auto& timeout_events = Reactor::GetReactor()->timeout_events_;
       timeout_events.push_back(shared_from_this());
     }
@@ -55,13 +68,15 @@ void Event::Wait(uint64_t timeout) {
 //        }
 //      }
 //      events.insert(it, shared_from_this());
+
     wp_coro_ = sp_coro;
     status_ = WAIT;
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
     if (status_ == TIMEOUT) {
-      verify(0);
+      Log_info("timeout");
+      //verify(0);
     }
 #endif
   }
@@ -84,13 +99,18 @@ bool Event::Test() {
       Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
-//      Log_debug("event status ready, triggered?");
+      Log_info("event status ready, triggered?");
     } else if (status_ == DONE) {
       // do nothing
     } else {
       verify(0);
     }
     return true;
+  }
+  else{
+    if(status_ == DONE){
+      status_ = INIT;
+    }
   }
   return false;
 }
@@ -100,6 +120,34 @@ Event::Event() {
 //  verify(coro);
   wp_coro_ = coro;
 }
+
+DiskEvent::DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_): Event(),
+																																															cmd(cmd_),
+																																															op(op_),
+																																															file(file_){
+}
+
+DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Operation op_): Event(),
+																																															buffer(ptr),
+																																															size_(size),
+																																															count_(count),
+																																															op(op_),
+																																															file(file_){
+
+}
+
+DiskEvent::DiskEvent(std::function<void()> f): Event(),
+																							 func_(f){
+}
+
+void DiskEvent::AddToList(){
+  rrr::Reactor::GetReactor()->disk_job_.lock();
+  auto& disk_events = rrr::Reactor::GetReactor()->disk_events_;
+  disk_events.push_back(shared_from_this());
+  //Log_info("thread of disk events: %d", rrr::Reactor::GetReactor()->thread_id_);
+  rrr::Reactor::GetReactor()->disk_job_.unlock();
+}
+
 
 bool IntEvent::TestTrigger() {
   if (status_ > WAIT) {

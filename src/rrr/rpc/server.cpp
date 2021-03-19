@@ -136,14 +136,26 @@ void ServerConnection::end_reply() {
     out_l_.unlock();
 }
 
-void ServerConnection::handle_read() {
-    if (status_ == CLOSED) {
-        return;
-    }
 
+//compute the latency of every rpc to each connection and send it to the application
+//application can then compare the rpc with expected latency
+bool ServerConnection::handle_read() {
+		//Log_info("Server's addr is: %s", server_->addr_.c_str());
+    if (status_ == CLOSED) {
+        return false;
+    }
+		struct timespec begin2, begin2_cpu, end2, end2_cpu;
+		struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
+		struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
+		/*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
+
+    //time this part, we can check the rpc_id by hardcoding
     int bytes_read = in_.read_from_fd(socket_);
+    
     if (bytes_read == 0) {
-        return;
+				Log_info("no bytes read");
+        return false;
     }
 
     list<Request*> complete_requests;
@@ -191,23 +203,45 @@ void ServerConnection::handle_read() {
 #endif // RPC_STATISTICS
 
         auto it = server_->handlers_.find(rpc_id);
+	//Log_info("RPC ID is: %d", rpc_id);
         if (it != server_->handlers_.end()) {
             // the handler should delete req, and release server_connection refcopy.
             auto x = dynamic_pointer_cast<ServerConnection>(shared_from_this());
             auto y = it->second;
-            Coroutine::CreateRun([y, req, x] () {
+						//Log_info("CreateRunning: %x", rpc_id);
+            Coroutine::CreateRun([y, req, x, this, rpc_id] () {
 //              verify(x);
               verify(x->connected());
+
+//#ifdef SIMULATE_WAN
+	      /*if(this->server_->addr_ == "0.0.0.0:10001"){
+                  //Log_info("SLOWING DOWN");
+	      	  //auto ev = Reactor::CreateSpEvent<NeverEvent>();
+                  //ev->Wait(4000 * 1000); // timeout after 100 ms
+                  //ev->Wait(1); // timeout after 100 ms
+	      }*/
+//#endif
               y(req, x.get());
+							/*if (req != nullptr && !req->m.valid_id) {
+								if (count % 100000 == 0) {
+									if (req->m.found_dep) {
+										Log_info("Warning: dependency not found: true and %x", rpc_id);
+									} else {
+										Log_info("Warning: dependency not found: false and %x", rpc_id);
+									}
+								} else {
+									count++;
+								}
+							}*/
               // this line of code actually relies on the stack outside.
 //              auto f = it->second;
 //              auto r = req;
 //              auto c = (ServerConnection*)this->ref_copy();
-#ifdef SIMULATE_WAN
-//              auto ev = Reactor::CreateSpEvent<NeverEvent>();
-//              ev->Wait(100 * 1000); // timeout after 100 ms
-//              ev->Wait(1); // timeout after 100 ms
-#endif
+//#ifdef SIMULATE_WAN
+	      	//auto ev = Reactor::CreateSpEvent<NeverEvent>();
+                //ev->Wait(100 * 1000); // timeout after 100 ms
+                //ev->Wait(1); // timeout after 100 ms
+//#endif
 //              f(r, c);
             });
         } else {
@@ -227,9 +261,19 @@ void ServerConnection::handle_read() {
             delete req;
         }
     }
+		/*clock_gettime(CLOCK_MONOTONIC, &end2);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+		long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+		long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+		double util2 = (double) total_cpu2/total_time2;
+		Log_info("elapsed CPU time (server read): %f", util2);*/
+    return false;
 }
 
 void ServerConnection::handle_write() {
+		struct timespec begin2, begin2_cpu, end2, end2_cpu;
+		/*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
     if (status_ == CLOSED) {
         return;
     }
@@ -240,6 +284,12 @@ void ServerConnection::handle_write() {
         server_->pollmgr_->update_mode(shared_from_this(), Pollable::READ);
     }
     out_l_.unlock();
+		/*clock_gettime(CLOCK_MONOTONIC, &end2);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+		long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+		long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+		double util2 = (double) total_cpu2/total_time2;
+		Log_info("elapsed CPU time (client write): %f", util2);*/
 }
 
 void ServerConnection::handle_error() {
@@ -403,7 +453,7 @@ void Server::server_loop(struct addrinfo* svr_addr) {
     status_ = STOPPED;
 }
 
-void ServerListener::handle_read() {
+bool ServerListener::handle_read() {
 //  fd_set fds;
 //  FD_ZERO(&fds);
 //  FD_SET(server_sock_, &fds);
@@ -429,6 +479,7 @@ void ServerListener::handle_read() {
       break;
     }
   }
+  return false;
 }
 
 void ServerListener::close() {
@@ -513,6 +564,8 @@ ServerListener::ServerListener(Server* server, string addr) {
 
 int Server::start(const char* bind_addr) {
   string addr(bind_addr);
+  Log_info("bind address is: %s", bind_addr);
+  addr_ = addr;
   sp_server_listener_ = std::make_unique<ServerListener>(this, addr);
   pollmgr_->add(sp_server_listener_);
   return 0;

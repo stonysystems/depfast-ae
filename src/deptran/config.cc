@@ -312,6 +312,9 @@ void Config::LoadYML(std::string &filename) {
   if (config["client"]) {
     LoadClientYML(config["client"]);
   }
+  if (config["failover"]) {
+    LoadFailoverYML(config["failover"]);
+  }  
   if (config["n_concurrent"]) {
     n_concurrent_ = config["n_concurrent"].as<uint16_t>();
     Log_info("# of concurrent requests: %d", n_concurrent_);
@@ -673,6 +676,36 @@ void Config::LoadClientYML(YAML::Node client) {
   Log_info("client forwarding: %d", forwarding_enabled_);
 }
 
+void Config::LoadFailoverYML(YAML::Node config) {
+  auto mode_str = config["method"].as<string>();
+  boost::algorithm::to_lower(mode_str);
+  auto fail_srv_str = config["failserver"].as<string>();
+  boost::algorithm::to_lower(mode_str);
+  failover_srv_idx_ = -1 ;
+  if (mode_str == "none")
+  {
+    failover_ = false ;
+  }
+  else
+  {
+    failover_ = true ;
+    failover_soft_ = mode_str == "soft" ;
+    failover_random_ = fail_srv_str == "random" ;
+    if(!failover_random_)
+    {
+        failover_leader_ = fail_srv_str == "leader" ;
+        if ( !failover_leader_ && fail_srv_str != "follower" )
+        {
+            // should be the server index
+            std::istringstream(fail_srv_str) >> failover_srv_idx_ ;
+        }
+    }
+  }
+  failover_run_int_ = config["run_interval"].as<int32_t>();
+  failover_stop_int_ = config["stop_interval"].as<int32_t>();  
+}
+
+
 void Config::InitTPCCD() {
   // TODO particular configuration for certain workloads.
   auto &tb_infos = sharding_->tb_infos_;
@@ -811,6 +844,24 @@ std::vector<Config::SiteInfo> Config::SitesByPartitionId(
   }
   verify(0);
 }
+
+
+std::vector<int> Config::SiteIdsByPartitionId(parid_t partition_id){
+  std::vector<int> result;
+  auto it = find_if(replica_groups_.begin(), replica_groups_.end(),
+                    [partition_id](const ReplicaGroup& g) {
+                      return g.partition_id == partition_id;
+                    });
+  if (it != replica_groups_.end()) {
+    for (auto si : it->replicas) {
+      result.push_back(si->id);
+    }
+    return result;
+  }
+  verify(0);
+}
+
+//add another method here that gets a vector of id's
 
 int Config::GetPartitionSize(parid_t partition_id) {
   auto it = find_if(replica_groups_.begin(), replica_groups_.end(),

@@ -3,7 +3,20 @@
 
 #include <memory>
 #include <algorithm>
+#include <fstream>
+#include <unordered_set>
+#include <map>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+//#include "../../deptran/client_worker.h"
 #include "../base/all.hpp"
+
+#define SUCCESS (0)
+#define REPEAT (-5)
+#define REJECT (-10)
 
 namespace rrr {
 using std::shared_ptr;
@@ -37,7 +50,10 @@ class Event : public std::enable_shared_from_this<Event> {
     Wait();
   }
 
+  virtual void log(){return;}
+  virtual uint64_t GetCoroId();
   virtual bool Test();
+	virtual bool IsSlow();
   virtual bool IsReady() {
     verify(test_);
     return test_(0);
@@ -46,6 +62,117 @@ class Event : public std::enable_shared_from_this<Event> {
   friend Reactor;
 // protected:
   Event();
+};
+
+class DiskEvent : public Event {
+ public:
+	//maybe, instead of enum, this should be a queue
+	enum Operation {WRITE=1, READ=2, FSYNC=4, WRITE_SPEC=8, SPECIAL=16};
+  bool handled = false;
+	bool sync = false;
+	std::string file;
+	Operation op;
+	void* buffer;
+	size_t size_;
+	size_t count_;
+	size_t read_;
+	size_t written_;
+	std::function<void()> func_;
+	//create a more generic write instead of a map
+  std::vector<std::map<int, i32>> cmd;
+	
+	friend inline Operation operator | (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) | static_cast<int>(op2));
+	}
+  
+	friend inline Operation operator & (Operation op1, Operation op2) {
+		return static_cast<Operation>(static_cast<int>(op1) & static_cast<int>(op2));
+	}
+
+  DiskEvent(std::string file_, std::vector<std::map<int, i32>> cmd_, Operation op_);
+	DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Operation op_);
+	DiskEvent(std::function<void()> f);
+
+  void AddToList();
+
+  void Write() {
+		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		std::string str;	
+		int num1;
+		i32 num2;
+		for(int i = 0; i < cmd.size(); i++){
+			for(auto it2 = cmd[i].begin(); it2 != cmd[i].end(); it2++){	
+				num1 = it2->first;
+				::write(fd, &num1, sizeof(int));
+				str = ": ";
+				::write(fd, str.c_str(), str.length());
+				num2 = it2->second;
+				::write(fd, &num2, sizeof(i32));
+				str = "\n";
+				::write(fd, str.c_str(), str.length());
+			}
+		}
+		::close(fd);
+    //handled = true;
+  }
+
+	void Read() {
+		FILE* f = fopen(file.c_str(), "rb");
+		if (f != NULL) {
+			read_ = fread(buffer, size_, count_, f);
+			fclose(f);
+		}
+	}
+	
+	void FSync() {
+		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		::fsync(fd);
+		::close(fd);
+	}
+
+	void Special() {
+		func_();
+	}
+	int Write_Spec() {
+		/*int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		::write(fd, buffer, size_);
+		::close(fd);*/
+
+		FILE* f = fopen(file.c_str(), "ab");
+		int written = 0;
+		if (f != NULL){
+			written = fwrite(buffer, size_, count_, f);
+			fclose(f);
+		} else {
+			Log_info("file: %s", file.c_str());
+			Log_info("error is: %s", strerror(errno)); 
+		}
+		return written;
+	}
+
+	int Handle() {
+		int result = 0;
+		if (op & WRITE) {
+			Write();
+		}
+		if (op & READ) {
+			Read();
+		}
+		if (op & FSYNC) {
+			sync = true;
+		}
+		if (op & WRITE_SPEC) {
+			result += Write_Spec();
+		}
+		return result;
+	}
+  bool IsReady() {
+    return handled;
+  }
+	bool Test(){
+		verify(0);
+		return false;
+	}
 };
 
 template <class Type>
@@ -119,6 +246,7 @@ class SharedIntEvent {
   void WaitUntilGreaterOrEqualThan(int x);
 };
 
+
 class NeverEvent: public Event {
  public:
   bool IsReady() override {
@@ -159,6 +287,135 @@ class OrEvent : public Event {
   bool IsReady() {
     return std::any_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
   }
+};
+
+class AndEvent : public Event {
+ public:
+  vector<shared_ptr<Event>> events_;
+
+  void AddEvent() {
+    // empty func for recursive variadic parameters
+  }
+
+  template<typename X, typename... Args>
+  void AddEvent(X& x, Args&... rest) {
+    events_.push_back(std::dynamic_pointer_cast<Event>(x));
+    AddEvent(rest...);
+  }
+
+  template<typename... Args>
+  AndEvent(Args&&... args) {
+    AddEvent(args...);
+  }
+  
+  void log() {
+    for(int i = 0; i < events_.size(); i++){
+      events_[i]->log();
+    }
+  }
+
+  bool IsReady() {
+    return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
+  }
+};
+
+class NEvent : public Event {
+ public:
+  vector<shared_ptr<Event>> events_;
+  int number;
+
+  void AddEvent() {
+    // empty func for recursive variadic parameters
+  }
+
+  template<typename X, typename... Args>
+  void AddEvent(X& x, Args&... rest) {
+    events_.push_back(std::dynamic_pointer_cast<Event>(x));
+    AddEvent(rest...);
+  }
+
+  template<typename... Args>
+  NEvent(Args&&... args) {
+    AddEvent(args...);
+  }
+
+  bool IsReady() {
+    int count = 0;
+    for(auto index = events_.begin(); index != events_.end(); index++){
+      if((*index)->IsReady()){
+        count++;
+        if(count == number){
+          return true;
+        }
+      }
+    }
+    return false;
+    
+    //return std::all_of(events_.begin(), events_.end(), [](shared_ptr<Event> e){return e->IsReady();});
+  }
+};
+
+class DispatchEvent: public Event{
+  public:
+    uint32_t n_dispatch_;
+    uint32_t n_dispatch_ack_ = 0;
+    std::map<uint32_t, bool> dispatch_acks_ = {};
+    bool aborted_ = false;
+    bool more = false;
+
+    DispatchEvent() : Event(){
+    
+    }
+
+    bool IsReady() override{
+      if(n_dispatch_ == n_dispatch_ack_){
+        if(aborted_){
+          return true;
+        }
+        else{
+          return std::all_of(dispatch_acks_.begin(),
+                             dispatch_acks_.end(),
+                             [](std::pair<uint32_t, bool> pair) {
+                             return pair.second;
+                             });
+        }
+      }
+      else if(more){
+        return true;
+      }
+      return false;
+    }
+
+};
+
+class SingleRPCEvent: public Event{
+  public:
+    uint32_t cli_id_;
+    uint32_t coo_id_;
+    int32_t& res_;
+    std::string log_file = "logs.txt";
+    std::unordered_set<int> dep{};
+    SingleRPCEvent(uint32_t cli_id, int32_t res): Event(),
+                                                   cli_id_(cli_id),
+                                                   res_(res){
+    }
+    void add_dep(int tgtId){
+      auto index = dep.find(tgtId);
+      if(index == dep.end()) dep.insert(tgtId);
+    }
+    void log() override {
+      std::ofstream of(log_file, std::fstream::app);
+      //of << "hello\n";
+      of << "{ " << cli_id_ << ": ";
+      for(auto it = dep.begin(); it != dep.end(); it++){
+        of << *it << " ";
+      }
+      of << "}\n";
+      of.close();
+    }
+    bool IsReady() override{
+      return res_ == SUCCESS || res_ == REJECT;
+    }
 };
 
 }

@@ -69,6 +69,7 @@ Frame* Frame::GetFrame(int mode) {
   // some built-in mode
   switch (mode) {
     case MODE_NONE:
+    case MODE_NOTX:
     case MODE_MDCC:
     case MODE_2PL:
     case MODE_OCC:
@@ -296,7 +297,10 @@ Communicator* Frame::CreateCommo(PollMgr* pollmgr) {
 shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
                                bool ro, TxLogServer *mgr) {
   shared_ptr<Tx> sp_tx;
-  switch (mode_) {
+	/*struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);*/
+  
+	switch (mode_) {
     case MODE_2PL:
       sp_tx.reset(new Tx2pl(epoch, tid, mgr));
       break;
@@ -310,12 +314,16 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
       sp_tx.reset(new TxSnow(tid, mgr, ro));
       break;
     case MODE_MULTI_PAXOS:
+    case MODE_FPGA_RAFT:
       break;
     case MODE_NONE:
+    case MODE_NOTX:
     default:
       sp_tx.reset(new TxClassic(epoch, tid, mgr));
       break;
   }
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of CreateTx on server: %d", end.tv_nsec-begin.tv_nsec);*/
   return sp_tx;
 }
 
@@ -350,6 +358,7 @@ TxLogServer* Frame::CreateScheduler() {
     case MODE_MDCC:
 //      sch = new mdcc::MdccScheduler();
       break;
+    case MODE_NOTX:
     case MODE_NONE:
       sch = new SchedulerNone();
       break;
@@ -405,6 +414,7 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
     case MODE_TAPIR:
     case MODE_JANUS:
     case MODE_RCC:
+    case MODE_NOTX:
     default:
       result.push_back(new ClassicServiceImpl(dtxn_sched, poll_mgr, scsi));
       break;
@@ -416,7 +426,8 @@ map<string, int> &Frame::FrameNameToMode() {
       {"none",          MODE_NONE},
       {"2pl",           MODE_2PL},
       {"occ",           MODE_OCC},
-      {"snow",           MODE_RO6},
+      {"snow",          MODE_RO6},
+      {"notx",          MODE_NOTX},
       {"rpc_null",      MODE_RPC_NULL},
       {"deptran",       MODE_DEPTRAN},
       {"deptran_er",    MODE_DEPTRAN},
@@ -429,6 +440,7 @@ map<string, int> &Frame::FrameNameToMode() {
       {"extern_c",      MODE_EXTERNC},
       {"mdcc",          MODE_MDCC},
       {"multi_paxos",   MODE_MULTI_PAXOS},
+      {"fpga_raft",     MODE_FPGA_RAFT},
       {"epaxos",        MODE_NOT_READY},
       {"rep_commit",    MODE_NOT_READY}
   };

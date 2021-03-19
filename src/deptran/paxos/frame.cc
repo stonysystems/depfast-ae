@@ -10,7 +10,7 @@
 
 namespace janus {
 
-//REG_FRAME(MODE_MULTI_PAXOS, vector<string>({"paxos"}), MultiPaxosFrame);
+REG_FRAME(MODE_MULTI_PAXOS, vector<string>({"paxos"}), MultiPaxosFrame);
 
 template<typename D>
 struct automatic_register {

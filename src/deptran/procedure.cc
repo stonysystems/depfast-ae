@@ -246,12 +246,14 @@ bool TxData::HasMoreUnsentPiece() {
   verify(n_pieces_all_ >= n_pieces_dispatchable_);
   verify(n_pieces_dispatchable_ >= n_pieces_dispatched_);
   verify(n_pieces_dispatched_ >= n_pieces_dispatch_acked_);
+  //Log_info("dispatch record: %d, %d", n_pieces_dispatchable_, n_pieces_dispatched_);
   if (n_pieces_dispatchable_ == n_pieces_dispatched_) {
     verify(n_pieces_all_ == n_pieces_dispatched_ ||
            n_pieces_dispatch_acked_ < n_pieces_dispatched_);
     return false;
   } else {
     verify(n_pieces_dispatchable_ > n_pieces_dispatched_);
+    //Log_info("dispatch record 2: %d, %d", n_pieces_dispatchable_, n_pieces_dispatched_);
     return true;
   }
 }

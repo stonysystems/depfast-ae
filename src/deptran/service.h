@@ -12,6 +12,7 @@ class TxLogServer;
 class SimpleCommand;
 class Communicator;
 class SchedulerClassic;
+//class rrr::PollMgr ;
 
 class ClassicServiceImpl : public ClassicService {
 
@@ -30,6 +31,7 @@ class ClassicServiceImpl : public ClassicService {
   Communicator* comm_{nullptr};
 
   TxLogServer* dtxn_sched_;
+  rrr::PollMgr* poll_mgr_ ;
 
   TxLogServer* dtxn_sched() {
     return dtxn_sched_;
@@ -37,23 +39,55 @@ class ClassicServiceImpl : public ClassicService {
 
   void rpc_null(DeferredReply* defer) override ;
 
+	void ReElect(bool_t* success,
+							 DeferredReply* defer) override;
+
   void Dispatch(const i64& cmd_id,
+								const DepId& dep_id,
                 const MarshallDeputy& cmd,
                 int32_t* res,
                 TxnOutput* output,
+                uint64_t* coro_id,
                 DeferredReply* defer_reply) override;
+
+  void FailOverTrig(const bool_t& pause, 
+                        rrr::i32* res, 
+                        rrr::DeferredReply* defer) override ;
+
+  void IsLeader(const locid_t& can_id,
+                 bool_t* is_leader,
+                 DeferredReply* defer_reply) override ;
+
+  void IsFPGALeader(const locid_t& can_id,
+                 bool_t* is_leader,
+                 DeferredReply* defer_reply) override ;
+
+  void SimpleCmd (const SimpleCommand& cmd, 
+                      i32* res, DeferredReply* defer_reply) override ;
+
 
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
+               const DepId& dep_id,
                i32* res,
+							 bool_t* slow,
+               uint64_t* coro_id,
                DeferredReply* defer) override;
 
   void Commit(const i64& tid,
+              const DepId& dep_id,
               i32* res,
+							bool_t* slow,
+              uint64_t* coro_id,
+	        		Profiling* profile,
               DeferredReply* defer) override;
 
   void Abort(const i64& tid,
+             const DepId& dep_id,
              i32* res,
+						 bool_t* slow,
+             uint64_t* coro_id,
+	        	 Profiling* profile,
              DeferredReply* defer) override;
 
   void UpgradeEpoch(const uint32_t& curr_epoch,

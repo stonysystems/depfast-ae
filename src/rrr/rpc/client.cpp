@@ -73,6 +73,10 @@ void Future::notify_ready() {
   }
 }
 
+void Client::set_valid(bool valid) {
+	out_.valid_id = valid;
+}
+
 void Client::invalidate_pending_futures() {
   list<Future*> futures;
   pending_fu_l_.lock();
@@ -94,6 +98,7 @@ void Client::invalidate_pending_futures() {
 }
 
 void Client::close() {
+  //Log_info("CLOSING");
   if (status_ == CONNECTED) {
     pollmgr_->remove(shared_from_this());
     ::close(sock_);
@@ -102,7 +107,7 @@ void Client::close() {
   invalidate_pending_futures();
 }
 
-int Client::connect(const char* addr) {
+int Client::connect(const char* addr, bool client) {
   verify(status_ != CONNECTED);
   string addr_str(addr);
   size_t idx = addr_str.find(":");
@@ -111,6 +116,8 @@ int Client::connect(const char* addr) {
     return EINVAL;
   }
   string host = addr_str.substr(0, idx);
+  host_ = host;
+	client_ = client;
   string port = addr_str.substr(idx + 1);
 #ifdef USE_IPC
   struct sockaddr_un saun;
@@ -145,6 +152,7 @@ int Client::connect(const char* addr) {
     if (sock_ == -1) {
       continue;
     }
+    //Log_info("host port host port: %s:%s and socket: %d", host, port, sock_);
 
     const int yes = 1;
     verify(setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == 0);
@@ -159,6 +167,7 @@ int Client::connect(const char* addr) {
     ::close(sock_);
     sock_ = -1;
   }
+
   freeaddrinfo(result);
 
   if (rp == nullptr) {
@@ -181,29 +190,168 @@ void Client::handle_error() {
 }
 
 void Client::handle_write() {
+  //auto start = chrono::steady_clock::now();
+  //Log_info("Handling write");
+	struct timespec begin2, begin2_cpu, end2, end2_cpu;
+  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
   if (status_ != CONNECTED) {
     return;
   }
 
   out_l_.lock();
   out_.write_to_fd(sock_);
-
+	
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
+	/*clock_gettime(CLOCK_MONOTONIC, &end2);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+	double util2 = (double) total_cpu2/total_time2;
+	Log_info("elapsed CPU time (client write): %f", util2);*/
 }
 
-void Client::handle_read() {
+size_t Client::content_size() {
+  return in_.content_size();
+}
+
+bool Client::handle_read(){
+	struct timespec begin2, begin2_cpu, end2, end2_cpu;
+  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
   if (status_ != CONNECTED) {
-    return;
+    return false;
   }
 
   int bytes_read = in_.read_from_fd(sock_);
   if (bytes_read == 0) {
+    return false;
+  }
+	/*clock_gettime(CLOCK_MONOTONIC, &end2);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
+	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
+	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
+	double util2 = (double) total_cpu2/total_time2;
+	Log_info("elapsed CPU time (client read): %f", util2);*/
+  return true;
+}
+
+bool Client::handle_read_two() {
+  if (status_ != CONNECTED) {
+    return false;
+  }
+
+	struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
+	struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
+  //return true;
+  bool done = false;
+	int iters = 0;
+	//Log_info("content: %ld", in_.content_size());
+	//if(in_.content_size() > 0){
+iters = 5;
+	//Log_info("iters: %ld", iters);
+
+  if(client_){
+		iters = INT_MAX;
+	}
+  
+	if (pending_fu_.size() > 100000) {
+		Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
+	}
+	
+	for(int i = 0; i < iters; i++) {
+    i32 packet_size;
+
+    int n_peek = in_.peek(&packet_size, sizeof(i32));
+
+    if (n_peek == sizeof(i32)
+        && in_.content_size() >= packet_size + sizeof(i32)) {
+			
+			verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+			
+      v64 v_reply_xid;
+      v32 v_error_code;
+
+      in_ >> v_reply_xid >> v_error_code;
+
+      pending_fu_l_.lock();
+      unordered_map<i64, Future*>::iterator
+        it = pending_fu_.find(v_reply_xid.get());
+      if(it != pending_fu_.end()){
+        Future* fu = it->second;
+        verify(fu->xid_ == v_reply_xid.get());
+
+				
+				struct timespec end;
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;
+				if (count_ >= 1000) {
+					if (index < 100) {
+						times[index] = curr;
+						index++;
+					} else {
+						total_time = 0;
+						for (int i = 0; i < 99; i++) {
+							times[i] = times[i+1];
+							total_time += times[i];
+						}
+						times[99] = curr;
+						total_time += times[99];
+					}
+					count_ = 0;
+				} else {
+					count_++;
+				}
+				
+				if (index == 100) {
+					time_ = total_time/index;
+				} else {
+					time_ = 0;
+				}
+
+        pending_fu_.erase(it);
+        pending_fu_l_.unlock();
+				
+				fu->error_code_ = v_error_code.get();
+        fu->reply_.read_from_marshal(in_,
+	    	                     packet_size - v_reply_xid.val_size()
+				         - v_error_code.val_size());
+				
+        
+				fu->notify_ready();
+        fu->release();
+      } else{
+        pending_fu_l_.unlock();
+      }
+    } else{
+      done = true;
+      break;
+    }
+  }
+
+
+  Reactor::GetReactor()->Loop();
+	return done;
+}
+
+/*void Client::handle_read() {
+  if (status_ != CONNECTED) {
+    Log_info("DCed");
     return;
   }
 
+  int bytes_read = in_.read_from_fd(sock_);
+  //Log_info("The bytes read is: %d", bytes_read);
+  Log_info("the socket is: %d", sock_);
+  if (bytes_read == 0) {
+    Log_info("sure");
+  }
+
+
+  //auto start = chrono::steady_clock::now();
   for (;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
@@ -248,7 +396,11 @@ void Client::handle_read() {
   // This is a workaround, the Loop call should really happen
   // between handle_read and handle_write in the epoll loop
   Reactor::GetReactor()->Loop();
-}
+
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("Duration of handle_read() is: %d", duration);
+}*/
 
 int Client::poll_mode() {
   int mode = Pollable::READ;
@@ -261,9 +413,12 @@ int Client::poll_mode() {
 }
 
 Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
+  //auto start = chrono::steady_clock::now();
+	
   out_l_.lock();
-
+	
   if (status_ != CONNECTED) {
+    //Log_info("NOT CONNECTED");
     return nullptr;
   }
 
@@ -271,6 +426,10 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   pending_fu_l_.lock();
   pending_fu_[fu->xid_] = fu;
   pending_fu_l_.unlock();
+
+	struct timespec begin;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	rpc_starts[fu->xid_] = begin;
 
   // check if the client gets closed in the meantime
   if (status_ != CONNECTED) {
@@ -282,6 +441,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
     }
     pending_fu_l_.unlock();
 
+    //Log_info("NOT CONNECTED 2");
     return nullptr;
   }
 
@@ -289,12 +449,18 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
 
   *this << v64(fu->xid_);
   *this << rpc_id;
+	rpc_id_ = rpc_id;
 
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for begin_request is: %d", duration);
+  //Log_info("EXITING begin_request");
   // one ref is already in pending_fu_
   return (Future*) fu->ref_copy();
 }
 
 void Client::end_request() {
+  //auto start = chrono::steady_clock::now();
   // set reply size in packet
   if (bmark_ != nullptr) {
     i32 request_size = out_.get_and_reset_write_cnt();
@@ -303,11 +469,31 @@ void Client::end_request() {
     bmark_ = nullptr;
   }
 
+	if (!out_.valid_id) {
+		if (count % 100 == 0) {
+			if (out_.found_dep) {
+				Log_info("Warning2: dependency not found: true");
+			} else {
+				Log_info("Warning2: dependency not found: false");
+			}
+		} else {
+			count++;
+		}
+	}
+
+	out_.found_dep = false;
+	out_.valid_id = false;
+
   // always enable write events since the code above gauranteed there
   // will be some data to send
   pollmgr_->update_mode(shared_from_this(), Pollable::READ | Pollable::WRITE);
 
   out_l_.unlock();
+			
+
+  //auto end = chrono::steady_clock::now();
+  //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
+  //Log_info("The Time for end_request is: %d");
 }
 
 ClientPool::ClientPool(PollMgr* pollmgr /* =? */,

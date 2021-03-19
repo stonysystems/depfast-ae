@@ -10,6 +10,12 @@ class ClientControlServiceImpl;
 
 class CoordinatorClassic : public Coordinator {
  public:
+  int debug_cnt = 0;
+	int total = 0;
+	bool prep_slow = false;
+	rrr::Mutex pre_mutex{};
+	rrr::CondVar pre_cond{};
+	map<parid_t, SiteProxyPair> leaders;
   enum Phase { INIT_END = 0, DISPATCH = 1, PREPARE = 2, COMMIT = 3 };
   CoordinatorClassic(uint32_t coo_id,
                      int benchmark,
@@ -72,10 +78,14 @@ class CoordinatorClassic : public Coordinator {
 
   /** do it asynchronously, thread safe. */
   virtual void DoTxAsync(TxRequest&) override;
+  virtual void SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) override ;
+  virtual void SendFailOverTrig(parid_t,locid_t, bool) override;
+  virtual void DoTxAsync(PollMgr*, TxRequest&) override;
   virtual void Reset() override;
   void Restart() override;
 
   virtual void DispatchAsync();
+  virtual void DispatchAsync(bool last);
   virtual void DispatchAck(phase_t phase,
                            int res,
                            map<innid_t, map<int32_t, Value>>& outputs);

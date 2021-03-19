@@ -15,6 +15,8 @@ class SchedulerClassic: public TxLogServer {
  using TxLogServer::TxLogServer;
  public:
 
+  bool slow_ = false;
+
   void MergeCommands(vector<shared_ptr<TxPieceData>>&,
                      shared_ptr<Marshallable>);
 
@@ -25,8 +27,9 @@ class SchedulerClassic: public TxLogServer {
                              TxnOutput& ret_output);
 
   virtual bool Dispatch(cmdid_t cmd_id,
+												struct DepId dep_id,
                         shared_ptr<Marshallable> cmd,
-                        TxnOutput& ret_output) override;
+                        TxnOutput& ret_output);
 
   /**
    * For interactive pre-processing.
@@ -40,7 +43,9 @@ class SchedulerClassic: public TxLogServer {
 
   // PrepareRequest
   virtual bool OnPrepare(txnid_t tx_id,
-                         const std::vector<i32> &sids);
+                         const std::vector<i32> &sids,
+                         struct DepId dep_id,
+												 bool& null_cmd);
 
   virtual bool DoPrepare(txnid_t tx_id) {
     verify(0);
@@ -48,6 +53,7 @@ class SchedulerClassic: public TxLogServer {
   };
 
   virtual int OnCommit(cmdid_t cmd_id,
+                       struct DepId dep_id,
                        int commit_or_abort);
 
   virtual void DoCommit(Tx& tx_box);
@@ -55,6 +61,17 @@ class SchedulerClassic: public TxLogServer {
   virtual void DoAbort(Tx& tx_box);
 
   virtual void Next(Marshallable&) override;
+
+	virtual bool RequestVote() override {
+		return rep_sched_->RequestVote();
+	}
+  virtual bool IsLeader() override {
+    return rep_sched_->IsLeader() ;
+  }  
+
+  virtual bool IsFPGALeader() override {
+    return rep_sched_->IsFPGALeader() ;
+  }  
 
   int PrepareReplicated(TpcPrepareCommand& prepare_cmd);
   int CommitReplicated(TpcCommitCommand& commit_cmd);
