@@ -234,11 +234,11 @@ void WoundDieALock::wound_die(type_t type, int64_t priority) {
                         continue;
                     }
                 }
-                else {
-                    if (rit->type == WLOCK) {
-                        break;
-                    }
-                }
+//                else {
+//                    if (rit->type == WLOCK) {
+//                        break;
+//                    }
+//                }
                 rit++;
             }
             break;
@@ -248,7 +248,8 @@ void WoundDieALock::wound_die(type_t type, int64_t priority) {
             auto rit = requests_.rbegin();
             while (rit != requests_.rend()) {
                 if (rit->priority < priority) {
-                    break;
+//                    break;
+                  continue;
                 }
                 if (rit->type == WLOCK) { // try wound write lock
                     int ret = wound(*rit);

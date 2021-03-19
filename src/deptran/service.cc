@@ -1,26 +1,28 @@
-#include "__dep__.h"
-#include "config.h"
-#include "scheduler.h"
-#include "command.h"
-#include "procedure.h"
-#include "communicator.h"
-#include "command_marshaler.h"
-#include "rcc/dep_graph.h"
 #include "service.h"
-#include "classic/scheduler.h"
-#include "tapir/scheduler.h"
-#include "rcc/server.h"
-#include "janus/scheduler.h"
-#include "februus/scheduler.h"
+#include "__dep__.h"
 #include "benchmark_control_rpc.h"
+#include "carousel/scheduler.h"
+#include "classic/scheduler.h"
+#include "classic/tpc_command.h"
+#include "classic/tx.h"
+#include "command.h"
+#include "command_marshaler.h"
+#include "communicator.h"
+#include "config.h"
+#include "coordinator.h"
+#include "februus/scheduler.h"
+#include "janus/scheduler.h"
+#include "procedure.h"
+#include "rcc/dep_graph.h"
+#include "rcc/server.h"
+#include "scheduler.h"
+#include "tapir/scheduler.h"
 
 namespace janus {
 
-ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
-                                       rrr::PollMgr* poll_mgr,
-                                       ServerControlServiceImpl* scsi) : scsi_(
-    scsi), dtxn_sched_(sched) {
-
+ClassicServiceImpl::ClassicServiceImpl(
+    TxLogServer* sched, rrr::PollMgr* poll_mgr, ServerControlServiceImpl* scsi)
+  : scsi_(scsi), dtxn_sched_(sched), poll_mgr_(poll_mgr) {
 #ifdef PIECE_COUNT
   piece_count_timer_.start();
   piece_count_prepare_fail_ = 0;
@@ -62,6 +64,70 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
   defer->reply();
 }
 
+void ClassicServiceImpl::FailOverTrig(
+    const bool_t& pause, rrr::i32* res, rrr::DeferredReply* defer) {
+  if (pause && clt_cnt_ == 0) {
+    // TODO temp solution yidawu
+    auto client_infos = Config::GetConfig()->GetMyClients();
+    unordered_set<string> clt_set;
+    for (auto c : client_infos) {
+      clt_set.insert(c.host);
+    }
+
+    clt_cnt_.store(clt_set.size());
+  }
+
+  Coroutine::CreateRun([&]() {
+    if (pause) {
+      // TODO: yidawu need to test with multi clients in diff machines
+      int wait_int = 50 * 1000; // 50ms
+      while (clt_cnt_.load() == 0) {
+        auto e = Reactor::CreateSpEvent<NeverEvent>();
+        e->Wait(wait_int);
+      }
+      clt_cnt_--;
+      while (clt_cnt_.load() != 0) {
+        auto e = Reactor::CreateSpEvent<NeverEvent>();
+        e->Wait(wait_int);
+      }
+      dtxn_sched_->rep_sched_->Pause();
+      poll_mgr_->pause();
+    } else {
+      poll_mgr_->resume();
+      dtxn_sched_->rep_sched_->Resume();
+    }
+    *res = SUCCESS;
+    defer->reply();
+  });
+}
+
+void ClassicServiceImpl::SimpleCmd(
+    const SimpleCommand& cmd, rrr::i32* res, rrr::DeferredReply* defer) {
+  Coroutine::CreateRun([res, defer, this]() {
+    auto empty_cmd = std::make_shared<TpcEmptyCommand>();
+    verify(empty_cmd->kind_ == MarshallDeputy::CMD_TPC_EMPTY);
+    auto sp_m = dynamic_pointer_cast<Marshallable>(empty_cmd);
+    auto sched = (SchedulerClassic*)dtxn_sched_;
+    sched->CreateRepCoord()->Submit(sp_m);
+    empty_cmd->Wait();
+    *res = SUCCESS;
+    defer->reply();
+  });
+}
+
+void ClassicServiceImpl::IsLeader(
+    const locid_t& can_id, bool_t* is_leader, rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*)dtxn_sched_;
+  *is_leader = sched->IsLeader();
+  defer->reply();
+}
+
+void ClassicServiceImpl::IsFPGALeader(
+    const locid_t& can_id, bool_t* is_leader, rrr::DeferredReply* defer) {
+  auto sched = (SchedulerClassic*)dtxn_sched_;
+  *is_leader = sched->IsFPGALeader();
+  defer->reply();
+}
 void ClassicServiceImpl::Prepare(const rrr::i64& tid,
                                  const std::vector<i32>& sids,
                                  rrr::i32* res,
@@ -71,7 +137,7 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
     bool ret = sched->OnPrepare(tid, sids);
     *res = ret ? SUCCESS : REJECT;
-    defer->reply();
+    if (defer != nullptr) defer->reply();
   };
   Coroutine::CreateRun(func);
 // TODO move the stat to somewhere else.
@@ -120,6 +186,20 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
 //  Coroutine::CreateRun(func);
 }
 
+void ClassicServiceImpl::EarlyAbort(const rrr::i64& tid,
+                                    rrr::i32* res,
+                                    rrr::DeferredReply* defer) {
+  Log_debug("get abort_txn: tid: %ld", tid);
+//  std::lock_guard<std::mutex> guard(mtx_);
+//  const auto& func = [tid, res, defer, this]() {
+  auto sched = (SchedulerClassic*) dtxn_sched_;
+  sched->OnEarlyAbort(tid);
+  *res = SUCCESS;
+  defer->reply();
+//  };
+//  Coroutine::CreateRun(func);
+}
+
 void ClassicServiceImpl::rpc_null(rrr::DeferredReply* defer) {
   defer->reply();
 }
@@ -159,6 +239,57 @@ void ClassicServiceImpl::TapirDecide(const cmdid_t& cmd_id,
   sched->OnDecide(cmd_id, decision, [defer]() { defer->reply(); });
 }
 
+void ClassicServiceImpl::CarouselReadAndPrepare(const i64& cmd_id,
+    const MarshallDeputy& md, const bool_t& leader, int32_t* res, TxnOutput* output,
+    rrr::DeferredReply* defer) {
+  // TODO: yidawu
+  shared_ptr<Marshallable> sp = md.sp_data_;
+  *res = SUCCESS;
+  auto sched = (SchedulerCarousel*)dtxn_sched();
+  if (!sched->Dispatch(cmd_id, sp, *output)) {
+    *res = REJECT;
+  }
+  if (*res == SUCCESS) {
+    std::vector<i32> sids;
+    if (leader) {
+      *res = sched->OnPrepare(cmd_id) ? SUCCESS : REJECT;
+    } else {
+      // Followers try to do prepare directly.
+      bool ret = sched->DoPrepare(cmd_id);
+      if (!ret) {
+        const auto& func = [res, defer, cmd_id, sids, sched, this]() {
+          auto sp_tx = dynamic_pointer_cast<TxClassic>(sched->GetOrCreateTx(cmd_id));
+          sp_tx->prepare_result->Wait();
+          bool ret2 = sp_tx->prepare_result->Get();
+          *res = ret2 ? SUCCESS : REJECT;
+          defer->reply();
+        };
+        Coroutine::CreateRun(func);
+        return;
+      }
+    }
+  }
+  defer->reply();
+}
+
+void ClassicServiceImpl::CarouselAccept(const cmdid_t& cmd_id, const ballot_t& ballot,
+    const int32_t& decision, rrr::DeferredReply* defer) {
+  verify(0);
+}
+
+void ClassicServiceImpl::CarouselFastAccept(const txid_t& tx_id,
+    const vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) {
+  /*SchedulerCarousel* sched = (SchedulerCarousel*) dtxn_sched_;
+  *res = sched->OnFastAccept(tx_id, txn_cmds);
+  defer->reply();*/
+}
+
+void ClassicServiceImpl::CarouselDecide(
+    const cmdid_t& cmd_id, const rrr::i32& decision, rrr::DeferredReply* defer) {
+  SchedulerCarousel* sched = (SchedulerCarousel*)dtxn_sched_;
+  sched->OnDecide(cmd_id, decision, [defer]() { defer->reply(); });
+}
+
 void ClassicServiceImpl::RccDispatch(const vector<SimpleCommand>& cmd,
                                      int32_t* res,
                                      TxnOutput* output,
@@ -187,7 +318,8 @@ void ClassicServiceImpl::RccFinish(const cmdid_t& cmd_id,
 }
 
 void ClassicServiceImpl::RccInquire(const txnid_t& tid,
-                                    pair<map<txid_t, ParentEdge<RccTx>>, set<txid_t>>* ret,
+                                    const int32_t& rank,
+                                    map<txid_t, parent_set_t>* ret,
                                     rrr::DeferredReply* defer) {
 //  verify(IS_MODE_RCC || IS_MODE_RO6);
 //  std::lock_guard<std::mutex> guard(mtx_);
@@ -196,7 +328,7 @@ void ClassicServiceImpl::RccInquire(const txnid_t& tid,
 //  p_sched->OnInquire(epoch,
 //                     tid,
 //                     dynamic_pointer_cast<RccGraph>(p_md_graph->sp_data_));
-  *ret = p_sched->OnInquire(tid);
+  p_sched->OnInquire(tid, rank, ret);
   defer->reply();
 }
 
@@ -213,17 +345,18 @@ void ClassicServiceImpl::RccDispatchRo(const SimpleCommand& cmd,
 
 void ClassicServiceImpl::RccInquireValidation(
     const txid_t& txid,
+    const int32_t& rank,
     int32_t* ret,
     DeferredReply* defer) {
   auto* s = (RccServer*) dtxn_sched_;
-  *ret = s->OnInquireValidation(txid);
+  *ret = s->OnInquireValidation(txid, rank);
   defer->reply();
 }
 
 void ClassicServiceImpl::RccNotifyGlobalValidation(
-    const txid_t& txid, const int32_t& res, DeferredReply* defer) {
+    const txid_t& txid, const int32_t& rank, const int32_t& res, DeferredReply* defer) {
   auto* s = (RccServer*) dtxn_sched_;
-  s->OnNotifyGlobalValidation(txid, res);
+  s->OnNotifyGlobalValidation(txid, rank, res);
   defer->reply();
 }
 
@@ -253,6 +386,7 @@ void ClassicServiceImpl::JanusCommit(const cmdid_t& cmd_id,
                                      TxnOutput* output,
                                      DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
+  verify(0);
   auto sp_graph = dynamic_pointer_cast<RccGraph>(graph.sp_data_);
   auto p_sched = (RccServer*) dtxn_sched_;
   *res = p_sched->OnCommit(cmd_id, rank, need_validation, sp_graph, output);
@@ -262,7 +396,7 @@ void ClassicServiceImpl::JanusCommit(const cmdid_t& cmd_id,
 void ClassicServiceImpl::RccCommit(const cmdid_t& cmd_id,
                                    const rank_t& rank,
                                    const int32_t& need_validation,
-                                   const map<txid_t, ParentEdge<RccTx>>& parents,
+                                   const parent_set_t& parents,
                                    int32_t* res,
                                    TxnOutput* output,
                                    DeferredReply* defer) {
@@ -279,6 +413,7 @@ void ClassicServiceImpl::JanusCommitWoGraph(const cmdid_t& cmd_id,
                                             TxnOutput* output,
                                             DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
+  verify(0);
   auto sched = (SchedulerJanus*) dtxn_sched_;
   *res = sched->OnCommit(cmd_id, rank, need_validation, nullptr, output);
   defer->reply();
@@ -302,7 +437,7 @@ void ClassicServiceImpl::RccPreAccept(const cmdid_t& txnid,
                                       const rank_t& rank,
                                       const vector<SimpleCommand>& cmds,
                                       int32_t* res,
-                                      map<txid_t, ParentEdge<RccTx>>* res_parents,
+                                      parent_set_t* res_parents,
                                       DeferredReply* defer) {
 //  std::lock_guard<std::mutex> guard(mtx_);
   auto sched = (RccServer*) dtxn_sched_;
@@ -343,16 +478,18 @@ void ClassicServiceImpl::JanusPreAcceptWoGraph(const cmdid_t& txnid,
 }
 
 void ClassicServiceImpl::RccAccept(const cmdid_t& txnid,
+                                   const rank_t& rank,
                                    const ballot_t& ballot,
-                                   const map<txid_t, ParentEdge<RccTx>>& parents,
+                                   const parent_set_t& parents,
                                    int32_t* res,
                                    DeferredReply* defer) {
   auto sched = (RccServer*) dtxn_sched_;
-  *res = sched->OnAccept(txnid, 0, ballot, parents);
+  *res = sched->OnAccept(txnid, rank, ballot, parents);
   defer->reply();
 }
 
 void ClassicServiceImpl::JanusAccept(const cmdid_t& txnid,
+                                     const int32_t& rank,
                                      const ballot_t& ballot,
                                      const MarshallDeputy& md_graph,
                                      int32_t* res,
@@ -361,7 +498,7 @@ void ClassicServiceImpl::JanusAccept(const cmdid_t& txnid,
   verify(graph);
   verify(md_graph.kind_ == MarshallDeputy::RCC_GRAPH);
   auto sched = (SchedulerJanus*) dtxn_sched_;
-  sched->OnAccept(txnid, ballot, graph, res);
+  sched->OnAccept(txnid, rank, ballot, graph, res);
   defer->reply();
 }
 

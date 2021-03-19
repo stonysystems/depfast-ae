@@ -29,4 +29,16 @@ class TpcCommitCommand : public Marshallable {
   virtual Marshal& FromMarshal(Marshal&) override;
 };
 
+class TpcEmptyCommand : public Marshallable {
+ private:
+  shared_ptr<BoxEvent<bool>> event{Reactor::CreateSpEvent<BoxEvent<bool>>()};
+
+ public:
+  TpcEmptyCommand() : Marshallable(MarshallDeputy::CMD_TPC_EMPTY) {}
+  Marshal& ToMarshal(Marshal&) const override;
+  Marshal& FromMarshal(Marshal&) override;
+  void Wait() { event->Wait(); };
+  void Done() { event->Set(1); };
+};
+
 } // namespace janus

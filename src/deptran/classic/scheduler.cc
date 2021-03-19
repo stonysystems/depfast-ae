@@ -179,11 +179,18 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
   return 0;
 }
 
+int SchedulerClassic::OnEarlyAbort(txnid_t tx_id) {
+  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  DoAbort(*sp_tx);
+  return 0;
+}
+
 int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+
   if (Config::GetConfig()->IsReplicated()) {
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
@@ -227,6 +234,7 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   int commit_or_abort = tpc_commit_cmd.ret_;
   if (!sp_tx->is_leader_hint_) {
     if (commit_or_abort == REJECT) {
+      sp_tx->commit_result->Set(1);
       return 0;
     } else {
       verify(sp_tx->cmd_);
@@ -260,6 +268,10 @@ void SchedulerClassic::Next(Marshallable& cmd) {
   } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
     auto& c = dynamic_cast<TpcCommitCommand&>(cmd);
     CommitReplicated(c);
+  } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_EMPTY) {
+    // do nothing
+    auto& c = dynamic_cast<TpcEmptyCommand&>(cmd);
+    c.Done();
   } else {
     verify(0);
   }

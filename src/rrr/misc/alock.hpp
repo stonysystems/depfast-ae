@@ -267,6 +267,7 @@ class WaitDieALock: public ALock {
   virtual void abort(uint64_t id) override;
 };
 
+// TODO rename this to WoundWaitLock
 class WoundDieALock: public ALock {
  protected:
   struct lock_req_t {
@@ -329,7 +330,9 @@ class WoundDieALock: public ALock {
   // return 1: unwoundable
   int wound(lock_req_t &lock_req) {
     if (lock_req.status == lock_req_t::WAIT) { // waiting, use no callback
+      int ret = lock_req.wound_callback();
       lock_req.no_callback();
+      verify(ret == 0);
       return 0;
     } else { // locked, use wound callback
       int ret = lock_req.wound_callback();

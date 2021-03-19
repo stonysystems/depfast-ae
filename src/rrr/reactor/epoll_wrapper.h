@@ -40,6 +40,8 @@ public:
 
 class Epoll {
  public:
+  volatile bool* pause;
+  volatile bool* stop;
 
   Epoll() {
 #ifdef USE_KQUEUE

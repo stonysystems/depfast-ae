@@ -13,6 +13,7 @@ void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
   verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
+  if (status_ == DONE) return; // TODO: yidawu add for the second use the event.
   verify(status_ == INIT);
   if (IsReady()) {
     status_ = DONE; // no need to wait.
@@ -35,7 +36,11 @@ void Event::Wait(uint64_t timeout) {
 //    waiting_events.push_back(shared_from_this());
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
-      timeout = 120 * 1000 * 1000;
+      __debug_timeout_ = true;
+      timeout = 100 * 1000 * 1000;
+//#ifdef SIMULATE_WAN
+//      timeout = 600 * 1000 * 1000;
+//#endif
     }
 #endif
     if (timeout > 0) {
@@ -60,7 +65,7 @@ void Event::Wait(uint64_t timeout) {
     verify(sp_coro->status_ != Coroutine::FINISHED && sp_coro->status_ != Coroutine::RECYCLED);
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
-    if (status_ == TIMEOUT) {
+    if (__debug_timeout_ && status_ == TIMEOUT) {
       verify(0);
     }
 #endif
@@ -120,10 +125,29 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
-void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x) {
-  Wait([x](int v)->bool{
-    return v>=x;
-  });
+int SharedIntEvent::Set(const int& v) {
+  auto ret = value_;
+  value_ = v;
+  for (auto& sp_ev : events_) {
+    if (sp_ev->status_ <= Event::WAIT) {
+      if (sp_ev->target_ <= v) {
+        sp_ev->Set(v);
+      }
+    }
+  }
+  return ret;
+}
+
+void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
+  if (value_ >= x) {
+    return;
+  }
+  auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
+  sp_ev->value_ = value_;
+  sp_ev->target_ = x;
+  events_.push_back(sp_ev);
+  sp_ev->Wait(timeout);
+  verify(sp_ev->status_ != Event::TIMEOUT);
 }
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {

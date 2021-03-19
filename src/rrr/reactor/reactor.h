@@ -35,6 +35,11 @@ class Reactor {
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
   bool looping_{false};
   std::thread::id thread_id_{};
+  int64_t n_created_coroutines_{0};
+  int64_t n_busy_coroutines_{0};
+  int64_t n_active_coroutines_{0};
+  int64_t n_active_coroutines_2_{0};
+  int64_t n_idle_coroutines_{0};
 #ifdef REUSE_CORO
 #define REUSING_CORO (true)
 #else
@@ -45,8 +50,10 @@ class Reactor {
    * @param ev. is usually allocated on coroutine stack. memory managed by user.
    */
   std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
-  void Loop(bool infinite = false);
+  void Loop(bool infinite = false, bool check_timeout = false);
+  void CheckTimeout(std::vector<std::shared_ptr<Event>>&);
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);
+  void Recycle(std::shared_ptr<Coroutine>& sp_coro);
 
   ~Reactor() {
 //    verify(0);
@@ -91,7 +98,9 @@ public:
     void add(shared_ptr<Pollable>);
     void remove(shared_ptr<Pollable>);
     void update_mode(shared_ptr<Pollable>, int new_mode);
-    
+    void pause();
+    void resume();
+
     // Frequent Job
     void add(std::shared_ptr<Job> sp_job);
     void remove(std::shared_ptr<Job> sp_job);

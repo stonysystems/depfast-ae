@@ -50,11 +50,17 @@ class SchedulerClassic: public TxLogServer {
   virtual int OnCommit(cmdid_t cmd_id,
                        int commit_or_abort);
 
+  virtual int OnEarlyAbort(txid_t tx_id);
+
   virtual void DoCommit(Tx& tx_box);
 
   virtual void DoAbort(Tx& tx_box);
 
   virtual void Next(Marshallable&) override;
+
+  virtual bool IsLeader() override { return rep_sched_->IsLeader(); }
+
+  virtual bool IsFPGALeader() override { return rep_sched_->IsFPGALeader(); }
 
   int PrepareReplicated(TpcPrepareCommand& prepare_cmd);
   int CommitReplicated(TpcCommitCommand& commit_cmd);

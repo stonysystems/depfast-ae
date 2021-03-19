@@ -49,16 +49,27 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   std::shared_ptr<Coroutine> sp_coro;
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
+    n_idle_coroutines_--;
     sp_coro = available_coros_.back();
     available_coros_.pop_back();
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
   } else {
     sp_coro = std::make_shared<Coroutine>(func);
+    verify(sp_coro->status_ == Coroutine::INIT);
+    n_created_coroutines_++;
+    if (n_created_coroutines_ % 100 == 0) {
+      Log_debug("created %d, busy %d, idle %d coroutines on this thread",
+               (int)n_created_coroutines_,
+               (int)n_busy_coroutines_,
+               (int)n_idle_coroutines_);
+    }
+
   }
+  n_busy_coroutines_++;
   coros_.insert(sp_coro);
   ContinueCoro(sp_coro);
-  Loop();
+//  Loop();
   return sp_coro;
 //  __debug_set_all_coro_.insert(sp_coro.get());
 //  verify(!curr_coro_); // Create a coroutine from another?
@@ -79,50 +90,59 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
 //  return sp_coro;
 }
 
+void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
+  auto time_now = Time::now();
+  for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
+    Event& event = **it;
+    auto status = event.status_;
+    switch (status) {
+      case Event::INIT:
+        verify(0);
+      case Event::WAIT: {
+        const auto &wakeup_time = event.wakeup_time_;
+        verify(wakeup_time > 0);
+        if (time_now > wakeup_time) {
+          if (event.IsReady()) {
+            // This is because our event mechanism is not perfect, some events
+            // don't get triggered with arbitrary condition change.
+            event.status_ = Event::READY;
+          } else {
+            event.status_ = Event::TIMEOUT;
+          }
+          ready_events.push_back(*it);
+          it = timeout_events_.erase(it);
+        } else {
+          it++;
+        }
+        break;
+      }
+      case Event::READY:
+      case Event::DONE:
+        it = timeout_events_.erase(it);
+        break;
+      default:
+        verify(0);
+    }
+  }
+
+}
+
 //  be careful this could be called from different coroutines.
-void Reactor::Loop(bool infinite) {
+void Reactor::Loop(bool infinite, bool check_timeout) {
   verify(std::this_thread::get_id() == thread_id_);
   looping_ = infinite;
   do {
     std::vector<shared_ptr<Event>> ready_events = std::move(ready_events_);
     verify(ready_events_.empty());
+#ifdef DEBUG_CHECK
     for (auto ev : ready_events) {
       verify(ev->status_ == Event::READY);
     }
-
-    auto time_now = Time::now();
-    for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
-      Event& event = **it;
-      auto status = event.status_;
-      switch (status) {
-        case Event::INIT:
-          verify(0);
-        case Event::WAIT: {
-          const auto &wakeup_time = event.wakeup_time_;
-          verify(wakeup_time > 0);
-          if (time_now > wakeup_time) {
-            if (event.IsReady()) {
-              // This is because our event mechanism is not perfect, some events
-              // don't get triggered with arbitrary condition change.
-              event.status_ = Event::READY;
-            } else {
-              event.status_ = Event::TIMEOUT;
-            }
-            ready_events.push_back(*it);
-            it = timeout_events_.erase(it);
-          } else {
-            it++;
-          }
-          break;
-        }
-        case Event::READY:
-        case Event::DONE:
-          it = timeout_events_.erase(it);
-          break;
-        default:
-          verify(0);
-      }
+#endif
+    if (check_timeout) {
+      CheckTimeout(ready_events);
     }
+
     for (auto it = ready_events.begin(); it != ready_events.end(); it++) {
       Event& event = **it;
       verify(event.status_ != Event::DONE);
@@ -153,12 +173,26 @@ void Reactor::Loop(bool infinite) {
   verify(ready_events_.empty());
 }
 
+void Reactor::Recycle(std::shared_ptr<Coroutine>& sp_coro) {
+
+  // This fixes the bug that coroutines are not recycling if they don't finish immediately.
+  if (REUSING_CORO) {
+    sp_coro->status_ = Coroutine::RECYCLED;
+    sp_coro->func_ = {};
+    n_idle_coroutines_++;
+    available_coros_.push_back(sp_coro);
+  }
+  n_busy_coroutines_--;
+  coros_.erase(sp_coro);
+}
+
 void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 //  verify(!sp_running_coro_th_); // disallow nested coros
   verify(sp_running_coro_th_ != sp_coro);
   auto sp_old_coro = sp_running_coro_th_;
   sp_running_coro_th_ = sp_coro;
   verify(!sp_running_coro_th_->Finished());
+  n_active_coroutines_++;
   if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
   } else {
@@ -166,13 +200,8 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
     sp_coro->Continue();
   }
   verify(sp_running_coro_th_ == sp_coro);
-  if (sp_running_coro_th_->Finished()) {
-    if (REUSING_CORO) {
-      sp_running_coro_th_->status_ = Coroutine::RECYCLED;
-      sp_running_coro_th_->func_ = {};
-      available_coros_.push_back(sp_running_coro_th_);
-    }
-    coros_.erase(sp_running_coro_th_);
+  if (sp_running_coro_th_ -> Finished()) {
+    Recycle(sp_coro);
   }
   sp_running_coro_th_ = sp_old_coro;
 }
@@ -196,6 +225,7 @@ class PollMgr::PollThread {
 
   pthread_t th_;
   bool stop_flag_;
+  bool pause_flag_;
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
@@ -231,8 +261,9 @@ class PollMgr::PollThread {
   }
 
  public:
-
-  PollThread() : stop_flag_(false) {
+  PollThread() : stop_flag_(false), pause_flag_(false) {
+    poll_.stop = &stop_flag_;
+    poll_.pause = &pause_flag_;
   }
 
   ~PollThread() {
@@ -252,6 +283,8 @@ class PollMgr::PollThread {
   void add(shared_ptr<Pollable>);
   void remove(shared_ptr<Pollable>);
   void update_mode(shared_ptr<Pollable>, int new_mode);
+  void pause() { pause_flag_ = true; }
+  void resume() { pause_flag_ = false; }
 
   void add(std::shared_ptr<Job>);
   void remove(std::shared_ptr<Job>);
@@ -275,6 +308,7 @@ PollMgr::~PollMgr() {
 void PollMgr::PollThread::poll_loop() {
   while (!stop_flag_) {
     TriggerJob();
+    Reactor::GetReactor()->Loop(false, true);
     poll_.Wait();
     verify(Reactor::GetReactor()->ready_events_.empty());
     TriggerJob();
@@ -298,6 +332,7 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     verify(Reactor::GetReactor()->ready_events_.empty());
     Reactor::GetReactor()->Loop();
+    verify(Reactor::GetReactor()->ready_events_.empty());
   }
 }
 
@@ -398,6 +433,18 @@ void PollMgr::remove(shared_ptr<Pollable> poll) {
   if (fd >= 0) {
     int tid = hash_fd(fd) % n_threads_;
     poll_threads_[tid].remove(poll);
+  }
+}
+
+void PollMgr::pause() {
+  for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].pause();
+  }
+}
+
+void PollMgr::resume() {
+  for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].resume();
   }
 }
 

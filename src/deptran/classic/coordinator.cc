@@ -79,6 +79,7 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
     Log_info("forward to leader: %d; cooid: %d",
              forward_status_,
              this->coo_id_);
+    verify(0); // not supported yet for the new open closed loop.
     ForwardTxnRequest(req);
   } else {
     Log_debug("start txn!!! : %d", forward_status_);
@@ -98,12 +99,12 @@ void CoordinatorClassic::GotoNextPhase() {
     case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
       verify(!committed_);
-//      if (aborted_) {
-//        phase_++;
-//        Commit();
-//      } else {
+      if (!aborted_) {
         Prepare();
-//      }
+      } else {
+        phase_++;
+        EarlyAbort();
+      }
       break;
     case Phase::PREPARE:
       verify(phase_ % n_phase == Phase::COMMIT);
@@ -171,7 +172,7 @@ void CoordinatorClassic::DispatchAsync() {
 
   int cnt = 0;
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
-  n_pd = 1;
+  n_pd = 100;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par) {
@@ -218,6 +219,8 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
               txn->root_id_);
     aborted_ = true;
     txn->commit_.store(false);
+    GotoNextPhase();
+    return;
   }
   n_dispatch_ack_ += outputs.size();
 //  if (aborted_) {
@@ -305,6 +308,20 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
   }
 }
 
+void CoordinatorClassic::EarlyAbort() {
+  std::lock_guard<std::recursive_mutex> lock(this->mtx_);
+  tx_data().reply_.res_ = REJECT;
+  for (auto& rp : tx_data().partition_ids_) {
+    n_finish_req_++;
+    Log_debug("send abort for txn_id %"
+                  PRIx64
+                  " to %d", tx_data().id_, rp);
+    commo()->SendEarlyAbort(rp, cmd_->id_);
+    site_abort_[rp]++;
+  }
+  GotoNextPhase();
+}
+
 void CoordinatorClassic::Commit() {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
 //  ___TestPhaseThree(cmd_->id_);
@@ -373,17 +390,28 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
             aborted_ ? "True" : "False");
 }
 
+void CoordinatorClassic::ReportCommit() {
+  auto* tx_data = (TxData*) cmd_;
+  TxReply& tx_reply_buf = tx_data->get_reply();
+  double last_latency = tx_data->last_attempt_latency();
+  tx_data->reply_.res_ = SUCCESS;
+  this->Report(tx_reply_buf, last_latency);
+  commit_reported_ = true;
+}
+
 void CoordinatorClassic::End() {
   TxData* tx_data = (TxData*) cmd_;
   TxReply& tx_reply_buf = tx_data->get_reply();
   double last_latency = tx_data->last_attempt_latency();
   if (committed_) {
-    tx_data->reply_.res_ = SUCCESS;
-    this->Report(tx_reply_buf, last_latency
+    if (!commit_reported_) {
+      tx_data->reply_.res_ = SUCCESS;
+      this->Report(tx_reply_buf, last_latency
 #ifdef TXN_STAT
-        , txn
+          , txn
 #endif // ifdef TXN_STAT
-    );
+      );
+    }
   } else if (aborted_) {
     tx_data->reply_.res_ = REJECT;
   } else {
@@ -436,6 +464,37 @@ void CoordinatorClassic::___TestPhaseOne(txnid_t txn_id) {
   auto it = ___phase_one_tids_.find(txn_id);
   verify(it == ___phase_one_tids_.end());
   ___phase_one_tids_.insert(txn_id);
+}
+
+void CoordinatorClassic::SetNewLeader(parid_t par_id, volatile locid_t* cur_pause) {
+  locid_t prev_pause_srv = *cur_pause;
+retry:
+  Log_debug("start setting a new leader from %d", prev_pause_srv);
+  auto e = commo()->BroadcastGetLeader(par_id, prev_pause_srv);
+  e->Wait();
+  if (e->Yes()) {
+    // assign new leader
+    Log_debug("set a new leader %d", e->leader_id_);
+    commo()->SetNewLeaderProxy(par_id, e->leader_id_);
+    if (prev_pause_srv != e->leader_id_) {
+      *cur_pause = e->leader_id_;
+    }
+  } else if (e->No()) {
+    auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
+    sp_e->Wait(300 * 1000);
+    // usleep(300 * 1000) ;  // 300 ms
+    goto retry;
+  } else {
+    verify(0);
+  }
+}
+
+void CoordinatorClassic::SendFailOverTrig(parid_t par_id, locid_t loc_id, bool pause) {
+  auto e = commo()->SendFailOverTrig(par_id, loc_id, pause);
+  e->Wait();
+  if (e->No()) {
+    verify(0);
+  }
 }
 
 } // namespace janus

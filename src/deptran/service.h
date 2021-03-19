@@ -30,6 +30,8 @@ class ClassicServiceImpl : public ClassicService {
   Communicator* comm_{nullptr};
 
   TxLogServer* dtxn_sched_;
+  rrr::PollMgr* poll_mgr_;
+  std::atomic<int32_t> clt_cnt_{0};
 
   TxLogServer* dtxn_sched() {
     return dtxn_sched_;
@@ -43,6 +45,17 @@ class ClassicServiceImpl : public ClassicService {
                 TxnOutput* output,
                 DeferredReply* defer_reply) override;
 
+  void FailOverTrig(
+      const bool_t& pause, rrr::i32* res, rrr::DeferredReply* defer) override;
+
+  void IsLeader(
+      const locid_t& can_id, bool_t* is_leader, DeferredReply* defer_reply) override;
+
+  void IsFPGALeader(
+      const locid_t& can_id, bool_t* is_leader, DeferredReply* defer_reply) override;
+
+  void SimpleCmd(const SimpleCommand& cmd, i32* res, DeferredReply* defer_reply) override;
+
   void Prepare(const i64& tid,
                const std::vector<i32>& sids,
                i32* res,
@@ -55,6 +68,10 @@ class ClassicServiceImpl : public ClassicService {
   void Abort(const i64& tid,
              i32* res,
              DeferredReply* defer) override;
+
+  void EarlyAbort(const i64& tid,
+                  i32* res,
+                  DeferredReply* defer) override;
 
   void UpgradeEpoch(const uint32_t& curr_epoch,
                     int32_t* res,
@@ -74,6 +91,16 @@ class ClassicServiceImpl : public ClassicService {
   void TapirDecide(const txid_t& cmd_id,
                    const rrr::i32& decision,
                    rrr::DeferredReply* defer) override;
+
+  void CarouselReadAndPrepare(const i64& cmd_id, const MarshallDeputy& cmd,
+      const bool_t& leader, int32_t* res, TxnOutput* output,
+      DeferredReply* defer_reply) override;
+  void CarouselAccept(const txid_t& cmd_id, const ballot_t& ballot,
+      const int32_t& decision, rrr::DeferredReply* defer) override;
+  void CarouselFastAccept(const txid_t& cmd_id, const vector<SimpleCommand>& txn_cmds,
+      rrr::i32* res, rrr::DeferredReply* defer) override;
+  void CarouselDecide(
+      const txid_t& cmd_id, const rrr::i32& decision, rrr::DeferredReply* defer) override;
 
   void MsgString(const string& arg,
                  string* ret,
@@ -123,19 +150,20 @@ class ClassicServiceImpl : public ClassicService {
                     const rank_t& rank,
                     const vector<SimpleCommand>& cmd,
                     int32_t* res,
-                    map<txid_t, ParentEdge<RccTx>>* parents,
+                    parent_set_t* parents,
                     DeferredReply* defer) override;
 
   void RccAccept(const txid_t& txnid,
+                 const rank_t& rank,
                  const ballot_t& ballot,
-                 const map<txid_t, ParentEdge<RccTx>>& parents,
+                 const parent_set_t& parents,
                  int32_t* res,
                  DeferredReply* defer) override;
 
   void RccCommit(const txid_t& cmd_id,
                  const rank_t& rank,
                  const int32_t& need_validation,
-                 const map<txid_t, ParentEdge<RccTx>>& parents,
+                 const parent_set_t& parents,
                  int32_t* res,
                  TxnOutput* output,
                  DeferredReply* defer) override;
@@ -146,15 +174,16 @@ class ClassicServiceImpl : public ClassicService {
                  DeferredReply* defer) override;
 
   void RccInquire(const txid_t& tid,
-                  pair<map<txid_t, ParentEdge<RccTx>>, set<txid_t>>* p_md_graph,
+                  const int32_t& rank,
+                  map<txid_t, parent_set_t>*,
                   DeferredReply*) override;
 
   void RccDispatchRo(const SimpleCommand& cmd,
                      map<int32_t, Value>* output,
                      DeferredReply* reply) override;
 
-  void RccInquireValidation(const txid_t& txid, int32_t* ret, DeferredReply* reply) override;
-  void RccNotifyGlobalValidation(const txid_t& txid, const int32_t& res, DeferredReply* reply) override;
+  void RccInquireValidation(const txid_t& txid, const int32_t& rank, int32_t* ret, DeferredReply* reply) override;
+  void RccNotifyGlobalValidation(const txid_t& txid, const int32_t& rank, const int32_t& res, DeferredReply* reply) override;
 
   void JanusDispatch(const vector<SimpleCommand>& cmd,
                      int32_t* p_res,
@@ -198,6 +227,7 @@ class ClassicServiceImpl : public ClassicService {
                              DeferredReply* defer) override;
 
   void JanusAccept(const txid_t& txnid,
+                   const rank_t& rank,
                    const ballot_t& ballot,
                    const MarshallDeputy& md_graph,
                    int32_t* res,
