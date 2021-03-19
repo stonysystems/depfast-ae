@@ -100,7 +100,7 @@ class DiskEvent : public Event {
   void AddToList();
 
   void Write() {
-		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
+		int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
 		std::string str;	
 		int num1;
 		i32 num2;

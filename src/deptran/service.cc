@@ -1,4 +1,3 @@
-#include "service.h"
 #include "__dep__.h"
 #include "benchmark_control_rpc.h"
 #include "carousel/scheduler.h"
@@ -14,6 +13,7 @@
 #include "janus/scheduler.h"
 #include "procedure.h"
 #include "rcc/dep_graph.h"
+#include "service.h"
 #include "rcc/server.h"
 #include "scheduler.h"
 #include "tapir/scheduler.h"

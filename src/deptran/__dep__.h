@@ -103,7 +103,6 @@ using rrr::Marshal;
 #include "memdb/utils.h"
 #include "memdb/row.h"
 #include "deptran/marshal-value.h"
-#include "deptran/marshallable.h"
 using mdb::Value;
 using mdb::Row;
 using mdb::VersionedRow;
