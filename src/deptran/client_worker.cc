@@ -68,7 +68,9 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     free_coordinators_.push_back(coo);
   } else if (have_more_time && config_->client_type_ == Config::Closed) {
     Log_debug("there is still time to issue another request. continue.");
-    DispatchRequest(coo);
+    Coroutine::CreateRun([this,coo]() { 
+      DispatchRequest(coo); 
+    });
   } else if (!have_more_time) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
@@ -120,18 +122,27 @@ Coordinator* ClientWorker::FindOrCreateCoordinator() {
 }
 
 Coordinator* ClientWorker::CreateFailCtrlCoordinator() {
+
   cooid_t coo_id = cli_id_;
-  uint64_t offset_id = 1000000; // TODO temp value
+  uint64_t offset_id = 1000000 ; // TODO temp value
   coo_id = (coo_id << 16) + offset_id;
-  auto coo = frame_->CreateCoordinator(coo_id, config_, benchmark, ccsi, id, txn_reg_);
+  auto coo = frame_->CreateCoordinator(coo_id,
+                                       config_,
+                                       benchmark,
+                                       ccsi,
+                                       id,
+                                       txn_reg_);
   coo->loc_id_ = my_site_.locale_id;
   coo->commo_ = commo_;
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
-  coo->offset_ = offset_id;
-  Log_debug("coordinator %d created at site %d: forward %d", coo->coo_id_,
-      this->my_site_.id, coo->forward_status_);
-  return coo;
+  coo->offset_ = offset_id ;
+  Log_debug("coordinator %d created at site %d: forward %d",
+            coo->coo_id_,
+            this->my_site_.id,
+            coo->forward_status_);
+  return coo ;
 }
+
 
 Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
 
@@ -386,6 +397,11 @@ void ClientWorker::Work() {
   }
 //  finish_mutex.unlock();
 
+  if (failover_server_quit_ && !*failover_server_quit_)
+  {
+      *failover_server_quit_ = true ;
+  }
+
   Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
            num_txn.load(),
            success.load(),
@@ -424,7 +440,8 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
                               defer,
                               std::placeholders::_1);
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
-    coo->DoTxAsync(req);
+    coo->concurrent = n_concurrent_;
+		coo->DoTxAsync(req);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -513,6 +530,71 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
 
 /*
 void ClientWorker::DispatchRequest(Coordinator* coo) {
+
+  if(*failover_trigger_ || failover_trigger_loc) 
+  {
+    if(coo->offset_ == 0)
+    {
+      failover_wait_leader_ = true ;
+    }
+    n_pause_concurrent_[coo->coo_id_] = true ;
+   
+    if(coo->offset_ == 0 )
+    {
+        failover_pause_start = false ; 
+        for(auto it =n_pause_concurrent_.begin(); it!=n_pause_concurrent_.end();it++ )
+        {
+            while(!it->second) 
+            {
+                auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+                sp_e->Wait(300*1000) ;
+            }
+        }
+        failover_pause_start = true ; 
+    }
+    else
+    {
+        while(!failover_pause_start) { 
+            auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+            sp_e->Wait(300*1000) ;
+        }
+    }
+
+    Log_debug("client worker start dispatch request pause: %d with cur leader %d", 
+    coo->coo_id_, cur_leader_) ;
+    if(coo->offset_ == 0)
+    {
+      failover_trigger_loc = true ;
+      *failover_trigger_ = false ;
+    }
+    while(!*failover_trigger_){
+      auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300*1000);
+      sp_e->Wait(300*1000) ;      
+      if(*failover_server_quit_) 
+        break ;
+    }
+    if(coo->offset_ == 0)
+    {
+      SearchLeader(coo) ;
+      *failover_trigger_ = false ;
+      failover_trigger_loc = false ;
+      failover_pause_start = false ; 
+      failover_wait_leader_ = false ;
+    }
+    else
+    {
+      while(failover_wait_leader_ && !*failover_server_quit_) 
+      {
+        auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(500*1000);
+        sp_e->Wait(500*1000) ;
+      }
+
+    }
+    n_pause_concurrent_[coo->coo_id_] = false ;
+    Log_debug("client worker end dispatch request pause: %d with cur leader %d", 
+    coo->coo_id_, cur_leader_) ;
+  }
+  
   const char* f = __FUNCTION__;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);
@@ -525,6 +607,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
                               this,
                               coo,
                               std::placeholders::_1);
+		coo->concurrent = n_concurrent_;
     coo->DoTxAsync(req);
   };
   task();
@@ -569,6 +652,7 @@ ClientWorker::ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* con
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_FPGA_RAFT && site_info.locale_id != 0) ? true :
                                                                                false;
+
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
                                                                          : false;

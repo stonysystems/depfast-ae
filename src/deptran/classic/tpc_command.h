@@ -39,6 +39,7 @@ class TpcEmptyCommand : public Marshallable {
   Marshal& FromMarshal(Marshal&) override;
   void Wait() { event->Wait(); };
   void Done() { event->Set(1); };
+
 };
 
 } // namespace janus

@@ -54,7 +54,7 @@ class ServerWorker {
   void RegisterWorkload();
   void ShutDown();
   void Pause();
-  void Resume();
+  void Resume();  
 
   static const uint32_t CtrlPortDelta = 10000;
   void WaitForShutdown();

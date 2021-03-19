@@ -41,6 +41,10 @@ class ClientWorker {
   Coordinator* fail_ctrl_coo_{nullptr};
   //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
 
+  std::shared_ptr<TimeoutEvent> timeout_event;
+  std::shared_ptr<NEvent> n_event;
+  std::shared_ptr<AndEvent> and_event;
+
   std::atomic<uint32_t> num_txn, success, num_try;
   int all_done_{0};
   int64_t n_tx_issued_{0};
@@ -64,6 +68,7 @@ class ClientWorker {
   ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* config,
       ClientControlServiceImpl* ccsi, PollMgr* mgr, bool* volatile failover,
       volatile bool* failover_server_quit, volatile locid_t* failover_server_idx);
+
   ClientWorker() = delete;
   ~ClientWorker();
   // This is called from a different thread.

@@ -9,6 +9,15 @@ FpgaRaftServiceImpl::FpgaRaftServiceImpl(TxLogServer *sched)
 
 }
 
+void FpgaRaftServiceImpl::Heartbeat(const uint64_t& leaderPrevLogIndex,
+																		const DepId& dep_id,
+																		uint64_t* followerPrevLogIndex,
+																		rrr::DeferredReply* defer) {
+	//Log_info("received heartbeat");
+	*followerPrevLogIndex = sched_->lastLogIndex;
+	defer->reply();
+}
+
 void FpgaRaftServiceImpl::Forward(const MarshallDeputy& cmd,
                                     uint64_t* cmt_idx, 
                                     rrr::DeferredReply* defer) {
@@ -51,12 +60,14 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
                                         const uint64_t& leaderPrevLogIndex,
                                         const uint64_t& leaderPrevLogTerm,
                                         const uint64_t& leaderCommitIndex,
+																				const DepId& dep_id,
                                         const MarshallDeputy& md_cmd,
                                         uint64_t *followerAppendOK,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
+	//Log_info("CreateRunning2");
   Coroutine::CreateRun([&] () {
     sched_->OnAppendEntries(slot,
                             ballot,
@@ -64,6 +75,7 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
                             leaderPrevLogIndex,
                             leaderPrevLogTerm,
                             leaderCommitIndex,
+														dep_id,
                             const_cast<MarshallDeputy&>(md_cmd).sp_data_,
                             followerAppendOK,
                             followerCurrentTerm,
@@ -75,13 +87,16 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
 
 void FpgaRaftServiceImpl::Decide(const uint64_t& slot,
                                    const ballot_t& ballot,
+																	 const DepId& dep_id,
                                    const MarshallDeputy& md_cmd,
                                    rrr::DeferredReply* defer) {
   verify(sched_ != nullptr);
+	//Log_info("Deciding with string: %s and id: %d", dep_id.str.c_str(), dep_id.id);
   Coroutine::CreateRun([&] () {
     sched_->OnCommit(slot,
                      ballot,
                      const_cast<MarshallDeputy&>(md_cmd).sp_data_);
+		
     defer->reply();
   });
 }

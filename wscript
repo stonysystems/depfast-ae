@@ -24,6 +24,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-p', '--enable-profiling', dest='prof',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-event-timeout', dest='event_timeout',
+                   default=False, action='store_true')
     opt.add_option('-d', '--debug', dest='debug',
                    default=False, action='store_true')
     opt.add_option('-M', '--enable-tcmalloc', dest='tcmalloc',
@@ -64,6 +66,7 @@ def configure(conf):
     _enable_cxx14(conf)
     _enable_debug(conf)
     _enable_profile(conf)
+    _enable_event_timeout(conf)
     _enable_ipc(conf)
     _enable_rpc_s(conf)
     _enable_piece_count(conf)
@@ -280,6 +283,11 @@ def _enable_profile(conf):
         Logs.pprint("PINK", "CPU profiling enabled")
         conf.env.append_value("CXXFLAGS", "-DCPU_PROFILE")
         conf.env.LIB_PROFILER = 'profiler'
+
+def _enable_event_timeout(conf):
+    if Options.options.event_timeout:
+        Logs.pprint("PINK", "event timeout enabled")
+        conf.env.append_value("CXXFLAGS", "-DEVENT_TIMEOUT_CHECK")
 
 def _enable_ipc(conf):
     if Options.options.ipc:

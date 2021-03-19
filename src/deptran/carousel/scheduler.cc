@@ -27,7 +27,7 @@ int SchedulerCarousel::OnDecide(txid_t tx_id,
   cmd->tx_id_ = tx_id;
   cmd->ret_ = decision;
   auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
-  CreateRepCoord()->Submit(sp_m);
+  CreateRepCoord(0)->Submit(sp_m);
   auto tx = dynamic_pointer_cast<TxCarousel>(GetTx(tx_id));
   tx->commit_result->Wait();
   callback();
@@ -467,7 +467,7 @@ bool SchedulerCarousel::OnPrepare(cmdid_t tx_id) {
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
     sp_tx->is_leader_hint_ = true;
-    CreateRepCoord()->Submit(sp_m);
+    CreateRepCoord(0)->Submit(sp_m);
     sp_tx->prepare_result->Wait();
     return sp_tx->prepare_result->Get();
   }*/
@@ -480,7 +480,7 @@ bool SchedulerCarousel::OnPrepare(cmdid_t tx_id) {
       sp_prepare_crs_cmd->cmd_ = sp_tx->cmd_;
       auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_crs_cmd);
       sp_tx->is_leader_hint_ = true;
-      CreateRepCoord()->Submit(sp_m);
+      CreateRepCoord(0)->Submit(sp_m);
       sp_tx->prepare_result->Wait();
       verify(sp_tx->prepare_result->Get());
     };

@@ -63,13 +63,16 @@ shared_ptr<Tx> TxLogServer::CreateTx(txnid_t tx_id, bool ro) {
 }
 
 shared_ptr<Tx> TxLogServer::GetOrCreateTx(txnid_t tid, bool ro) {
+  //Log_info("The current server is %d", site_id_);
   shared_ptr<Tx> ret = nullptr;
   auto it = dtxns_.find(tid);
   if (it == dtxns_.end()) {
     ret = CreateTx(tid, ro);
   } else {
+    //Log_info("found");
     ret = it->second;
   }
+  //Log_info("Tx is %ld", tid);
   verify(ret != nullptr);
   verify(ret->tid_ == tid);
   return ret;
@@ -192,7 +195,7 @@ TxLogServer::TxLogServer() : mtx_() {
   }
 }
 
-Coordinator *TxLogServer::CreateRepCoord() {
+Coordinator *TxLogServer::CreateRepCoord(const i64& dep_id) {
   Coordinator *coord;
   static cooid_t cid = 0;
   int32_t benchmark = 0;
@@ -204,7 +207,9 @@ Coordinator *TxLogServer::CreateRepCoord() {
                                         nullptr,
                                         id++,
                                         txn_reg_);
+  coord->dep_id_ = dep_id;
   coord->par_id_ = partition_id_;
+  //Log_info("Partition id set: %d", partition_id_);
   coord->loc_id_ = this->loc_id_;
   return coord;
 }

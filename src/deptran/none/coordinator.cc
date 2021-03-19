@@ -13,7 +13,7 @@ void CoordinatorNone::GotoNextPhase() {
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:DispatchAsync();
       verify(phase_ % n_phase == Phase::DISPATCH);
-      break;
+      phase_++;
     case Phase::DISPATCH:
       committed_ = true;
       verify(phase_ % n_phase == Phase::INIT_END);

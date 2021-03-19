@@ -3,6 +3,11 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../scheduler.h"
+#include "../classic/tpc_command.h"
+#include "../classic/tx.h"
+#include "coordinator.h"
+#include <chrono>
+#include <ctime>
 
 namespace janus {
 class Command;
@@ -39,15 +44,23 @@ class PaxosServer : public TxLogServer {
     return sp_instance;
   }
 
+  void OnForward(shared_ptr<Marshallable> &cmd,
+                 uint64_t dep_id,
+                 uint64_t* coro_id,
+                 const function<void()> &cb);
+
   void OnPrepare(slotid_t slot_id,
                  ballot_t ballot,
                  ballot_t *max_ballot,
+                 uint64_t* coro_id,
                  const function<void()> &cb);
 
   void OnAccept(const slotid_t slot_id,
+		const uint64_t time,
                 const ballot_t ballot,
                 shared_ptr<Marshallable> &cmd,
                 ballot_t *max_ballot,
+                uint64_t* coro_id,
                 const function<void()> &cb);
 
   void OnCommit(const slotid_t slot_id,

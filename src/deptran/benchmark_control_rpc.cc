@@ -82,7 +82,7 @@ void ServerControlServiceImpl::server_heart_beat(DeferredReply* d) {
 }
 
 void ServerControlServiceImpl::server_heart_beat_with_data(ServerResponse *res, DeferredReply* d) {
-  res->cpu_util = rrr::CPUInfo::cpu_stat();
+  res->cpu_util = rrr::CPUInfo::cpu_stat()[0];
   if (recorder_) {
     AvgStat r_cnt = recorder_->stat_cnt_.reset();
     AvgStat r_sz = recorder_->stat_sz_.reset();
@@ -197,7 +197,7 @@ void ClientControlServiceImpl::client_force_stop(DeferredReply* defer) {
   defer->reply();
 }
 
-void ClientControlServiceImpl::client_response(ClientResponse *res, DeferredReply* defer) {
+void ClientControlServiceImpl::client_response(const DepId& dep_id, ClientResponse *res, DeferredReply* defer) {
   std::lock_guard<std::recursive_mutex> guard(mtx_);
   status_mutex_.lock();
   if (CCS_FINISH == status_)
