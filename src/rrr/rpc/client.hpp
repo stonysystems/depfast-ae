@@ -121,6 +121,7 @@ public:
 		long total_time;
 		int index = 0;
 		int count_ = 0;
+		struct timespec begin;
     enum {
         NEW, CONNECTED, CLOSED
     } status_;

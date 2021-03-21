@@ -82,7 +82,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
-    this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex) ;
+    this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, slot_id_, curr_ballot_) ;
 		
 
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,

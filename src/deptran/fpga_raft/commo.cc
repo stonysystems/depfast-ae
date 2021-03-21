@@ -72,6 +72,49 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
   }
 }
 
+void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
+																					 parid_t par_id,
+																					 slotid_t slot_id,
+																					 ballot_t ballot,
+																					 bool isLeader,
+																					 uint64_t currentTerm,
+																					 uint64_t prevLogIndex,
+																					 uint64_t prevLogTerm,
+																					 uint64_t commitIndex,
+																					 shared_ptr<Marshallable> cmd) {
+  auto proxies = rpc_par_proxies_[par_id];
+  vector<Future*> fus;
+  for (auto& p : proxies) {
+    if (p.first != site_id)
+        continue;
+		auto follower_id = p.first;
+    auto proxy = (FpgaRaftProxy*) p.second;
+    FutureAttr fuattr;
+    fuattr.callback = [](Future* fu) {};
+    
+		MarshallDeputy md(cmd);
+		verify(md.sp_data_ != nullptr);
+    
+		DepId di;
+		di.str = "dep";
+		di.id = -1;
+		
+		Log_info("heartbeat2 for log index: %d", prevLogIndex);
+    auto f = proxy->async_AppendEntries2(slot_id,
+                                        ballot,
+                                        currentTerm,
+                                        prevLogIndex,
+                                        prevLogTerm,
+                                        commitIndex,
+																				di,
+                                        //md, 
+                                        fuattr);
+    Future::safe_release(f);
+  }
+
+}
+
+
 void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
 																	siteid_t site_id,
 																  uint64_t logIndex) {

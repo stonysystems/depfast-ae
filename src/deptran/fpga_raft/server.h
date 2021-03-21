@@ -19,6 +19,11 @@ struct FpgaRaftData {
 
   ballot_t term;
   shared_ptr<Marshallable> log_{nullptr};
+
+	//for retries
+	ballot_t prevTerm;
+	slotid_t slot_id;
+	ballot_t ballot;
 };
 
 struct KeyValue {
@@ -46,7 +51,7 @@ class FpgaRaftServer : public TxLogServer {
   bool in_applying_logs_ = false ;
 
 	static bool looping;
-	bool heartbeat_ = false;
+	bool heartbeat_ = true;
 	enum { STOPPED, RUNNING } status_;
 	pthread_t loop_th_;
   
@@ -146,13 +151,16 @@ class FpgaRaftServer : public TxLogServer {
     return fpga_is_leader_ ;
   }
   
-  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index ){
+  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index, slotid_t slot_id = -1, ballot_t ballot = 1 ){
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     *index = lastLogIndex ;
     lastLogIndex += 1;
     auto instance = GetFpgaRaftInstance(lastLogIndex);
     instance->log_ = cmd;
+		instance->prevTerm = currentTerm;
     instance->term = currentTerm;
+		instance->slot_id = slot_id;
+		instance->ballot = ballot;
 
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
       auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);

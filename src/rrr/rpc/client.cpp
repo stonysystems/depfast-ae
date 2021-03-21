@@ -470,14 +470,28 @@ void Client::end_request() {
   }
 
 	if (!out_.valid_id) {
-		if (count % 100 == 0) {
-			if (out_.found_dep) {
-				Log_info("Warning2: dependency not found: true");
-			} else {
-				Log_info("Warning2: dependency not found: false");
-			}
-		} else {
+		if (count == 0) {
+			begin = {};
+			clock_gettime(CLOCK_MONOTONIC, &begin);
 			count++;
+		} else {
+			struct timespec end;
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
+			// convert to milliseconds
+			time /= 1000000;
+
+			// 1 second has passed
+			if (time > 1000) {
+				double rate = count/(double)time;
+				Log_info("Warning rate is: %f %d %d", rate, count, time);
+				if (rate >= 0.005) {
+					Log_info("Warning2: dependency not found");
+				}
+				count = 0;
+			} else {
+				count++;
+			}
 		}
 	}
 

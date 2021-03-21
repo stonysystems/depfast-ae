@@ -45,8 +45,16 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 
 	FpgaRaftServer::looping = true;
 	while(FpgaRaftServer::looping) {
-		usleep(100*1000);
-		uint64_t prevLogIndex = hb_loop_args->sch->lastLogIndex;	
+		usleep(1000*1000);
+		uint64_t prevLogIndex = hb_loop_args->sch->lastLogIndex;
+
+		auto instance = hb_loop_args->sch->GetFpgaRaftInstance(prevLogIndex);
+		auto term = instance->term;
+		auto prevTerm = instance->prevTerm;
+		auto ballot = instance->ballot;
+		auto slot = instance->slot_id;
+		auto cmd = instance->log_;
+
 		parid_t partition_id = hb_loop_args->sch->partition_id_;
 		hb_loop_args->commo->BroadcastHeartbeat(partition_id, prevLogIndex);
 
@@ -54,7 +62,18 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 		for (auto it = matcheds.begin(); it != matcheds.end(); it++) {
 			if (prevLogIndex > it->second + 10000) {
 				Log_info("leader_id: %d vs follower_id for %d: %d", prevLogIndex, it->first, it->second);
-				hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
+				//hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
+				//hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
+				hb_loop_args->commo->SendAppendEntriesAgain(it->first,
+																				partition_id,
+                                        slot,
+                                        1000000000,
+                                        hb_loop_args->sch->IsLeader(),
+                                        term,
+                                        prevLogIndex,
+                                        prevTerm,
+                                        hb_loop_args->sch->commitIndex,
+                                        cmd);
 			}
 		}
 	}
@@ -383,6 +402,16 @@ void FpgaRaftServer::StartTimer()
                 Log_debug("server %d, set to be follower", loc_id_ ) ;
                 setIsLeader(false) ;
             }
+
+						//this means that this is a retry of a previous one for a simulation
+						/*if (slot_id == 100000000 || leaderPrevLogIndex + 1 < lastLogIndex) {
+							for (int i = 0; i < 1000000; i++) Log_info("Dropping this AE message: %d %d", leaderPrevLogIndex, lastLogIndex);
+							//verify(0);
+							*followerAppendOK = 0;
+							cb();
+							return;
+						}*/
+
             this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
             uint64_t prevCommitIndex = this->commitIndex;
             this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);
@@ -434,9 +463,9 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
 
-				if (rand() % 1000 == 0) {
+				/*if (rand() % 1000 == 0) {
 					usleep(15*1000);
-				}
+				}*/
 
         cb();
     }

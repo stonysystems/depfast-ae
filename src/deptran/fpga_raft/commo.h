@@ -131,6 +131,19 @@ friend class FpgaRaftProxy;
 	void SendHeartbeat(parid_t par_id,
 										 siteid_t site_id,
 										 uint64_t logIndex);
+
+	//ONLY FOR SIMULATION
+  void SendAppendEntriesAgain(siteid_t site_id,
+															parid_t par_id,
+															slotid_t slot_id,
+															ballot_t ballot,
+															bool isLeader,
+															uint64_t currentTerm,
+															uint64_t prevLogIndex,
+															uint64_t prevLogTerm,
+															uint64_t commitIndex,
+															shared_ptr<Marshallable> cmd);
+
   shared_ptr<FpgaRaftPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    slotid_t slot_id,
