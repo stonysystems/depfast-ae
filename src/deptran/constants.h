@@ -83,8 +83,8 @@ namespace janus {
 #define MODE_MDCC   (0x12)
 #define MODE_TROAD    (0x03)
 #define MODE_EXTERNC   (0x14)
-#define MODE_RPC_NULL   (0x40)
-#define MODE_NOTX   (0x80)
+#define MODE_RPC_NULL   (0x800)
+#define MODE_NOTX   (0x1000)
 
     // deprecated.
 #define MODE_DEPTRAN (4)
@@ -93,7 +93,7 @@ namespace janus {
 #define MODE_EPAXOS        (0x80)
 #define MODE_TAPIR         (0x100)
 #define MODE_MENCIUS       (0x200)
-#define MODE_CAROUSEL (0x300)
+#define MODE_CAROUSEL (0x2000)
 #define MODE_FPGA_RAFT (0x400)
 #define MODE_NOT_READY     (0x00)
 

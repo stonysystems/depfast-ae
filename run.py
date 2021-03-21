@@ -229,9 +229,7 @@ class TxnInfo(object):
         logger.info("mid_time = {}".format(self.mid_time))
 
         if self.mid_retry_exhausted > 0:
-            m = [0]
-            if len(self.mid_latencies) > 0:
-              m = [max(self.mid_latencies)]
+            m = [max(self.mid_latencies)]
             self.mid_all_latencies.extend(m * self.mid_retry_exhausted)
 
         self.mid_latencies.sort()
@@ -465,7 +463,8 @@ class ClientController(object):
             futures = []
             for proxy in rpc_proxy:
                 try:
-                    future = proxy.async_client_response()
+                    dep_id = (str.encode('dep'), 0)
+                    future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())

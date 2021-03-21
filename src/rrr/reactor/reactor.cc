@@ -234,7 +234,7 @@ void Reactor::DiskLoop(){
 	struct timespec begin, end;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 	for (auto it = sync_set.begin(); it != sync_set.end(); it++) {
-		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
+		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0777);
 		::fsync(fd);
 		::close(fd);
 	}
