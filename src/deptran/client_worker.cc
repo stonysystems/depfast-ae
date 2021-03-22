@@ -68,7 +68,9 @@ void ClientWorker::RequestDone(Coordinator* coo, TxReply& txn_reply) {
     free_coordinators_.push_back(coo);
   } else if (have_more_time && config_->client_type_ == Config::Closed) {
     Log_debug("there is still time to issue another request. continue.");
-    DispatchRequest(coo);
+    Coroutine::CreateRun([this,coo]() { 
+      DispatchRequest(coo); 
+    });
   } else if (!have_more_time) {
     Log_debug("times up. stop.");
     Log_debug("n_concurrent_ = %d", n_concurrent_);
@@ -120,18 +122,27 @@ Coordinator* ClientWorker::FindOrCreateCoordinator() {
 }
 
 Coordinator* ClientWorker::CreateFailCtrlCoordinator() {
+
   cooid_t coo_id = cli_id_;
-  uint64_t offset_id = 1000000; // TODO temp value
+  uint64_t offset_id = 1000000 ; // TODO temp value
   coo_id = (coo_id << 16) + offset_id;
-  auto coo = frame_->CreateCoordinator(coo_id, config_, benchmark, ccsi, id, txn_reg_);
+  auto coo = frame_->CreateCoordinator(coo_id,
+                                       config_,
+                                       benchmark,
+                                       ccsi,
+                                       id,
+                                       txn_reg_);
   coo->loc_id_ = my_site_.locale_id;
   coo->commo_ = commo_;
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
-  coo->offset_ = offset_id;
-  Log_debug("coordinator %d created at site %d: forward %d", coo->coo_id_,
-      this->my_site_.id, coo->forward_status_);
-  return coo;
+  coo->offset_ = offset_id ;
+  Log_debug("coordinator %d created at site %d: forward %d",
+            coo->coo_id_,
+            this->my_site_.id,
+            coo->forward_status_);
+  return coo ;
 }
+
 
 Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
 
@@ -210,7 +221,7 @@ void ClientWorker::Work() {
     poll_mgr_->add(sp_job);
   }
   for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
-    auto sp_job = std::make_shared<OneTimeJob>([this] () {
+    auto sp_job = std::make_shared<OneTimeJob>([this, n_tx] () {
       // this wait tries to avoid launching clients all at once, especially for open-loop clients.
       Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
       auto beg_time = Time::now() ;
@@ -239,10 +250,31 @@ void ClientWorker::Work() {
         verify(!coo->sp_ev_done_);
         coo->sp_ev_commit_ = Reactor::CreateSpEvent<IntEvent>();
         coo->sp_ev_done_ = Reactor::CreateSpEvent<IntEvent>();
-        this->DispatchRequest(coo);
+
+				Log_info("Dispatching request for %d", n_tx);
+				this->outbound++;
+				
+				bool first = true;
+				while(coo->commo_->paused){
+					if(first){
+						coo->commo_->count_lock_.lock();
+						coo->commo_->total_ = this->outbound;
+						coo->commo_->qe->n_voted_yes_ = this->outbound;
+						coo->commo_->count_lock_.unlock();
+						Log_info("is it ready: %d", coo->commo_->qe->IsReady());
+						coo->commo_->qe->Test();
+						first = false;
+					}
+					Log_info("total: %d", coo->commo_->total_);
+					auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
+					t->Wait(0.1*1000*1000);
+				}
+        
+				this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
           ev->Wait(600*1000*1000);
+					this->outbound--;
           verify(ev->status_ != Event::TIMEOUT);
         } else {
           auto sp_event = Reactor::CreateSpEvent<NeverEvent>();
@@ -386,6 +418,11 @@ void ClientWorker::Work() {
   }
 //  finish_mutex.unlock();
 
+  if (failover_server_quit_ && !*failover_server_quit_)
+  {
+      *failover_server_quit_ = true ;
+  }
+
   Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
            num_txn.load(),
            success.load(),
@@ -424,7 +461,8 @@ void ClientWorker::AcceptForwardedRequest(TxRequest& request,
                               defer,
                               std::placeholders::_1);
     Log_debug("%s: running forwarded request at site %d", f, my_site_.id);
-    coo->DoTxAsync(req);
+    coo->concurrent = n_concurrent_;
+		coo->DoTxAsync(req);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
@@ -513,25 +551,34 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
 
 /*
 void ClientWorker::DispatchRequest(Coordinator* coo) {
+  FailoverPreprocess(coo);
   const char* f = __FUNCTION__;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);
-    TxRequest req;
+    // TODO don't use pointer here.
+    TxRequest *req = new TxRequest;
     {
       std::lock_guard<std::mutex> lock(this->request_gen_mutex);
-      tx_generator_->GetTxRequest(&req, coo->coo_id_);
+      tx_generator_->GetTxRequest(req, coo->coo_id_);
     }
-    req.callback_ = std::bind(&ClientWorker::RequestDone,
-                              this,
-                              coo,
-                              std::placeholders::_1);
-    coo->DoTxAsync(req);
+//     req.callback_ = std::bind(&ClientWorker::RequestDone,
+//                               this,
+//                               coo,
+//                               std::placeholders::_1);
+    req->callback_ = [coo, req] (TxReply&) {
+//      verify(coo->sp_ev_commit_->status_ != Event::WAIT);
+      coo->sp_ev_commit_->Set(1);
+      auto& status = coo->sp_ev_done_->status_;
+      verify(status == Event::WAIT || status == Event::INIT);
+      coo->sp_ev_done_->Set(1);
+      delete req;
+    };
+		coo->concurrent = n_concurrent_;
+    coo->DoTxAsync(*req);
   };
   task();
 //  dispatch_pool_->run_async(task); // this causes bug
-}
-
-*/
+}*/
 
 void ClientWorker::SearchLeader(Coordinator* coo) {
   // TODO multiple par_id yidawu
@@ -569,9 +616,6 @@ ClientWorker::ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* con
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_FPGA_RAFT && site_info.locale_id != 0) ? true :
                                                                                false;
-  forward_requests_to_leader_ =
-      (config->replica_proto_ == MODE_MULTI_PAXOS && site_info.locale_id != 0) ? true
-                                                                         : false;
   Log_debug("client %d created; forward %d",
             cli_id_,
             forward_requests_to_leader_);

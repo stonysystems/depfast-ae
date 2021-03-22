@@ -40,6 +40,7 @@ class MarshallDeputy {
     CMD_VEC_PIECE = 6,
     CMD_TPC_EMPTY = 7,
     CMD_TPC_PREPARE_CAROUSEL = 8,
+		CMD_BLK_PXS = 9,
   };
   /**
    * This should be called by the rpc layer.

@@ -69,6 +69,7 @@ Frame* Frame::GetFrame(int mode) {
   // some built-in mode
   switch (mode) {
     case MODE_NONE:
+    case MODE_NOTX:
     case MODE_MDCC:
     case MODE_2PL:
     case MODE_OCC:
@@ -296,7 +297,10 @@ Communicator* Frame::CreateCommo(PollMgr* pollmgr) {
 shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
                                bool ro, TxLogServer *mgr) {
   shared_ptr<Tx> sp_tx;
-  switch (mode_) {
+	/*struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);*/
+  
+	switch (mode_) {
     case MODE_2PL:
       sp_tx.reset(new Tx2pl(epoch, tid, mgr));
       break;
@@ -313,10 +317,13 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
     case MODE_FPGA_RAFT:
       break;
     case MODE_NONE:
+    case MODE_NOTX:
     default:
       sp_tx.reset(new TxClassic(epoch, tid, mgr));
       break;
   }
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of CreateTx on server: %d", end.tv_nsec-begin.tv_nsec);*/
   return sp_tx;
 }
 
@@ -351,6 +358,7 @@ TxLogServer* Frame::CreateScheduler() {
     case MODE_MDCC:
 //      sch = new mdcc::MdccScheduler();
       break;
+    case MODE_NOTX:
     case MODE_NONE:
       sch = new SchedulerNone();
       break;
@@ -407,6 +415,7 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
     case MODE_JANUS:
     case MODE_CAROUSEL:
     case MODE_RCC:
+    case MODE_NOTX:
     default:
       result.push_back(new ClassicServiceImpl(dtxn_sched, poll_mgr, scsi));
       break;
@@ -414,14 +423,28 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
   return result;
 }
 map<string, int> &Frame::FrameNameToMode() {
-  static map<string, int> frame_name_mode_s = {{"none", MODE_NONE}, {"2pl", MODE_2PL},
-      {"occ", MODE_OCC}, {"snow", MODE_RO6}, {"rpc_null", MODE_RPC_NULL},
-      {"deptran", MODE_DEPTRAN}, {"deptran_er", MODE_DEPTRAN}, {"2pl_w", MODE_2PL},
-      {"2pl_wait_die", MODE_2PL}, {"2pl_wd", MODE_2PL}, {"2pl_ww", MODE_2PL},
-      {"2pl_wound_die", MODE_2PL}, {"externc", MODE_EXTERNC}, {"extern_c", MODE_EXTERNC},
-      {"mdcc", MODE_MDCC}, {"multi_paxos", MODE_MULTI_PAXOS},
-      {"fpga_raft", MODE_FPGA_RAFT}, {"epaxos", MODE_NOT_READY},
-      {"rep_commit", MODE_NOT_READY}};
+  static map<string, int> frame_name_mode_s = {
+      {"none",          MODE_NONE},
+      {"2pl",           MODE_2PL},
+      {"occ",           MODE_OCC},
+      {"snow",          MODE_RO6},
+      {"notx",          MODE_NOTX},
+      {"rpc_null",      MODE_RPC_NULL},
+      {"deptran",       MODE_DEPTRAN},
+      {"deptran_er",    MODE_DEPTRAN},
+      {"2pl_w",         MODE_2PL},
+      {"2pl_wait_die",  MODE_2PL},
+      {"2pl_wd",        MODE_2PL},
+      {"2pl_ww",        MODE_2PL},
+      {"2pl_wound_die", MODE_2PL},
+      {"externc",       MODE_EXTERNC},
+      {"extern_c",      MODE_EXTERNC},
+      {"mdcc",          MODE_MDCC},
+      {"multi_paxos",   MODE_MULTI_PAXOS},
+      {"fpga_raft",     MODE_FPGA_RAFT},
+      {"epaxos",        MODE_NOT_READY},
+      {"rep_commit",    MODE_NOT_READY}
+  };
   return frame_name_mode_s;
 }
 

@@ -26,6 +26,7 @@ class ClientWorker {
   bool batch_start;
   uint32_t id;
   uint32_t duration;
+	int outbound;
   ClientControlServiceImpl *ccsi{nullptr};
   int32_t n_concurrent_;
   map<cooid_t, bool> n_pause_concurrent_{};
@@ -40,6 +41,9 @@ class ClientWorker {
   vector<Coordinator*> created_coordinators_{};
   Coordinator* fail_ctrl_coo_{nullptr};
   //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
+  std::shared_ptr<TimeoutEvent> timeout_event;
+  std::shared_ptr<NEvent> n_event;
+  std::shared_ptr<AndEvent> and_event;
 
   std::atomic<uint32_t> num_txn, success, num_try;
   int all_done_{0};

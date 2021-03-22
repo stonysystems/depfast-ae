@@ -87,6 +87,7 @@ bool Scheduler2pl::DoPrepare(txnid_t tx_id) {
   tx_box->inuse = true;
   bool ret = true;
   if (tx_box->wounded_) {
+		Log_info("wounded???");
     return false;
   }
   tx_box->woundable_ = false;
