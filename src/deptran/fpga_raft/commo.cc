@@ -47,6 +47,7 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 	//Log_info("heartbeat for log index: %d", logIndex);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
+	WAN_WAIT;
   for (auto& p : proxies) {
     if (p.first == this->loc_id_)
         continue;
@@ -84,6 +85,7 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 																					 shared_ptr<Marshallable> cmd) {
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
+  WAN_WAIT;
   for (auto& p : proxies) {
     if (p.first != site_id)
         continue;
@@ -94,20 +96,25 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
     
 		MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
-    
+      
+    if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+			auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+			auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+			Log_info("heartbeat2 for log index: %d and size: %d", prevLogIndex, sp_vec_piece->size());
+		}
+
 		DepId di;
 		di.str = "dep";
 		di.id = -1;
 		
-		Log_info("heartbeat2 for log index: %d", prevLogIndex);
-    auto f = proxy->async_AppendEntries2(slot_id,
+    auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
                                         prevLogIndex,
                                         prevLogTerm,
                                         commitIndex,
 																				di,
-                                        //md, 
+                                        md, 
                                         fuattr);
     Future::safe_release(f);
   }

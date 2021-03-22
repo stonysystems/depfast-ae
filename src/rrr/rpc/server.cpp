@@ -107,6 +107,11 @@ int ServerConnection::run_async(const std::function<void()>& f) {
 }
 
 void ServerConnection::begin_reply(Request* req, i32 error_code /* =... */) {
+		if (status_ != CONNECTED) {
+			for (int i = 0; i < 1000; i++) {
+				Log_info("verify 6 failed");
+			}
+		}
   verify (status_ == CONNECTED);
     out_l_.lock();
     v32 v_error_code = error_code;
@@ -119,6 +124,11 @@ void ServerConnection::begin_reply(Request* req, i32 error_code /* =... */) {
 }
 
 void ServerConnection::end_reply() {
+		if (status_ != CONNECTED) {
+			for (int i = 0; i < 1000; i++) {
+				Log_info("verify 7 failed");
+			}
+		}
   verify (status_ == CONNECTED);
 
     // set reply size in packet
@@ -165,10 +175,22 @@ bool ServerConnection::handle_read() {
         int n_peek = in_.peek(&packet_size, sizeof(i32));
         if (n_peek == sizeof(i32) && in_.content_size() >= packet_size + sizeof(i32)) {
             // consume the packet size
-            verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+						if (in_.read(&packet_size, sizeof(i32)) != sizeof(i32)) {
+							for (int i = 0; i < 1000; i++) {
+								Log_info("verify 1 failed");
+							}
+							verify(0);
+						}
+            //verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
 
             Request* req = new Request;
-            verify(req->m.read_from_marshal(in_, packet_size) == (size_t) packet_size);
+						if (req->m.read_from_marshal(in_, packet_size) != (size_t) packet_size) {
+							for (int i = 0; i < 1000; i++) {
+								Log_info("verify 2 failed");
+							}
+							verify(0);
+						}
+            //verify(req->m.read_from_marshal(in_, packet_size) == (size_t) packet_size);
 
             v64 v_xid;
             req->m >> v_xid;
@@ -210,6 +232,11 @@ bool ServerConnection::handle_read() {
             auto y = it->second;
 						//Log_info("CreateRunning: %x", rpc_id);
             Coroutine::CreateRun([y, req, x, this, rpc_id] () {
+							if (!x->connected()) {
+								for (int i = 0; i < 1000; i++) {
+									Log_info("verify 3 failed");
+								}
+							}
 //              verify(x);
               verify(x->connected());
 

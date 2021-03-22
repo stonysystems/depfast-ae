@@ -44,6 +44,11 @@ void Future::timed_wait(double sec) {
     if (ret == ETIMEDOUT) {
       timed_out_ = true;
     } else {
+			if (ret != 0) {
+				for (int i = 0; i < 1000; i++) {
+					Log_info("verify 2 failed");
+				}
+			}
       verify(ret == 0);
     }
   }
@@ -98,7 +103,6 @@ void Client::invalidate_pending_futures() {
 }
 
 void Client::close() {
-  //Log_info("CLOSING");
   if (status_ == CONNECTED) {
     pollmgr_->remove(shared_from_this());
     ::close(sock_);
@@ -108,6 +112,11 @@ void Client::close() {
 }
 
 int Client::connect(const char* addr, bool client) {
+	if (status_ == CONNECTED) {
+		for (int i = 0; i < 1000; i++) {
+			Log_info("verify 3 failed");
+		}
+	}
   verify(status_ != CONNECTED);
   string addr_str(addr);
   size_t idx = addr_str.find(":");
@@ -186,6 +195,7 @@ int Client::connect(const char* addr, bool client) {
 }
 
 void Client::handle_error() {
+  for (int i = 0; i < 10000; i++) Log_info("CLOSING");
   close();
 }
 
@@ -270,7 +280,12 @@ iters = 5;
     if (n_peek == sizeof(i32)
         && in_.content_size() >= packet_size + sizeof(i32)) {
 			
-			verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+			if (in_.read(&packet_size, sizeof(i32)) != sizeof(i32)) {
+				for (int i = 0; i < 1000; i++) {
+					Log_info("verify 4 failed");
+				}
+			}
+			//verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
 			
       v64 v_reply_xid;
       v32 v_error_code;
@@ -282,7 +297,13 @@ iters = 5;
         it = pending_fu_.find(v_reply_xid.get());
       if(it != pending_fu_.end()){
         Future* fu = it->second;
-        verify(fu->xid_ == v_reply_xid.get());
+				if (fu->xid_ != v_reply_xid.get()) {
+					for (int i = 0; i < 1000; i++) {
+						Log_info("verify 5 failed");
+					}
+				}
+
+        //verify(fu->xid_ == v_reply_xid.get());
 
 				
 				struct timespec end;
@@ -484,7 +505,7 @@ void Client::end_request() {
 			// 1 second has passed
 			if (time > 1000) {
 				double rate = count/(double)time;
-				Log_info("Warning rate is: %f %d %d", rate, count, time);
+				Log_info("Warning rate is: %f %d %d %x", rate, count, time, rpc_id_);
 				if (rate >= 0.005) {
 					Log_info("Warning2: dependency not found");
 				}
@@ -514,6 +535,11 @@ ClientPool::ClientPool(PollMgr* pollmgr /* =? */,
                        int parallel_connections /* =? */)
     : parallel_connections_(parallel_connections) {
 
+	if (parallel_connections <= 0) {
+		for (int i = 0; i < 1000; i++) {
+			Log_info("verify 1 failed");
+		}
+	}
   verify(parallel_connections_ > 0);
   if (pollmgr == nullptr) {
     pollmgr_ = new PollMgr;

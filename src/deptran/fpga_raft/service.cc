@@ -60,12 +60,13 @@ void FpgaRaftServiceImpl::AppendEntries2(const uint64_t& slot,
                                         const uint64_t& leaderPrevLogTerm,
                                         const uint64_t& leaderCommitIndex,
 																				const DepId& dep_id,
-                                        //const MarshallDeputy& md_cmd,
+                                        const MarshallDeputy& md_cmd,
                                         uint64_t *followerAppendOK,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
 	verify(sched_ != nullptr);
+	//for (int i = 0; i < 1000; i++) Log_info("retry received");
 	*followerAppendOK = 1;
 	defer->reply();
 
@@ -86,18 +87,19 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
   verify(sched_ != nullptr);
 	//Log_info("CreateRunning2");
 	
-	/*if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
+	if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
 		*followerAppendOK = 1;
 		*followerCurrentTerm = leaderCurrentTerm;
 		*followerLastLogIndex = sched_->lastLogIndex + 1;
-		for (int i = 0; i < 1000000; i++) {
+		/*for (int i = 0; i < 1000000; i++) {
 			for (int j = 0; j < 1000; j++) {
 				Log_info("wow: %d %d", leaderPrevLogIndex, sched_->lastLogIndex);
 			}
-		}
+		}*/
+		for (int i = 0; i < 1000; i++) Log_info("processing early");
 		defer->reply();
 		return;
-	}*/
+	}
 
   Coroutine::CreateRun([&] () {
     sched_->OnAppendEntries(slot,

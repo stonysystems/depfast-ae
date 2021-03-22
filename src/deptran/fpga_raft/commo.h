@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../communicator.h"
+#include "../classic/tpc_command.h"
 
 namespace janus {
 

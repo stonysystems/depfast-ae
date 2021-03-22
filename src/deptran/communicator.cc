@@ -324,7 +324,13 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
           uint64_t coro_id = 0;
 	  			double cpu = 0.0;
 	  			double net = 0.0;
-          fu->get_reply() >> ret >> outputs >> coro_id;
+          //fu->get_reply() >> ret >> outputs >> coro_id;
+					if (!fu) {
+						for(int i = 0; i < 10000; i++) Log_info("future not found");
+					}
+					fu->get_reply() >> ret;
+					fu->get_reply() >> outputs;
+					fu->get_reply() >> coro_id;
 
           e->n_voted_yes_++;
           if(phase != coo->phase_){
@@ -436,6 +442,10 @@ Communicator::SendPrepare(Coordinator* coo,
       int32_t res;
 			bool_t slow;
       uint64_t coro_id = 0;
+			if (!fu) {
+				for(int i = 0; i < 10000; i++) Log_info("future not found");
+			}
+			verify(fu);
       fu->get_reply() >> res >> slow >>coro_id;
 			
 			this->slow = slow;
@@ -542,6 +552,10 @@ Communicator::SendCommit(Coordinator* coo,
 			bool_t slow;
       uint64_t coro_id = 0;
 			Profiling profile;
+			if (!fu) {
+				for(int i = 0; i < 10000; i++) Log_info("future not found");
+			}
+			verify(fu);
       fu->get_reply() >> res >> slow >> coro_id >> profile;
 			this->slow = slow;
 			if(profile.cpu_util >= 0.0){
@@ -653,6 +667,9 @@ Communicator::SendAbort(Coordinator* coo,
 			bool_t slow;
       uint64_t coro_id = 0;
 			Profiling profile;
+			if (!fu) {
+				for(int i = 0; i < 10000; i++) Log_info("future not found");
+			}
       fu->get_reply() >> res >> slow >> coro_id >> profile;
 			this->slow = slow;
 

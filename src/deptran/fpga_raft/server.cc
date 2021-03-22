@@ -45,7 +45,7 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 
 	FpgaRaftServer::looping = true;
 	while(FpgaRaftServer::looping) {
-		usleep(1000*1000);
+		usleep(100*1000);
 		uint64_t prevLogIndex = hb_loop_args->sch->lastLogIndex;
 
 		auto instance = hb_loop_args->sch->GetFpgaRaftInstance(prevLogIndex);
@@ -53,21 +53,21 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 		auto prevTerm = instance->prevTerm;
 		auto ballot = instance->ballot;
 		auto slot = instance->slot_id;
-		auto cmd = instance->log_;
+		shared_ptr<Marshallable> cmd = instance->log_;
 
 		parid_t partition_id = hb_loop_args->sch->partition_id_;
 		hb_loop_args->commo->BroadcastHeartbeat(partition_id, prevLogIndex);
 
 		auto matcheds = hb_loop_args->commo->matchedIndex;
 		for (auto it = matcheds.begin(); it != matcheds.end(); it++) {
-			if (prevLogIndex > it->second + 10000) {
+			if (prevLogIndex > it->second + 10000 && cmd) {
 				Log_info("leader_id: %d vs follower_id for %d: %d", prevLogIndex, it->first, it->second);
 				//hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
 				//hb_loop_args->commo->SendHeartbeat(partition_id, it->first, prevLogIndex);
 				hb_loop_args->commo->SendAppendEntriesAgain(it->first,
 																				partition_id,
                                         slot,
-                                        1000000000,
+                                        ballot,
                                         hb_loop_args->sch->IsLeader(),
                                         term,
                                         prevLogIndex,

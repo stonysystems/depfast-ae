@@ -49,7 +49,7 @@ class FpgaRaftServiceImpl : public FpgaRaftService {
                                         const uint64_t& leaderPrevLogTerm,
                                         const uint64_t& leaderCommitIndex,
 																				const DepId& dep_id,
-                                        //const MarshallDeputy& md_cmd,
+                                        const MarshallDeputy& md_cmd,
                                         uint64_t *followerAppendOK,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
