@@ -98,12 +98,16 @@ void CoordinatorClassic::GotoNextPhase() {
   //Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (current_phase) {
     case Phase::INIT_END:
+			if (n_retry_ > 0) Log_info("dispatching after restart");
       //Log_info("Dispatching for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::DISPATCH);
-			while(commo()->paused){
+
+			/*while(commo()->paused){
 				if(first){
+					commo()->count_lock_.lock();
 					commo()->total_++;
 					commo()->qe->n_voted_yes_++;
+					commo()->count_lock_.unlock();
 					Log_info("is it ready: %d", commo()->qe->IsReady());
 					commo()->qe->Test();
 					first = false;
@@ -111,7 +115,7 @@ void CoordinatorClassic::GotoNextPhase() {
 				Log_info("total: %d", commo()->total_);
 				auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
 				t->Wait(0.1*1000*1000);
-			}
+			}*/
 			DispatchAsync(true);
       break;
       //break;
@@ -121,12 +125,15 @@ void CoordinatorClassic::GotoNextPhase() {
       verify(!committed_);
 
       if (!aborted_) {
+				phase_++;
         Prepare();
       } else {
         phase_++;
+        Log_info("Aborting for some reason: %d", n_retry_);
         EarlyAbort();
+				break;
       }
-      break;
+      //break;
     case Phase::PREPARE:
       //Log_info("Committing for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::COMMIT);
@@ -142,7 +149,7 @@ void CoordinatorClassic::GotoNextPhase() {
         End();
       }
       else if (aborted_) {
-        //Log_info("Restarting for some reason: %d", n_retry_);
+        Log_info("Restarting for some reason: %d", n_retry_);
         //phase_++;
         Restart();
       } else
@@ -188,7 +195,7 @@ void CoordinatorClassic::Restart() {
       ccsi_->txn_give_up_one(this->thread_id_, txn->type_);
     End();
   } else {
-    //Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
+    Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
     Reset();
     txn->Reset();
     //could be a problem or maybe not???
@@ -202,7 +209,7 @@ void CoordinatorClassic::DispatchAsync() {
 
   int cnt = 0;
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
-  n_pd = 100;
+  n_pd = 1;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par){
@@ -305,9 +312,8 @@ void CoordinatorClassic::Prepare() {
     sids.push_back(site);
   }
 
-  //Log_info("send prepare tid: %ld; partition_id %d",
-            //cmd_->id_,
-            //partition_id);
+  Log_info("send prepare tid: %ld",
+            cmd_->id_);
   auto phase = phase_;
   
   /*commo()->SendPrepare(partition_id,
@@ -324,6 +330,8 @@ void CoordinatorClassic::Prepare() {
 
 	quorum_event->Wait();
 	//Log_info("slow inside Prepare is: %d", commo()->slow);
+  Log_info("DONE send prepare tid: %ld",
+            cmd_->id_);
   quorum_event->log();
 	
   if(!aborted_){
@@ -428,7 +436,12 @@ void CoordinatorClassic::Commit() {
     tx_data().reply_.res_ = SUCCESS;
     auto quorum_event = commo()->SendCommit(this,
                                             tx_data().id_);
+		
+		Log_info("send commit tid: %ld",
+            cmd_->id_);
 		quorum_event->Wait();
+		Log_info("DONE send commit tid: %ld",
+            cmd_->id_);
     quorum_event->log();
 		
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
@@ -450,7 +463,11 @@ void CoordinatorClassic::Commit() {
     tx_data().reply_.res_ = REJECT;
     auto quorum_event = commo()->SendAbort(this,
                                            tx_data().id_);
+		Log_info("send abort tid: %ld",
+            cmd_->id_);
     quorum_event->Wait();
+		Log_info("DONE send abort tid: %ld",
+            cmd_->id_);
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
@@ -484,15 +501,18 @@ void CoordinatorClassic::Commit() {
 		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;*/
 		if(commo()->slow || prep_slow){
 			commo()->low_util = 0;
-			Log_info("Reelection started");
-			commo()->paused = true;
-
+			Log_info("Reelection started: %d/%d", commo()->total_, concurrent-1);
 			commo()->qe = Reactor::CreateSpEvent<QuorumEvent>(concurrent-1, concurrent-1);
+
+			commo()->count_lock_.lock();
+			commo()->paused = true;
 			commo()->qe->n_voted_yes_ = commo()->total_;
+			commo()->count_lock_.unlock();
+			
 			commo()->qe->Wait();
 			commo()->qe = NULL;
 
-			Log_info("Reelection: done waiting for commits");
+			for (int i = 0; i < 100; i++) Log_info("Reelection: done waiting for commits");
 			sp_quorum_event = commo()->SendReelect();
 			sp_quorum_event->Wait();
 			commo()->paused = false;

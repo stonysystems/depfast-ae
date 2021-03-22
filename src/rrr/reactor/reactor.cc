@@ -237,12 +237,13 @@ void Reactor::DiskLoop(){
 		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0777);
 		::fsync(fd);
 		::close(fd);
+		Log_info("reaching here");
 	}
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	if (total_written > 0) {
 		long disk_time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-		//Log_info("time of fsync: %d", disk_time);
-		//Log_info("total written: %d", total_written);
+		Log_info("time of fsync: %d", disk_time);
+		Log_info("total written: %d", total_written);
 
 		long total_time = 0;
 		long avg_time = 0;
@@ -266,7 +267,7 @@ void Reactor::DiskLoop(){
 		}
 
 		if (avg_time > 7500000) {
-			//Reactor::GetReactor()->slow_ = true;
+			Reactor::GetReactor()->slow_ = true;
 		}
 	}
 

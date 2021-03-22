@@ -115,6 +115,7 @@ class Communicator {
   bool broadcasting_to_leaders_only_{true};
   bool follower_forwarding{false};
 	std::mutex lock_;
+	std::mutex count_lock_;
 	std::condition_variable cv_;
 	bool waiting = false;
 

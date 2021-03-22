@@ -26,6 +26,7 @@ class ClientWorker {
   bool batch_start;
   uint32_t id;
   uint32_t duration;
+	int outbound;
   ClientControlServiceImpl *ccsi{nullptr};
   int32_t n_concurrent_;
   map<cooid_t, bool> n_pause_concurrent_{};

@@ -43,7 +43,7 @@ ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
 
 void ClassicServiceImpl::ReElect(bool_t* success,
 																 rrr::DeferredReply* defer) {
-	//for(int i = 0; i < 100; i++) Log_info("loop loop loop");
+	for(int i = 0; i < 100000; i++) Log_info("loop loop loop");
 	*success = dtxn_sched()->RequestVote();
 	defer->reply();
 }

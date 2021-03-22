@@ -221,7 +221,7 @@ void ClientWorker::Work() {
     poll_mgr_->add(sp_job);
   }
   for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
-    auto sp_job = std::make_shared<OneTimeJob>([this] () {
+    auto sp_job = std::make_shared<OneTimeJob>([this, n_tx] () {
       // this wait tries to avoid launching clients all at once, especially for open-loop clients.
       Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
       auto beg_time = Time::now() ;
@@ -250,15 +250,37 @@ void ClientWorker::Work() {
         verify(!coo->sp_ev_done_);
         coo->sp_ev_commit_ = Reactor::CreateSpEvent<IntEvent>();
         coo->sp_ev_done_ = Reactor::CreateSpEvent<IntEvent>();
-        this->DispatchRequest(coo);
+
+				Log_info("Dispatching request for %d", n_tx);
+				this->outbound++;
+				
+				bool first = true;
+				while(coo->commo_->paused){
+					if(first){
+						coo->commo_->count_lock_.lock();
+						coo->commo_->total_ = this->outbound;
+						coo->commo_->qe->n_voted_yes_ = this->outbound;
+						coo->commo_->count_lock_.unlock();
+						Log_info("is it ready: %d", coo->commo_->qe->IsReady());
+						coo->commo_->qe->Test();
+						first = false;
+					}
+					Log_info("total: %d", coo->commo_->total_);
+					auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
+					t->Wait(0.1*1000*1000);
+				}
+        
+				this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
           ev->Wait(600*1000*1000);
+					this->outbound--;
           verify(ev->status_ != Event::TIMEOUT);
         } else {
           auto sp_event = Reactor::CreateSpEvent<NeverEvent>();
           sp_event->Wait(pow(10, 6));
         }
+				Log_info("DONE Dispatching request for %d", n_tx);
         Coroutine::CreateRun([this, coo](){
           verify(coo->_inuse_);
           auto ev = coo->sp_ev_done_;
@@ -522,6 +544,7 @@ void ClientWorker::DispatchRequest(Coordinator* coo) {
       coo->sp_ev_done_->Set(1);
       delete req;
     };
+		coo->concurrent = n_concurrent_;
     coo->DoTxAsync(*req);
   };
   task();

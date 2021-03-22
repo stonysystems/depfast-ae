@@ -227,7 +227,7 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 					this->SetNewLeaderProxy(0, id);
 				}
 			};
-		//Log_info("sending reelect");
+		for (int i = 0; i < 1000; i++) Log_info("sending reelect");
 		auto f = pair.second->async_ReElect(fuattr);
 		Future::safe_release(f);
 	}
@@ -332,6 +332,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			}
           else{
             if(ret == REJECT){
+							Log_info("REJECT in dispatch");
               coo->aborted_ = true;
               txn->commit_.store(false);
             }
@@ -446,6 +447,7 @@ Communicator::SendPrepare(Coordinator* coo,
       }
 
       if(res == REJECT){
+				Log_info("REJECT in prepare");
         cmd->commit_.store(false);
         coo->aborted_ = true;
       }

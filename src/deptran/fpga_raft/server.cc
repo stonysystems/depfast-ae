@@ -185,7 +185,7 @@ void FpgaRaftServer::OnVote2FPGA(const slotid_t& lst_log_idx,
 
 
 bool FpgaRaftServer::RequestVote() {
-  //for(int i = 0; i < 100; i++) Log_info("not calling the wrong method");
+  for(int i = 0; i < 1000; i++) Log_info("not calling the wrong method");
 
   // currently don't request vote if no log
   if(this->commo_ == NULL || lastLogIndex == 0 ) return false;
@@ -438,9 +438,9 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
 
-				if (rand() % 1000 == 0) {
+				/*if (rand() % 1000 == 0) {
 					usleep(15*1000);
-				}
+				}*/
 
         cb();
     }

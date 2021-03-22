@@ -140,7 +140,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
 		}
 
-		//Log_info("slow?: %d", slow_);
+		Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);

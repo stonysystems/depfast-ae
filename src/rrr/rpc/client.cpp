@@ -199,6 +199,13 @@ void Client::handle_write() {
     return;
   }
 
+
+	if (rpc_id_ == 0x1f003eb4) {
+		for(int i = 0; i < 1000; i++) {
+			Log_info("sending reelect in client");
+		}
+	}
+
   out_l_.lock();
   out_.write_to_fd(sock_);
 	
