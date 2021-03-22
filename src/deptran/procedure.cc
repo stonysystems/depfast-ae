@@ -112,12 +112,23 @@ Marshal& operator >> (Marshal& m, TxReply& reply) {
   return m;
 }
 
-set<parid_t> TxData::GetPartitionIds() {
+set<parid_t>& TxData::GetPartitionIds() {
   return partition_ids_;
 }
 
 bool TxData::IsOneRound() {
   return false;
+}
+
+vector<TxPieceData> TxData::GetCmdsByPartitionAndRank(parid_t par_id, rank_t rank) {
+  vector<TxPieceData> cmds;
+  for (auto& pair: map_piece_data_) {
+    auto d = pair.second;
+    if (d->partition_id_ == par_id && d->rank_ == rank) {
+      cmds.push_back(*d);
+    }
+  }
+  return cmds;
 }
 
 vector<TxPieceData> TxData::GetCmdsByPartition(parid_t par_id) {
@@ -246,12 +257,14 @@ bool TxData::HasMoreUnsentPiece() {
   verify(n_pieces_all_ >= n_pieces_dispatchable_);
   verify(n_pieces_dispatchable_ >= n_pieces_dispatched_);
   verify(n_pieces_dispatched_ >= n_pieces_dispatch_acked_);
+  //Log_info("dispatch record: %d, %d", n_pieces_dispatchable_, n_pieces_dispatched_);
   if (n_pieces_dispatchable_ == n_pieces_dispatched_) {
     verify(n_pieces_all_ == n_pieces_dispatched_ ||
            n_pieces_dispatch_acked_ < n_pieces_dispatched_);
     return false;
   } else {
     verify(n_pieces_dispatchable_ > n_pieces_dispatched_);
+    //Log_info("dispatch record 2: %d, %d", n_pieces_dispatchable_, n_pieces_dispatched_);
     return true;
   }
 }

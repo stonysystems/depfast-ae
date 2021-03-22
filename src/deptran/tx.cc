@@ -131,6 +131,7 @@ mdb::Row* Tx::CreateRow(const mdb::Schema *schema,
       break;
     case MODE_OCC:
     case MODE_NONE:
+    case MODE_NOTX:
     default:
       r = mdb::VersionedRow::create(schema, row_data);
       break;

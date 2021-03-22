@@ -73,5 +73,4 @@ inline uint64_t inthash64(uint64_t key1, uint64_t key2) {
     uint64_t arr[] = {key1, key2};
     return inthash64(arr, 2);
 }
-
 } // namespace mdb

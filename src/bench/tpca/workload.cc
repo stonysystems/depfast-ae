@@ -178,13 +178,14 @@ void TpcaWorkload::RegisterPrecedures() {
 
          r = tx.Query(tx.GetTable(TPCA_CUSTOMER), mb, TPCA_ROW_1);
 //         tx.ReadColumn(r, 1, &buf, TXN_IMMEDIATE); // TODO test for janus and troad
-         tx.ReadColumn(r, 1, &buf, TXN_BYPASS); // TODO test for janus and troad
+         tx.ReadColumn(r, 1, &buf, RANK_I); // TODO test for janus and troad
          output[TPCA_VAR_OX] = buf;
 
          int n = tx.tid_; // making this non-commutative in order to test isolation
 //         buf.set_i32(buf.get_i32() + 1/*input[1].get_i32()*/);
          buf.set_i32(n/*input[1].get_i32()*/);
-         tx.WriteColumn(r, 1, buf, TXN_DEFERRED);
+         // TODO: yidawu commentted
+         //         tx.WriteColumn(r, 1, buf, RANK_I);
          *res = SUCCESS;
        }
   );
@@ -206,6 +207,7 @@ void TpcaWorkload::RegisterPrecedures() {
          tx.ReadColumn(r, 1, buf.get(), TXN_BYPASS);
          output[TPCA_VAR_OY] = *buf;
          buf->set_i32(buf->get_i32() + 1/*input[1].get_i32()*/);
+         // TODO: yidawu commentted
          tx.WriteColumn(r, 1, *buf, TXN_DEFERRED);
          *res = SUCCESS;
        }
@@ -230,7 +232,8 @@ void TpcaWorkload::RegisterPrecedures() {
          tx.ReadColumn(r, 1, &buf, TXN_BYPASS);
          output[TPCA_VAR_OZ] = buf;
          buf.set_i32(buf.get_i32() + 1/*input[1].get_i32()*/);
-         tx.WriteColumn(r, 1, buf, TXN_DEFERRED);
+         // TODO: yidawu commentted
+         //         tx.WriteColumn(r, 1, buf, TXN_DEFERRED);
          *res = SUCCESS;
        }
   );

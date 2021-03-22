@@ -27,15 +27,30 @@ enum ForwardRequestState { NONE=0, PROCESS_FORWARD_REQUEST, FORWARD_TO_LEADER };
 
 class Coordinator {
  public:
+  static std::mutex _dbg_txid_lock_;
+  static std::unordered_set<txid_t> _dbg_txid_set_;
+  bool _inuse_{false};
   uint32_t n_start_ = 0;
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
+  uint32_t offset_;
+  uint32_t cli_id_;
+  uint32_t coro_id_;
+	i64 dep_id_ = -1;
+	int concurrent;
+  std::vector<int> ids_;
   parid_t par_id_ = -1;
+  std::shared_ptr<SingleRPCEvent> rpc_event;
+  vector<std::pair<parid_t, std::shared_ptr<QuorumEvent>>> sp_quorum_events{};
+  std::shared_ptr<QuorumEvent> sp_quorum_event;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;
   uint32_t thread_id_;
   bool batch_optimal_ = false;
+	bool slow_ = false;
   bool retry_wait_;
+  shared_ptr<IntEvent> sp_ev_commit_{};
+  shared_ptr<IntEvent> sp_ev_done_{};
 
   std::atomic<uint64_t> next_pie_id_;
   std::atomic<uint64_t> next_txn_id_;
@@ -58,8 +73,10 @@ class Coordinator {
   uint32_t n_retry_ = 0;
   // below should be reset on retry.
   bool committed_ = false;
+  bool commit_reported_ = false;
   bool validation_result_{true};
   bool aborted_ = false;
+	bool repeat_ = false;
   uint32_t n_dispatch_ = 0;
   uint32_t n_dispatch_ack_ = 0;
   uint32_t n_prepare_req_ = 0;
@@ -123,10 +140,20 @@ class Coordinator {
 
   /** thread unsafe */
   uint64_t next_txn_id() {
-    return this->next_txn_id_++;
+    auto ret = next_txn_id_++;
+#ifdef DEBUG_CHECK
+    _dbg_txid_lock_.lock();
+    verify(_dbg_txid_set_.count(ret) == 0);
+    _dbg_txid_set_.insert(ret);
+    _dbg_txid_lock_.unlock();
+#endif
+    return ret;
   }
 
   virtual void DoTxAsync(TxRequest &) = 0;
+  virtual void SetNewLeader(parid_t, volatile locid_t*) { verify(0); };
+  virtual void SendFailOverTrig(parid_t, locid_t, bool) { verify(0); };
+
   virtual void Submit(shared_ptr<Marshallable>& cmd,
                       const std::function<void()>& commit_callback = [](){},
                       const std::function<void()>& exe_callback = [](){}) {
@@ -134,6 +161,7 @@ class Coordinator {
   }
   virtual void Reset() {
     committed_ = false;
+    commit_reported_ = false;
     aborted_ = false;
     n_dispatch_ = 0;
     n_dispatch_ack_ = 0;

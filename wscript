@@ -24,9 +24,13 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-p', '--enable-profiling', dest='prof',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-event-timeout', dest='event_timeout',
+                   default=False, action='store_true')
     opt.add_option('-d', '--debug', dest='debug',
                    default=False, action='store_true')
     opt.add_option('-M', '--enable-tcmalloc', dest='tcmalloc',
+                   default=False, action='store_true')
+    opt.add_option('-J', '--enable-jemalloc', dest='jemalloc',
                    default=False, action='store_true')
     opt.add_option('-s', '--enable-rpc-statistics', dest='rpc_s',
                    default=False, action='store_true')
@@ -58,9 +62,11 @@ def configure(conf):
     conf.load("boost")
 
     _enable_tcmalloc(conf)
+    _enable_jemalloc(conf)
     _enable_cxx14(conf)
     _enable_debug(conf)
     _enable_profile(conf)
+    _enable_event_timeout(conf)
     _enable_ipc(conf)
     _enable_rpc_s(conf)
     _enable_piece_count(conf)
@@ -244,6 +250,13 @@ def _enable_tcmalloc(conf):
         conf.env.append_value("LINKFLAGS", "-ltcmalloc")
         conf.env.append_value("LINKFLAGS", "-Wl,--as-needed")
 
+def _enable_jemalloc(conf):
+    if Options.options.jemalloc:
+        Logs.pprint("PINK", "jemalloc enabled")
+        conf.env.append_value("LINKFLAGS", "-Wl,--no-as-needed")
+        conf.env.append_value("LINKFLAGS", "-ljemalloc")
+        conf.env.append_value("LINKFLAGS", "-Wl,--as-needed")
+
 def _enable_simulate_wan(conf):
     if Options.options.simulate_wan:
         Logs.pprint("PINK", "simulate wan")
@@ -270,6 +283,11 @@ def _enable_profile(conf):
         Logs.pprint("PINK", "CPU profiling enabled")
         conf.env.append_value("CXXFLAGS", "-DCPU_PROFILE")
         conf.env.LIB_PROFILER = 'profiler'
+
+def _enable_event_timeout(conf):
+    if Options.options.event_timeout:
+        Logs.pprint("PINK", "event timeout enabled")
+        conf.env.append_value("CXXFLAGS", "-DEVENT_TIMEOUT_CHECK")
 
 def _enable_ipc(conf):
     if Options.options.ipc:

@@ -5,7 +5,7 @@ namespace janus {
 
 #define ballot_t int64_t
 #define cooid_t uint32_t
-#define rank_t uint8_t
+#define rank_t int32_t
 #define txid_t uint64_t
 #define txnid_t uint64_t
 #define cmdid_t uint64_t // txnid and cmdid are the same thing
@@ -23,6 +23,7 @@ namespace janus {
 #define txntype_t uint32_t
 #define cmdtype_t uint32_t
 #define groupid_t uint32_t
+#define bool_t int8_t
 
 /** read and write type */
 #define OP_WRITE   (0x01)
@@ -42,7 +43,8 @@ namespace janus {
 #define TXN_PAC (0x02)  // pre-accepted
 #define TXN_ACC (0x04)  // accepted
 #define TXN_CMT (0x08)  // committing
-#define TXN_DCD (0x10)  // decided
+#define TXN_ALL_PREDECESORS_COMMITING (0x10)
+#define TXN_DCD (0x20)  // decided
 #define TXN_FNS (0x20)  // finished
 #define TXN_ABT (0x40)  // aborted
 
@@ -81,7 +83,8 @@ namespace janus {
 #define MODE_MDCC   (0x12)
 #define MODE_TROAD    (0x03)
 #define MODE_EXTERNC   (0x14)
-#define MODE_RPC_NULL   (64)
+#define MODE_RPC_NULL   (0x800)
+#define MODE_NOTX   (0x1000)
 
     // deprecated.
 #define MODE_DEPTRAN (4)
@@ -90,6 +93,8 @@ namespace janus {
 #define MODE_EPAXOS        (0x80)
 #define MODE_TAPIR         (0x100)
 #define MODE_MENCIUS       (0x200)
+#define MODE_CAROUSEL (0x2000)
+#define MODE_FPGA_RAFT (0x400)
 #define MODE_NOT_READY     (0x00)
 
 #define OP_IR   (0x1)
