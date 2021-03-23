@@ -87,19 +87,19 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
   verify(sched_ != nullptr);
 	//Log_info("CreateRunning2");
 	
-	if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
+	/*if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
 		*followerAppendOK = 1;
 		*followerCurrentTerm = leaderCurrentTerm;
 		*followerLastLogIndex = sched_->lastLogIndex + 1;
-		/*for (int i = 0; i < 1000000; i++) {
+		for (int i = 0; i < 1000000; i++) {
 			for (int j = 0; j < 1000; j++) {
 				Log_info("wow: %d %d", leaderPrevLogIndex, sched_->lastLogIndex);
 			}
-		}*/
+		}
 		for (int i = 0; i < 1000; i++) Log_info("processing early");
 		defer->reply();
 		return;
-	}
+	}*/
 
   Coroutine::CreateRun([&] () {
     sched_->OnAppendEntries(slot,

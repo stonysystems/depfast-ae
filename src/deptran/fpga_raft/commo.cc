@@ -107,7 +107,7 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 		di.str = "dep";
 		di.id = -1;
 		
-    auto f = proxy->async_AppendEntries(slot_id,
+    auto f = proxy->async_AppendEntries2(slot_id,
                                         ballot,
                                         currentTerm,
                                         prevLogIndex,
@@ -141,7 +141,16 @@ void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
 		
 		//Log_info("heartbeat2 for log index: %d", logIndex);
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
+		
+		struct timespec begin;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
+		
     Future::safe_release(f);
+		struct timespec end;
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
+		
+		if (time > 10000000) Log_info("broadcast taking a while for %d", follower_id);	
   }
 }
 
@@ -184,14 +193,17 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		clock_gettime(CLOCK_MONOTONIC, &begin);
 
     fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
+			struct timespec begin_read, end_read;
+			clock_gettime(CLOCK_MONOTONIC, &begin_read);
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
 			
+        
 			fu->get_reply() >> accept;
       fu->get_reply() >> term;
       fu->get_reply() >> index;
-			
+    
 			struct timespec end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
 			this->outbound--;
@@ -201,6 +213,10 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 			
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index, ip);
+			
+			clock_gettime(CLOCK_MONOTONIC, &end_read);
+			long time = (end_read.tv_sec - begin_read.tv_sec)*1000000000 + end_read.tv_nsec - begin_read.tv_nsec;
+			if (time > 10000000) Log_info("time of getting reply: %ld");
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);

@@ -32,6 +32,7 @@ class Future: public RefCounted {
     bool timed_out_;
     pthread_cond_t ready_cond_;
     pthread_mutex_t ready_m_;
+		i32 rpc_id_;
 
     void notify_ready();
 

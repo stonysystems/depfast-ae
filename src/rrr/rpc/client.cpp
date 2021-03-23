@@ -71,9 +71,16 @@ void Future::notify_ready() {
   if (ready_ && attr_.callback != nullptr) {
     // Warning: make sure memory is safe!
     auto x = attr_.callback;
+		struct timespec begin_read, end_read;
+		clock_gettime(CLOCK_MONOTONIC, &begin_read);
+        
     Coroutine::CreateRun([x, this]() {
       x(this);
     });
+				
+		clock_gettime(CLOCK_MONOTONIC, &end_read);
+		long time = (end_read.tv_sec - begin_read.tv_sec)*1000000000 + end_read.tv_nsec - begin_read.tv_nsec;
+		if (time > 10000000) Log_info("time of read: %ld and %x", time, rpc_id_);
 //        attr_.callback(this);
   }
 }
@@ -203,8 +210,8 @@ void Client::handle_write() {
   //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
 	struct timespec begin2, begin2_cpu, end2, end2_cpu;
-  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
+  clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	/*clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
   if (status_ != CONNECTED) {
     return;
   }
@@ -216,6 +223,11 @@ void Client::handle_write() {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
   out_l_.unlock();
+	
+	clock_gettime(CLOCK_MONOTONIC, &end2);
+	long time = (end2.tv_sec - begin2.tv_sec)*1000000000 + end2.tv_nsec - begin2.tv_nsec;
+	Log_info("time of write: %ld", time);
+	
 	/*clock_gettime(CLOCK_MONOTONIC, &end2);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
 	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
@@ -256,6 +268,7 @@ bool Client::handle_read_two() {
 
 	struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
 	struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
+
   //return true;
   bool done = false;
 	int iters = 0;
@@ -272,7 +285,8 @@ iters = 5;
 		Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
 	}
 	
-	for(int i = 0; i < iters; i++) {
+	int i;
+	for(i = 0; i < iters; i++) {
     i32 packet_size;
 
     int n_peek = in_.peek(&packet_size, sizeof(i32));
@@ -336,14 +350,17 @@ iters = 5;
         pending_fu_.erase(it);
         pending_fu_l_.unlock();
 				
+				
 				fu->error_code_ = v_error_code.get();
         fu->reply_.read_from_marshal(in_,
 	    	                     packet_size - v_reply_xid.val_size()
 				         - v_error_code.val_size());
 				
-        
 				fu->notify_ready();
-        fu->release();
+				
+        
+				fu->release();
+				
       } else{
         pending_fu_l_.unlock();
       }
@@ -355,6 +372,9 @@ iters = 5;
 
 
   Reactor::GetReactor()->Loop();
+	
+	//Log_info("size of read: %d", i);
+
 	return done;
 }
 
@@ -471,6 +491,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   *this << v64(fu->xid_);
   *this << rpc_id;
 	rpc_id_ = rpc_id;
+	fu->rpc_id_ = rpc_id;
 
   //auto end = chrono::steady_clock::now();
   //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
