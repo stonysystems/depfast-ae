@@ -298,7 +298,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
   std::unordered_set<int> leaders{};
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
-  //Log_info("The size of cmds_by_par is %d", cmds_by_par.size());
+  Log_info("The size of cmds_by_par is %d", cmds_by_par.size());
 
   for(auto& pair: cmds_by_par){
     bool first = false;
@@ -325,9 +325,11 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			double cpu = 0.0;
 	  			double net = 0.0;
           fu->get_reply() >> ret >> outputs >> coro_id;
+					Log_info("received reply to dispatch for %" PRIx64, txn->root_id_);
 
           e->n_voted_yes_++;
           if(phase != coo->phase_){
+						verify(0);
 	    			e->Test();
 	  			}
           else{
@@ -335,6 +337,10 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 							Log_info("REJECT in dispatch");
               coo->aborted_ = true;
               txn->commit_.store(false);
+
+							e->n_voted_yes_ = e->quorum_;
+							e->Test();
+							return;
             }
             coo->n_dispatch_ack_ += outputs.size();
             for(auto& pair: outputs){
@@ -346,6 +352,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	    			CoordinatorClassic* classic_coo = (CoordinatorClassic*)coo;
 	    			//classic_coo->debug_cnt--;
             if(txn->HasMoreUnsentPiece()){
+							Log_info("received reply to dispatch2 for %" PRIx64, txn->root_id_);
               classic_coo->DispatchAsync(false);
             }
               //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);

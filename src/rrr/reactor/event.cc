@@ -6,6 +6,8 @@
 #include "reactor.h"
 #include "epoll_wrapper.h"
 
+#define EVENT_TIMEOUT_CHECK 1
+
 namespace rrr {
 using std::function;
 
@@ -47,7 +49,7 @@ void Event::Wait(uint64_t timeout) {
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
       __debug_timeout_ = true;
-      timeout = 100 * 1000 * 1000;
+      timeout = 200 * 1000 * 1000;
 //#ifdef SIMULATE_WAN
 //      timeout = 600 * 1000 * 1000;
 //#endif
@@ -78,7 +80,7 @@ void Event::Wait(uint64_t timeout) {
     sp_coro->Yield();
 #ifdef EVENT_TIMEOUT_CHECK
     if (__debug_timeout_ && status_ == TIMEOUT) {
-      //Log_info("timeout");
+      Log_info("timeout");
       verify(0);
     }
 #endif
