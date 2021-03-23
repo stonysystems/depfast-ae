@@ -150,7 +150,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2);
+  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
 	unordered_set<std::string> ip_addrs {};
@@ -217,6 +217,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   }
 
 	e->recordHistory(ip_addrs);
+	verify(!e->IsReady());
   return e;
 }
 
