@@ -217,6 +217,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   }
 
 	e->recordHistory(ip_addrs);
+	verify(!e->IsReady());
   return e;
 }
 

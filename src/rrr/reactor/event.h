@@ -18,8 +18,6 @@
 #define REPEAT (-5)
 #define REJECT (-10)
 
-#define EVENT_TIMEOUT_CHECK 1
-
 namespace rrr {
 using std::shared_ptr;
 using std::function;

@@ -290,12 +290,19 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin_marshal_cpu);*/
   //Log_info("start of %d", sp_coro->id);
 
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+
 	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
   } else {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
+	if (time > 10000000) Log_info("time of createrun: %ld and %d", time, sp_coro->status_ == Coroutine::INIT);
 
 	/*clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_marshal_cpu);
