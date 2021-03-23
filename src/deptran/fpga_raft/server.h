@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../scheduler.h"
+#include "../classic/tpc_command.h"
 
 namespace janus {
 class Command;
@@ -20,6 +21,16 @@ struct FpgaRaftData {
 
   ballot_t term;
   shared_ptr<Marshallable> log_{nullptr};
+
+	//for retries
+	ballot_t prevTerm;
+	slotid_t slot_id;
+	ballot_t ballot;
+};
+
+struct KeyValue {
+	int key;
+	i32 value;
 };
 
 class FpgaRaftServer : public TxLogServer {
@@ -43,10 +54,18 @@ class FpgaRaftServer : public TxLogServer {
   bool failover_{false} ;
   atomic<int64_t> counter_{0};
 
-  void RequestVote() ;
+	static bool looping;
+	bool heartbeat_ = true;
+	enum { STOPPED, RUNNING } status_;
+	pthread_t loop_th_;
+  
+	bool RequestVote() ;
   void RequestVote2FPGA() ;
 
-  void setIsLeader(bool isLeader)
+	void Setup();
+	static void* HeartbeatLoop(void* args) ;
+  
+	void setIsLeader(bool isLeader)
   {
     Log_debug("set loc_id %d is leader %d", loc_id_, isLeader) ;
     is_leader_ = isLeader ;
@@ -89,7 +108,7 @@ class FpgaRaftServer : public TxLogServer {
           setIsLeader(false) ;
           vote_for_ = can_id ;
           //reset timeout
-          resetTimer() ;
+          //resetTimer() ;
       }
       n_vote_++ ;
       cb() ;
@@ -115,7 +134,6 @@ class FpgaRaftServer : public TxLogServer {
   {
     return 4 + RandomGenerator::rand(0, 6) ;
   }
-
  public:
   slotid_t min_active_slot_ = 0; // anything before (lt) this slot is freed
   slotid_t max_executed_slot_ = 0;
@@ -147,13 +165,51 @@ class FpgaRaftServer : public TxLogServer {
     return fpga_is_leader_ ;
   }
   
-  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index ){
+  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index, slotid_t slot_id = -1, ballot_t ballot = 1 ){
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     *index = lastLogIndex ;
     lastLogIndex += 1;
     auto instance = GetFpgaRaftInstance(lastLogIndex);
     instance->log_ = cmd;
+		instance->prevTerm = currentTerm;
     instance->term = currentTerm;
+		instance->slot_id = slot_id;
+		instance->ballot = ballot;
+
+    if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
+      auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+      auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+			vector<struct KeyValue> kv_vector;
+			int index = 0;
+			for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+				auto cmd_input = (*it)->input.values_;
+				for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
+					struct KeyValue key_value = {it2->first, it2->second.get_i32()};
+					kv_vector.push_back(key_value);
+				}
+			}
+
+			struct KeyValue key_values[kv_vector.size()];
+			std::copy(kv_vector.begin(), kv_vector.end(), key_values);
+
+			struct KeyValue key_value_[2];
+			auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
+			
+			struct timespec begin, end;
+			//clock_gettime(CLOCK_MONOTONIC, &begin);
+      de->Wait();
+			//clock_gettime(CLOCK_MONOTONIC, &end);
+			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
+    } else {
+			int value = -1;
+			int value_;
+			auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+			struct timespec begin, end;
+			//clock_gettime(CLOCK_MONOTONIC, &begin);
+      de->Wait();
+			//clock_gettime(CLOCK_MONOTONIC, &end);
+			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
+    }
     *term = currentTerm ;
   }
   
@@ -209,6 +265,7 @@ class FpgaRaftServer : public TxLogServer {
                        const uint64_t leaderPrevLogIndex,
                        const uint64_t leaderPrevLogTerm,
                        const uint64_t leaderCommitIndex,
+											 const struct DepId dep_id,
                        shared_ptr<Marshallable> &cmd,
                        uint64_t *followerAppendOK,
                        uint64_t *followerCurrentTerm,

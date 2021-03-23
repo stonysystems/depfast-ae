@@ -1,0 +1,1209 @@
+[ 87/145] Compiling src/deptran/service.cc
+In file included from ../src/deptran/service.h:4,
+                 from ../src/deptran/service.cc:1:
+../src/deptran/rcc_rpc.h:235:32: error: ‘MarshallDeputy’ does not name a type
+     virtual void Forward(const MarshallDeputy& cmd, const uint64_t& dep_id, uint64_t* coro_id, rrr::DeferredReply* defer) = 0;
+                                ^~~~~~~~~~~~~~
+In file included from ../src/deptran/service.h:4,
+                 from ../src/deptran/service.cc:1:
+../src/deptran/rcc_rpc.h:237:99: error: ‘MarshallDeputy’ does not name a type
+     virtual void Accept(const uint64_t& slot, const uint64_t& time, const ballot_t& ballot, const MarshallDeputy& cmd, ballot_t* max_ballot, uint64_t* coro_id, rrr::DeferredReply* defer) = 0;
+                                                                                                   ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:238:77: error: ‘MarshallDeputy’ does not name a type
+     virtual void Decide(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cmd, rrr::DeferredReply* defer) = 0;
+                                                                             ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::MultiPaxosService::__Forward__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:241:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:241:25: error: ‘in_0’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:241:25: note: suggested alternative: ‘id_t’
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+                         id_t
+../src/deptran/rcc_rpc.h:241:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::MultiPaxosService::__Accept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:284:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:284:25: error: ‘in_3’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:284:25: note: suggested alternative: ‘in_2’
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+                         in_2
+../src/deptran/rcc_rpc.h:284:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::MultiPaxosService::__Decide__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:308:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_2 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:308:25: error: ‘in_2’ was not declared in this scope
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:308:25: note: suggested alternative: ‘in_1’
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                         ^~~~
+                         in_1
+../src/deptran/rcc_rpc.h:308:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: At global scope:
+../src/deptran/rcc_rpc.h:327:38: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Forward(const MarshallDeputy& cmd, const uint64_t& dep_id, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                      ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:336:28: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Forward(const MarshallDeputy& cmd, const uint64_t& dep_id, uint64_t* coro_id) {
+                            ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:370:105: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Accept(const uint64_t& slot, const uint64_t& time, const ballot_t& ballot, const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:381:95: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Accept(const uint64_t& slot, const uint64_t& time, const ballot_t& ballot, const MarshallDeputy& cmd, ballot_t* max_ballot, uint64_t* coro_id) {
+                                                                                               ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:394:83: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Decide(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                   ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:404:73: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Decide(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cmd) {
+                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:458:32: error: ‘MarshallDeputy’ does not name a type
+     virtual void Forward(const MarshallDeputy& cmd, uint64_t* cmt_idx, rrr::DeferredReply* defer) = 0;
+                                ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:461:246: error: ‘MarshallDeputy’ does not name a type
+     virtual void AppendEntries(const uint64_t& slot, const ballot_t& ballot, const uint64_t& leaderCurrentTerm, const uint64_t& leaderPrevLogIndex, const uint64_t& leaderPrevLogTerm, const uint64_t& leaderCommitIndex, const DepId& dep_id, const MarshallDeputy& cmd, uint64_t* followerAppendOK, uint64_t* followerCurrentTerm, uint64_t* followerLastLogIndex, rrr::DeferredReply* defer) = 0;
+                                                                                                                                                                                                                                                      ^~~~~~~~~~~~~~
+In file included from ../src/deptran/service.h:4,
+                 from ../src/deptran/service.cc:1:
+../src/deptran/rcc_rpc.h:462:98: error: ‘MarshallDeputy’ does not name a type
+     virtual void Decide(const uint64_t& slot, const ballot_t& ballot, const DepId& dep_id, const MarshallDeputy& cmd, rrr::DeferredReply* defer) = 0;
+                                                                                                  ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::FpgaRaftService::__Forward__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:482:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:482:25: error: ‘in_0’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:482:25: note: suggested alternative: ‘id_t’
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+                         id_t
+../src/deptran/rcc_rpc.h:482:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::FpgaRaftService::__AppendEntries__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:562:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_7 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:562:25: error: ‘in_7’ was not declared in this scope
+         MarshallDeputy* in_7 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:562:25: note: suggested alternative: ‘in_6’
+         MarshallDeputy* in_7 = new MarshallDeputy;
+                         ^~~~
+                         in_6
+../src/deptran/rcc_rpc.h:562:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_7 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::FpgaRaftService::__Decide__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:595:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:595:25: error: ‘in_3’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:595:25: note: suggested alternative: ‘in_2’
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+                         in_2
+../src/deptran/rcc_rpc.h:595:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: At global scope:
+../src/deptran/rcc_rpc.h:636:38: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Forward(const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                      ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:644:28: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Forward(const MarshallDeputy& cmd, uint64_t* cmt_idx) {
+                            ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:704:252: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_AppendEntries(const uint64_t& slot, const ballot_t& ballot, const uint64_t& leaderCurrentTerm, const uint64_t& leaderPrevLogIndex, const uint64_t& leaderPrevLogTerm, const uint64_t& leaderCommitIndex, const DepId& dep_id, const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                                                                                                                                                                            ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:719:242: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 AppendEntries(const uint64_t& slot, const ballot_t& ballot, const uint64_t& leaderCurrentTerm, const uint64_t& leaderPrevLogIndex, const uint64_t& leaderPrevLogTerm, const uint64_t& leaderCommitIndex, const DepId& dep_id, const MarshallDeputy& cmd, uint64_t* followerAppendOK, uint64_t* followerCurrentTerm, uint64_t* followerLastLogIndex) {
+                                                                                                                                                                                                                                                  ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:733:104: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Decide(const uint64_t& slot, const ballot_t& ballot, const DepId& dep_id, const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                        ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:744:94: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Decide(const uint64_t& slot, const ballot_t& ballot, const DepId& dep_id, const MarshallDeputy& cmd) {
+                                                                                              ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:973:36: error: ‘MarshallDeputy’ does not name a type
+     virtual void MsgMarshall(const MarshallDeputy& arg, MarshallDeputy* ret, rrr::DeferredReply* defer) = 0;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:973:57: error: ‘MarshallDeputy’ has not been declared
+     virtual void MsgMarshall(const MarshallDeputy& arg, MarshallDeputy* ret, rrr::DeferredReply* defer) = 0;
+                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:975:75: error: ‘MarshallDeputy’ does not name a type
+     virtual void Dispatch(const rrr::i64& tid, const DepId& dep_id, const MarshallDeputy& cmd, rrr::i32* res, TxnOutput* output, uint64_t* coro_id, rrr::DeferredReply* defer) = 0;
+                                                                           ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:984:34: error: ‘SimpleCommand’ does not name a type
+     virtual void SimpleCmd(const SimpleCommand& cmd, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                  ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:988:76: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                            ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:988:76: note: suggested alternative: ‘SimpleCmd’
+     virtual void TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                            ^~~~~~~~~~~~~
+                                                                            SimpleCmd
+../src/deptran/rcc_rpc.h:988:89: error: template argument 1 is invalid
+     virtual void TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                                         ^
+../src/deptran/rcc_rpc.h:988:89: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:990:68: error: ‘MarshallDeputy’ does not name a type
+     virtual void CarouselReadAndPrepare(const rrr::i64& tid, const MarshallDeputy& cmd, const bool_t& leader, rrr::i32* res, TxnOutput* output, rrr::DeferredReply* defer) = 0;
+                                                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:992:79: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                               ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:992:79: note: suggested alternative: ‘SimpleCmd’
+     virtual void CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                               ^~~~~~~~~~~~~
+                                                                               SimpleCmd
+../src/deptran/rcc_rpc.h:992:92: error: template argument 1 is invalid
+     virtual void CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                                            ^
+../src/deptran/rcc_rpc.h:992:92: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:994:48: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph, rrr::DeferredReply* defer) = 0;
+                                                ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:994:48: note: suggested alternative: ‘SimpleCmd’
+     virtual void RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph, rrr::DeferredReply* defer) = 0;
+                                                ^~~~~~~~~~~~~
+                                                SimpleCmd
+../src/deptran/rcc_rpc.h:994:61: error: template argument 1 is invalid
+     virtual void RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph, rrr::DeferredReply* defer) = 0;
+                                                             ^
+../src/deptran/rcc_rpc.h:994:61: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:994:103: error: ‘MarshallDeputy’ has not been declared
+     virtual void RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                       ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:995:53: error: ‘MarshallDeputy’ does not name a type
+     virtual void RccFinish(const cmdid_t& id, const MarshallDeputy& md_graph, std::map<uint32_t, std::map<int32_t, Value>>* outputs, rrr::DeferredReply* defer) = 0;
+                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:996:92: error: ‘parent_set_t’ was not declared in this scope
+     virtual void RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>*, rrr::DeferredReply* defer) = 0;
+                                                                                            ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:996:92: note: suggested alternative: ‘fpregset_t’
+     virtual void RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>*, rrr::DeferredReply* defer) = 0;
+                                                                                            ^~~~~~~~~~~~
+                                                                                            fpregset_t
+../src/deptran/rcc_rpc.h:996:104: error: template argument 2 is invalid
+     virtual void RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>*, rrr::DeferredReply* defer) = 0;
+                                                                                                        ^
+../src/deptran/rcc_rpc.h:996:104: error: template argument 4 is invalid
+../src/deptran/rcc_rpc.h:997:38: error: ‘SimpleCommand’ does not name a type
+     virtual void RccDispatchRo(const SimpleCommand& cmd, std::map<rrr::i32, Value>* output, rrr::DeferredReply* defer) = 0;
+                                      ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1000:50: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                  ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1000:50: note: suggested alternative: ‘SimpleCmd’
+     virtual void JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                  ^~~~~~~~~~~~~
+                                                  SimpleCmd
+../src/deptran/rcc_rpc.h:1000:63: error: template argument 1 is invalid
+     virtual void JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                               ^
+../src/deptran/rcc_rpc.h:1000:63: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1000:105: error: ‘MarshallDeputy’ has not been declared
+     virtual void JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1001:105: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     virtual void RccCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const parent_set_t& parents, int32_t* res, TxnOutput* output, rrr::DeferredReply* defer) = 0;
+                                                                                                         ^~~~~~~~~~~~
+                                                                                                         fpregset_t
+../src/deptran/rcc_rpc.h:1002:107: error: ‘MarshallDeputy’ does not name a type
+     virtual void JanusCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const MarshallDeputy& graph, int32_t* res, TxnOutput* output, rrr::DeferredReply* defer) = 0;
+                                                                                                           ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1004:76: error: ‘MarshallDeputy’ has not been declared
+     virtual void JanusInquire(const epoch_t& epoch, const txnid_t& txn_id, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                            ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1005:92: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x, rrr::DeferredReply* defer) = 0;
+                                                                                            ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1005:92: note: suggested alternative: ‘SimpleCmd’
+     virtual void RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x, rrr::DeferredReply* defer) = 0;
+                                                                                            ^~~~~~~~~~~~~
+                                                                                            SimpleCmd
+../src/deptran/rcc_rpc.h:1005:105: error: template argument 1 is invalid
+     virtual void RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x, rrr::DeferredReply* defer) = 0;
+                                                                                                         ^
+../src/deptran/rcc_rpc.h:1005:105: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1005:128: error: ‘parent_set_t’ has not been declared
+     virtual void RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x, rrr::DeferredReply* defer) = 0;
+                                                                                                                                ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1006:94: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                              ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1006:94: note: suggested alternative: ‘SimpleCmd’
+     virtual void JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                              ^~~~~~~~~~~~~
+                                                                                              SimpleCmd
+../src/deptran/rcc_rpc.h:1006:107: error: template argument 1 is invalid
+     virtual void JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                           ^
+../src/deptran/rcc_rpc.h:1006:107: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1006:121: error: ‘MarshallDeputy’ does not name a type
+     virtual void JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1006:159: error: ‘MarshallDeputy’ has not been declared
+     virtual void JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                                                                               ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1007:101: error: ‘SimpleCommand’ was not declared in this scope
+     virtual void JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1007:101: note: suggested alternative: ‘SimpleCmd’
+     virtual void JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                     ^~~~~~~~~~~~~
+                                                                                                     SimpleCmd
+../src/deptran/rcc_rpc.h:1007:114: error: template argument 1 is invalid
+     virtual void JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                                  ^
+../src/deptran/rcc_rpc.h:1007:114: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1007:137: error: ‘MarshallDeputy’ has not been declared
+     virtual void JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph, rrr::DeferredReply* defer) = 0;
+                                                                                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1008:103: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     virtual void RccAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const parent_set_t& p, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                                                       ^~~~~~~~~~~~
+                                                                                                       fpregset_t
+../src/deptran/rcc_rpc.h:1009:105: error: ‘MarshallDeputy’ does not name a type
+     virtual void JanusAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const MarshallDeputy& graph, rrr::i32* res, rrr::DeferredReply* defer) = 0;
+                                                                                                         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__MsgMarshall__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1029:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1029:25: error: ‘in_0’ was not declared in this scope
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1029:25: note: suggested alternative: ‘id_t’
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                         ^~~~
+                         id_t
+../src/deptran/rcc_rpc.h:1029:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_0 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1031:25: error: ‘out_0’ was not declared in this scope
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1031:25: note: suggested alternative: ‘count_t’
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                         ^~~~~
+                         count_t
+../src/deptran/rcc_rpc.h:1031:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__Dispatch__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1058:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_2 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1058:25: error: ‘in_2’ was not declared in this scope
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1058:25: note: suggested alternative: ‘in_1’
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                         ^~~~
+                         in_1
+../src/deptran/rcc_rpc.h:1058:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_2 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__SimpleCmd__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1225:9: error: ‘SimpleCommand’ was not declared in this scope
+         SimpleCommand* in_0 = new SimpleCommand;
+         ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1225:9: note: suggested alternative: ‘SimpleCmd’
+         SimpleCommand* in_0 = new SimpleCommand;
+         ^~~~~~~~~~~~~
+         SimpleCmd
+../src/deptran/rcc_rpc.h:1225:24: error: ‘in_0’ was not declared in this scope
+         SimpleCommand* in_0 = new SimpleCommand;
+                        ^~~~
+../src/deptran/rcc_rpc.h:1225:24: note: suggested alternative: ‘id_t’
+         SimpleCommand* in_0 = new SimpleCommand;
+                        ^~~~
+                        id_t
+../src/deptran/rcc_rpc.h:1225:35: error: ‘SimpleCommand’ does not name a type
+         SimpleCommand* in_0 = new SimpleCommand;
+                                   ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__TapirFastAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1280:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1280:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1280:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1280:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1280:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1280:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1280:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__CarouselReadAndPrepare__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1311:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_1 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1311:25: error: ‘in_1’ was not declared in this scope
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1311:25: note: suggested alternative: ‘in_0’
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                         ^~~~
+                         in_0
+../src/deptran/rcc_rpc.h:1311:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__CarouselFastAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1351:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1351:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1351:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1351:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1351:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_1 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1351:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1351:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccDispatch__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1380:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1380:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1380:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1380:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1380:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1380:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1380:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1384:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* out_2 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1384:25: error: ‘out_2’ was not declared in this scope
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1384:25: note: suggested alternative: ‘out_1’
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                         ^~~~~
+                         out_1
+../src/deptran/rcc_rpc.h:1384:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccFinish__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1402:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_1 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1402:25: error: ‘in_1’ was not declared in this scope
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1402:25: note: suggested alternative: ‘in_0’
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                         ^~~~
+                         in_0
+../src/deptran/rcc_rpc.h:1402:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_1 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccInquire__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1421:28: error: ‘parent_set_t’ was not declared in this scope
+         std::map<uint64_t, parent_set_t>* out_0 = new std::map<uint64_t, parent_set_t>;
+                            ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1421:28: note: suggested alternative: ‘fpregset_t’
+         std::map<uint64_t, parent_set_t>* out_0 = new std::map<uint64_t, parent_set_t>;
+                            ^~~~~~~~~~~~
+                            fpregset_t
+../src/deptran/rcc_rpc.h:1421:40: error: template argument 2 is invalid
+         std::map<uint64_t, parent_set_t>* out_0 = new std::map<uint64_t, parent_set_t>;
+                                        ^
+../src/deptran/rcc_rpc.h:1421:40: error: template argument 4 is invalid
+../src/deptran/rcc_rpc.h:1421:86: error: type/value mismatch at argument 2 in template parameter list for ‘template<class _Key, class _Tp, class _Compare, class _Alloc> class std::map’
+         std::map<uint64_t, parent_set_t>* out_0 = new std::map<uint64_t, parent_set_t>;
+                                                                                      ^
+../src/deptran/rcc_rpc.h:1421:86: note:   expected a type, got ‘parent_set_t’
+../src/deptran/rcc_rpc.h:1421:86: error: template argument 4 is invalid
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccDispatchRo__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1434:9: error: ‘SimpleCommand’ was not declared in this scope
+         SimpleCommand* in_0 = new SimpleCommand;
+         ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1434:9: note: suggested alternative: ‘SimpleCmd’
+         SimpleCommand* in_0 = new SimpleCommand;
+         ^~~~~~~~~~~~~
+         SimpleCmd
+../src/deptran/rcc_rpc.h:1434:24: error: ‘in_0’ was not declared in this scope
+         SimpleCommand* in_0 = new SimpleCommand;
+                        ^~~~
+../src/deptran/rcc_rpc.h:1434:24: note: suggested alternative: ‘id_t’
+         SimpleCommand* in_0 = new SimpleCommand;
+                        ^~~~
+                        id_t
+../src/deptran/rcc_rpc.h:1434:35: error: ‘SimpleCommand’ does not name a type
+         SimpleCommand* in_0 = new SimpleCommand;
+                                   ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusDispatch__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1482:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1482:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1482:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1482:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1482:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_0 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1482:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1482:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1486:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* out_2 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1486:25: error: ‘out_2’ was not declared in this scope
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1486:25: note: suggested alternative: ‘out_1’
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                         ^~~~~
+                         out_1
+../src/deptran/rcc_rpc.h:1486:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_2 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccCommit__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1508:9: error: ‘parent_set_t’ was not declared in this scope
+         parent_set_t* in_3 = new parent_set_t;
+         ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1508:9: note: suggested alternative: ‘fpregset_t’
+         parent_set_t* in_3 = new parent_set_t;
+         ^~~~~~~~~~~~
+         fpregset_t
+../src/deptran/rcc_rpc.h:1508:23: error: ‘in_3’ was not declared in this scope
+         parent_set_t* in_3 = new parent_set_t;
+                       ^~~~
+../src/deptran/rcc_rpc.h:1508:23: note: suggested alternative: ‘in_2’
+         parent_set_t* in_3 = new parent_set_t;
+                       ^~~~
+                       in_2
+../src/deptran/rcc_rpc.h:1508:34: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+         parent_set_t* in_3 = new parent_set_t;
+                                  ^~~~~~~~~~~~
+                                  fpregset_t
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusCommit__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1534:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1534:25: error: ‘in_3’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1534:25: note: suggested alternative: ‘in_2’
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+                         in_2
+../src/deptran/rcc_rpc.h:1534:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusInquire__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1581:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* out_0 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1581:25: error: ‘out_0’ was not declared in this scope
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1581:25: note: suggested alternative: ‘count_t’
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                         ^~~~~
+                         count_t
+../src/deptran/rcc_rpc.h:1581:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_0 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccPreAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1598:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1598:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1598:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1598:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1598:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1598:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1598:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1601:9: error: ‘parent_set_t’ was not declared in this scope
+         parent_set_t* out_1 = new parent_set_t;
+         ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1601:9: note: suggested alternative: ‘fpregset_t’
+         parent_set_t* out_1 = new parent_set_t;
+         ^~~~~~~~~~~~
+         fpregset_t
+../src/deptran/rcc_rpc.h:1601:23: error: ‘out_1’ was not declared in this scope
+         parent_set_t* out_1 = new parent_set_t;
+                       ^~~~~
+../src/deptran/rcc_rpc.h:1601:23: note: suggested alternative: ‘out_0’
+         parent_set_t* out_1 = new parent_set_t;
+                       ^~~~~
+                       out_0
+../src/deptran/rcc_rpc.h:1601:35: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+         parent_set_t* out_1 = new parent_set_t;
+                                   ^~~~~~~~~~~~
+                                   fpregset_t
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusPreAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1621:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1621:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1621:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1621:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1621:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1621:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1621:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1623:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1623:25: error: ‘in_3’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1623:25: note: suggested alternative: ‘in_2’
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+                         in_2
+../src/deptran/rcc_rpc.h:1623:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1626:25: error: ‘out_1’ was not declared in this scope
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1626:25: note: suggested alternative: ‘out_0’
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                         ^~~~~
+                         out_0
+../src/deptran/rcc_rpc.h:1626:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusPreAcceptWoGraph__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1647:21: error: ‘SimpleCommand’ was not declared in this scope
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1647:21: note: suggested alternative: ‘SimpleCmd’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                     ^~~~~~~~~~~~~
+                     SimpleCmd
+../src/deptran/rcc_rpc.h:1647:34: error: template argument 1 is invalid
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                  ^
+../src/deptran/rcc_rpc.h:1647:34: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1647:73: error: type/value mismatch at argument 1 in template parameter list for ‘template<class _Tp, class _Alloc> class std::vector’
+         std::vector<SimpleCommand>* in_2 = new std::vector<SimpleCommand>;
+                                                                         ^
+../src/deptran/rcc_rpc.h:1647:73: note:   expected a type, got ‘SimpleCommand’
+../src/deptran/rcc_rpc.h:1647:73: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:1650:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* out_1 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1650:25: error: ‘out_1’ was not declared in this scope
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                         ^~~~~
+../src/deptran/rcc_rpc.h:1650:25: note: suggested alternative: ‘out_0’
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                         ^~~~~
+                         out_0
+../src/deptran/rcc_rpc.h:1650:37: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* out_1 = new MarshallDeputy;
+                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__RccAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1672:9: error: ‘parent_set_t’ was not declared in this scope
+         parent_set_t* in_3 = new parent_set_t;
+         ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1672:9: note: suggested alternative: ‘fpregset_t’
+         parent_set_t* in_3 = new parent_set_t;
+         ^~~~~~~~~~~~
+         fpregset_t
+../src/deptran/rcc_rpc.h:1672:23: error: ‘in_3’ was not declared in this scope
+         parent_set_t* in_3 = new parent_set_t;
+                       ^~~~
+../src/deptran/rcc_rpc.h:1672:23: note: suggested alternative: ‘in_2’
+         parent_set_t* in_3 = new parent_set_t;
+                       ^~~~
+                       in_2
+../src/deptran/rcc_rpc.h:1672:34: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+         parent_set_t* in_3 = new parent_set_t;
+                                  ^~~~~~~~~~~~
+                                  fpregset_t
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClassicService::__JanusAccept__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:1695:9: error: ‘MarshallDeputy’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+         ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1695:25: error: ‘in_3’ was not declared in this scope
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+../src/deptran/rcc_rpc.h:1695:25: note: suggested alternative: ‘in_2’
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                         ^~~~
+                         in_2
+../src/deptran/rcc_rpc.h:1695:36: error: ‘MarshallDeputy’ does not name a type
+         MarshallDeputy* in_3 = new MarshallDeputy;
+                                    ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h: At global scope:
+../src/deptran/rcc_rpc.h:1792:42: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_MsgMarshall(const MarshallDeputy& arg, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                          ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1800:32: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 MsgMarshall(const MarshallDeputy& arg, MarshallDeputy* ret) {
+                                ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1800:53: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 MsgMarshall(const MarshallDeputy& arg, MarshallDeputy* ret) {
+                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1829:81: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_Dispatch(const rrr::i64& tid, const DepId& dep_id, const MarshallDeputy& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                 ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:1839:71: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 Dispatch(const rrr::i64& tid, const DepId& dep_id, const MarshallDeputy& cmd, rrr::i32* res, TxnOutput* output, uint64_t* coro_id) {
+                                                                       ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2022:40: error: ‘SimpleCommand’ does not name a type
+     rrr::Future* async_SimpleCmd(const SimpleCommand& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                        ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2030:30: error: ‘SimpleCommand’ does not name a type
+     rrr::i32 SimpleCmd(const SimpleCommand& cmd, rrr::i32* res) {
+                              ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2095:82: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                  ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2095:82: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                  ^~~~~~~~~~~~~
+                                                                                  SimpleCmd
+../src/deptran/rcc_rpc.h:2095:95: error: template argument 1 is invalid
+     rrr::Future* async_TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                               ^
+../src/deptran/rcc_rpc.h:2095:95: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2104:72: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                        ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2104:72: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                        ^~~~~~~~~~~~~
+                                                                        SimpleCmd
+../src/deptran/rcc_rpc.h:2104:85: error: template argument 1 is invalid
+     rrr::i32 TapirFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                                     ^
+../src/deptran/rcc_rpc.h:2104:85: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2134:74: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_CarouselReadAndPrepare(const rrr::i64& tid, const MarshallDeputy& cmd, const bool_t& leader, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                          ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2144:64: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 CarouselReadAndPrepare(const rrr::i64& tid, const MarshallDeputy& cmd, const bool_t& leader, rrr::i32* res, TxnOutput* output) {
+                                                                ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2176:85: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                     ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2176:85: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                     ^~~~~~~~~~~~~
+                                                                                     SimpleCmd
+../src/deptran/rcc_rpc.h:2176:98: error: template argument 1 is invalid
+     rrr::Future* async_CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                  ^
+../src/deptran/rcc_rpc.h:2176:98: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2185:75: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                           ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2185:75: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                           ^~~~~~~~~~~~~
+                                                                           SimpleCmd
+../src/deptran/rcc_rpc.h:2185:88: error: template argument 1 is invalid
+     rrr::i32 CarouselFastAccept(const uint64_t& cmd_id, const std::vector<SimpleCommand>& txn_cmds, rrr::i32* res) {
+                                                                                        ^
+../src/deptran/rcc_rpc.h:2185:88: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2215:54: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_RccDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                      ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2215:54: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_RccDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                      ^~~~~~~~~~~~~
+                                                      SimpleCmd
+../src/deptran/rcc_rpc.h:2215:67: error: template argument 1 is invalid
+     rrr::Future* async_RccDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                   ^
+../src/deptran/rcc_rpc.h:2215:67: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2223:44: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph) {
+                                            ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2223:44: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph) {
+                                            ^~~~~~~~~~~~~
+                                            SimpleCmd
+../src/deptran/rcc_rpc.h:2223:57: error: template argument 1 is invalid
+     rrr::i32 RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph) {
+                                                         ^
+../src/deptran/rcc_rpc.h:2223:57: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2223:99: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 RccDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* md_graph) {
+                                                                                                   ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2237:59: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_RccFinish(const cmdid_t& id, const MarshallDeputy& md_graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                           ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2246:49: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 RccFinish(const cmdid_t& id, const MarshallDeputy& md_graph, std::map<uint32_t, std::map<int32_t, Value>>* outputs) {
+                                                 ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2267:88: error: ‘parent_set_t’ was not declared in this scope
+     rrr::i32 RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>* out_0) {
+                                                                                        ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2267:88: note: suggested alternative: ‘fpregset_t’
+     rrr::i32 RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>* out_0) {
+                                                                                        ^~~~~~~~~~~~
+                                                                                        fpregset_t
+../src/deptran/rcc_rpc.h:2267:100: error: template argument 2 is invalid
+     rrr::i32 RccInquire(const txnid_t& txn_id, const int32_t& rank, std::map<uint64_t, parent_set_t>* out_0) {
+                                                                                                    ^
+../src/deptran/rcc_rpc.h:2267:100: error: template argument 4 is invalid
+../src/deptran/rcc_rpc.h:2279:44: error: ‘SimpleCommand’ does not name a type
+     rrr::Future* async_RccDispatchRo(const SimpleCommand& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                            ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2287:34: error: ‘SimpleCommand’ does not name a type
+     rrr::i32 RccDispatchRo(const SimpleCommand& cmd, std::map<rrr::i32, Value>* output) {
+                                  ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2339:56: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_JanusDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                        ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2339:56: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_JanusDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                        ^~~~~~~~~~~~~
+                                                        SimpleCmd
+../src/deptran/rcc_rpc.h:2339:69: error: template argument 1 is invalid
+     rrr::Future* async_JanusDispatch(const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                     ^
+../src/deptran/rcc_rpc.h:2339:69: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2347:46: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph) {
+                                              ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2347:46: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph) {
+                                              ^~~~~~~~~~~~~
+                                              SimpleCmd
+../src/deptran/rcc_rpc.h:2347:59: error: template argument 1 is invalid
+     rrr::i32 JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph) {
+                                                           ^
+../src/deptran/rcc_rpc.h:2347:59: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2347:101: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 JanusDispatch(const std::vector<SimpleCommand>& cmd, rrr::i32* res, TxnOutput* output, MarshallDeputy* ret_graph) {
+                                                                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2361:111: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     rrr::Future* async_RccCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const parent_set_t& parents, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                               ^~~~~~~~~~~~
+                                                                                                               fpregset_t
+../src/deptran/rcc_rpc.h:2372:101: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     rrr::i32 RccCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const parent_set_t& parents, int32_t* res, TxnOutput* output) {
+                                                                                                     ^~~~~~~~~~~~
+                                                                                                     fpregset_t
+../src/deptran/rcc_rpc.h:2385:113: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_JanusCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                                 ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2396:103: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 JanusCommit(const cmdid_t& id, const rank_t& rank, const int32_t& need_validation, const MarshallDeputy& graph, int32_t* res, TxnOutput* output) {
+                                                                                                       ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2441:72: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 JanusInquire(const epoch_t& epoch, const txnid_t& txn_id, MarshallDeputy* ret_graph) {
+                                                                        ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2453:98: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                  ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2453:98: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                  ^~~~~~~~~~~~~
+                                                                                                  SimpleCmd
+../src/deptran/rcc_rpc.h:2453:111: error: template argument 1 is invalid
+     rrr::Future* async_RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                               ^
+../src/deptran/rcc_rpc.h:2453:111: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2463:88: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x) {
+                                                                                        ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2463:88: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x) {
+                                                                                        ^~~~~~~~~~~~~
+                                                                                        SimpleCmd
+../src/deptran/rcc_rpc.h:2463:101: error: template argument 1 is invalid
+     rrr::i32 RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x) {
+                                                                                                     ^
+../src/deptran/rcc_rpc.h:2463:101: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2463:124: error: ‘parent_set_t’ has not been declared
+     rrr::i32 RccPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, parent_set_t* x) {
+                                                                                                                            ^~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2476:100: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                    ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2476:100: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                    ^~~~~~~~~~~~~
+                                                                                                    SimpleCmd
+../src/deptran/rcc_rpc.h:2476:113: error: template argument 1 is invalid
+     rrr::Future* async_JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                                 ^
+../src/deptran/rcc_rpc.h:2476:113: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2476:127: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                                               ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2487:90: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                          ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2487:90: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                          ^~~~~~~~~~~~~
+                                                                                          SimpleCmd
+../src/deptran/rcc_rpc.h:2487:103: error: template argument 1 is invalid
+     rrr::i32 JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                       ^
+../src/deptran/rcc_rpc.h:2487:103: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2487:117: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2487:155: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 JanusPreAccept(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const MarshallDeputy& graph, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                                                                           ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2500:107: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::Future* async_JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                           ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2500:107: note: suggested alternative: ‘SimpleCmd’
+     rrr::Future* async_JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                           ^~~~~~~~~~~~~
+                                                                                                           SimpleCmd
+../src/deptran/rcc_rpc.h:2500:120: error: template argument 1 is invalid
+     rrr::Future* async_JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                                        ^
+../src/deptran/rcc_rpc.h:2500:120: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2510:97: error: ‘SimpleCommand’ was not declared in this scope
+     rrr::i32 JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                 ^~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2510:97: note: suggested alternative: ‘SimpleCmd’
+     rrr::i32 JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                 ^~~~~~~~~~~~~
+                                                                                                 SimpleCmd
+../src/deptran/rcc_rpc.h:2510:110: error: template argument 1 is invalid
+     rrr::i32 JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                              ^
+../src/deptran/rcc_rpc.h:2510:110: error: template argument 2 is invalid
+../src/deptran/rcc_rpc.h:2510:133: error: ‘MarshallDeputy’ has not been declared
+     rrr::i32 JanusPreAcceptWoGraph(const cmdid_t& txn_id, const rank_t& rank, const std::vector<SimpleCommand>& cmd, rrr::i32* res, MarshallDeputy* ret_graph) {
+                                                                                                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2523:109: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     rrr::Future* async_RccAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const parent_set_t& p, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                             ^~~~~~~~~~~~
+                                                                                                             fpregset_t
+../src/deptran/rcc_rpc.h:2534:99: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+     rrr::i32 RccAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const parent_set_t& p, rrr::i32* res) {
+                                                                                                   ^~~~~~~~~~~~
+                                                                                                   fpregset_t
+../src/deptran/rcc_rpc.h:2546:111: error: ‘MarshallDeputy’ does not name a type
+     rrr::Future* async_JanusAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const MarshallDeputy& graph, const rrr::FutureAttr& __fu_attr__ = rrr::FutureAttr()) {
+                                                                                                               ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2557:101: error: ‘MarshallDeputy’ does not name a type
+     rrr::i32 JanusAccept(const cmdid_t& txn_id, const rrr::i32& rank, const ballot_t& ballot, const MarshallDeputy& graph, rrr::i32* res) {
+                                                                                                     ^~~~~~~~~~~~~~
+../src/deptran/rcc_rpc.h:2840:60: error: ‘TxReply’ has not been declared
+     virtual void DispatchTxn(const TxDispatchRequest& req, TxReply* result, rrr::DeferredReply* defer) = 0;
+                                                            ^~~~~~~
+../src/deptran/rcc_rpc.h: In member function ‘void janus::ClientControlService::__DispatchTxn__wrapper__(rrr::Request*, rrr::ServerConnection*)’:
+../src/deptran/rcc_rpc.h:2916:9: error: ‘TxReply’ was not declared in this scope
+         TxReply* out_0 = new TxReply;
+         ^~~~~~~
+../src/deptran/rcc_rpc.h:2916:18: error: ‘out_0’ was not declared in this scope
+         TxReply* out_0 = new TxReply;
+                  ^~~~~
+../src/deptran/rcc_rpc.h:2916:18: note: suggested alternative: ‘count_t’
+         TxReply* out_0 = new TxReply;
+                  ^~~~~
+                  count_t
+../src/deptran/rcc_rpc.h:2916:30: error: ‘TxReply’ does not name a type
+         TxReply* out_0 = new TxReply;
+                              ^~~~~~~
+../src/deptran/rcc_rpc.h: At global scope:
+../src/deptran/rcc_rpc.h:3055:56: error: ‘TxReply’ has not been declared
+     rrr::i32 DispatchTxn(const TxDispatchRequest& req, TxReply* result) {
+                                                        ^~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:48:23: error: ‘MarshallDeputy’ does not name a type
+                 const MarshallDeputy& cmd,
+                       ^~~~~~~~~~~~~~
+../src/deptran/service.h:117:56: error: ‘MarshallDeputy’ does not name a type
+   void CarouselReadAndPrepare(const i64& cmd_id, const MarshallDeputy& cmd,
+                                                        ^~~~~~~~~~~~~~
+../src/deptran/service.h:131:26: error: ‘MarshallDeputy’ does not name a type
+   void MsgMarshall(const MarshallDeputy& arg,
+                          ^~~~~~~~~~~~~~
+../src/deptran/service.h:132:20: error: ‘MarshallDeputy’ has not been declared
+                    MarshallDeputy* ret,
+                    ^~~~~~~~~~~~~~
+../src/deptran/service.h:168:20: error: ‘MarshallDeputy’ has not been declared
+                    MarshallDeputy* p_md_graph,
+                    ^~~~~~~~~~~~~~
+../src/deptran/service.h:175:21: error: ‘parent_set_t’ has not been declared
+                     parent_set_t* parents,
+                     ^~~~~~~~~~~~
+../src/deptran/service.h:181:24: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+                  const parent_set_t& parents,
+                        ^~~~~~~~~~~~
+                        fpregset_t
+../src/deptran/service.h:188:24: error: ‘parent_set_t’ does not name a type; did you mean ‘fpregset_t’?
+                  const parent_set_t& parents,
+                        ^~~~~~~~~~~~
+                        fpregset_t
+../src/deptran/service.h:194:24: error: ‘MarshallDeputy’ does not name a type
+                  const MarshallDeputy& md_graph,
+                        ^~~~~~~~~~~~~~
+../src/deptran/service.h:200:31: error: ‘parent_set_t’ was not declared in this scope
+                   map<txid_t, parent_set_t>*,
+                               ^~~~~~~~~~~~
+../src/deptran/service.h:200:31: note: suggested alternative: ‘fpregset_t’
+                   map<txid_t, parent_set_t>*,
+                               ^~~~~~~~~~~~
+                               fpregset_t
+../src/deptran/service.h:200:43: error: template argument 2 is invalid
+                   map<txid_t, parent_set_t>*,
+                                           ^
+../src/deptran/service.h:200:43: error: template argument 4 is invalid
+../src/deptran/service.h:213:22: error: ‘MarshallDeputy’ has not been declared
+                      MarshallDeputy* p_md_res_graph,
+                      ^~~~~~~~~~~~~~
+../src/deptran/service.h:219:26: error: ‘MarshallDeputy’ does not name a type
+                    const MarshallDeputy& graph,
+                          ^~~~~~~~~~~~~~
+../src/deptran/service.h:233:21: error: ‘MarshallDeputy’ has not been declared
+                     MarshallDeputy* p_md_graph,
+                     ^~~~~~~~~~~~~~
+../src/deptran/service.h:239:29: error: ‘MarshallDeputy’ does not name a type
+                       const MarshallDeputy& md_graph,
+                             ^~~~~~~~~~~~~~
+../src/deptran/service.h:241:23: error: ‘MarshallDeputy’ has not been declared
+                       MarshallDeputy* p_md_res_graph,
+                       ^~~~~~~~~~~~~~
+../src/deptran/service.h:248:30: error: ‘MarshallDeputy’ has not been declared
+                              MarshallDeputy* res_graph,
+                              ^~~~~~~~~~~~~~
+../src/deptran/service.h:254:26: error: ‘MarshallDeputy’ does not name a type
+                    const MarshallDeputy& md_graph,
+                          ^~~~~~~~~~~~~~
+../src/deptran/service.h:67:8: error: ‘void janus::ClassicServiceImpl::SimpleCmd(const janus::SimpleCommand&, rrr::i32*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void SimpleCmd (const SimpleCommand& cmd,
+        ^~~~~~~~~
+../src/deptran/service.h:109:8: error: ‘void janus::ClassicServiceImpl::TapirFastAccept(const uint64_t&, const std::vector<janus::SimpleCommand>&, rrr::i32*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void TapirFastAccept(const txid_t& cmd_id,
+        ^~~~~~~~~~~~~~~
+../src/deptran/service.h:122:8: error: ‘void janus::ClassicServiceImpl::CarouselFastAccept(const uint64_t&, const std::vector<janus::SimpleCommand>&, rrr::i32*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void CarouselFastAccept(const txid_t& cmd_id, const vector<SimpleCommand>& txn_cmds,
+        ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.h:165:8: error: ‘void janus::ClassicServiceImpl::RccDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, int*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void RccDispatch(const vector<SimpleCommand>& cmd,
+        ^~~~~~~~~~~
+../src/deptran/service.h:171:8: error: ‘void janus::ClassicServiceImpl::RccPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, int*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void RccPreAccept(const txid_t& txnid,
+        ^~~~~~~~~~~~
+../src/deptran/service.h:203:8: error: ‘void janus::ClassicServiceImpl::RccDispatchRo(const janus::SimpleCommand&, std::map<int, mdb::Value>*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void RccDispatchRo(const SimpleCommand& cmd,
+        ^~~~~~~~~~~~~
+../src/deptran/service.h:210:8: error: ‘void janus::ClassicServiceImpl::JanusDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, int*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void JanusDispatch(const vector<SimpleCommand>& cmd,
+        ^~~~~~~~~~~~~
+../src/deptran/service.h:236:8: error: ‘void janus::ClassicServiceImpl::JanusPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, const int&, int32_t*, int*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void JanusPreAccept(const txid_t& txnid,
+        ^~~~~~~~~~~~~~
+../src/deptran/service.h:244:8: error: ‘void janus::ClassicServiceImpl::JanusPreAcceptWoGraph(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, int*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void JanusPreAcceptWoGraph(const txid_t& txnid,
+        ^~~~~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:3:
+../src/deptran/benchmark_control_rpc.h:306:8: error: ‘void janus::ClientControlServiceImpl::DispatchTxn(const janus::TxDispatchRequest&, janus::TxReply*, rrr::DeferredReply*)’ marked ‘override’, but does not override
+   void DispatchTxn(const TxDispatchRequest& req, TxReply* txn_reply, rrr::DeferredReply* defer) override;
+        ^~~~~~~~~~~
+../src/deptran/service.cc:50:6: error: no declaration matches ‘void janus::ClassicServiceImpl::Dispatch(const i64&, const janus::DepId&, const janus::MarshallDeputy&, int32_t*, TxnOutput*, uint64_t*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:46:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::Dispatch(const i64&, const janus::DepId&, const int&, int32_t*, TxnOutput*, uint64_t*, rrr::DeferredReply*)’
+   void Dispatch(const i64& cmd_id,
+        ^~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:303:6: error: no declaration matches ‘void janus::ClassicServiceImpl::CarouselReadAndPrepare(const i64&, const janus::MarshallDeputy&, const int8_t&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::CarouselReadAndPrepare(const i64& cmd_id,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:117:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::CarouselReadAndPrepare(const i64&, const int&, const int8_t&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+   void CarouselReadAndPrepare(const i64& cmd_id, const MarshallDeputy& cmd,
+        ^~~~~~~~~~~~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:354:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccDispatch(const vector<SimpleCommand>& cmd,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:165:8: note: candidate is: ‘void janus::ClassicServiceImpl::RccDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, int*, rrr::DeferredReply*)’
+   void RccDispatch(const vector<SimpleCommand>& cmd,
+        ^~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:367:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccFinish(const uint64_t&, const janus::MarshallDeputy&, TxnOutput*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccFinish(const cmdid_t& cmd_id,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:193:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::RccFinish(const uint64_t&, const int&, TxnOutput*, rrr::DeferredReply*)’
+   void RccFinish(const txid_t& cmd_id,
+        ^~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:381:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccInquire(const uint64_t&, const int32_t&, std::map<long unsigned int, std::vector<std::pair<long unsigned int, janus::ParentEdge<janus::RccTx> >, std::allocator<std::pair<long unsigned int, janus::ParentEdge<janus::RccTx> > > > >*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccInquire(const txnid_t& tid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:198:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::RccInquire(const uint64_t&, const int32_t&, int*, rrr::DeferredReply*)’
+   void RccInquire(const txid_t& tid,
+        ^~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:424:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusDispatch(const vector<SimpleCommand>& cmd,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:210:8: note: candidate is: ‘void janus::ClassicServiceImpl::JanusDispatch(const std::vector<janus::SimpleCommand>&, int32_t*, TxnOutput*, int*, rrr::DeferredReply*)’
+   void JanusDispatch(const vector<SimpleCommand>& cmd,
+        ^~~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:442:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusCommit(const uint64_t&, const int32_t&, const int32_t&, const janus::MarshallDeputy&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusCommit(const cmdid_t& cmd_id,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:216:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::JanusCommit(const uint64_t&, const int32_t&, const int32_t&, const int&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+   void JanusCommit(const txid_t& cmd_id,
+        ^~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:457:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccCommit(const uint64_t&, const int32_t&, const int32_t&, const parent_set_t&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccCommit(const cmdid_t& cmd_id,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:185:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::RccCommit(const uint64_t&, const int32_t&, const int32_t&, const int&, int32_t*, TxnOutput*, rrr::DeferredReply*)’
+   void RccCommit(const txid_t& cmd_id,
+        ^~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:483:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusInquire(const uint32_t&, const uint64_t&, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusInquire(const epoch_t& epoch,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:231:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::JanusInquire(const uint32_t&, const uint64_t&, int*, rrr::DeferredReply*)’
+   void JanusInquire(const epoch_t& epoch,
+        ^~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:497:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, janus::parent_set_t*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccPreAccept(const cmdid_t& txnid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:171:8: note: candidate is: ‘void janus::ClassicServiceImpl::RccPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, int*, rrr::DeferredReply*)’
+   void RccPreAccept(const txid_t& txnid,
+        ^~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:509:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, const janus::MarshallDeputy&, int32_t*, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusPreAccept(const cmdid_t& txnid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:236:8: note: candidate is: ‘void janus::ClassicServiceImpl::JanusPreAccept(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, const int&, int32_t*, int*, rrr::DeferredReply*)’
+   void JanusPreAccept(const txid_t& txnid,
+        ^~~~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:527:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusPreAcceptWoGraph(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusPreAcceptWoGraph(const cmdid_t& txnid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:244:8: note: candidate is: ‘void janus::ClassicServiceImpl::JanusPreAcceptWoGraph(const uint64_t&, const int32_t&, const std::vector<janus::SimpleCommand>&, int32_t*, int*, rrr::DeferredReply*)’
+   void JanusPreAcceptWoGraph(const txid_t& txnid,
+        ^~~~~~~~~~~~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:541:6: error: no declaration matches ‘void janus::ClassicServiceImpl::RccAccept(const uint64_t&, const int32_t&, const int64_t&, const parent_set_t&, int32_t*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::RccAccept(const cmdid_t& txnid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:178:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::RccAccept(const uint64_t&, const int32_t&, const int64_t&, const int&, int32_t*, rrr::DeferredReply*)’
+   void RccAccept(const txid_t& txnid,
+        ^~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:552:6: error: no declaration matches ‘void janus::ClassicServiceImpl::JanusAccept(const uint64_t&, const int32_t&, const int64_t&, const janus::MarshallDeputy&, int32_t*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::JanusAccept(const cmdid_t& txnid,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:251:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::JanusAccept(const uint64_t&, const int32_t&, const int64_t&, const int&, int32_t*, rrr::DeferredReply*)’
+   void JanusAccept(const txid_t& txnid,
+        ^~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
+       ^~~~~~~~~~~~~~~~~~
+../src/deptran/service.cc:627:6: error: no declaration matches ‘void janus::ClassicServiceImpl::MsgMarshall(const janus::MarshallDeputy&, janus::MarshallDeputy*, rrr::DeferredReply*)’
+ void ClassicServiceImpl::MsgMarshall(const MarshallDeputy& arg,
+      ^~~~~~~~~~~~~~~~~~
+In file included from ../src/deptran/service.cc:1:
+../src/deptran/service.h:131:8: note: candidate is: ‘virtual void janus::ClassicServiceImpl::MsgMarshall(const int&, int*, rrr::DeferredReply*)’
+   void MsgMarshall(const MarshallDeputy& arg,
+        ^~~~~~~~~~~
+../src/deptran/service.h:17:7: note: ‘class janus::ClassicServiceImpl’ defined here
+ class ClassicServiceImpl : public ClassicService {
