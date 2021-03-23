@@ -180,6 +180,7 @@ void CoordinatorClassic::Restart() {
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   verify(aborted_);
   n_retry_++;
+	verify(n_retry_ < 5);
   cmd_->root_id_ = this->next_txn_id();
   cmd_->id_ = cmd_->root_id_;
   ongoing_tx_id_ = cmd_->root_id_;
@@ -211,21 +212,26 @@ void CoordinatorClassic::DispatchAsync() {
   n_pd = 100;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
-  for (auto& pair: cmds_by_par){
+  for (auto& pair: cmds_by_par) {
+    const parid_t& par_id = pair.first;
     auto& cmds = pair.second;
     n_dispatch_ += cmds.size();
+    cnt += cmds.size();
+    auto sp_vec_piece = std::make_shared<vector<shared_ptr<TxPieceData>>>();
+    for (auto c: cmds) {
+      c->id_ = next_pie_id();
+      dispatch_acks_[c->inn_id_] = false;
+      sp_vec_piece->push_back(c);
+    }
+    commo()->BroadcastDispatch(sp_vec_piece,
+                               this,
+                               std::bind(&CoordinatorClassic::DispatchAck,
+                                         this,
+                                         phase_,
+                                         std::placeholders::_1,
+                                         std::placeholders::_2));
   }
-  // need to create a vector of quorum events or a different data structure
-  // probably need a quorum event for each partition
-  sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
-  //Log_info("Waiting DispatchEvent: %x", *disp_event);
-  sp_quorum_event->Wait();
-  //quorum_event->log();
-  if(txn->HasMoreUnsentPiece()){
-    //Log_info("MORE????");
-    DispatchAsync();
-  }
-  //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+  Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
 void CoordinatorClassic::DispatchAsync(bool last) {
@@ -234,7 +240,7 @@ void CoordinatorClassic::DispatchAsync(bool last) {
 
   int cnt = 0;
   auto n_pd = Config::GetConfig()->n_parallel_dispatch_;
-  n_pd = 1;
+  n_pd = 100;
   auto cmds_by_par = txn->GetReadyPiecesData(n_pd); // TODO setting n_pd larger than 1 will cause 2pl to wait forever
   Log_debug("Dispatch for tx_id: %" PRIx64, txn->root_id_);
   for (auto& pair: cmds_by_par){
@@ -244,15 +250,25 @@ void CoordinatorClassic::DispatchAsync(bool last) {
   
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   phase_t phase = phase_;
+	
+	struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
   sp_quorum_event->Wait();
-  debug_cnt--;
+	
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
+	Log_info("time of dispatch: %ld for %" PRIx64, time, txn->root_id_);
+  
+	debug_cnt--;
 
-  if(phase != phase) return;
+  if(phase != phase) verify(0);
   /*if(txn->HasMoreUnsentPiece()){
     DispatchAsync(true);
   }*/if(last && AllDispatchAcked()){
     GotoNextPhase();
-  }
+  } else if (last && aborted_) {
+		GotoNextPhase();
+	}
   //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
@@ -291,11 +307,20 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
 
   for (auto& pair : outputs) {
     const innid_t& inn_id = pair.first;
+    verify(!dispatch_acks_.at(inn_id));
     dispatch_acks_[inn_id] = true;
+    Log_debug("get start ack %ld/%ld for cmd_id: %lx, inn_id: %d",
+              n_dispatch_ack_, n_dispatch_, cmd_->id_, inn_id);
     txn->Merge(pair.first, pair.second);
   }
-  if (AllDispatchAcked()) {
-    verify(!committed_);
+  if (txn->HasMoreUnsentPiece()) {
+    Log_debug("command has more sub-cmd, cmd_id: %llx,"
+                  " n_started_: %d, n_pieces: %d",
+              txn->id_, txn->n_pieces_dispatched_, txn->GetNPieceAll());
+    DispatchAsync();
+  } else if (AllDispatchAcked()) {
+    Log_debug("receive all start acks, txn_id: %llx; START PREPARE",
+              txn->id_);
     GotoNextPhase();
   }
 }

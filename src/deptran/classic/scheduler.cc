@@ -54,8 +54,8 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
 //  verify(!tx.inuse);
 //  tx.inuse = true;
 
-	struct timespec begin, end;
-	//clock_gettime(CLOCK_MONOTONIC, &begin);
+	/*struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);*/
   for (auto& c: conflicts) {
     vector<Value> pkeys;
     for (int i = 0; i < c.primary_keys.size(); i++) {
@@ -91,7 +91,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
   verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
-//  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
+  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
@@ -133,7 +133,6 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
   }
-  //Log_info("End of dispatch");
   return ret;
 }
 
