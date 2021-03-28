@@ -436,8 +436,6 @@ class PollMgr::PollThread {
 
   void add(shared_ptr<Pollable>);
   void remove(shared_ptr<Pollable>);
-  void pause() { pause_flag_ = true; }
-  void resume() { pause_flag_ = false; }
   void update_mode(shared_ptr<Pollable>, int new_mode);
   void pause() { pause_flag_ = true; }
   void resume() { pause_flag_ = false; }

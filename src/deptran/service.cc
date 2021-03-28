@@ -264,20 +264,6 @@ void ClassicServiceImpl::EarlyAbort(const rrr::i64& tid,
 //  Coroutine::CreateRun(func);
 }
 
-void ClassicServiceImpl::EarlyAbort(const rrr::i64& tid,
-                                    rrr::i32* res,
-                                    rrr::DeferredReply* defer) {
-  Log_debug("get abort_txn: tid: %ld", tid);
-//  std::lock_guard<std::mutex> guard(mtx_);
-//  const auto& func = [tid, res, defer, this]() {
-  auto sched = (SchedulerClassic*) dtxn_sched_;
-  sched->OnEarlyAbort(tid);
-  *res = SUCCESS;
-  defer->reply();
-//  };
-//  Coroutine::CreateRun(func);
-}
-
 void ClassicServiceImpl::rpc_null(rrr::DeferredReply* defer) {
   defer->reply();
 }
