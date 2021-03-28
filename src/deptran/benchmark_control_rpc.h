@@ -233,7 +233,7 @@ class ClientControlServiceImpl: public ClientControlService {
   void client_get_txn_names(std::map<i32, std::string> *txn_names, DeferredReply*) override;
   void client_shutdown(DeferredReply*) override;
   void client_force_stop(DeferredReply*) override;
-  void client_response(ClientResponse *res, DeferredReply*) override;
+  void client_response(const DepId& dep_id, ClientResponse *res, DeferredReply*) override;
   void client_ready_block(i32 *res,
                           DeferredReply *defer) override;
   void client_ready(i32 *res, DeferredReply*) override;

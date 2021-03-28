@@ -2,21 +2,80 @@ namespace janus;
 
 abstract service MultiPaxos {
 
-  defer Forward(MarshallDeputy cmd);
+  defer Forward(MarshallDeputy cmd,
+                uint64_t dep_id |
+                uint64_t coro_id);
 
   defer Prepare(uint64_t slot,
                 ballot_t ballot |
-                ballot_t max_ballot);
+                ballot_t max_ballot,
+                uint64_t coro_id);
 
   defer Accept(uint64_t slot,
+               uint64_t time,
                ballot_t ballot,
                MarshallDeputy cmd |
-               ballot_t max_ballot);
+               ballot_t max_ballot,
+               uint64_t coro_id);
 
   defer Decide(uint64_t slot,
                ballot_t ballot,
                MarshallDeputy cmd);
+	       
 }
+
+abstract service FpgaRaft {
+	defer Heartbeat(uint64_t leaderPrevLogIndex,
+									DepId dep_id |
+									uint64_t followerPrevLogIndex);
+
+  defer Forward(MarshallDeputy cmd |
+                uint64_t cmt_idx );
+
+  defer Vote(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer Vote2FPGA(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term |
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer AppendEntries(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+											DepId dep_id,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+ 
+	defer AppendEntries2(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+											DepId dep_id,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+
+  defer Decide(uint64_t slot,
+               ballot_t ballot,
+							 DepId dep_id,
+               MarshallDeputy cmd);
+}
+
 
 // below is for 2PL and OCC
 abstract service Classic {
@@ -28,22 +87,33 @@ abstract service Classic {
 //                 i32 res,
 //                 TxnOutput output);
 
-  defer Dispatch(i64 tid, MarshallDeputy cmd |
-                 i32 res, TxnOutput output);
+	defer ReElect(| bool_t success);
+  defer Dispatch(i64 tid, DepId dep_id, MarshallDeputy cmd |
+                 i32 res, TxnOutput output, uint64_t coro_id);
 
   defer Prepare(i64 tid, 
-                vector<i32> sids | 
-                i32 res);
+                vector<i32> sids,
+                DepId dep_id | 
+                i32 res,
+								bool_t slow,
+                uint64_t coro_id);
 
-  defer Commit(i64 tid | i32 res);
+  defer Commit(i64 tid, DepId dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
 
-  defer Abort(i64 tid | i32 res);
+  defer Abort(i64 tid, DepId dep_id | i32 res, bool_t slow, uint64_t coro_id, Profiling profile);
+
+  defer EarlyAbort(i64 tid | i32 res);
 
   defer UpgradeEpoch(uint32_t curr_epoch |
-                     int32_t res)
+                     int32_t res);
 
-  defer TruncateEpoch(uint32_t old_epoch)
-
+  defer TruncateEpoch(uint32_t old_epoch);
+  
+  defer IsLeader(locid_t cur_pause| bool_t is_leader );
+  defer IsFPGALeader(locid_t cur_pause| bool_t is_leader );
+  defer SimpleCmd( SimpleCommand cmd| i32 res);
+  defer FailOverTrig(bool_t pause| i32 res);
+   
   // input: contains many pieces, each piece consist of
   // | <i32 p_type> <i64 pid> <i32 input_size> <i32 max_output_size> 
   // <input_0> <input_1> ... |
@@ -62,6 +132,19 @@ abstract service Classic {
                         i32 res);
   // works as a 2PC commit/abort with a paxos decision
   defer TapirDecide(uint64_t cmd_id, i32 commit);
+  
+  defer CarouselReadAndPrepare(i64 tid, MarshallDeputy cmd, bool_t leader |
+                 i32 res, TxnOutput output);
+
+  defer CarouselAccept(uint64_t cmd_id,
+                    int64_t ballot,
+	                int32_t decision);
+  // works as 2PC prepare on a paxos fast-accept
+  defer CarouselFastAccept(uint64_t cmd_id,
+                        vector<SimpleCommand> txn_cmds |
+                        i32 res);
+  // works as a 2PC commit/abort with a paxos decision
+  defer CarouselDecide(uint64_t cmd_id, i32 commit);  
 
   defer RccDispatch(vector<SimpleCommand> cmd |
                     i32 res,
@@ -75,15 +158,16 @@ abstract service Classic {
   // defer RccInquire(epoch_t epoch,
   //                  txnid_t txn_id |
   //                  MarshallDeputy md_res_graph);
-  defer RccInquire(txnid_t txn_id |
-                   pair<map<uint64_t, ParentEdge<RccTx>>, set<uint64_t>>);
+
+  defer RccInquire(txnid_t txn_id, int32_t rank |
+                   map<uint64_t, parent_set_t>);
 
   defer RccDispatchRo(SimpleCommand cmd |
                       map<i32, Value> output);
 
-  defer RccInquireValidation(txid_t tx_id | int32_t res);
+  defer RccInquireValidation(txid_t tx_id, int32_t rank | int32_t res);
 
-  defer RccNotifyGlobalValidation(txid_t tx_id, int32_t res |);
+  defer RccNotifyGlobalValidation(txid_t tx_id, int32_t rank, int32_t res |);
 
   defer JanusDispatch(vector<SimpleCommand> cmd |
                       i32 res,
@@ -93,7 +177,7 @@ abstract service Classic {
   defer RccCommit(cmdid_t id,
                   rank_t rank,
                   int32_t need_validation,
-                  map<uint64_t,ParentEdge<RccTx>>  parents |
+                  parent_set_t  parents |
                   int32_t res,
                   TxnOutput output);
 
@@ -118,7 +202,7 @@ abstract service Classic {
                      rank_t rank,
                      vector<SimpleCommand> cmd |
                      i32 res,
-                     map<uint64_t, ParentEdge<RccTx>> );
+                     parent_set_t x );
 
   defer JanusPreAccept(cmdid_t txn_id,
                        rank_t rank,
@@ -134,11 +218,13 @@ abstract service Classic {
                               MarshallDeputy ret_graph);
 
   defer RccAccept(cmdid_t txn_id,
-                    ballot_t ballot,
-                    map<uint64_t,ParentEdge<RccTx>>  |
-                    i32 res);
+                  i32 rank,
+                  ballot_t ballot,
+                  parent_set_t p  |
+                  i32 res);
 
   defer JanusAccept(cmdid_t txn_id,
+                    i32 rank,
                     ballot_t ballot,
                     MarshallDeputy graph |
                     i32 res);
@@ -161,6 +247,11 @@ abstract service Classic {
 struct ValueTimesPair {
     i64 value;
     i64 times;
+}
+
+struct DepId {
+	string str;
+	i64 id;
 }
 
 struct TxnInfoRes {
@@ -196,6 +287,13 @@ struct ClientResponse  {
     i64 n_asking;   // asking finish request count
 }
 
+struct Profiling {
+    double cpu_util;
+    double tx_util;
+    double rx_util;
+		double mem_util;
+}
+
 abstract service ServerControl {
     defer server_shutdown ( | );
     defer server_ready ( | i32 res);
@@ -216,7 +314,7 @@ abstract service ClientControl {
     defer client_get_txn_names( | map<i32, string> txn_names);
     defer client_shutdown ( | );
     defer client_force_stop ( | );
-    defer client_response ( | ClientResponse res);
+    defer client_response ( DepId dep_id | ClientResponse res);
     defer client_ready ( | i32 res);
     defer client_ready_block ( | i32 res);
     defer client_start ( | );

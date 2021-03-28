@@ -31,13 +31,16 @@ class MarshallDeputy {
   shared_ptr<Marshallable> sp_data_{nullptr};
   int32_t kind_{0};
   enum Kind {
-    UNKNOWN=0,
-    EMPTY_GRAPH=1,
-    RCC_GRAPH=2,
-    CONTAINER_CMD=3,
-    CMD_TPC_PREPARE=4,
-    CMD_TPC_COMMIT=5,
-    CMD_VEC_PIECE=6
+    UNKNOWN = 0,
+    EMPTY_GRAPH = 1,
+    RCC_GRAPH = 2,
+    CONTAINER_CMD = 3,
+    CMD_TPC_PREPARE = 4,
+    CMD_TPC_COMMIT = 5,
+    CMD_VEC_PIECE = 6,
+    CMD_TPC_EMPTY = 7,
+    CMD_TPC_PREPARE_CAROUSEL = 8,
+		CMD_BLK_PXS = 9,
   };
   /**
    * This should be called by the rpc layer.

@@ -6,10 +6,38 @@
 
 namespace janus {
 
+
+void PaxosServer::OnForward(shared_ptr<Marshallable> &cmd,
+                            uint64_t dep_id,
+                            uint64_t* coro_id,
+                            const function<void()> &cb){
+  Log_info("This paxos server is: %d", frame_->site_info_->id);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+
+  auto config = Config::GetConfig();
+  rep_frame_ = Frame::GetFrame(config->replica_proto_);
+  rep_frame_->site_info_ = frame_->site_info_;
+  
+  int n_io_threads = 1;
+  auto svr_poll_mgr_ = new rrr::PollMgr(n_io_threads);
+  auto rep_commo_ = rep_frame_->CreateCommo(svr_poll_mgr_);
+  if(rep_commo_){
+    rep_commo_->loc_id_ = frame_->site_info_->locale_id;
+  }
+  //rep_sched_->loc_id_ = site_info_->locale_id;;
+  //rep_sched_->partition_id_ = site_info_->partition_id_;
+
+  CreateRepCoord(dep_id)->Submit(cmd);
+  *coro_id = Coroutine::CurrentCoroutine()->id;
+  cb();
+}
+
 void PaxosServer::OnPrepare(slotid_t slot_id,
                             ballot_t ballot,
                             ballot_t *max_ballot,
+                            uint64_t* coro_id,
                             const function<void()> &cb) {
+
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler receives prepare for slot_id: %llx",
             slot_id);
@@ -21,20 +49,28 @@ void PaxosServer::OnPrepare(slotid_t slot_id,
     // TODO if accepted anything, return;
     verify(0);
   }
+  *coro_id = Coroutine::CurrentCoroutine()->id;
   *max_ballot = instance->max_ballot_seen_;
   n_prepare_++;
   cb();
 }
 
+
 void PaxosServer::OnAccept(const slotid_t slot_id,
+		           const uint64_t time,
                            const ballot_t ballot,
                            shared_ptr<Marshallable> &cmd,
                            ballot_t *max_ballot,
+                           uint64_t* coro_id,
                            const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("multi-paxos scheduler accept for slot_id: %llx", slot_id);
+
   auto instance = GetInstance(slot_id);
-  verify(instance->max_ballot_accepted_ < ballot);
+  
+  //TODO: might need to optimize this. we can vote yes on duplicates at least for now
+  //verify(instance->max_ballot_accepted_ < ballot);
+  
   if (instance->max_ballot_seen_ <= ballot) {
     instance->max_ballot_seen_ = ballot;
     instance->max_ballot_accepted_ = ballot;
@@ -42,6 +78,8 @@ void PaxosServer::OnAccept(const slotid_t slot_id,
     // TODO
     verify(0);
   }
+
+  *coro_id = Coroutine::CurrentCoroutine()->id;
   *max_ballot = instance->max_ballot_seen_;
   n_accept_++;
   cb();

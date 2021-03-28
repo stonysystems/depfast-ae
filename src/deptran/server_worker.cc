@@ -52,6 +52,7 @@ void ServerWorker::SetupBase() {
 //  Log_info("initialize site id: %d", (int) site_info_->id);
   sharding_->tx_sched_ = tx_sched_;
 
+	Log_info("Is it replicated: %d", config->IsReplicated());
   if (config->IsReplicated() &&
       config->replica_proto_ != config->tx_proto_) {
     rep_frame_ = Frame::GetFrame(config->replica_proto_);
@@ -218,8 +219,19 @@ void ServerWorker::SetupCommo() {
       rep_commo_->loc_id_ = site_info_->locale_id;
     }
     rep_sched_->commo_ = rep_commo_;
+		rep_sched_->Setup();
 
   }
+}
+
+void ServerWorker::Pause() {
+  rep_sched_->Pause();
+  svr_poll_mgr_->pause();
+}
+
+void ServerWorker::Resume() {
+  svr_poll_mgr_->resume();
+  rep_sched_->Resume();
 }
 
 void ServerWorker::ShutDown() {

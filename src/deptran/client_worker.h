@@ -26,8 +26,10 @@ class ClientWorker {
   bool batch_start;
   uint32_t id;
   uint32_t duration;
+	int outbound;
   ClientControlServiceImpl *ccsi{nullptr};
   int32_t n_concurrent_;
+  map<cooid_t, bool> n_pause_concurrent_{};
   rrr::Mutex finish_mutex{};
   rrr::CondVar finish_cond{};
   bool forward_requests_to_leader_ = false;
@@ -37,27 +39,46 @@ class ClientWorker {
   std::mutex coordinator_mutex{};
   vector<Coordinator*> free_coordinators_{};
   vector<Coordinator*> created_coordinators_{};
-//  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
+  Coordinator* fail_ctrl_coo_{nullptr};
+  //  rrr::ThreadPool* dispatch_pool_ = new rrr::ThreadPool();
+  std::shared_ptr<TimeoutEvent> timeout_event;
+  std::shared_ptr<NEvent> n_event;
+  std::shared_ptr<AndEvent> and_event;
 
   std::atomic<uint32_t> num_txn, success, num_try;
+  int all_done_{0};
+  int64_t n_tx_issued_{0};
+  SharedIntEvent n_ceased_client_{};
+  SharedIntEvent sp_n_tx_done_{}; // TODO refactor: remove sp_
   Workload * tx_generator_{nullptr};
   Timer *timer_{nullptr};
   shared_ptr<TxnRegistry> txn_reg_{nullptr};
   Config* config_{nullptr};
   Config::SiteInfo& my_site_;
   vector<string> servers_;
+  bool* volatile failover_trigger_;
+  volatile bool* failover_server_quit_;
+  volatile locid_t* failover_server_idx_;
+  locid_t cur_leader_{0}; // init leader is 0
+  bool failover_wait_leader_{false};
+  bool failover_trigger_loc{false};
+  bool failover_pause_start{false};
+
  public:
-  ClientWorker(uint32_t id,
-               Config::SiteInfo &site_info,
-               Config *config,
-               ClientControlServiceImpl *ccsi,
-               PollMgr* mgr);
+  ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* config,
+      ClientControlServiceImpl* ccsi, PollMgr* mgr, bool* volatile failover,
+      volatile bool* failover_server_quit, volatile locid_t* failover_server_idx);
   ClientWorker() = delete;
   ~ClientWorker();
   // This is called from a different thread.
   void Work();
   Coordinator* FindOrCreateCoordinator();
+  void FailoverPreprocess(Coordinator* coo);
   void DispatchRequest(Coordinator *coo);
+  void SearchLeader(Coordinator* coo);
+  void Pause(locid_t locid);
+  void Resume(locid_t locid);
+  Coordinator* CreateFailCtrlCoordinator();
   void AcceptForwardedRequest(TxRequest &request, TxReply* txn_reply, rrr::DeferredReply* defer);
 
  protected:

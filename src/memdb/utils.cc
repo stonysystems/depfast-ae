@@ -7,11 +7,15 @@
 
 namespace mdb {
 
+// TODO: yidawu recheck seed set to zero.
+// static int STRING_HASH_SEED = getpid();
+static int STRING_HASH_SEED = 0;
+
 uint32_t stringhash32(const void* data, int len) {
     uint32_t hash_value;
-    static int seed = getpid();
+    // static int seed = getpid();
     // MurmurHash3_x86_32(data, len, seed, &hash_value);
-    hash_value = XXH32(data, len, seed);
+    hash_value = XXH32(data, len, STRING_HASH_SEED);
     return hash_value;
 }
 

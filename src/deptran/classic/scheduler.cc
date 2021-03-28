@@ -54,6 +54,8 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
 //  verify(!tx.inuse);
 //  tx.inuse = true;
 
+	/*struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);*/
   for (auto& c: conflicts) {
     vector<Value> pkeys;
     for (int i = 0; i < c.primary_keys.size(); i++) {
@@ -73,11 +75,14 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
       }
     }
   }
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of dispatch: %d", end.tv_nsec-begin.tv_nsec);*/
 //  tx.inuse = false;
   return true;
 }
 
 bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
+                                struct DepId dep_id,
                                 shared_ptr<Marshallable> cmd,
                                 TxnOutput& ret_output) {
   auto sp_vec_piece =
@@ -86,7 +91,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
   verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
-  Log_debug("received dispatch for tx id: %" PRIx64, tx->tid_);
+  Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
@@ -98,6 +103,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    if (piece_data.inn_id_ == 205) b2 = true;
 //  }
 //  verify(b1 == b2);
+  verify(cmd) ;
   if (!tx->cmd_) {
     tx->cmd_ = cmd;
   } else if (tx->cmd_ != cmd) {
@@ -111,6 +117,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //    verify(0);
   }
 
+	struct timespec begin, end;
+	//clock_gettime(CLOCK_MONOTONIC, &begin);
   bool ret = true;
   for (const auto& sp_piece_data : *sp_vec_piece) {
     verify(sp_piece_data);
@@ -119,6 +127,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
       break;
     }
   }
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
+	Log_info("time of dispatch2: %d", end.tv_nsec-begin.tv_nsec);*/
   // TODO reimplement this.
   if (tx->fully_dispatched_->value_ == 0) {
     tx->fully_dispatched_->Set(1);
@@ -133,9 +143,15 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //   0. an non-optimized version would be.
 //      dispatch the transaction command with paxos instance
 bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
-                                 const std::vector<i32>& sids) {
+                                 const std::vector<i32>& sids,
+                                 struct DepId dep_id,
+																 bool& null_cmd) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
+	/*if(sp_tx->cmd_ == NULL){
+		null_cmd = true;
+		return false;
+	}*/
   Log_debug("%s: at site %d, tx: %"
                 PRIx64, __FUNCTION__, this->site_id_, tx_id);
   if (Config::GetConfig()->IsReplicated()) {
@@ -144,10 +160,21 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     sp_prepare_cmd->tx_id_ = tx_id;
     sp_prepare_cmd->cmd_ = sp_tx->cmd_;
     auto sp_m = dynamic_pointer_cast<Marshallable>(sp_prepare_cmd);
-    CreateRepCoord()->Submit(sp_m);
-//    Log_debug("wait for prepare command replicated");
     sp_tx->is_leader_hint_ = true;
+		
+		struct timespec begin, end;
+		//clock_gettime(CLOCK_MONOTONIC, &begin);
+    //Log_info("This is dep_id: %d", dep_id);
+    // here, we need to let the paxos coordinator know what request we are working with
+    // thsi could be the transaction id or we can add a new id
+    auto coo = CreateRepCoord(dep_id.id);
+		
+		/*clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of prepare on server: %d", end.tv_nsec-begin.tv_nsec);*/
+    //Log_info("The locale id: %d", coo->loc_id_);
+    coo->Submit(sp_m);
     sp_tx->prepare_result->Wait();
+		slow_ = coo->slow_;
 //    Log_debug("finished prepare command replication");
     return sp_tx->prepare_result->Get();
   } else if (Config::GetConfig()->do_logging()) {
@@ -179,18 +206,40 @@ int SchedulerClassic::PrepareReplicated(TpcPrepareCommand& prepare_cmd) {
   return 0;
 }
 
-int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
+int SchedulerClassic::OnEarlyAbort(txnid_t tx_id) {
+  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  DoAbort(*sp_tx);
+  return 0;
+}
+
+int SchedulerClassic::OnCommit(txnid_t tx_id, struct DepId dep_id, int commit_or_abort) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  // TODO maybe change inuse to an event?
+//  verify(!sp_tx->inuse);
+//  sp_tx->inuse = true;
+//
+  //always true
   if (Config::GetConfig()->IsReplicated()) {
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
     cmd->ret_ = commit_or_abort;
+		
+		struct timespec begin, end;
+		//clock_gettime(CLOCK_MONOTONIC, &begin);
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
-    CreateRepCoord()->Submit(sp_m);
+    //here, we need to let the paxos coordinator know what the request is
+    //Log_info("This is dep_id: %d", dep_id);
+    auto coo = CreateRepCoord(dep_id.id);
+		
+		/*clock_gettime(CLOCK_MONOTONIC, &end);
+		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
+    coo->Submit(sp_m);
+    //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
+		slow_ = coo->slow_;
   } else {
     if (commit_or_abort == SUCCESS) {
       DoCommit(*sp_tx);
@@ -227,11 +276,15 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   int commit_or_abort = tpc_commit_cmd.ret_;
   if (!sp_tx->is_leader_hint_) {
     if (commit_or_abort == REJECT) {
+      sp_tx->commit_result->Set(1);
       return 0;
     } else {
       verify(sp_tx->cmd_);
       unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
-      Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
+			DepId di;
+			di.str = "dep";
+			di.id = 0;
+      Dispatch(sp_tx->tid_, di, sp_tx->cmd_, *out);
       DoPrepare(sp_tx->tid_);
     }
   }
@@ -260,6 +313,10 @@ void SchedulerClassic::Next(Marshallable& cmd) {
   } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
     auto& c = dynamic_cast<TpcCommitCommand&>(cmd);
     CommitReplicated(c);
+  } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_EMPTY) {
+    // do nothing
+    auto& c = dynamic_cast<TpcEmptyCommand&>(cmd);
+    c.Done();
   } else {
     verify(0);
   }

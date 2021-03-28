@@ -19,7 +19,6 @@ RccCommo* RccCoord::commo() {
 
 void RccCoord::PreDispatch() {
   verify(ro_state_ == BEGIN);
-  TxData* txn = dynamic_cast<TxData*>(cmd_);
   auto dispatch = std::bind(&RccCoord::DispatchAsync, this);
   if (recorder_) {
     std::string log_s;
@@ -46,8 +45,16 @@ void RccCoord::DispatchAsync() {
     cnt += cmds.size();
     vector<SimpleCommand> cc;
     for (auto c: cmds) {
+      if (mocking_janus_) {
+        c->rank_ = RANK_D;
+      }
+      if (c->rank_ == RANK_I) {
+        par_i_.insert(c->PartitionId());
+      } else {
+        par_d_.insert(c->PartitionId());
+      }
       if (c->rank_ == RANK_UNDEFINED) {
-        c->rank_ = RANK_I;
+        c->rank_ = RANK_D;
       }
       c->id_ = next_pie_id();
       dispatch_acks_[c->inn_id_] = false;
@@ -70,8 +77,8 @@ void RccCoord::DispatchAck(phase_t phase,
   std::lock_guard<std::recursive_mutex> lock(this->mtx_);
   verify(phase == phase_); // cannot proceed without all acks.
   verify(tx_data().root_id_ == tx_data().id_);
-  verify(graph.vertex_index().size() > 0);
-  RccTx& info = *(graph.vertex_index().at(tx_data().root_id_));
+//  verify(graph.vertex_index().size() > 0);
+//  RccTx& info = *(graph.vertex_index().at(tx_data().root_id_));
 //  verify(cmd[0].root_id_ == info.id());
 //  verify(info.partition_.find(cmd.partition_id_) != info.partition_.end());
   if (res) {
@@ -89,8 +96,8 @@ void RccCoord::DispatchAck(phase_t phase,
   }
 
   // where should I store this graph?
-  Log_debug("start response graph size: %d", (int)graph.size());
-  verify(graph.size() > 0);
+//  Log_debug("start response graph size: %d", (int)graph.size());
+//  verify(graph.size() > 0);
 
 //  sp_graph_->Aggregate(0, graph);
 
@@ -282,6 +289,8 @@ void RccCoord::Reset() {
   n_commit_oks_.clear();
   fast_commit_ = false;
   rank_ = RANK_UNDEFINED;
+  par_i_.clear();
+  par_d_.clear();
 }
 
 
