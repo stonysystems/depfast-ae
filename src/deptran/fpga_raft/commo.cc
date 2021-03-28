@@ -124,7 +124,7 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 		di.id = -1;
 
 		Log_info("heartbeat2 for log index: %d", prevLogIndex);
-    auto f = proxy->async_AppendEntries2(slot_id,
+    auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
                                         prevLogIndex,
@@ -157,25 +157,37 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 
   vector<Future*> fus;
   WAN_WAIT;
-  for (auto& p : proxies) {
-    if (p.first == this->loc_id_) {
-        // fix the 1c1s1p bug
-        e->FeedResponse(true, prevLogIndex + 1);
-        continue;
-    }
-		auto follower_id = p.first;
+	for (auto& p : proxies) {
+		auto id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
 
+		auto cli_it = rpc_clients_.find(id);
+		std::string ip = "";
+		if (cli_it != rpc_clients_.end()) {
+			ip = cli_it->second->host();
+		}
+		ip_addrs.insert(ip);
+	}
+	e->recordHistory(ip_addrs);
+  
+	for (auto& p : proxies) {	
+		auto follower_id = p.first;
+    auto proxy = (FpgaRaftProxy*) p.second;
+    
 		auto cli_it = rpc_clients_.find(follower_id);
 		std::string ip = "";
 		if (cli_it != rpc_clients_.end()) {
 			ip = cli_it->second->host();
 		}
-		
-		ip_addrs.insert(ip);
 
+		if (p.first == this->loc_id_) {
+        // fix the 1c1s1p bug
+				Log_info("ip addr for %d: %s", follower_id, ip.c_str());
+        e->FeedResponse(true, prevLogIndex + 1, ip);
+        continue;
+    }
     FutureAttr fuattr;
-
+		
 		struct timespec begin;
 		clock_gettime(CLOCK_MONOTONIC, &begin);
 
@@ -216,7 +228,6 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     Future::safe_release(f);
   }
 
-	e->recordHistory(ip_addrs);
 	verify(!e->IsReady());
   return e;
 }

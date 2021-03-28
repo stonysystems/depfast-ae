@@ -52,6 +52,7 @@ class Reactor {
 	int disk_count{0};
 	int disk_index{0};
 	int slow_count{0};
+	int trying_count{0};
   std::thread::id thread_id_{};
   int64_t n_created_coroutines_{0};
   int64_t n_busy_coroutines_{0};
@@ -59,6 +60,7 @@ class Reactor {
   int64_t n_active_coroutines_2_{0};
   int64_t n_idle_coroutines_{0};
   static SpinLock disk_job_;
+	static SpinLock trying_job_;
 #ifdef REUSE_CORO
 #define REUSING_CORO (true)
 #else

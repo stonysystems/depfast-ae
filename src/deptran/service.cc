@@ -88,11 +88,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
 
   auto sched = (SchedulerClassic*) dtxn_sched_;
   auto tx = dynamic_pointer_cast<TxClassic>(sched->GetOrCreateTx(cmd_id));
-	Log_info("received dispatch for tx id: %" PRIx64, tx->tid_);
-
 	func();
-	
-	Log_info("End of dispatch for tx_id: %" PRIx64, tx->tid_);
 }
 
 

@@ -20,6 +20,7 @@ thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
+SpinLock Reactor::trying_job_;
 
 std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
   // TODO re-enable this verify
@@ -294,6 +295,11 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 	struct timespec begin, end;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 
+	trying_job_.lock();
+	trying_count++;
+	int trying = trying_count;
+	trying_job_.unlock();
+
 	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
   } else {
@@ -301,9 +307,13 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
     sp_coro->Continue();
   }
 
+	trying_job_.lock();
+	trying_count--;
+	trying_job_.unlock();
+	
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-	if (time > 10000000) Log_info("time of createrun: %ld and %d", time, sp_coro->status_ == Coroutine::INIT);
+	if (time > 10000000) Log_info("time of createrun: %ld and %d/%d", time, n_active_coroutines_, n_created_coroutines_);
 
 	/*clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_marshal_cpu);

@@ -6,7 +6,9 @@ namespace janus {
 
 FpgaRaftServiceImpl::FpgaRaftServiceImpl(TxLogServer *sched)
     : sched_((FpgaRaftServer*)sched) {
-
+	struct timespec curr_time;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &curr_time);
+	srand(curr_time.tv_nsec);
 }
 
 void FpgaRaftServiceImpl::Heartbeat(const uint64_t& leaderPrevLogIndex,
@@ -87,7 +89,7 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
 	//Log_info("CreateRunning2");
 
 
-	if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
+	/*if (ballot == 1000000000 || leaderPrevLogIndex + 1 < sched_->lastLogIndex) {
 		*followerAppendOK = 1;
 		*followerCurrentTerm = leaderCurrentTerm;
 		*followerLastLogIndex = sched_->lastLogIndex + 1;
@@ -95,10 +97,11 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
 			for (int j = 0; j < 1000; j++) {
 				Log_info("wow: %d %d", leaderPrevLogIndex, sched_->lastLogIndex);
 			}
-		}*/
+		}
 		defer->reply();
 		return;
-	}
+	}*/
+
 
   Coroutine::CreateRun([&] () {
     sched_->OnAppendEntries(slot,
@@ -115,6 +118,7 @@ void FpgaRaftServiceImpl::AppendEntries(const uint64_t& slot,
                             std::bind(&rrr::DeferredReply::reply, defer));
 
   });
+	
 }
 
 void FpgaRaftServiceImpl::Decide(const uint64_t& slot,
