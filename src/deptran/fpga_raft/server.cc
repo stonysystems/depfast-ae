@@ -23,10 +23,6 @@ FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   setIsLeader(frame_->site_info_->locale_id == 0) ;
   stop_ = false ;
   timer_ = new Timer() ;
-	
-	struct timespec curr_time;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &curr_time);
-	srand(curr_time.tv_nsec);
 }
 
 void FpgaRaftServer::Setup() {
@@ -466,10 +462,9 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
 
-				/*if (rand() % 1000 == 0) {
-					usleep(15*1000);
-				}*/
-
+				if (rand() % 1000 == 0) {
+					usleep(25*1000);
+				}
         cb();
     }
 

@@ -148,7 +148,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
     }
     else if (sp_quorum->No()) {
-        //verify(0);
+        verify(0);
         // TODO should become a follower if the term is smaller
         //if(!IsLeader())
         {
@@ -204,7 +204,7 @@ void CoordinatorFpgaRaft::GotoNextPhase() {
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
         // TODO
-        //verify(0);
+        verify(0);
         Forward(cmd_,commit_callback_) ;
         phase_ = Phase::COMMIT;
       }

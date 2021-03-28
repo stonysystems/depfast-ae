@@ -325,7 +325,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			double cpu = 0.0;
 	  			double net = 0.0;
           fu->get_reply() >> ret >> outputs >> coro_id;
-					Log_info("received reply to dispatch for %" PRIx64, txn->root_id_);
 
           e->n_voted_yes_++;
           if(phase != coo->phase_){
@@ -334,7 +333,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			}
           else{
             if(ret == REJECT){
-							Log_info("REJECT in dispatch");
               coo->aborted_ = true;
               txn->commit_.store(false);
 
@@ -352,7 +350,6 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	    			CoordinatorClassic* classic_coo = (CoordinatorClassic*)coo;
 	    			//classic_coo->debug_cnt--;
             if(txn->HasMoreUnsentPiece()){
-							Log_info("received reply to dispatch2 for %" PRIx64, txn->root_id_);
               classic_coo->DispatchAsync(false);
             }
               //e->add_dep(coo->cli_id_, src_coroid, leader_id, coro_id);

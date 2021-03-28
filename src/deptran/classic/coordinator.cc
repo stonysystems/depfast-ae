@@ -251,13 +251,7 @@ void CoordinatorClassic::DispatchAsync(bool last) {
   sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   phase_t phase = phase_;
 	
-	struct timespec begin, end;
-	clock_gettime(CLOCK_MONOTONIC, &begin);
   sp_quorum_event->Wait();
-	
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-	Log_info("time of dispatch: %ld for %" PRIx64, time, txn->root_id_);
   
 	debug_cnt--;
 

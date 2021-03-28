@@ -24,6 +24,7 @@ using std::unordered_set;
 typedef std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> dependencies_t;
 typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, int>, container_hash<unordered_set<std::string>>> history_t;
 typedef std::unordered_map<unordered_set<std::string>, int, container_hash<unordered_set<std::string>>> count_t;
+typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, std::vector<long>>, container_hash<std::unordered_set<std::string>>> latency_t;
 
 #define logging 0
 
@@ -49,8 +50,10 @@ class QuorumEvent : public Event {
   vector<int> sites_{};
 	unordered_set<std::string> ips_{};
   dependencies_t deps{};
+	struct timespec begin;
 	static history_t history;
 	static count_t counts;
+	static latency_t latencies;
   std::string log_file = "logs.txt";
 
   QuorumEvent() = delete;
@@ -63,6 +66,8 @@ class QuorumEvent : public Event {
   }
 
 	void recordHistory(unordered_set<std::string> ip_addrs);
+	void updateDataStructs(std::string ip_addrs);
+	void verifyTransient(std::string ip_addr);
 	void updateHistory(std::string ip_addr);
   void set_sites(vector<int> sites){
     sites_ = sites;
