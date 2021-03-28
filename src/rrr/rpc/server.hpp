@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <pthread.h>
 #include <memory>
+#include <chrono>
 
 #include <sys/socket.h>
 #include <netdb.h>
@@ -52,8 +53,17 @@ class ServerListener: public Pollable {
   int poll_mode() {
     return Pollable::READ;
   }
+  size_t content_size() {
+    verify(0);
+    return 0;
+  }
   void handle_write() {verify(0);}
-  void handle_read();
+  //void handle_read_one() {verify(0);}
+  bool handle_read_two() {
+    verify(0);
+    return true;
+  }
+  bool handle_read();
   void handle_error() {verify(0);}
   void close();
   int fd() {return server_sock_;}
@@ -97,6 +107,8 @@ class ServerConnection: public Pollable {
 
 
 public:
+	int count = 0;
+	
   // Protected destructor as required by RefCounted.
   ~ServerConnection();
 
@@ -143,8 +155,17 @@ public:
     }
 
     int poll_mode();
+    size_t content_size() {
+      verify(0);
+      return 0;
+    }
     void handle_write();
-    void handle_read();
+    //void handle_read_one() {verify(0);}
+    bool handle_read_two() {
+      verify(0);
+      return true;
+    }
+    bool handle_read();
     void handle_error();
 };
 
@@ -190,6 +211,8 @@ class DeferredReply: public NoCopy {
       } else {
         // server connection has close. What would happen if no reply?
       }
+			
+			// move to client
       // CHECK
       // BUG here, this is deleted twice????
       delete this;

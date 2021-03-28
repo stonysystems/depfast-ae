@@ -6,6 +6,7 @@
 #include "command_marshaler.h"
 #include "benchmark_control_rpc.h"
 #include "server_worker.h"
+#include "../rrr/reactor/event.h"
 
 #ifdef CPU_PROFILE
 # include <gperftools/profiler.h>
@@ -52,11 +53,16 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
   // start client workers in new threads.
   Log_info("client enabled, number of sites: %d", client_sites.size());
   vector<ClientWorker*> workers;
-  failover_triggers = new bool[client_sites.size()]();
+
+  failover_triggers = new bool[client_sites.size()]() ;
   for (uint32_t client_id = 0; client_id < client_sites.size(); client_id++) {
-    ClientWorker* worker = new ClientWorker(client_id, client_sites[client_id],
-        Config::GetConfig(), ccsi_g, nullptr, &(failover_triggers[client_id]),
-        &failover_server_quit, &failover_server_idx);
+    ClientWorker* worker = new ClientWorker(client_id,
+                                            client_sites[client_id],
+                                            Config::GetConfig(),
+                                            ccsi_g, nullptr, 
+                                            &(failover_triggers[client_id]),
+                                            &failover_server_quit,
+                                            &failover_server_idx);
     workers.push_back(worker);
     client_threads_g.push_back(std::thread(&ClientWorker::Work, worker));
     client_workers_g.push_back(std::unique_ptr<ClientWorker>(worker));
@@ -137,6 +143,133 @@ void wait_for_clients() {
   }
 }
 
+void server_failover_co(bool random, bool leader, int srv_idx)
+{
+    int idx = -1 ;
+    int expected_idx = -1 ;
+    int run_int = Config::GetConfig()->get_failover_run_interval() ;
+    int stop_int = Config::GetConfig()->get_failover_stop_interval() ;
+
+    if (srv_idx != -1)
+    {
+        expected_idx = srv_idx ;
+    }
+    else if(!random)
+    {
+        // temporary solution, assign id 0 as leader, id 1 as follower
+        if(leader)
+        {
+            expected_idx = 0 ;
+        }
+        else
+        {
+            expected_idx = 1 ;
+        }
+    }
+    else
+    {
+        // do nothing
+    }
+
+    for(int i=0;i<svr_workers_g.size();i++)
+    {
+      Log_debug("failover at index %d, id %d, loc id %d part id %d", 
+        i, svr_workers_g[i].site_info_->id,
+        svr_workers_g[i].site_info_->locale_id,  
+        svr_workers_g[i].site_info_->partition_id_ );
+    }
+
+    for(int i=0;i<svr_workers_g.size();i++)
+    {
+        if(svr_workers_g[i].site_info_->locale_id == expected_idx )
+        {
+            idx = i ;
+            break ;
+        }
+    }    
+    
+    while(!failover_server_quit)
+    {
+        if(random)
+        {
+            idx = rand() % svr_workers_g.size() ;
+        }
+        failover_server_idx = idx ;
+        //sleep(run_int) ;
+        auto r = Reactor::CreateSpEvent<TimeoutEvent>(run_int * 1000 * 1000);
+        r->Wait(run_int * 1000 * 1000) ;        
+        if(idx == -1) 
+        {
+          // TODO other types
+          if (!leader) break ;
+          idx = 0 ;
+        }        
+        if(failover_server_quit)
+        {
+            break ;
+        }
+        for (int i = 0; i < client_workers_g.size() ; ++i)
+        {
+          failover_triggers[i] = true ;
+        }
+        for (int i = 0; i < client_workers_g.size() ; ++i)
+        {
+          while(failover_triggers[i]) {
+            if (failover_server_quit) return ;
+          }
+        }
+        // TODO the idx of client
+        client_workers_g[0]->Pause(idx) ;
+//        svr_workers_g[idx].Pause() ;
+        for (int i = 0; i < client_workers_g.size() ; ++i)
+        {
+          failover_triggers[i] = true ;
+        }
+        Log_info("server %d paused for failover test", idx);
+        //sleep(stop_int) ;
+        auto s = Reactor::CreateSpEvent<TimeoutEvent>(stop_int * 1000 * 1000);
+        s->Wait(stop_int * 1000 * 1000) ;        
+        for (int i = 0; i < client_workers_g.size() ; ++i)
+        {
+          while(failover_triggers[i]) {
+            if (failover_server_quit) return ;
+          }
+        }        
+        client_workers_g[0]->Resume(idx) ;
+//        svr_workers_g[idx].Resume() ;
+        Log_info("server %d resumed for failover test", idx);
+        if(leader)
+        {
+          // get current leader
+          idx = failover_server_idx ;
+        }
+    }
+
+}
+
+void server_failover_thread(bool random, bool leader, int srv_idx) {
+  Coroutine::CreateRun([&, random, leader, srv_idx]() { 
+    server_failover_co(random, leader, srv_idx) ;
+  }) ;
+}
+
+void server_failover()
+{
+    bool failover = Config::GetConfig()->get_failover();
+    bool random = Config::GetConfig()->get_failover_random() ;
+    bool leader = Config::GetConfig()->get_failover_leader() ;
+    int idx = Config::GetConfig()->get_failover_srv_idx() ;
+    if(failover)
+    {
+      /*Coroutine::CreateRun([&, random, leader, idx]() { 
+        server_failover_co(random, leader, idx) ;
+      }) ;*/
+      // TODO only consider the partition 0 now
+      /*failover_threads_g.push_back(
+          std::thread(&server_failover_thread, random, leader, idx)) ;*/
+    }
+}
+
 void setup_ulimit() {
   struct rlimit limit;
   /* Get max number of files. */
@@ -176,6 +309,7 @@ int main(int argc, char *argv[]) {
   auto server_infos = Config::GetConfig()->GetMyServers();
   if (!server_infos.empty()) {
     server_launch_worker(server_infos);
+    server_failover() ;
   } else {
     Log_info("no servers on this process");
   }

@@ -196,6 +196,7 @@ inline void PaxosWorker::_Submit(shared_ptr<Marshallable> sp_m) {
   static cooid_t cid = 1;
   static id_t id = 1;
   verify(rep_frame_ != nullptr);
+  Log_info("When is this happening");
   Coordinator* coord = rep_frame_->CreateCoordinator(cid++,
                                                      Config::GetConfig(),
                                                      0,
