@@ -154,9 +154,11 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
 
 	unordered_set<std::string> ip_addrs {};
+	std::vector<std::shared_ptr<rrr::Client>> clients;
 
   vector<Future*> fus;
   WAN_WAIT;
+
 	for (auto& p : proxies) {
 		auto id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
@@ -165,10 +167,13 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		std::string ip = "";
 		if (cli_it != rpc_clients_.end()) {
 			ip = cli_it->second->host();
+			//cli = cli_it->second;
 		}
 		ip_addrs.insert(ip);
+		//clients.push_back(cli);
 	}
 	e->recordHistory(ip_addrs);
+	//e->clients_ = clients;
   
 	for (auto& p : proxies) {	
 		auto follower_id = p.first;

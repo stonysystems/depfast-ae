@@ -167,7 +167,8 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
   const auto& func = [res, slow, coro_id, defer, tid, sids, dep_id, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
 		bool null_cmd = false;
-    bool ret = sched->OnPrepare(tid, sids, dep_id, null_cmd);
+		std::vector<shared_ptr<QuorumEvent>> quorum_events;
+    bool ret = sched->OnPrepare(tid, sids, dep_id, null_cmd, quorum_events);
 		//Log_info("slow1: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = ret ? SUCCESS : REJECT;
@@ -209,7 +210,8 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
   //std::lock_guard<std::mutex> guard(mtx_);
   const auto& func = [tid, res, slow, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, dep_id, SUCCESS);
+		std::vector<shared_ptr<QuorumEvent>> quorum_events;
+    sched->OnCommit(tid, dep_id, SUCCESS, quorum_events);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2], result[3]};
 		//*profile = {0.0, 0.0, 0.0, 0.0};
@@ -236,13 +238,19 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
   //std::lock_guard<std::mutex> guard(mtx_);
   const auto& func = [tid, res, slow, coro_id, dep_id, profile, defer, this]() {
     auto sched = (SchedulerClassic*) dtxn_sched_;
-    sched->OnCommit(tid, dep_id, REJECT);
+		std::vector<shared_ptr<QuorumEvent>> quorum_events;
+    sched->OnCommit(tid, dep_id, REJECT, quorum_events);
     std::vector<double> result = rrr::CPUInfo::cpu_stat();
     *profile = {result[0], result[1], result[2]};
 		Log_info("slow3: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
+		
+		for (int i = 0; i < quorum_events.size(); i++) {
+			quorum_events[i]->Finalize(1*1000*1000, 0);
+		}
+
     defer->reply();
   };
 	//Log_info("CreateRunning2");

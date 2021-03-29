@@ -41,7 +41,7 @@ class Coordinator {
   std::vector<int> ids_;
   parid_t par_id_ = -1;
   std::shared_ptr<SingleRPCEvent> rpc_event;
-  vector<std::pair<parid_t, std::shared_ptr<QuorumEvent>>> sp_quorum_events{};
+	std::vector<shared_ptr<QuorumEvent>> quorum_events_;
   std::shared_ptr<QuorumEvent> sp_quorum_event;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;

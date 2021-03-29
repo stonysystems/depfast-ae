@@ -294,7 +294,7 @@ iters = 5;
 				
 				struct timespec end;
 				clock_gettime(CLOCK_MONOTONIC, &end);
-				long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;
+				/*long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;
 				if (count_ >= 1000) {
 					if (index < 100) {
 						times[index] = curr;
@@ -317,7 +317,7 @@ iters = 5;
 					time_ = total_time/index;
 				} else {
 					time_ = 0;
-				}
+				}*/
 
         pending_fu_.erase(it);
         pending_fu_l_.unlock();
@@ -436,7 +436,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
 
 	struct timespec begin;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
-	rpc_starts[fu->xid_] = begin;
+	//rpc_starts[fu->xid_] = begin;
 
   // check if the client gets closed in the meantime
   if (status_ != CONNECTED) {

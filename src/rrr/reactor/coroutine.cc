@@ -33,6 +33,10 @@ void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
     func_();
 //    func_ = nullptr; // Can be swapped out here?
     status_ = FINISHED;
+		if (needs_finalize_) {
+			Log_info("Warning: We did not deal with backlog issues");
+			needs_finalize_ = false;
+		}
     Reactor::GetReactor()->n_active_coroutines_--;
     yield();
   }

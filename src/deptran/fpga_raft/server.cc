@@ -462,9 +462,9 @@ void FpgaRaftServer::StartTimer()
             *followerAppendOK = 0;
         }
 
-				if (rand() % 1000 == 0) {
+				/*if (rand() % 1000 == 0) {
 					usleep(25*1000);
-				}
+				}*/
         cb();
     }
 

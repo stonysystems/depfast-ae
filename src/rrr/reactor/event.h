@@ -55,6 +55,8 @@ class Event : public std::enable_shared_from_this<Event> {
   }
 
   virtual void log(){return;}
+	virtual void NeedsFinalize();
+	virtual void CalledFinalize();
   virtual uint64_t GetCoroId();
   virtual bool Test();
 	virtual bool IsSlow();

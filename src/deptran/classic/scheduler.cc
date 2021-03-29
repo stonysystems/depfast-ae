@@ -145,7 +145,8 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
                                  const std::vector<i32>& sids,
                                  struct DepId dep_id,
-																 bool& null_cmd) {
+																 bool& null_cmd,
+																 std::vector<shared_ptr<QuorumEvent>>& quorum_events) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
   verify(sp_tx);
 	/*if(sp_tx->cmd_ == NULL){
@@ -175,6 +176,8 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     coo->Submit(sp_m);
     sp_tx->prepare_result->Wait();
 		slow_ = coo->slow_;
+		
+		quorum_events = coo->quorum_events_;
 //    Log_debug("finished prepare command replication");
     return sp_tx->prepare_result->Get();
   } else if (Config::GetConfig()->do_logging()) {
@@ -212,7 +215,10 @@ int SchedulerClassic::OnEarlyAbort(txnid_t tx_id) {
   return 0;
 }
 
-int SchedulerClassic::OnCommit(txnid_t tx_id, struct DepId dep_id, int commit_or_abort) {
+int SchedulerClassic::OnCommit(txnid_t tx_id,
+															 struct DepId dep_id,
+															 int commit_or_abort,
+															 std::vector<shared_ptr<QuorumEvent>>& quorum_events) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("%s: at site %d, tx: %" PRIx64,
             __FUNCTION__, this->site_id_, tx_id);
@@ -233,13 +239,15 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, struct DepId dep_id, int commit_or
     //here, we need to let the paxos coordinator know what the request is
     //Log_info("This is dep_id: %d", dep_id);
     auto coo = CreateRepCoord(dep_id.id);
-		
+
 		/*clock_gettime(CLOCK_MONOTONIC, &end);
 		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
     coo->Submit(sp_m);
     //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
 		slow_ = coo->slow_;
+		
+		quorum_events = coo->quorum_events_;
   } else {
     if (commit_or_abort == SUCCESS) {
       DoCommit(*sp_tx);

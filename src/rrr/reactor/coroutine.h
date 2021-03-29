@@ -32,6 +32,7 @@ typedef boost::coroutines2::coroutine<void()> coro_t;
 #endif
 
 class Reactor;
+class QuorumEvent;
 class Coroutine {
  public:
   static std::shared_ptr<Coroutine> CurrentCoroutine();
@@ -39,11 +40,13 @@ class Coroutine {
   static std::shared_ptr<Coroutine> CreateRun(std::function<void()> func);
   static uint64_t global_id;
 	uint64_t dep_id_;
+	bool need_finalize_;
   uint64_t id;
 
   enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED, RECYCLED};
 
   Status status_ = INIT; //
+	bool needs_finalize_ = false;
   std::function<void()> func_{};
 
   std::shared_ptr<boost_coro_task_t> up_boost_coro_task_{nullptr};

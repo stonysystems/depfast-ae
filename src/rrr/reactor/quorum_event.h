@@ -17,6 +17,7 @@ struct container_hash {
 };
 
 using rrr::Event;
+using rrr::IntEvent;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
@@ -49,12 +50,16 @@ class QuorumEvent : public Event {
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{};
 	unordered_set<std::string> ips_{};
+	//std::vector<rrr::Client> clients_{};
   dependencies_t deps{};
 	struct timespec begin;
 	static history_t history;
 	static count_t counts;
 	static latency_t latencies;
+	enum TimeoutFlag {FLAG_FREE};
   std::string log_file = "logs.txt";
+
+	std::shared_ptr<IntEvent> finalize_event;
 
   QuorumEvent() = delete;
 
@@ -63,6 +68,11 @@ class QuorumEvent : public Event {
 							int dep_id = -1) : Event(),
 																 n_total_(n_total),
 																 quorum_(quorum){
+		NeedsFinalize();
+		finalize_event = std::make_shared<IntEvent>();
+		finalize_event->__debug_creator = 1;
+
+		finalize_event->target_ = n_total_;
   }
 
 	void recordHistory(unordered_set<std::string> ip_addrs);
@@ -147,11 +157,17 @@ class QuorumEvent : public Event {
 		updateHistory(ip_addr);
     n_voted_yes_++;
     Test();
+		if (finalize_event->status_ != TIMEOUT) {
+			finalize_event->Set(n_voted_yes_ + n_voted_no_);
+		}
   }
 
   void VoteNo(std::string ip_addr = "") {
     n_voted_no_++;
     Test();
+		if (finalize_event->status_ != TIMEOUT) {
+			finalize_event->Set(n_voted_yes_ + n_voted_no_);
+		}
   }
 
   int64_t Term() {
@@ -176,6 +192,18 @@ class QuorumEvent : public Event {
     return false;
   }
 
+	void Finalize(int timeout, int flag) {
+		CalledFinalize();
+		Log_info("finalizing");
+		
+		finalize_event->Wait(timeout);
+
+		if (finalize_event->status_ == TIMEOUT) {
+			if (flag == TimeoutFlag::FLAG_FREE) {
+				
+			}
+		}
+	}
 };
 
 } // namespace janus

@@ -14,6 +14,16 @@ uint64_t Event::GetCoroId(){
   return sp_coro->id;
 }
 
+void Event::NeedsFinalize() {
+	auto sp_coro = Coroutine::CurrentCoroutine();
+	sp_coro->needs_finalize_ = true;
+}
+
+void Event::CalledFinalize() {
+	auto sp_coro = Coroutine::CurrentCoroutine();
+	sp_coro->needs_finalize_ = false;
+}
+
 bool Event::IsSlow() {
 	bool result = Reactor::GetReactor()->slow_;
 	Reactor::GetReactor()->slow_ = false;
