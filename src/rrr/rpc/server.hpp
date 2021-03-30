@@ -65,6 +65,7 @@ class ServerListener: public Pollable {
   }
   bool handle_read();
   void handle_error() {verify(0);}
+	void handle_free() {verify(0);}
   void close();
   int fd() {return server_sock_;}
   ServerListener(Server* s, std::string addr);
@@ -167,6 +168,7 @@ public:
     }
     bool handle_read();
     void handle_error();
+		void handle_free() {verify(0);}
 };
 
 class DeferredReply: public NoCopy {

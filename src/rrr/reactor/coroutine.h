@@ -14,6 +14,7 @@
 #endif
 
 #include <boost/optional.hpp>
+#include <vector>
 
 //#include <experimental/coroutine>
 
@@ -32,7 +33,7 @@ typedef boost::coroutines2::coroutine<void()> coro_t;
 #endif
 
 class Reactor;
-class QuorumEvent;
+class Event;
 class Coroutine {
  public:
   static std::shared_ptr<Coroutine> CurrentCoroutine();
@@ -43,7 +44,7 @@ class Coroutine {
 	bool need_finalize_;
   uint64_t id;
 
-  enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED, RECYCLED};
+  enum Status {INIT=0, STARTED, PAUSED, RESUMED, FINISHED, FINALIZING, RECYCLED};
 
   Status status_ = INIT; //
 	bool needs_finalize_ = false;
@@ -51,6 +52,7 @@ class Coroutine {
 
   std::shared_ptr<boost_coro_task_t> up_boost_coro_task_{nullptr};
   boost::optional<boost_coro_yield_t&> boost_coro_yield_{};
+	std::vector<std::shared_ptr<Event>> quorum_events_{};
 
   Coroutine() = delete;
   Coroutine(std::function<void()> func);
@@ -60,5 +62,6 @@ class Coroutine {
   void Yield();
   void Continue();
   bool Finished();
+	void DoFinalize();
 };
 }

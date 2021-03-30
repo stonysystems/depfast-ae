@@ -40,6 +40,7 @@ public:
     virtual bool handle_read_two() = 0;
     virtual void handle_write() = 0;
     virtual void handle_error() = 0;
+		virtual void handle_free() = 0;
 };
 
 

@@ -156,7 +156,7 @@ class Communicator {
 
 	shared_ptr<QuorumEvent> SendReelect();
 
-  shared_ptr<QuorumEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
+  shared_ptr<IntEvent> BroadcastDispatch(ReadyPiecesData cmds_by_par,
                         Coordinator* coo,
                         TxData* txn);
 

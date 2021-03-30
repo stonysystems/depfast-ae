@@ -43,6 +43,7 @@ class Coordinator {
   std::shared_ptr<SingleRPCEvent> rpc_event;
 	std::vector<shared_ptr<QuorumEvent>> quorum_events_;
   std::shared_ptr<QuorumEvent> sp_quorum_event;
+  std::shared_ptr<IntEvent> sp_int_event;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;
   uint32_t thread_id_;

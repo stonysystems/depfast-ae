@@ -189,6 +189,21 @@ void Client::handle_error() {
   close();
 }
 
+void Client::handle_free() {
+	Log_info("freeing?: %s", host().c_str());
+  pending_fu_l_.lock();
+	auto it = pending_fu_.begin();
+	while (it != pending_fu_.end()) {
+		Future* fu = it->second;
+		it = pending_fu_.erase(it);
+		pending_fu_l_.unlock();
+		fu->release();
+		pending_fu_l_.lock();
+	}
+
+	pending_fu_l_.unlock();
+}
+
 void Client::handle_write() {
   //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");

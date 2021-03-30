@@ -45,7 +45,9 @@ class Reactor {
   std::list<std::shared_ptr<Event>> ready_network_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
+  std::vector<std::shared_ptr<Coroutine>> finalized_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
+	static std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> clients_;
   bool looping_{false};
 	bool slow_{false};
 	long disk_times[50];
@@ -73,6 +75,7 @@ class Reactor {
   std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
   void Loop(bool infinite = false, bool check_timeout = false);
   void CheckTimeout(std::vector<std::shared_ptr<Event>>&);
+	void FreeDangling(std::string ip);
 	void DiskLoop();
 	void NetworkLoop();
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);

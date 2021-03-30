@@ -9,6 +9,7 @@
 #include "reactor.h"
 #include "coroutine.h"
 #include "event.h"
+#include "quorum_event.h"
 #include "epoll_wrapper.h"
 #include "sys/times.h" 
 
@@ -17,6 +18,7 @@ namespace rrr {
 thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
 thread_local std::shared_ptr<Reactor> Reactor::sp_disk_reactor_th_{};
 thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
+std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> Reactor::clients_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
@@ -66,6 +68,10 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   std::shared_ptr<Coroutine> sp_coro;
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
+		for (int i = 0; i < finalized_coros_.size(); i++) {
+			Recycle(finalized_coros_[i]);
+		}
+
     n_idle_coroutines_--;
     sp_coro = available_coros_.back();
     sp_coro->id = Coroutine::global_id++;
@@ -126,6 +132,21 @@ void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
     }
   }
 
+}
+
+void Reactor::FreeDangling(std::string ip) {
+	auto it = Reactor::clients_.find(ip);
+	if (it != Reactor::clients_.end()) {
+		Log_info("size of clients at %s: %d", it->first.c_str(), it->second.size());
+		for (int i = 0; i < it->second.size(); i++) {
+			it->second[i]->handle_free();
+			//Log_info("print nonsense");
+		}
+	} else {
+		for (auto it = clients_.begin(); it != clients_.end(); it++) {
+			Log_info("could not find client: %s", it->first.c_str());
+		}
+	}
 }
 
 //  be careful this could be called from different coroutines.
@@ -237,13 +258,13 @@ void Reactor::DiskLoop(){
 		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0777);
 		::fsync(fd);
 		::close(fd);
-		Log_info("reaching here");
+		//Log_info("reaching here");
 	}
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	if (total_written > 0) {
 		long disk_time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-		Log_info("time of fsync: %d", disk_time);
-		Log_info("total written: %d", total_written);
+		//Log_info("time of fsync: %d", disk_time);
+		//Log_info("total written: %d", total_written);
 
 		long total_time = 0;
 		long avg_time = 0;

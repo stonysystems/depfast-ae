@@ -248,10 +248,10 @@ void CoordinatorClassic::DispatchAsync(bool last) {
     n_dispatch_ += cmds.size();
   }
   
-  sp_quorum_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
+  sp_int_event = commo()->BroadcastDispatch(cmds_by_par, this, txn);
   phase_t phase = phase_;
 	
-  sp_quorum_event->Wait();
+  sp_int_event->Wait();
   
 	debug_cnt--;
 

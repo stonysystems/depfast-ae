@@ -33,6 +33,7 @@ namespace janus {
 
 class QuorumEvent : public Event {
  public:
+	static uint64_t count;
   int32_t n_voted_yes_{0};
   int32_t n_voted_no_{0};
 	int32_t n_total_ = -1;
@@ -50,6 +51,7 @@ class QuorumEvent : public Event {
   vector<uint64_t> vec_timestamp_{};
   vector<int> sites_{};
 	unordered_set<std::string> ips_{};
+	unordered_set<std::string> changing_ips_{};
 	//std::vector<rrr::Client> clients_{};
   dependencies_t deps{};
 	struct timespec begin;
@@ -68,7 +70,9 @@ class QuorumEvent : public Event {
 							int dep_id = -1) : Event(),
 																 n_total_(n_total),
 																 quorum_(quorum){
-		NeedsFinalize();
+		if (quorum_ != n_total_) {
+			needs_finalize_ = true;
+		}
 		finalize_event = std::make_shared<IntEvent>();
 		finalize_event->__debug_creator = 1;
 
@@ -79,6 +83,7 @@ class QuorumEvent : public Event {
 	void updateDataStructs(std::string ip_addrs);
 	void verifyTransient(std::string ip_addr);
 	void updateHistory(std::string ip_addr);
+	void Finalize(int timeout, int flag);
   void set_sites(vector<int> sites){
     sites_ = sites;
   }
@@ -158,6 +163,8 @@ class QuorumEvent : public Event {
     n_voted_yes_++;
     Test();
 		if (finalize_event->status_ != TIMEOUT) {
+			auto it = changing_ips_.find(ip_addr);
+			changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);
 		}
   }
@@ -166,6 +173,8 @@ class QuorumEvent : public Event {
     n_voted_no_++;
     Test();
 		if (finalize_event->status_ != TIMEOUT) {
+			auto it = changing_ips_.find(ip_addr);
+			changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);
 		}
   }
@@ -192,18 +201,6 @@ class QuorumEvent : public Event {
     return false;
   }
 
-	void Finalize(int timeout, int flag) {
-		CalledFinalize();
-		Log_info("finalizing");
-		
-		finalize_event->Wait(timeout);
-
-		if (finalize_event->status_ == TIMEOUT) {
-			if (flag == TimeoutFlag::FLAG_FREE) {
-				
-			}
-		}
-	}
 };
 
 } // namespace janus

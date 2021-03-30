@@ -7,6 +7,7 @@ namespace janus {
 history_t QuorumEvent::history{};
 count_t QuorumEvent::counts{};
 latency_t QuorumEvent::latencies{};
+uint64_t QuorumEvent::count = 0;
 	
 	void QuorumEvent::recordHistory(unordered_set<std::string> ip_addrs) {
 		auto it = QuorumEvent::history.find(ip_addrs);
@@ -97,4 +98,26 @@ latency_t QuorumEvent::latencies{};
 			}
 		}
 	}
+
+	void QuorumEvent::Finalize(int timeout, int flag) {
+		CalledFinalize();
+		
+		if (QuorumEvent::count == 100000) {
+			QuorumEvent::count = 0;
+			finalize_event->Wait(timeout);
+		} else {
+			QuorumEvent::count++;
+		}
+
+		if (finalize_event->status_ == TIMEOUT) {
+			Log_info("finalizing: timing out");
+			if (flag == TimeoutFlag::FLAG_FREE) {
+				for (auto it = changing_ips_.begin(); it != changing_ips_.end(); it++) {
+					Log_info("finalizing: free dangling: %s", it->c_str());
+					FreeDangling(*it);
+				}			
+			}
+		}
+	}
+
 } // namespace janus

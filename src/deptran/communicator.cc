@@ -180,6 +180,14 @@ Communicator::ConnectToSite(Config::SiteInfo& site,
       ClassicProxy* rpc_proxy = new ClassicProxy(rpc_cli.get());
       rpc_clients_.insert(std::make_pair(site.id, rpc_cli));
       rpc_proxies_.insert(std::make_pair(site.id, rpc_proxy));
+
+			auto it = Reactor::clients_.find(rpc_cli->host());
+			if (it == Reactor::clients_.end()) {
+				std::vector<std::shared_ptr<rrr::Pollable>> clients{};
+				Reactor::clients_[rpc_cli->host()] = clients;
+			}
+
+			Reactor::clients_[rpc_cli->host()].push_back(rpc_cli);
       Log_info("connect to site: %s success!", addr.c_str());
       return std::make_pair(SUCCESS, rpc_proxy);
     } else {
@@ -288,13 +296,15 @@ void Communicator::BroadcastDispatch(
 
 //need to change this code to solve the quorum info in the graphs
 //either create another event here or inside the coordinator.
-std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
+std::shared_ptr<IntEvent> Communicator::BroadcastDispatch(
     ReadyPiecesData cmds_by_par,
     Coordinator* coo,
     TxData* txn) {
   int total = cmds_by_par.size();
   //std::shared_ptr<AndEvent> e = Reactor::CreateSpEvent<AndEvent>();
-  std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
+  std::shared_ptr<IntEvent> e = Reactor::CreateSpEvent<IntEvent>();
+	e->value_ = 0;
+	e->target_ = total;
   std::unordered_set<int> leaders{};
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
@@ -326,7 +336,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
 	  			double net = 0.0;
           fu->get_reply() >> ret >> outputs >> coro_id;
 
-          e->n_voted_yes_++;
+          e->value_++;
           if(phase != coo->phase_){
 						verify(0);
 	    			e->Test();
@@ -336,7 +346,7 @@ std::shared_ptr<QuorumEvent> Communicator::BroadcastDispatch(
               coo->aborted_ = true;
               txn->commit_.store(false);
 
-							e->n_voted_yes_ = e->quorum_;
+							e->value_ = e->target_;
 							e->Test();
 							return;
             }

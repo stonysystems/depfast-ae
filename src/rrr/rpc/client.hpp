@@ -206,6 +206,7 @@ public:
     bool handle_read();
     void handle_write();
     void handle_error();
+		void handle_free();
 
 };
 

@@ -175,6 +175,11 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
 		if(null_cmd) *res = REPEAT;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     if (defer != nullptr) defer->reply();
+		
+		for (int i = 0; i < quorum_events.size(); i++) {
+			quorum_events[i]->Finalize(1*1000*1000, 0);
+		}
+
   };
 
 	//Log_info("CreateRunning2");
@@ -220,6 +225,11 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
+		
+		for (int i = 0; i < quorum_events.size(); i++) {
+			quorum_events[i]->Finalize(1*1000*1000, 0);
+		}
+
   };
 	//Log_info("CreateRunning2");
   //Coroutine::CreateRun(func);
@@ -246,12 +256,12 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
+    defer->reply();
 		
 		for (int i = 0; i < quorum_events.size(); i++) {
 			quorum_events[i]->Finalize(1*1000*1000, 0);
 		}
 
-    defer->reply();
   };
 	//Log_info("CreateRunning2");
   //Coroutine::CreateRun(func);

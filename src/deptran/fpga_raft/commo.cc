@@ -173,6 +173,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		//clients.push_back(cli);
 	}
 	e->recordHistory(ip_addrs);
+	e->changing_ips_ = ip_addrs;
 	//e->clients_ = clients;
   
 	for (auto& p : proxies) {	

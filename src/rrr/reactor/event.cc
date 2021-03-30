@@ -17,11 +17,19 @@ uint64_t Event::GetCoroId(){
 void Event::NeedsFinalize() {
 	auto sp_coro = Coroutine::CurrentCoroutine();
 	sp_coro->needs_finalize_ = true;
+	sp_coro->quorum_events_.push_back(shared_from_this());
 }
 
 void Event::CalledFinalize() {
+	needs_finalize_ = false;
 	auto sp_coro = Coroutine::CurrentCoroutine();
 	sp_coro->needs_finalize_ = false;
+	for (int i = 0; i < sp_coro->quorum_events_.size(); i++) {
+		if (sp_coro->quorum_events_[i]->needs_finalize_) {
+			sp_coro->needs_finalize_ = true;
+			break;
+		}
+	}
 }
 
 bool Event::IsSlow() {
@@ -29,10 +37,16 @@ bool Event::IsSlow() {
 	Reactor::GetReactor()->slow_ = false;
 	return result;
 }
+
+void Event::FreeDangling(std::string ip) {
+	Reactor::GetReactor()->FreeDangling(ip);
+}
+
 void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
   verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
+	if (needs_finalize_) NeedsFinalize();
   if (status_ == DONE) return; // TODO: yidawu add for the second use the event.
   verify(status_ == INIT);
   if (IsReady()) {

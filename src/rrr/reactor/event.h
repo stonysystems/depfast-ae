@@ -39,6 +39,7 @@ class Event : public std::enable_shared_from_this<Event> {
   void* _dbg_p_scheduler_{nullptr};
   uint64_t type_{0};
   function<bool(int)> test_{};
+	bool needs_finalize_{false};
   uint64_t wakeup_time_; // calculated by timeout, unit: microsecond
 
   // An event is usually allocated on a coroutine stack, thus it cannot own a
@@ -57,6 +58,7 @@ class Event : public std::enable_shared_from_this<Event> {
   virtual void log(){return;}
 	virtual void NeedsFinalize();
 	virtual void CalledFinalize();
+	virtual void FreeDangling(std::string ip);
   virtual uint64_t GetCoroId();
   virtual bool Test();
 	virtual bool IsSlow();
