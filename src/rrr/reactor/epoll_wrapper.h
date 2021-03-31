@@ -200,6 +200,7 @@ class Epoll {
       if (evlist[i].filter & EVFILT_READ){
         poll->handle_read();
         pending.push_back(poll);
+				if (pending.size() > 10000) Log_info("other pending size: %d", pending.size());
       }
       if (evlist[i].filter & EVFILT_WRITE){
         poll->handle_write();

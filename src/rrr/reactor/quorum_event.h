@@ -6,6 +6,7 @@
 //#include <unordered_set>
 //#include <fstream>
 #include <iostream>
+#include <sstream>
 #include "event.h"
 #include <chrono>
 
@@ -83,6 +84,7 @@ class QuorumEvent : public Event {
 	void updateDataStructs(std::string ip_addrs);
 	void verifyTransient(std::string ip_addr);
 	void updateHistory(std::string ip_addr);
+	long MemoryUtil();
 	void Finalize(int timeout, int flag);
   void set_sites(vector<int> sites){
     sites_ = sites;
@@ -164,7 +166,7 @@ class QuorumEvent : public Event {
     Test();
 		if (finalize_event->status_ != TIMEOUT) {
 			auto it = changing_ips_.find(ip_addr);
-			changing_ips_.erase(it);
+			if (it != changing_ips_.end()) changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);
 		}
   }
@@ -174,7 +176,7 @@ class QuorumEvent : public Event {
     Test();
 		if (finalize_event->status_ != TIMEOUT) {
 			auto it = changing_ips_.find(ip_addr);
-			changing_ips_.erase(it);
+			if (it != changing_ips_.end()) changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);
 		}
   }

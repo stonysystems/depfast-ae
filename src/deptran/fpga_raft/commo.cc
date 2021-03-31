@@ -188,7 +188,6 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 
 		if (p.first == this->loc_id_) {
         // fix the 1c1s1p bug
-				Log_info("ip addr for %d: %s", follower_id, ip.c_str());
         e->FeedResponse(true, prevLogIndex + 1, ip);
         continue;
     }
@@ -211,7 +210,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 			this->outbound--;
 			//Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
 			clock_gettime(CLOCK_MONOTONIC, &end);
-			Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
+			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
 			
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index, ip);

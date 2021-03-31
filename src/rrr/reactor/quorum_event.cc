@@ -85,7 +85,7 @@ uint64_t QuorumEvent::count = 0;
 			auto count_ = QuorumEvent::counts.find(ips_);
 
 			if (map != QuorumEvent::history.end()) {
-				Log_info("ip_addr here: %s", ip_addr.c_str());
+				//Log_info("ip_addr here: %s", ip_addr.c_str());
 				auto ip_count = QuorumEvent::history[ips_].find(ip_addr);
 				
 				if (ip_count != map->second.end()) {
@@ -98,11 +98,26 @@ uint64_t QuorumEvent::count = 0;
 			}
 		}
 	}
+	long QuorumEvent::MemoryUtil() {
+		long page_size = sysconf(_SC_PAGE_SIZE) / 1024;
+		long rss;
+		std::string ignore;
+
+		pid_t pid_ = ::getpid();
+		std::string pid = std::to_string(pid_);
+		std::ifstream stat_file("/proc/"+pid+"/stat", std::ios_base::in);
+
+		stat_file >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+							>> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+							>> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> rss;
+
+		return rss * page_size;
+	}
 
 	void QuorumEvent::Finalize(int timeout, int flag) {
 		CalledFinalize();
-		
-		if (QuorumEvent::count == 100000) {
+
+		if (QuorumEvent::count == 250000) {
 			QuorumEvent::count = 0;
 			finalize_event->Wait(timeout);
 		} else {
@@ -110,14 +125,17 @@ uint64_t QuorumEvent::count = 0;
 		}
 
 		if (finalize_event->status_ == TIMEOUT) {
-			Log_info("finalizing: timing out");
 			if (flag == TimeoutFlag::FLAG_FREE) {
 				for (auto it = changing_ips_.begin(); it != changing_ips_.end(); it++) {
-					Log_info("finalizing: free dangling: %s", it->c_str());
+					long mem_before = MemoryUtil();
 					FreeDangling(*it);
+					long mem_after = MemoryUtil();
+					Log_info("finalizing timeout: %ld -> %ld", mem_before, mem_after);
 				}			
 			}
 		}
+
+		changing_ips_.clear();
 	}
 
 } // namespace janus

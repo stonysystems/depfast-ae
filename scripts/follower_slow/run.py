@@ -388,6 +388,7 @@ class ClientController(object):
 
         self.recording_period = False
         self.print_max = False
+        self.profiled = False
 
     def client_run(self, do_sample, do_sample_lock):
         sites = ProcessInfo.get_sites(self.process_infos,
@@ -564,6 +565,20 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+            
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_fast.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.profiled:
+                            self.profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
         output_str = "\nProgress: " + str(progress) + "%\n"
         total_table = []
         interval_table = []

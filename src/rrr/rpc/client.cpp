@@ -190,18 +190,21 @@ void Client::handle_error() {
 }
 
 void Client::handle_free() {
-	Log_info("freeing?: %s", host().c_str());
+  list<Future*> futures;
   pending_fu_l_.lock();
-	auto it = pending_fu_.begin();
-	while (it != pending_fu_.end()) {
-		Future* fu = it->second;
-		it = pending_fu_.erase(it);
-		pending_fu_l_.unlock();
-		fu->release();
-		pending_fu_l_.lock();
-	}
+  for (auto& it: pending_fu_) {
+    futures.push_back(it.second);
+  }
+  pending_fu_.clear();
+  pending_fu_l_.unlock();
 
-	pending_fu_l_.unlock();
+  for (auto& fu: futures) {
+    if (fu != nullptr) {
+      // since we removed it from pending_fu_
+      fu->release();
+    }
+  }
+	Log_info("content: %ld", in_.content_size());
 }
 
 void Client::handle_write() {
@@ -280,7 +283,7 @@ iters = 5;
 		iters = INT_MAX;
 	}
   
-	if (pending_fu_.size() > 100000) {
+	if (pending_fu_.size() > 300000) {
 		Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
 	}
 	
@@ -341,12 +344,16 @@ iters = 5;
         fu->reply_.read_from_marshal(in_,
 	    	                     packet_size - v_reply_xid.val_size()
 				         - v_error_code.val_size());
-				
         
 				fu->notify_ready();
         fu->release();
       } else{
         pending_fu_l_.unlock();
+				
+				Marshal reply;
+				reply.read_from_marshal(in_,
+															packet_size - v_reply_xid.val_size()
+															- v_error_code.val_size());
       }
     } else{
       done = true;

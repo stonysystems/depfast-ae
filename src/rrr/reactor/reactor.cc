@@ -19,6 +19,7 @@ thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
 thread_local std::shared_ptr<Reactor> Reactor::sp_disk_reactor_th_{};
 thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> Reactor::clients_{};
+std::unordered_set<std::string> Reactor::dangling_ips_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
@@ -68,10 +69,6 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   std::shared_ptr<Coroutine> sp_coro;
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
-		for (int i = 0; i < finalized_coros_.size(); i++) {
-			Recycle(finalized_coros_[i]);
-		}
-
     n_idle_coroutines_--;
     sp_coro = available_coros_.back();
     sp_coro->id = Coroutine::global_id++;
@@ -83,7 +80,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;
     if (n_created_coroutines_ % 100 == 0) {
-      Log_debug("created %d, busy %d, idle %d coroutines on this thread",
+      Log_info("created %d, busy %d, idle %d coroutines on this thread",
                (int)n_created_coroutines_,
                (int)n_busy_coroutines_,
                (int)n_idle_coroutines_);
@@ -97,6 +94,18 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   return sp_coro;
 }
 
+void Reactor::FreeDangling(std::string ip) {
+	auto it = Reactor::clients_.find(ip);
+	if (it != Reactor::clients_.end()) {
+		for (int i = 0; i < it->second.size(); i++) {
+			it->second[i]->handle_free();
+		}
+	} else {
+		for (auto it = clients_.begin(); it != clients_.end(); it++) {
+			Log_info("could not find client: %s", it->first.c_str());
+		}
+	}
+}
 void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
   auto time_now = Time::now();
   for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
@@ -132,21 +141,6 @@ void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
     }
   }
 
-}
-
-void Reactor::FreeDangling(std::string ip) {
-	auto it = Reactor::clients_.find(ip);
-	if (it != Reactor::clients_.end()) {
-		Log_info("size of clients at %s: %d", it->first.c_str(), it->second.size());
-		for (int i = 0; i < it->second.size(); i++) {
-			it->second[i]->handle_free();
-			//Log_info("print nonsense");
-		}
-	} else {
-		for (auto it = clients_.begin(); it != clients_.end(); it++) {
-			Log_info("could not find client: %s", it->first.c_str());
-		}
-	}
 }
 
 //  be careful this could be called from different coroutines.
@@ -252,15 +246,15 @@ void Reactor::DiskLoop(){
 		}
 	}
 
-	struct timespec begin, end;
-	clock_gettime(CLOCK_MONOTONIC, &begin);
+	/*struct timespec begin, end;
+	clock_gettime(CLOCK_MONOTONIC, &begin);*/
 	for (auto it = sync_set.begin(); it != sync_set.end(); it++) {
 		int fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0777);
 		::fsync(fd);
 		::close(fd);
 		//Log_info("reaching here");
 	}
-	clock_gettime(CLOCK_MONOTONIC, &end);
+	/*clock_gettime(CLOCK_MONOTONIC, &end);
 	if (total_written > 0) {
 		long disk_time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
 		//Log_info("time of fsync: %d", disk_time);
@@ -290,7 +284,7 @@ void Reactor::DiskLoop(){
 		if (avg_time > 7500000) {
 			Reactor::GetReactor()->slow_ = true;
 		}
-	}
+	}*/
 
 	for(int i = 0; i < pending_disk_events_.size(); i++){
 		Reactor::GetReactor()->disk_job_.lock();
@@ -388,11 +382,38 @@ class PollMgr::PollThread {
     args->thread = thiz;
     args->reactor_th = Reactor::GetReactor();
 
+    struct thread_params* args2 = new struct thread_params;
+    args2->thread = thiz;
+    args2->reactor_th = Reactor::GetReactor();
+
     pthread_t disk_th;
+    pthread_t finalize_th;
+		Log_info("starting disk thread");
     Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
+		Log_info("starting poll thread");
     thiz->poll_loop();
     delete args;
+		delete args;
+    pthread_exit(nullptr);
+    return nullptr;
+  }
+
+  static void* start_finalize_loop(void* arg){
+    struct thread_params* args = (struct thread_params*) arg;
+
+    PollThread* thiz =  args->thread;
+    Reactor::sp_reactor_th_ = args->reactor_th;
+    
+    while(!thiz->stop_flag_){
+			for (auto it = Reactor::dangling_ips_.begin(); it != Reactor::dangling_ips_.end(); it++) {
+				Reactor::GetReactor()->FreeDangling(*it);
+				Log_info("done freeing");
+			}
+			Reactor::dangling_ips_.clear();
+      sleep(0);
+    }
     pthread_exit(nullptr);
     return nullptr;
   }

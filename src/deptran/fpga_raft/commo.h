@@ -117,7 +117,6 @@ class FpgaRaftCommo : public Communicator {
 
 friend class FpgaRaftProxy;
  public:
-	std::unordered_map<siteid_t, int> counts {};
 	std::unordered_map<siteid_t, uint64_t> matchedIndex {};
 	int index;
 	

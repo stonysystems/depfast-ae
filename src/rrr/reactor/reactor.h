@@ -25,6 +25,9 @@ class Reactor {
   static thread_local std::shared_ptr<Reactor> sp_disk_reactor_th_;
   static thread_local std::shared_ptr<Coroutine> sp_running_coro_th_;
 
+  struct thread_params{
+		std::string ip_;
+	};
   /*struct eventComp{
     bool operator()(const std::shared_ptr<Event>& lhs, const std::shared_ptf<Event>& rhs) const{
       return lhs->timeout
@@ -45,9 +48,9 @@ class Reactor {
   std::list<std::shared_ptr<Event>> ready_network_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
-  std::vector<std::shared_ptr<Coroutine>> finalized_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
 	static std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> clients_;
+	static std::unordered_set<std::string> dangling_ips_;
   bool looping_{false};
 	bool slow_{false};
 	long disk_times[50];

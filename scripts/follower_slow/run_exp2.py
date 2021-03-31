@@ -588,19 +588,6 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
 
-            if (progress >= upper_cutoff_pct):
-                try:
-                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem.txt;"
-                    for process_name, process in self.process_infos.items():
-                        if process.name == "host1" and not self.profiled:
-                            self.profiled = True
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
-                
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
             if (progress >= upper_cutoff_pct + 5):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
@@ -625,6 +612,20 @@ class ClientController(object):
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
         else:
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.profiled:
+                            self.profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+            
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
                 self.recording_period = False
