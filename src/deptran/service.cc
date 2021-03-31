@@ -230,6 +230,7 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
 			quorum_events[i]->Finalize(1*1000*1000, 0);
 		}
 
+
   };
 	//Log_info("CreateRunning2");
   //Coroutine::CreateRun(func);

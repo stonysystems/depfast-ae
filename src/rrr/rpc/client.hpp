@@ -135,6 +135,7 @@ public:
 		std::unordered_map<i64, struct timespec> rpc_starts;
 
     SpinLock pending_fu_l_;
+		SpinLock read_l_;
     SpinLock out_l_;
 
     // reentrant, could be called multiple times before releasing

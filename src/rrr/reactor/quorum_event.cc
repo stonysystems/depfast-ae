@@ -117,7 +117,7 @@ uint64_t QuorumEvent::count = 0;
 	void QuorumEvent::Finalize(int timeout, int flag) {
 		CalledFinalize();
 
-		if (QuorumEvent::count == 250000) {
+		if (QuorumEvent::count == 100000) {
 			QuorumEvent::count = 0;
 			finalize_event->Wait(timeout);
 		} else {

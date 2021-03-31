@@ -204,7 +204,6 @@ void Client::handle_free() {
       fu->release();
     }
   }
-	Log_info("content: %ld", in_.content_size());
 }
 
 void Client::handle_write() {
