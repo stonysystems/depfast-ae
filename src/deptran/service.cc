@@ -259,9 +259,9 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
 		
-		/*for (int i = 0; i < quorum_events.size(); i++) {
+		for (int i = 0; i < quorum_events.size(); i++) {
 			quorum_events[i]->Finalize(1*1000*1000, 0);
-		}*/
+		}
 
   };
 	//Log_info("CreateRunning2");

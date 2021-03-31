@@ -78,7 +78,7 @@ void Client::set_valid(bool valid) {
 }
 
 void Client::invalidate_pending_futures() {
-  list<Future*> futures;
+	list<Future*> futures;
   pending_fu_l_.lock();
   for (auto& it: pending_fu_) {
     futures.push_back(it.second);
@@ -190,19 +190,34 @@ void Client::handle_error() {
 }
 
 void Client::handle_free() {
-  list<Future*> futures;
-  pending_fu_l_.lock();
-  for (auto& it: pending_fu_) {
-    futures.push_back(it.second);
-  }
-  pending_fu_.clear();
-  pending_fu_l_.unlock();
+	list<Future*> futures;
+	long j;
+	long iters;
+  std::unordered_map<i64, Future*>::iterator it;
+	int batches = 10; // need batches because lock will block progress
+										// smaller batches may cause errors
 
-  for (auto& fu: futures) {
-    if (fu != nullptr) {
-      // since we removed it from pending_fu_
-      fu->release();
-    }
+	for (int i = 0; i < batches; i++) {
+		j = 0;
+		pending_fu_l_.lock();
+		iters = (pending_fu_.size())/(batches - i);
+		it = pending_fu_.begin();
+		while (j < iters && it != pending_fu_.end()) {
+			futures.push_back(it->second);
+			it++;
+			j++;
+		}
+		pending_fu_.erase(pending_fu_.begin(), it);
+		//pending_fu_.clear();
+		pending_fu_l_.unlock();
+
+		for (auto& fu: futures) {
+			if (fu != nullptr) {
+				// since we removed it from pending_fu_
+				fu->release();
+			}
+		}
+		futures.clear();
   }
 }
 

@@ -412,7 +412,7 @@ class PollMgr::PollThread {
 				Log_info("done freeing");
 			}
 			Reactor::dangling_ips_.clear();
-      sleep(0);
+      usleep(1*1000);
     }
     pthread_exit(nullptr);
     return nullptr;

@@ -613,6 +613,19 @@ class ClientController(object):
                     logger.fatal('timeout')
         else:
             if (progress >= upper_cutoff_pct):
+                logger.info("done with recording period")
+                self.recording_period = False
+
+                for k, v in self.txn_infos.items():
+                    v.print_mid(self.config, self.num_proxies)
+                
+                do_sample_lock.acquire()
+                do_sample.value = 1
+                do_sample_lock.release()
+                for k, v in self.txn_infos.items():
+                    v.set_mid_status()
+            
+            if (progress >= upper_cutoff_pct):
                 try:
                     cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                             top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow.txt;"
@@ -625,19 +638,6 @@ class ClientController(object):
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
-            
-            if (progress >= upper_cutoff_pct):
-                logger.info("done with recording period")
-                self.recording_period = False
-
-                for k, v in self.txn_infos.items():
-                    v.print_mid(self.config, self.num_proxies)
-                
-                do_sample_lock.acquire()
-                do_sample.value = 1
-                do_sample_lock.release()
-                for k, v in self.txn_infos.items():
-                    v.set_mid_status()
         output_str = "\nProgress: " + str(progress) + "%\n"
         total_table = []
         interval_table = []
