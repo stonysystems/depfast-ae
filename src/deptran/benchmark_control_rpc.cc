@@ -180,7 +180,7 @@ double timespec2ms(struct timespec time) {
   return time.tv_sec * 1000.0 + time.tv_nsec / 1000000.0;
 }
 
-void ClientControlServiceImpl::client_shutdown(DeferredReply *defer) {
+void ClientControlServiceImpl::client_shutdown(const DepId& dep_id, DeferredReply *defer) {
   Log_info("Shutdown Client Control Service");
   status_mutex_.lock();
   status_ = CCS_STOP;
@@ -189,7 +189,7 @@ void ClientControlServiceImpl::client_shutdown(DeferredReply *defer) {
   defer->reply();
 }
 
-void ClientControlServiceImpl::client_force_stop(DeferredReply* defer) {
+void ClientControlServiceImpl::client_force_stop(const DepId& dep_id, DeferredReply* defer) {
   int i = 0;
   for (; i < num_threads_; i++)
     if (coo_threads_[i] != NULL)
@@ -269,7 +269,8 @@ void ClientControlServiceImpl::client_response(const DepId& dep_id, ClientRespon
   defer->reply();
 }
 
-void ClientControlServiceImpl::client_ready_block(rrr::i32 *res,
+void ClientControlServiceImpl::client_ready_block(const DepId& dep_id,
+																									rrr::i32 *res,
                                                   rrr::DeferredReply *defer) {
   *res = 1;
   bool reply = false;
@@ -283,7 +284,7 @@ void ClientControlServiceImpl::client_ready_block(rrr::i32 *res,
     defer->reply();
 }
 
-void ClientControlServiceImpl::client_ready(rrr::i32 *res, DeferredReply* defer) {
+void ClientControlServiceImpl::client_ready(const DepId& dep_id, rrr::i32 *res, DeferredReply* defer) {
   status_mutex_.lock();
   if (CCS_READY == status_)
     *res = 1;
@@ -293,7 +294,7 @@ void ClientControlServiceImpl::client_ready(rrr::i32 *res, DeferredReply* defer)
   defer->reply();
 }
 
-void ClientControlServiceImpl::client_start(DeferredReply* defer) {
+void ClientControlServiceImpl::client_start(const DepId& dep_id, DeferredReply* defer) {
   status_mutex_.lock();
   status_ = CCS_RUN;
   status_cond_.bcast();
@@ -331,7 +332,7 @@ void ClientControlServiceImpl::wait_for_shutdown() {
   status_mutex_.unlock();
 }
 
-void ClientControlServiceImpl::client_get_txn_names(std::map<i32, std::string> *txn_names, DeferredReply* defer) {
+void ClientControlServiceImpl::client_get_txn_names(const DepId& dep_id, std::map<i32, std::string> *txn_names, DeferredReply* defer) {
   *txn_names = txn_names_;
   defer->reply();
 }

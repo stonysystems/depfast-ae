@@ -269,9 +269,7 @@ bool Client::handle_read(){
     return false;
   }
 
-	read_l_.lock();
   int bytes_read = in_.read_from_fd(sock_);
-	read_l_.unlock();
   if (bytes_read == 0) {
     return false;
   }
@@ -302,7 +300,7 @@ iters_ = 5;
 	}
   
 	if (!client_) {
-		Log_info("pending size is %d likely due to slowness", pending_fu_.size());
+		//Log_info("pending size is %d likely due to slowness", pending_fu_.size());
 	}
 	
 	for(int i = 0; i < iters_; i++) {

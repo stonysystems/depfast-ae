@@ -55,7 +55,7 @@ class FpgaRaftServer : public TxLogServer {
   atomic<int64_t> counter_{0};
 
 	static bool looping;
-	bool heartbeat_ = false;
+	bool heartbeat_ = true;
 	enum { STOPPED, RUNNING } status_;
 	pthread_t loop_th_;
   
@@ -265,7 +265,7 @@ class FpgaRaftServer : public TxLogServer {
                        const uint64_t leaderPrevLogIndex,
                        const uint64_t leaderPrevLogTerm,
                        const uint64_t leaderCommitIndex,
-											 const struct DepId dep_id,
+											 const DepId dep_id,
                        shared_ptr<Marshallable> &cmd,
                        uint64_t *followerAppendOK,
                        uint64_t *followerCurrentTerm,

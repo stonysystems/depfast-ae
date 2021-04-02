@@ -98,7 +98,6 @@ void CoordinatorClassic::GotoNextPhase() {
   //Log_info("aborted and committed: %d, %d", aborted_, committed_);
   switch (current_phase) {
     case Phase::INIT_END:
-			if (n_retry_ > 0) Log_info("dispatching after restart");
       //Log_info("Dispatching for some reason: %x, %d", this, phase_);
       verify(phase_ % n_phase == Phase::DISPATCH);
 
@@ -148,7 +147,7 @@ void CoordinatorClassic::GotoNextPhase() {
         End();
       }
       else if (aborted_) {
-        Log_info("Restarting for some reason: %d", n_retry_);
+        //Log_info("Restarting for some reason: %d", n_retry_);
         //phase_++;
         Restart();
       } else
@@ -195,7 +194,7 @@ void CoordinatorClassic::Restart() {
       ccsi_->txn_give_up_one(this->thread_id_, txn->type_);
     End();
   } else {
-    Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
+    //Log_info("retry count %d, max_retry: %d, this coord: %llx", n_retry_, max_retry, this);
     Reset();
     txn->Reset();
     //could be a problem or maybe not???
@@ -330,8 +329,6 @@ void CoordinatorClassic::Prepare() {
     sids.push_back(site);
   }
 
-  Log_info("send prepare tid: %ld",
-            cmd_->id_);
   auto phase = phase_;
   
   /*commo()->SendPrepare(partition_id,
@@ -348,8 +345,6 @@ void CoordinatorClassic::Prepare() {
 
 	quorum_event->Wait();
 	//Log_info("slow inside Prepare is: %d", commo()->slow);
-  Log_info("DONE send prepare tid: %ld",
-            cmd_->id_);
   quorum_event->log();
 	
   if(!aborted_){
@@ -455,11 +450,7 @@ void CoordinatorClassic::Commit() {
     auto quorum_event = commo()->SendCommit(this,
                                             tx_data().id_);
 		
-		Log_info("send commit tid: %ld",
-            cmd_->id_);
 		quorum_event->Wait();
-		Log_info("DONE send commit tid: %ld",
-            cmd_->id_);
     quorum_event->log();
 		
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
@@ -481,11 +472,7 @@ void CoordinatorClassic::Commit() {
     tx_data().reply_.res_ = REJECT;
     auto quorum_event = commo()->SendAbort(this,
                                            tx_data().id_);
-		Log_info("send abort tid: %ld",
-            cmd_->id_);
     quorum_event->Wait();
-		Log_info("DONE send abort tid: %ld",
-            cmd_->id_);
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;

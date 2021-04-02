@@ -60,7 +60,7 @@ class Marshal: public NoCopy {
     size_t write_idx;
     chunk *next;
 
-    chunk() : data(new raw_bytes), read_idx(0), write_idx(0), next(nullptr) { }
+    chunk() : data(new raw_bytes), read_idx(0), write_idx(0), next(nullptr) {}
     chunk(const void *p, size_t n)
         : data(new raw_bytes(p, n)), read_idx(0),
           write_idx(n), next(nullptr) {}
@@ -364,15 +364,25 @@ inline rrr::Marshal &operator<<(rrr::Marshal &m, const std::string &v) {
     verify(m.write(v.c_str(), v_len.get()) == (size_t) v_len.get());
   }
 
-	if (v == "dep") {
-		//Log_info("dep: %s", v.c_str());
+	if (v == "dep"/*v.find("dep:") != std::string::npos*/) {
 		m.found_dep = true;
 	} else if (v == "hb") { 
 		m.valid_id = true;
-	} else {
-		Log_info("not dep: %s", v.c_str());
 	}
 
+  return m;
+}
+
+inline rrr::Marshal &operator<<(rrr::Marshal &m, const DepId &v) {
+	if (v.first == "dep") {
+		if (v.second >= 0) {
+			m.valid_id = true;
+		}
+	} else if (v.first == "hb") {
+		m.valid_id = true;
+	}
+  m << v.first;
+  m << v.second;
   return m;
 }
 

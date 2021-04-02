@@ -391,7 +391,8 @@ class ClientController(object):
         self.once = 0
         self.recording_period = False
         self.print_max = False
-        self.profiled = False
+        self.start_profiled = False
+        self.end_profiled = False
 
     def client_run(self, do_sample, do_sample_lock):
         sites = ProcessInfo.get_sites(self.process_infos,
@@ -402,13 +403,15 @@ class ClientController(object):
 
         barriers = []
         for site in sites:
-            barriers.append(site.process.client_rpc_proxy.async_client_ready_block())
+            dep_id = (str.encode('dep'), 0)
+            barriers.append(site.process.client_rpc_proxy.async_client_ready_block(dep_id))
 
         for barrier in barriers:
             barrier.wait()
         logger.info("Clients all ready")
 
-        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
+        dep_id = (str.encode('dep'), 0)
+        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names(dep_id)
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
             self.txn_names[k] = v.decode()
@@ -433,7 +436,8 @@ class ClientController(object):
 
         futures = []
         for rpc_proxy in client_rpc:
-            futures.append(rpc_proxy.async_client_start())
+            dep_id = (str.encode('dep'), 0)
+            futures.append(rpc_proxy.async_client_start(dep_id))
 
         for future in futures:
             future.wait()
@@ -543,8 +547,8 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 10
-        upper_cutoff_pct = 90
+        lower_cutoff_pct = 80
+        upper_cutoff_pct = 100
 
         if (not self.recording_period):
             if self.once == 0:
@@ -612,20 +616,32 @@ class ClientController(object):
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
         else:
-            if (progress >= upper_cutoff_pct):
+            if (progress >= lower_cutoff_pct):
                 try:
                     cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow.txt;"
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_start.txt;"
                     for process_name, process in self.process_infos.items():
-                        if process.name == "host1" and not self.profiled:
-                            self.profiled = True
+                        if process.name == "host1" and not self.start_profiled:
+                            self.start_profiled = True
                             subprocess.call(['ssh', '-f', process.host_address, cmd_3])
-                
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
             
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_end.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.end_profiled:
+                            self.end_profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
                 self.recording_period = False
@@ -692,7 +708,8 @@ class ClientController(object):
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
         for site in sites:
             try:
-                site.rpc_proxy.sync_client_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_client_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 

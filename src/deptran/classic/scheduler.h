@@ -27,7 +27,7 @@ class SchedulerClassic: public TxLogServer {
                              TxnOutput& ret_output);
 
   virtual bool Dispatch(cmdid_t cmd_id,
-												struct DepId dep_id,
+												DepId dep_id,
                         shared_ptr<Marshallable> cmd,
                         TxnOutput& ret_output);
 
@@ -44,7 +44,7 @@ class SchedulerClassic: public TxLogServer {
   // PrepareRequest
   virtual bool OnPrepare(txnid_t tx_id,
                          const std::vector<i32> &sids,
-                         struct DepId dep_id,
+                         DepId dep_id,
 												 bool& null_cmd,
 												 std::vector<shared_ptr<QuorumEvent>>& quorum_events);
 
@@ -54,7 +54,7 @@ class SchedulerClassic: public TxLogServer {
   };
 
   virtual int OnCommit(cmdid_t cmd_id,
-                       struct DepId dep_id,
+                       DepId dep_id,
                        int commit_or_abort,
 											 std::vector<shared_ptr<QuorumEvent>>& quorum_events);
 

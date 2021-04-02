@@ -400,13 +400,15 @@ class ClientController(object):
 
         barriers = []
         for site in sites:
-            barriers.append(site.process.client_rpc_proxy.async_client_ready_block())
+            dep_id = (str.encode('dep'), 0)
+            barriers.append(site.process.client_rpc_proxy.async_client_ready_block(dep_id))
 
         for barrier in barriers:
             barrier.wait()
         logger.info("Clients all ready")
 
-        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
+        dep_id = (str.encode('dep'), 0)
+        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names(dep_id)
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
             self.txn_names[k] = v.decode()
@@ -431,7 +433,8 @@ class ClientController(object):
 
         futures = []
         for rpc_proxy in client_rpc:
-            futures.append(rpc_proxy.async_client_start())
+            dep_id = (str.encode('dep'), 0)
+            futures.append(rpc_proxy.async_client_start(dep_id))
 
         for future in futures:
             future.wait()
@@ -664,7 +667,8 @@ class ClientController(object):
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
         for site in sites:
             try:
-                site.rpc_proxy.sync_client_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_client_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 

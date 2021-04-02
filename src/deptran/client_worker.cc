@@ -251,7 +251,6 @@ void ClientWorker::Work() {
         coo->sp_ev_commit_ = Reactor::CreateSpEvent<IntEvent>();
         coo->sp_ev_done_ = Reactor::CreateSpEvent<IntEvent>();
 
-				Log_info("Dispatching request for %d", n_tx);
 				this->outbound++;
 				
 				bool first = true;

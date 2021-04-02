@@ -379,7 +379,7 @@ void FpgaRaftServer::StartTimer()
                                      const uint64_t leaderPrevLogIndex,
                                      const uint64_t leaderPrevLogTerm,
                                      const uint64_t leaderCommitIndex,
-																		 const struct DepId dep_id,
+																		 const DepId dep_id,
                                      shared_ptr<Marshallable> &cmd,
                                      uint64_t *followerAppendOK,
                                      uint64_t *followerCurrentTerm,

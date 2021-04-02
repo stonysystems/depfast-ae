@@ -136,7 +136,6 @@ Marshal::~Marshal() {
     chunk* chnk = head_;
     while (chnk != nullptr) {
         chunk* next = chnk->next;
-				alloc_count--;
         delete chnk;
         chnk = next;
     }
@@ -159,11 +158,9 @@ size_t Marshal::write(const void* p, size_t n) {
     chrono::time_point<chrono::steady_clock> start;
     if (head_ == nullptr) {
         assert(tail_ == nullptr);
-				alloc_count++;
         head_ = new chunk(p, n);
         tail_ = head_;
     } else if (tail_->fully_written()) {
-				alloc_count++;
         tail_->next = new chunk(p, n);
         tail_ = tail_->next;
     } else {
@@ -180,7 +177,6 @@ size_t Marshal::write(const void* p, size_t n) {
         if (n_write < n) {
 	    //Log_info("Less less less");
             const char* pc = (const char *) p;
-						alloc_count++;
 	    //if(timing) start = chrono::steady_clock::now();
             tail_->next = new chunk(pc + n_write, n - n_write);
             /*if(timing){
@@ -200,7 +196,6 @@ size_t Marshal::write(const void* p, size_t n) {
 }
 
 size_t Marshal::read(void* p, size_t n) {
-		//if (alloc_count > 10000) Log_info("alloc_count: %ld and %ld", alloc_count, content_size_);
     assert(tail_ == nullptr || tail_->next == nullptr);
     assert(empty() || (head_ != nullptr && !head_->fully_read()));
 
@@ -215,7 +210,6 @@ size_t Marshal::read(void* p, size_t n) {
             }
             chunk* chnk = head_;
             head_ = head_->next;
-						alloc_count--;
             delete chnk;
         }
         if (cnt == 0) {
@@ -264,11 +258,9 @@ size_t Marshal::read_from_fd(int fd) {
     size_t n_bytes = 0;
     for (;;) {
         if (head_ == nullptr) {
-						alloc_count++;
             head_ = new chunk;
             tail_ = head_;
         } else if (tail_->fully_written()) {
-						alloc_count++;
             tail_->next = new chunk;
             tail_ = tail_->next;
         }
@@ -298,7 +290,6 @@ size_t Marshal::read_from_marshal(Marshal& m, size_t n) {
             //       given 2 use cases, it works.
 						struct timespec begin, end;
 						//clock_gettime(CLOCK_MONOTONIC, &begin);
-						m.alloc_count++;
             chunk* chnk = m.head_->shared_copy();
 						//clock_gettime(CLOCK_MONOTONIC, &end);
 						//Log_info("time of shared_copy: %d", (end.tv_sec-begin.tv_sec)*1000000000 + end.tv_nsec-begin.tv_nsec);
@@ -322,7 +313,6 @@ size_t Marshal::read_from_marshal(Marshal& m, size_t n) {
                     m.tail_ = nullptr;
                 }
                 chunk* next = m.head_->next;
-								m.alloc_count--;
                 delete m.head_;
                 m.head_ = next;
             }
@@ -365,7 +355,6 @@ size_t Marshal::write_to_fd(int fd) {
             }
             chunk* chnk = head_;
             head_ = head_->next;
-						alloc_count--;
             delete chnk;
         }
         if (cnt <= 0) {
@@ -388,11 +377,9 @@ Marshal::bookmark* Marshal::set_bookmark(size_t n) {
     bm->ptr = new char*[bm->size];
     for (size_t i = 0; i < n; i++) {
         if (head_ == nullptr) {
-						alloc_count++;
             head_ = new chunk;
             tail_ = head_;
         } else if (tail_->fully_written()) {
-						alloc_count++;
             tail_->next = new chunk;
             tail_ = tail_->next;
         }

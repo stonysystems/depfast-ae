@@ -249,10 +249,10 @@ struct ValueTimesPair {
     i64 times;
 }
 
-struct DepId {
-	string str;
-	i64 id;
-}
+//struct DepId {
+//	string str;
+//	i64 id;
+//}
 
 struct TxnInfoRes {
     i32 start_txn;  // total number of started txns
@@ -311,12 +311,12 @@ struct TxnDispatchResponse {
 }
 
 abstract service ClientControl {
-    defer client_get_txn_names( | map<i32, string> txn_names);
-    defer client_shutdown ( | );
-    defer client_force_stop ( | );
+    defer client_get_txn_names( DepId dep_id | map<i32, string> txn_names);
+    defer client_shutdown ( DepId dep_id | );
+    defer client_force_stop ( DepId dep_id | );
     defer client_response ( DepId dep_id | ClientResponse res);
-    defer client_ready ( | i32 res);
-    defer client_ready_block ( | i32 res);
-    defer client_start ( | );
+    defer client_ready ( DepId dep_id | i32 res);
+    defer client_ready_block ( DepId dep_id | i32 res);
+    defer client_start ( DepId dep_id | );
     defer DispatchTxn(TxDispatchRequest req | TxReply result);
 }

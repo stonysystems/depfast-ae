@@ -82,7 +82,7 @@ bool SchedulerClassic::DispatchPiece(Tx& tx,
 }
 
 bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
-                                struct DepId dep_id,
+                                DepId dep_id,
                                 shared_ptr<Marshallable> cmd,
                                 TxnOutput& ret_output) {
   auto sp_vec_piece =
@@ -143,7 +143,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
 //      dispatch the transaction command with paxos instance
 bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
                                  const std::vector<i32>& sids,
-                                 struct DepId dep_id,
+                                 DepId dep_id,
 																 bool& null_cmd,
 																 std::vector<shared_ptr<QuorumEvent>>& quorum_events) {
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
@@ -167,7 +167,7 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
     //Log_info("This is dep_id: %d", dep_id);
     // here, we need to let the paxos coordinator know what request we are working with
     // thsi could be the transaction id or we can add a new id
-    auto coo = CreateRepCoord(dep_id.id);
+    auto coo = CreateRepCoord(dep_id.second);
 		
 		/*clock_gettime(CLOCK_MONOTONIC, &end);
 		Log_info("time of prepare on server: %d", end.tv_nsec-begin.tv_nsec);*/
@@ -215,7 +215,7 @@ int SchedulerClassic::OnEarlyAbort(txnid_t tx_id) {
 }
 
 int SchedulerClassic::OnCommit(txnid_t tx_id,
-															 struct DepId dep_id,
+															 DepId dep_id,
 															 int commit_or_abort,
 															 std::vector<shared_ptr<QuorumEvent>>& quorum_events) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -237,7 +237,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id,
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     //here, we need to let the paxos coordinator know what the request is
     //Log_info("This is dep_id: %d", dep_id);
-    auto coo = CreateRepCoord(dep_id.id);
+    auto coo = CreateRepCoord(dep_id.second);
 
 		/*clock_gettime(CLOCK_MONOTONIC, &end);
 		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
@@ -289,9 +289,7 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
     } else {
       verify(sp_tx->cmd_);
       unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
-			DepId di;
-			di.str = "dep";
-			di.id = 0;
+			DepId di = { "dep", 0 };
       Dispatch(sp_tx->tid_, di, sp_tx->cmd_, *out);
       DoPrepare(sp_tx->tid_);
     }

@@ -63,9 +63,7 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 			
     };
 
-		DepId di;
-		di.str = "hb";
-		di.id = -1;
+		DepId di = { "hb", -1 };
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
     Future::safe_release(f);
   }
@@ -85,9 +83,7 @@ void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = [](Future* fu) {};
     
-		DepId di;
-		di.str = "dep";
-		di.id = -1;
+		DepId di = { "dep",  -1 };
 		
 		//Log_info("heartbeat2 for log index: %d", logIndex);
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
@@ -119,9 +115,7 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 		MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
 
-		DepId di;
-		di.str = "dep";
-		di.id = -1;
+		DepId di = { "dep", -1 };
 
 		Log_info("heartbeat2 for log index: %d", prevLogIndex);
     auto f = proxy->async_AppendEntries(slot_id,
@@ -226,9 +220,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
 		//outbound++;
-		DepId di;
-		di.str = "dep";
-		di.id = dep_id;
+		DepId di = { "dep", dep_id };
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
@@ -263,9 +255,7 @@ void FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = cb;
     MarshallDeputy md(cmd);
-		DepId di;
-		di.str = "dep";
-		di.id = dep_id;
+		DepId di = { "dep", dep_id };
     auto f = proxy->async_AppendEntries(slot_id, 
                                         ballot, 
                                         currentTerm,
@@ -292,9 +282,7 @@ void FpgaRaftCommo::BroadcastDecide(const parid_t par_id,
     FutureAttr fuattr;
     fuattr.callback = [](Future* fu) {};
     MarshallDeputy md(cmd);
-		DepId di;
-		di.str = "dep";
-		di.id = dep_id;
+		DepId di = { "dep", dep_id };
     auto f = proxy->async_Decide(slot_id, ballot, di, md, fuattr);
     Future::safe_release(f);
   }
