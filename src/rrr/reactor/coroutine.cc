@@ -49,6 +49,7 @@ void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
 			Log_info("Warning: We did not deal with backlog issues");
 			needs_finalize_ = false;
 		}
+		//if (!quorum_events_.empty()) Log_info("use_count6: %d", quorum_events_[0].use_count());
 		quorum_events_.clear();
     Reactor::GetReactor()->n_active_coroutines_--;
     yield();

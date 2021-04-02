@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include <unordered_set>
 
 #ifdef __APPLE__
 #define USE_KQUEUE
@@ -37,7 +38,7 @@ public:
     virtual size_t content_size() = 0;
     virtual bool handle_read() = 0;
     //virtual void handle_read_one() = 0;
-    virtual bool handle_read_two() = 0;
+    virtual bool handle_read_two(int iters = 0) = 0;
     virtual void handle_write() = 0;
     virtual void handle_error() = 0;
 		virtual void handle_free() = 0;
@@ -46,7 +47,7 @@ public:
 
 class Epoll {
  private:
-  std::vector<Pollable*> pending{};
+  std::unordered_set<Pollable*> pending{};
 	int zero_count = 0;
 	int count = 0;
 	int first = 0;
@@ -200,7 +201,6 @@ class Epoll {
       if (evlist[i].filter & EVFILT_READ){
         poll->handle_read();
         pending.push_back(poll);
-				if (pending.size() > 10000) Log_info("other pending size: %d", pending.size());
       }
       if (evlist[i].filter & EVFILT_WRITE){
         poll->handle_write();
@@ -232,7 +232,7 @@ class Epoll {
       verify(poll != nullptr);
       if (evlist[i].events & EPOLLIN) {
 					bool push = poll->handle_read();
-          if(push) pending.push_back(poll);
+          if(push) pending.insert(poll);
       }
       if (evlist[i].events & EPOLLOUT) {
           poll->handle_write();
@@ -259,10 +259,6 @@ class Epoll {
   }
 
   void Wait_Two() {
-		struct timespec begin2, begin2_cpu, end2, end2_cpu;
-		/*clock_gettime(CLOCK_MONOTONIC, &begin2);		
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
-    
     for(auto it = pending.begin(); it != pending.end();){
       Pollable* poll = *it;
       bool done = poll->handle_read_two();
@@ -272,14 +268,6 @@ class Epoll {
         it++;
       }
     }
-		/*if (pending.size() != 0) {
-			clock_gettime(CLOCK_MONOTONIC, &end2);
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
-			long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
-			long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
-			double util2 = (double) total_cpu2/total_time2;
-			Log_info("elapsed CPU time (client read2): %f", util2);
-		}*/
   }
 
   void Wait() {

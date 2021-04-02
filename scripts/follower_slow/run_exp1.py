@@ -465,7 +465,7 @@ class ClientController(object):
             futures = []
             for proxy in rpc_proxy:
                 try:
-                    dep_id = ("dep", 0)
+                    dep_id = (str.encode('dep'), 0)
                     future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:

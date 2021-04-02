@@ -150,15 +150,9 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-  auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
-
+	
 	unordered_set<std::string> ip_addrs {};
-	std::vector<std::shared_ptr<rrr::Client>> clients;
-
-  vector<Future*> fus;
-  WAN_WAIT;
-
 	for (auto& p : proxies) {
 		auto id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
@@ -172,8 +166,16 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		ip_addrs.insert(ip);
 		//clients.push_back(cli);
 	}
+  
+	auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1, -1, ip_addrs);
+	//auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n, -1, ip_addrs);
+
+	std::vector<std::shared_ptr<rrr::Client>> clients;
+
+  vector<Future*> fus;
+  WAN_WAIT;
+
 	e->recordHistory(ip_addrs);
-	e->changing_ips_ = ip_addrs;
 	//e->clients_ = clients;
   
 	for (auto& p : proxies) {	
@@ -197,6 +199,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		clock_gettime(CLOCK_MONOTONIC, &begin);
 
     fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
+			//Log_info("use_count: %d for %s and %d", e.use_count(), ip.c_str(), currentTerm);
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
@@ -207,17 +210,22 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 			
 			struct timespec end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-			this->outbound--;
+			//this->outbound--;
 			//Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
 			clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
 			
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index, ip);
-    };
+			//Log_info("use_count2: %d for %s and %d", e.use_count(), ip.c_str(), currentTerm);
+    };	
+		/*fuattr.delete_callback = [this, e] (Future* fu) {
+			//Log_info("use_count final");
+		};*/
+
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
-		outbound++;
+		//outbound++;
 		DepId di;
 		di.str = "dep";
 		di.id = dep_id;

@@ -6,6 +6,7 @@ namespace janus {
 
 history_t QuorumEvent::history{};
 count_t QuorumEvent::counts{};
+count_t QuorumEvent::counts_two{};
 latency_t QuorumEvent::latencies{};
 uint64_t QuorumEvent::count = 0;
 	
@@ -117,20 +118,20 @@ uint64_t QuorumEvent::count = 0;
 	void QuorumEvent::Finalize(int timeout, int flag) {
 		CalledFinalize();
 
-		if (QuorumEvent::count == 100000) {
-			QuorumEvent::count = 0;
+		if (QuorumEvent::counts_two[ips_] == 100000) {
+			QuorumEvent::counts_two[ips_] = 0;
 			finalize_event->Wait(timeout);
 		} else {
-			QuorumEvent::count++;
+			QuorumEvent::counts_two[ips_]++;
 		}
 
 		if (finalize_event->status_ == TIMEOUT) {
 			if (flag == TimeoutFlag::FLAG_FREE) {
 				for (auto it = changing_ips_.begin(); it != changing_ips_.end(); it++) {
-					long mem_before = MemoryUtil();
+					//long mem_before = MemoryUtil();
 					FreeDangling(*it);
-					long mem_after = MemoryUtil();
-					Log_info("finalizing timeout: %ld -> %ld", mem_before, mem_after);
+					//long mem_after = MemoryUtil();
+					Log_info("finalizing timeout");
 				}			
 			}
 		}

@@ -391,7 +391,6 @@ class ClientController(object):
         self.once = 0
         self.recording_period = False
         self.print_max = False
-        self.profiled = False
 
     def client_run(self, do_sample, do_sample_lock):
         sites = ProcessInfo.get_sites(self.process_infos,
@@ -549,26 +548,26 @@ class ClientController(object):
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 2 and self.once == 1):
+            if (progress >= 5 and self.once == 1):
                 try:
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 1 ~/inf & export inf=$!; \
-                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
-                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
+                           sudo mkdir /sys/fs/cgroup/blkio/janus; \
+                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 1 ~/inf & export inf=$!; \
-                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
-                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
+                           sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
+                           sudo mkdir /sys/fs/cgroup/blkio/janus; \
+                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
+                           echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.write_bps_device; \
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
+                    
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2':
                             time.sleep(0.1)
-                            logger.info('slowing here')
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         if process_name == 'host5':
                             time.sleep(0.1)
@@ -588,17 +587,13 @@ class ClientController(object):
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
 
-            if (progress >= upper_cutoff_pct + 5):
+            if (progress >= upper_cutoff_pct + 3):
                 try:
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
-                           kill -9 $pid2;"
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
-                           kill -9 $pid2;"
+                           echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
 
                     for process_name, process in self.process_infos.items():
                         if process.name == 'host2':
@@ -612,20 +607,6 @@ class ClientController(object):
                 except subprocess.TimeoutExpired as e:
                     logger.fatal('timeout')
         else:
-            if (progress >= upper_cutoff_pct):
-                try:
-                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow.txt;"
-                    for process_name, process in self.process_infos.items():
-                        if process.name == "host1" and not self.profiled:
-                            self.profiled = True
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
-                
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
-            
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
                 self.recording_period = False

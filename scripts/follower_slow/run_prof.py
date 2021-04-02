@@ -385,10 +385,7 @@ class ClientController(object):
         self.pre_run_nsec = 0
         self.n_asking = 0
         self.max_tps = 0
-        
-        self.pid = 0
-        self.pid2 = 0
-        self.once = 0
+
         self.recording_period = False
         self.print_max = False
         self.profiled = False
@@ -547,38 +544,6 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if self.once == 0:
-                self.once += 1
-            if (progress >= 2 and self.once == 1):
-                try:
-
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 1 ~/inf & export inf=$!; \
-                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
-                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
-                    
-                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           taskset -ac 1 ~/inf & export inf=$!; \
-                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
-                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
-                    for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
-                            time.sleep(0.1)
-                            logger.info('slowing here')
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                        if process_name == 'host5':
-                            time.sleep(0.1)
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
-                    self.once += 1
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
-
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
                 self.recording_period = True
@@ -587,57 +552,33 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
-
-            if (progress >= upper_cutoff_pct + 5):
-                try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
-                           kill -9 $pid2;"
-                    
-                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
-                           kill -9 $pid2;"
-
-                    for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                        if process_name == 'host5':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
-                        self.once += 1
-                
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
         else:
-            if (progress >= upper_cutoff_pct):
-                try:
-                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow.txt;"
-                    for process_name, process in self.process_infos.items():
-                        if process.name == "host1" and not self.profiled:
-                            self.profiled = True
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
-                
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
-            
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
                 self.recording_period = False
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-                
+
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+            
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_fast.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.profiled:
+                            self.profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
         output_str = "\nProgress: " + str(progress) + "%\n"
         total_table = []
         interval_table = []
@@ -788,7 +729,7 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                site.rpc_proxy.async_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -907,6 +848,7 @@ class ServerController(object):
             logger.info("AVG_LOG_FLUSH_CNT: " + str(avg_r_cnt))
             logger.info("AVG_LOG_FLUSH_SZ: " + str(avg_r_sz))
             logger.info("BENCHMARK SUCCESS!")
+            self.shutdown_sites(sites)
         except:
             logger.error(traceback.format_exc())
             cond.acquire()
@@ -925,7 +867,7 @@ class ServerController(object):
             recording = ""
 
         s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
-            " ./build/deptran_server " + \
+            " env HEAPPROFILE=~/prof.hprof ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "
 
@@ -1285,8 +1227,11 @@ def main():
         logging.info("shutting down...")
         if server_controller is not None:
             try:
+                clients = ProcessInfo.get_sites(process_infos, SiteInfo.SiteType.Client)
+                for site in clients:
+                    site.rpc_proxy.async_client_shutdown()
                 #comment the following line when doing profiling
-                server_controller.server_kill()
+                #server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())

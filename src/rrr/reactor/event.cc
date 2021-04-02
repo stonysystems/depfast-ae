@@ -39,8 +39,8 @@ bool Event::IsSlow() {
 }
 
 void Event::FreeDangling(std::string ip) {
-	//Reactor::GetReactor()->CreateFreeDangling(ip);
-	Reactor::GetReactor()->dangling_ips_.insert(ip);
+	Reactor::GetReactor()->FreeDangling(ip);
+	//Reactor::GetReactor()->dangling_ips_.insert(ip);
 }
 
 void Event::Wait(uint64_t timeout) {

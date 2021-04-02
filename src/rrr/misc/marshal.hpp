@@ -47,7 +47,6 @@ class Marshal: public NoCopy {
   struct chunk: public NoCopy {
 
    private:
-
     chunk(raw_bytes *dt, size_t rd_idx, size_t wr_idx)
         : data((raw_bytes *) dt->ref_copy()), read_idx(rd_idx),
           write_idx(wr_idx), next(nullptr) {
@@ -56,7 +55,6 @@ class Marshal: public NoCopy {
     }
 
    public:
-
     raw_bytes *data;
     size_t read_idx;
     size_t write_idx;
@@ -65,7 +63,7 @@ class Marshal: public NoCopy {
     chunk() : data(new raw_bytes), read_idx(0), write_idx(0), next(nullptr) { }
     chunk(const void *p, size_t n)
         : data(new raw_bytes(p, n)), read_idx(0),
-          write_idx(n), next(nullptr) { }
+          write_idx(n), next(nullptr) {}
     chunk(const chunk&) = delete;
     chunk& operator=(const chunk&) = delete;
     ~chunk() { data->release(); }
@@ -222,6 +220,7 @@ class Marshal: public NoCopy {
 
 	bool found_dep;
   bool valid_id;
+	int alloc_count;
 
 	struct bookmark: public NoCopy {
     size_t size;

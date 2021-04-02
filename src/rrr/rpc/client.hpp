@@ -17,6 +17,7 @@ struct FutureAttr {
 
     // callback should be fast, otherwise it hurts rpc performance
     std::function<void(Future*)> callback;
+		std::function<void(Future*)> delete_callback;
 };
 
 class Future: public RefCounted {
@@ -34,6 +35,7 @@ class Future: public RefCounted {
     pthread_mutex_t ready_m_;
 
     void notify_ready();
+    void notify_delete();
 
 protected:
 
@@ -203,7 +205,7 @@ public:
     int poll_mode();
     size_t content_size();
     //void handle_read_one();
-    bool handle_read_two();
+    bool handle_read_two(int iters = 0);
     bool handle_read();
     void handle_write();
     void handle_error();

@@ -80,7 +80,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;
     if (n_created_coroutines_ % 100 == 0) {
-      Log_info("created %d, busy %d, idle %d coroutines on this thread",
+      Log_debug("created %d, busy %d, idle %d coroutines on this thread",
                (int)n_created_coroutines_,
                (int)n_busy_coroutines_,
                (int)n_idle_coroutines_);
@@ -218,6 +218,7 @@ void Reactor::Recycle(std::shared_ptr<Coroutine>& sp_coro) {
     available_coros_.push_back(sp_coro);
   }
   n_busy_coroutines_--;
+	//Log_info("coros size: %d", coros_.size());
   coros_.erase(sp_coro);
 }
 

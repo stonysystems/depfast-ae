@@ -59,7 +59,7 @@ class ServerListener: public Pollable {
   }
   void handle_write() {verify(0);}
   //void handle_read_one() {verify(0);}
-  bool handle_read_two() {
+  bool handle_read_two(int iters = 0) {
     verify(0);
     return true;
   }
@@ -162,7 +162,7 @@ public:
     }
     void handle_write();
     //void handle_read_one() {verify(0);}
-    bool handle_read_two() {
+    bool handle_read_two(int iters = 0) {
       verify(0);
       return true;
     }

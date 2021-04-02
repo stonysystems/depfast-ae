@@ -58,6 +58,7 @@ class QuorumEvent : public Event {
 	struct timespec begin;
 	static history_t history;
 	static count_t counts;
+	static count_t counts_two;
 	static latency_t latencies;
 	enum TimeoutFlag {FLAG_FREE};
   std::string log_file = "logs.txt";
@@ -68,9 +69,10 @@ class QuorumEvent : public Event {
 
   QuorumEvent(int n_total,
               int quorum,
-							int dep_id = -1) : Event(),
-																 n_total_(n_total),
-																 quorum_(quorum){
+							int dep_id = -1,
+							std::unordered_set<std::string> ip_addrs = {}) : Event(),
+																															n_total_(n_total),
+																															quorum_(quorum){
 		if (quorum_ != n_total_) {
 			needs_finalize_ = true;
 		}
@@ -78,6 +80,20 @@ class QuorumEvent : public Event {
 		finalize_event->__debug_creator = 1;
 
 		finalize_event->target_ = n_total_;
+
+		if (ip_addrs.size() != 0) {
+			auto it = QuorumEvent::counts_two.find(ip_addrs);
+			if (it == QuorumEvent::counts_two.end()) {
+				unordered_map<std::string, int> counts = {};
+			
+				for (std::string ip_addr : ip_addrs) {
+					counts.insert(std::make_pair(ip_addr, 0));
+				}
+				QuorumEvent::counts.insert(std::make_pair(ip_addrs, 0));
+			}
+			ips_ = ip_addrs;
+			changing_ips_ = ip_addrs;
+		}
   }
 
 	void recordHistory(unordered_set<std::string> ip_addrs);
@@ -164,7 +180,7 @@ class QuorumEvent : public Event {
 		updateHistory(ip_addr);
     n_voted_yes_++;
     Test();
-		if (finalize_event->status_ != TIMEOUT) {
+		if (finalize_event->status_ != TIMEOUT && ip_addr != "") {
 			auto it = changing_ips_.find(ip_addr);
 			if (it != changing_ips_.end()) changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);
@@ -174,7 +190,7 @@ class QuorumEvent : public Event {
   void VoteNo(std::string ip_addr = "") {
     n_voted_no_++;
     Test();
-		if (finalize_event->status_ != TIMEOUT) {
+		if (finalize_event->status_ != TIMEOUT && ip_addr != "") {
 			auto it = changing_ips_.find(ip_addr);
 			if (it != changing_ips_.end()) changing_ips_.erase(it);
 			finalize_event->Set(n_voted_yes_ + n_voted_no_);

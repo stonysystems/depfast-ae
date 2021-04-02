@@ -53,6 +53,7 @@ class Coroutine {
   std::shared_ptr<boost_coro_task_t> up_boost_coro_task_{nullptr};
   boost::optional<boost_coro_yield_t&> boost_coro_yield_{};
 	std::vector<std::shared_ptr<Event>> quorum_events_{};
+	std::vector<std::shared_ptr<Event>> all_quorum_events_{};
 
   Coroutine() = delete;
   Coroutine(std::function<void()> func);

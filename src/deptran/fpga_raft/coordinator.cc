@@ -81,7 +81,6 @@ void CoordinatorFpgaRaft::AppendEntries() {
     uint64_t prevLogTerm = this->sch_->currentTerm;
 		this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, slot_id_, curr_ballot_) ;
 		
-
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
                                                      slot_id_,
 																										 dep_id_,
@@ -103,6 +102,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		quorum_events_.push_back(sp_quorum);
 		Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
 		slow_ = sp_quorum->IsSlow();
+		//Log_info("use_count3: %d", sp_quorum.use_count());
 		
 		long leader_time;
 		std::vector<long> follower_times {};
@@ -110,7 +110,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		int total_ob = 0;
 		int avg_ob = 0;
 		//Log_info("begin_index: %d", commo()->begin_index);
-		if (commo()->begin_index >= 1000) {
+		/*if (commo()->begin_index >= 1000) {
 			if (commo()->ob_index < 100) {
 				commo()->outbounds[commo()->ob_index] = commo()->outbound;
 				commo()->ob_index++;
@@ -138,7 +138,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			Log_info("number of rpcs: %d", avg_ob);
 			Log_info("%d and %d", follower_times[0]/avg_ob, follower_times[1]/avg_ob);
 			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
-		}
+		}*/
 
 		//Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {

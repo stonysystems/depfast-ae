@@ -247,6 +247,7 @@ int SchedulerClassic::OnCommit(txnid_t tx_id,
 		slow_ = coo->slow_;
 		
 		quorum_events = coo->quorum_events_;
+		//Log_info("use_count4: %d", quorum_events[0].use_count());
   } else {
     if (commit_or_abort == SUCCESS) {
       DoCommit(*sp_tx);

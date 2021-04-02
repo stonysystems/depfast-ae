@@ -176,9 +176,9 @@ void ClassicServiceImpl::Prepare(const rrr::i64& tid,
     *coro_id = Coroutine::CurrentCoroutine()->id;
     if (defer != nullptr) defer->reply();
 		
-		for (int i = 0; i < quorum_events.size(); i++) {
+		/*for (int i = 0; i < quorum_events.size(); i++) {
 			quorum_events[i]->Finalize(1*1000*1000, 0);
-		}
+		}*/
 
   };
 
@@ -217,18 +217,19 @@ void ClassicServiceImpl::Commit(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
 		std::vector<shared_ptr<QuorumEvent>> quorum_events;
     sched->OnCommit(tid, dep_id, SUCCESS, quorum_events);
-    std::vector<double> result = rrr::CPUInfo::cpu_stat();
-    *profile = {result[0], result[1], result[2], result[3]};
-		//*profile = {0.0, 0.0, 0.0, 0.0};
+    //std::vector<double> result = rrr::CPUInfo::cpu_stat();
+    //*profile = {result[0], result[1], result[2], result[3]};
+		*profile = {0.0, 0.0, 0.0, 0.0};
 		//Log_info("slow2: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
 		
-		for (int i = 0; i < quorum_events.size(); i++) {
+		/*for (int i = 0; i < quorum_events.size(); i++) {
 			quorum_events[i]->Finalize(1*1000*1000, 0);
-		}
+			//Log_info("use_count5: %d", quorum_events[i].use_count());
+		}*/
 
 
   };
@@ -251,17 +252,18 @@ void ClassicServiceImpl::Abort(const rrr::i64& tid,
     auto sched = (SchedulerClassic*) dtxn_sched_;
 		std::vector<shared_ptr<QuorumEvent>> quorum_events;
     sched->OnCommit(tid, dep_id, REJECT, quorum_events);
-    std::vector<double> result = rrr::CPUInfo::cpu_stat();
-    *profile = {result[0], result[1], result[2]};
-		Log_info("slow3: %d", sched->slow_);
+    //std::vector<double> result = rrr::CPUInfo::cpu_stat();
+    //*profile = {result[0], result[1], result[2]};
+		*profile = {0.0, 0.0, 0.0, 0.0};
+		//Log_info("slow3: %d", sched->slow_);
 		*slow = sched->slow_;
     *res = SUCCESS;
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
 		
-		for (int i = 0; i < quorum_events.size(); i++) {
+		/*for (int i = 0; i < quorum_events.size(); i++) {
 			quorum_events[i]->Finalize(1*1000*1000, 0);
-		}
+		}*/
 
   };
 	//Log_info("CreateRunning2");
