@@ -401,13 +401,15 @@ class ClientController(object):
 
         barriers = []
         for site in sites:
-            barriers.append(site.process.client_rpc_proxy.async_client_ready_block())
+            dep_id = (str.encode('dep'), 0)
+            barriers.append(site.process.client_rpc_proxy.async_client_ready_block(dep_id))
 
         for barrier in barriers:
             barrier.wait()
         logger.info("Clients all ready")
 
-        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
+        dep_id = (str.encode('dep'), 0)
+        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names(dep_id)
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
             self.txn_names[k] = v.decode()
@@ -432,7 +434,8 @@ class ClientController(object):
 
         futures = []
         for rpc_proxy in client_rpc:
-            futures.append(rpc_proxy.async_client_start())
+            dep_id = (str.encode('dep'), 0)
+            futures.append(rpc_proxy.async_client_start(dep_id))
 
         for future in futures:
             future.wait()
@@ -673,7 +676,8 @@ class ClientController(object):
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
         for site in sites:
             try:
-                site.rpc_proxy.sync_client_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_client_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 
@@ -769,7 +773,8 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_server_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 
@@ -788,7 +793,8 @@ class ServerController(object):
             for site in sites:
 
                 logger.info("call sync_server_ready on site {}".format(site.id))
-                while (site.rpc_proxy.sync_server_ready() != 1):
+                dep_id = (str.encode('dep'), 0)
+                while (site.rpc_proxy.sync_server_ready(dep_id) != 1):
                     logger.debug("site.rpc_proxy.sync_server_ready returns")
                     time.sleep(1) # waiting for server to initialize
                 logger.info("site %s ready", site.name)

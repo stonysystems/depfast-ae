@@ -295,10 +295,10 @@ struct Profiling {
 }
 
 abstract service ServerControl {
-    defer server_shutdown ( | );
-    defer server_ready ( | i32 res);
-    defer server_heart_beat_with_data ( | ServerResponse res);
-    defer server_heart_beat ( | );
+    defer server_shutdown ( DepId dep_id | );
+    defer server_ready ( DepId dep_id | i32 res);
+    defer server_heart_beat_with_data ( DepId dep_id | ServerResponse res);
+    defer server_heart_beat ( DepId dep_id | );
 }
 
 struct TxDispatchRequest {

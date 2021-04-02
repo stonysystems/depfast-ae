@@ -764,7 +764,8 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_server_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 
@@ -783,7 +784,8 @@ class ServerController(object):
             for site in sites:
 
                 logger.info("call sync_server_ready on site {}".format(site.id))
-                while (site.rpc_proxy.sync_server_ready() != 1):
+                dep_id = (str.encode('dep'), 0)
+                while (site.rpc_proxy.sync_server_ready(dep_id) != 1):
                     logger.debug("site.rpc_proxy.sync_server_ready returns")
                     time.sleep(1) # waiting for server to initialize
                 logger.info("site %s ready", site.name)

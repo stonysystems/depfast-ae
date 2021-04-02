@@ -26,7 +26,7 @@ const std::string ServerControlServiceImpl::STAT_RO6_SZ_VECTOR = "ack_start_vect
 
 void ServerControlServiceImpl::shutdown_wrapper(int sig) {
   for (auto s : scsi_s) {
-    s->server_shutdown(nullptr);
+    s->server_shutdown({"dep", 0}, nullptr);
   }
 }
 
@@ -39,7 +39,7 @@ void ServerControlServiceImpl::set_sig_handler() {
   sig_handler_set_ = true;
 }
 
-void ServerControlServiceImpl::server_shutdown(DeferredReply* d) {
+void ServerControlServiceImpl::server_shutdown(const DepId& dep_id, DeferredReply* d) {
   Log_info("Shutdown Server Control Service");
   status_mutex_.lock();
   status_ = SCS_STOP;
@@ -49,7 +49,7 @@ void ServerControlServiceImpl::server_shutdown(DeferredReply* d) {
     d->reply();
 }
 
-void ServerControlServiceImpl::server_ready(rrr::i32 *res, DeferredReply* d) {
+void ServerControlServiceImpl::server_ready(const DepId& dep_id, rrr::i32 *res, DeferredReply* d) {
   status_mutex_.lock();
   if (SCS_RUN == status_) {
     *res = 1;
@@ -74,14 +74,14 @@ void ServerControlServiceImpl::do_statistics(const char *key,
   stat_m_.unlock();
 }
 
-void ServerControlServiceImpl::server_heart_beat(DeferredReply* d) {
+void ServerControlServiceImpl::server_heart_beat(const DepId& dep_id, DeferredReply* d) {
   if (!sig_handler_set_)
     set_sig_handler();
   alarm(timeout_);
   d->reply();
 }
 
-void ServerControlServiceImpl::server_heart_beat_with_data(ServerResponse *res, DeferredReply* d) {
+void ServerControlServiceImpl::server_heart_beat_with_data(const DepId& dep_id, ServerResponse *res, DeferredReply* d) {
   res->cpu_util = rrr::CPUInfo::cpu_stat()[0];
   if (recorder_) {
     AvgStat r_cnt = recorder_->stat_cnt_.reset();

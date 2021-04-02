@@ -63,10 +63,10 @@ class ServerControlServiceImpl: public ServerControlService {
   void set_sig_handler();
 
  public:
-  void server_shutdown(DeferredReply*) override;
-  void server_ready(i32 *res, DeferredReply*) override;
-  void server_heart_beat_with_data(ServerResponse *res, DeferredReply*) override;
-  void server_heart_beat(DeferredReply*) override;
+  void server_shutdown(const DepId& dep_id, DeferredReply*) override;
+  void server_ready(const DepId& dep_id, i32 *res, DeferredReply*) override;
+  void server_heart_beat_with_data(const DepId& dep_id, ServerResponse *res, DeferredReply*) override;
+  void server_heart_beat(const DepId& dep_id, DeferredReply*) override;
 
   ServerControlServiceImpl(unsigned int timeout = 5, Recorder *recorder = NULL);
   ~ServerControlServiceImpl();
