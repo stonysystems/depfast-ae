@@ -237,8 +237,17 @@ void ServerWorker::Resume() {
 void ServerWorker::ShutDown() {
   Log_debug("deleting services, num: %d", services_.size());
   delete rpc_server_;
+  rpc_server_ = nullptr;
   for (auto service : services_) {
     delete service;
+  }
+  if (tx_commo_) {
+    delete tx_commo_;
+    tx_commo_ = nullptr;
+  }
+  if (rep_commo_) {
+    delete rep_commo_;
+    rep_commo_ = nullptr;
   }
 //  thread_pool_g->release();
   svr_poll_mgr_->release();

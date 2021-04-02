@@ -223,11 +223,11 @@ void Reactor::Recycle(std::shared_ptr<Coroutine>& sp_coro) {
 }
 
 void Reactor::DiskLoop(){
-  
-	Reactor::GetReactor()->disk_job_.lock();
+  auto reactor = Reactor::GetDiskReactor();
+  reactor->disk_job_.lock();
   auto disk_events = Reactor::GetReactor()->disk_events_;
   auto it = Reactor::GetReactor()->disk_events_.begin();
-	std::vector<std::shared_ptr<DiskEvent>> pending_disk_events_{};
+  std::vector<std::shared_ptr<DiskEvent>> pending_disk_events_{};
   while(it != Reactor::GetReactor()->disk_events_.end()){
     auto disk_event = std::static_pointer_cast<DiskEvent>(*it);
     it = Reactor::GetReactor()->disk_events_.erase(it);
@@ -371,6 +371,7 @@ class PollMgr::PollThread {
 
   pthread_t th_;
   pthread_t disk_th_;
+  pthread_t finalize_th_;
   bool stop_flag_;
   bool pause_flag_;
 
@@ -387,16 +388,16 @@ class PollMgr::PollThread {
     args2->thread = thiz;
     args2->reactor_th = Reactor::GetReactor();
 
-    pthread_t disk_th;
-    pthread_t finalize_th;
+//    pthread_t disk_th;
+//    pthread_t finalize_th;
 		Log_info("starting disk thread");
-    Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
-    //Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
+    Pthread_create(&thiz->disk_th_, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    //Pthread_create(&thiz->finalize_th_, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
 		Log_info("starting poll thread");
     thiz->poll_loop();
-    delete args;
-		delete args;
+//    delete args;
+//		delete args;
     pthread_exit(nullptr);
     return nullptr;
   }
@@ -466,6 +467,8 @@ class PollMgr::PollThread {
   ~PollThread() {
     stop_flag_ = true;
     Pthread_join(th_, nullptr);
+    Pthread_join(disk_th_, nullptr);
+    //Pthread_join(finalize_th_, nullptr);
 
     l_.lock();
     vector<shared_ptr<Pollable>> tmp(poll_set_.begin(), poll_set_.end());

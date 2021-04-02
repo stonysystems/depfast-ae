@@ -14,6 +14,7 @@ modes_ = [
 #    "none",
 #    "tpl_ww",
 #    "occ",
+    "tpl_ww_raft",
     "tpl_ww_paxos",
     "occ_paxos",
     "tapir",

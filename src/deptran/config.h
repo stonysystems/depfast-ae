@@ -70,7 +70,7 @@ class Config {
   int timestamp_{TimestampType::CLOCK};
 
   // failover configuration
-  bool failover_;
+  bool failover_{false};
   bool failover_soft_;
   bool failover_random_;
   bool failover_leader_;

@@ -30,7 +30,7 @@ CoordinatorClassic::CoordinatorClassic(uint32_t coo_id,
 
 Communicator* CoordinatorClassic::commo() {
   if (commo_ == nullptr) {
-    commo_ = new Communicator;
+    commo_ =new Communicator;
   }
   verify(commo_ != nullptr);
   return commo_;

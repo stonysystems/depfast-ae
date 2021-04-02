@@ -324,7 +324,7 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef DB_CHECKSUM
-  sleep(90); // hopefully servers can finish hanging RPCs in 90 seconds.
+  sleep(9); // hopefully servers can finish hanging RPCs in 90 seconds.
 #endif
 
   for (auto& worker : svr_workers_g) {
@@ -361,8 +361,8 @@ int main(int argc, char *argv[]) {
 #endif // ifdef CPU_PROFILE
   fflush(stderr);
   fflush(stdout);
-  exit(0);
-  return 0;
+  // exit(0);
+  // return 0;
   // TODO, FIXME pending_future in rpc cause error.
   client_shutdown();
   server_shutdown();

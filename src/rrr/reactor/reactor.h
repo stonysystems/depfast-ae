@@ -115,7 +115,6 @@ class PollMgr: public rrr::RefCounted {
     const int n_threads_;
 
 protected:
-
     // RefCounted object uses protected dtor to prevent accidental deletion
     ~PollMgr();
 

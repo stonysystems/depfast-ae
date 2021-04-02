@@ -64,7 +64,7 @@ class Coordinator {
   map<innid_t, bool> handout_outs_ = {};
   Sharding* sharding_ = nullptr;
   shared_ptr<TxnRegistry> txn_reg_{nullptr};
-  Communicator* commo_ = nullptr;
+  Communicator* commo_{nullptr};
   Frame* frame_ = nullptr;
 
   txid_t ongoing_tx_id_{0};

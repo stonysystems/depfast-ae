@@ -19,7 +19,7 @@ class ClientWorker {
  public:
   PollMgr* poll_mgr_{nullptr};
   Frame* frame_{nullptr};
-  Communicator* commo_{nullptr};
+  shared_ptr<Communicator> commo_{nullptr};
   cliid_t cli_id_;
   int32_t benchmark;
   int32_t mode;

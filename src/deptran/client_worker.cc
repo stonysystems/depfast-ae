@@ -15,6 +15,7 @@ ClientWorker::~ClientWorker() {
   for (auto c : created_coordinators_) {
     delete c;
   }
+  poll_mgr_->release();
 //  dispatch_pool_->release();
 }
 
@@ -133,7 +134,7 @@ Coordinator* ClientWorker::CreateFailCtrlCoordinator() {
                                        id,
                                        txn_reg_);
   coo->loc_id_ = my_site_.locale_id;
-  coo->commo_ = commo_;
+  coo->commo_ = commo_.get();
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
   coo->offset_ = offset_id ;
   Log_debug("coordinator %d created at site %d: forward %d",
@@ -155,7 +156,7 @@ Coordinator* ClientWorker::CreateCoordinator(uint16_t offset_id) {
                                        id,
                                        txn_reg_);
   coo->loc_id_ = my_site_.locale_id;
-  coo->commo_ = commo_;
+  coo->commo_ = commo_.get();
   coo->forward_status_ = forward_requests_to_leader_ ? FORWARD_TO_LEADER : NONE;
   coo->offset_ = offset_id;
   Log_debug("coordinator %d created at site %d: forward %d",
@@ -603,14 +604,14 @@ ClientWorker::ClientWorker(uint32_t id, Config::SiteInfo& site_info, Config* con
     failover_trigger_(failover_trigger),
     failover_server_quit_(failover_server_quit),
     failover_server_idx_(failover_server_idx) {
-  poll_mgr_ = poll_mgr == nullptr ? new PollMgr(1) : poll_mgr;
+  poll_mgr_ = poll_mgr == nullptr ? new PollMgr(1) : (PollMgr*)poll_mgr->ref_copy();
   frame_ = Frame::GetFrame(config->tx_proto_);
   tx_generator_ = frame_->CreateTxGenerator();
   config->get_all_site_addr(servers_);
   num_txn.store(0);
   success.store(0);
   num_try.store(0);
-  commo_ = frame_->CreateCommo(poll_mgr_);
+  commo_.reset(frame_->CreateCommo(poll_mgr_));
   commo_->loc_id_ = my_site_.locale_id;
   forward_requests_to_leader_ =
       (config->replica_proto_ == MODE_FPGA_RAFT && site_info.locale_id != 0) ? true :

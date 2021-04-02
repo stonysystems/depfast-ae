@@ -19,7 +19,7 @@ Communicator::Communicator(PollMgr* poll_mgr) {
   if (poll_mgr == nullptr)
     rpc_poll_ = new PollMgr(1);
   else
-    rpc_poll_ = poll_mgr;
+    rpc_poll_ = (PollMgr*)poll_mgr->ref_copy();
   auto config = Config::GetConfig();
   vector<parid_t> partitions = config->GetAllPartitionIds();
   for (auto& par_id : partitions) {
@@ -91,6 +91,7 @@ Communicator::~Communicator() {
     rpc_cli->close_and_release();
   }
   rpc_clients_.clear();
+  rpc_poll_->release();
 }
 
 std::pair<siteid_t, ClassicProxy*>
