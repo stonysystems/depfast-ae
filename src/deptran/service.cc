@@ -331,9 +331,7 @@ void ClassicServiceImpl::CarouselReadAndPrepare(const i64& cmd_id,
   shared_ptr<Marshallable> sp = md.sp_data_;
   *res = SUCCESS;
   auto sched = (SchedulerCarousel*)dtxn_sched();
-	DepId di;
-	di.first = "dep";
-	di.second = 0;
+	DepId di = { "dep",  0 };
   if (!sched->Dispatch(cmd_id, di, sp, *output)) {
     *res = REJECT;
   }

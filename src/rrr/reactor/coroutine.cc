@@ -12,7 +12,7 @@ namespace rrr {
 uint64_t Coroutine::global_id = 0;
 
 Coroutine::Coroutine(std::function<void()> func) : func_(func), status_(INIT), id(Coroutine::global_id++) {
-
+	begin_time = Time::now();
 }
 
 Coroutine::~Coroutine() {
@@ -46,9 +46,18 @@ void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
 //    func_ = nullptr; // Can be swapped out here?
 		status_ = FINISHED;
 		if (needs_finalize_) {
-			Log_info("Warning: We did not deal with backlog issues");
-			needs_finalize_ = false;
+			print_warning = true;
 		}
+		int elapsed_time_us = rrr::Time::now() - begin_time;
+
+		if (elapsed_time_us >= PRINT_INTERVAL) {
+			if (needs_finalize_) {
+				Log_info("Warning: We did not deal with backlog issues");
+			}
+			print_warning = false;
+			begin_time = rrr::Time::now();
+		}
+
 		//if (!quorum_events_.empty()) Log_info("use_count6: %d", quorum_events_[0].use_count());
 		quorum_events_.clear();
     Reactor::GetReactor()->n_active_coroutines_--;

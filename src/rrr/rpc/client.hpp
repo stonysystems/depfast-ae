@@ -123,7 +123,7 @@ public:
 		long total_time;
 		int index = 0;
 		int count_ = 0;
-		struct timespec begin;
+		int begin_time = 0;
     enum {
         NEW, CONNECTED, CLOSED
     } status_;

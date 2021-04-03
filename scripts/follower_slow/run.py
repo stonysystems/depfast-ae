@@ -544,8 +544,8 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 10
-        upper_cutoff_pct = 90
+        lower_cutoff_pct = 80
+        upper_cutoff_pct = 100
 
         if (not self.recording_period):
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):

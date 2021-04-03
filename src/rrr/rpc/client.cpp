@@ -299,8 +299,8 @@ iters_ = 5;
 		iters_ = iters;
 	}
   
-	if (!client_) {
-		//Log_info("pending size is %d likely due to slowness", pending_fu_.size());
+	if (!client_ && pending_fu_.size() > 0) {
+		Log_info("pending size is %d and %d", pending_fu_.size(), iters_);
 	}
 	
 	for(int i = 0; i < iters_; i++) {
@@ -493,17 +493,13 @@ void Client::end_request() {
 
 	if (!out_.valid_id) {
 		if (count == 0) {
-			begin = {};
-			clock_gettime(CLOCK_MONOTONIC, &begin);
+			begin_time = rrr::Time::now();
 			count++;
 		} else {
-			struct timespec end;
-			clock_gettime(CLOCK_MONOTONIC, &end);
-			long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-			time /= 1000000;
+			int elapsed_time_us = rrr::Time::now() - begin_time;
 
-			if (time > 1000) {
-				double rate = count/(double)time;
+			if (elapsed_time_us > 5*1000*1000) {
+				double rate = count/(double)elapsed_time_us;
 				Log_info("Warning rate is: %f %d %d", rate, count, time);
 				if (rate = 0.005) {
 					Log_info("Warning: dependency not found or not valid");

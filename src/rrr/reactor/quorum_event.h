@@ -19,6 +19,7 @@ struct container_hash {
 
 using rrr::Event;
 using rrr::IntEvent;
+using rrr::Time;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
@@ -26,7 +27,8 @@ using std::unordered_set;
 typedef std::unordered_map<int, unordered_map<int, unordered_map<int, unordered_set<int>>>> dependencies_t;
 typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, int>, container_hash<unordered_set<std::string>>> history_t;
 typedef std::unordered_map<unordered_set<std::string>, int, container_hash<unordered_set<std::string>>> count_t;
-typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, std::vector<long>>, container_hash<std::unordered_set<std::string>>> latency_t;
+typedef std::unordered_map<unordered_set<std::string>, int, container_hash<unordered_set<std::string>>> times_t;
+typedef std::unordered_map<unordered_set<std::string>, unordered_map<std::string, std::vector<int>>, container_hash<std::unordered_set<std::string>>> latency_t;
 
 #define logging 0
 
@@ -55,8 +57,11 @@ class QuorumEvent : public Event {
 	unordered_set<std::string> changing_ips_{};
 	//std::vector<rrr::Client> clients_{};
   dependencies_t deps{};
-	struct timespec begin;
+	const long PRINT_INTERVAL_US = 5*1000*1000;
+	const int FINALIZE_THRESHOLD = 100000;
+	int begin_time;
 	static history_t history;
+	static times_t times;
 	static count_t counts;
 	static count_t counts_two;
 	static latency_t latencies;

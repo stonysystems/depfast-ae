@@ -48,6 +48,9 @@ class Coroutine {
 
   Status status_ = INIT; //
 	bool needs_finalize_ = false;
+	const int PRINT_INTERVAL = 5*1000*1000;
+	int begin_time;
+	bool print_warning;
   std::function<void()> func_{};
 
   std::shared_ptr<boost_coro_task_t> up_boost_coro_task_{nullptr};
