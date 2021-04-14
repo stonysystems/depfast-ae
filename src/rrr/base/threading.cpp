@@ -8,7 +8,7 @@ using namespace std;
 
 namespace rrr {
 
-void SpinLock::lock() {
+void SpinLock::lock(int sleep) {
     if (!locked_ && !__sync_lock_test_and_set(&locked_, true)) {
         return;
     }
@@ -21,7 +21,7 @@ void SpinLock::lock() {
     }
     struct timespec t;
     t.tv_sec = 0;
-    t.tv_nsec = 50000;
+    t.tv_nsec = wait; // default: 50000 like earlier
     while (__sync_lock_test_and_set(&locked_, true)) {
         nanosleep(&t, nullptr);
     }

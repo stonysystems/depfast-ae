@@ -300,6 +300,8 @@ std::shared_ptr<IntEvent> Communicator::BroadcastDispatch(
   std::shared_ptr<IntEvent> e = Reactor::CreateSpEvent<IntEvent>();
 	e->value_ = 0;
 	e->target_ = total;
+	DepId di = { "dep", Communicator::global_id++ };
+  //std::shared_ptr<QuorumEvent> e = Reactor::CreateSpEvent<QuorumEvent>(total, total);
   std::unordered_set<int> leaders{};
   auto src_coroid = e->GetCoroId();
   coo->coro_id_ = src_coroid;
@@ -376,7 +378,6 @@ std::shared_ptr<IntEvent> Communicator::BroadcastDispatch(
 
     outbound_[src_coroid] = make_pair((rrr::i64)start_.tv_sec, (rrr::i64)start_.tv_nsec);
 
-		DepId di = { "dep", Communicator::global_id++ };
     
 		auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
     Future::safe_release(future);
@@ -430,7 +431,8 @@ Communicator::SendPrepare(Coordinator* coo,
     auto site_id = leader_id;
     auto proxies = rpc_par_proxies_[partition_id];
     if(follower_forwarding) n_total = 3;
-    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1, Communicator::global_id);
+		DepId di = { "dep", Communicator::global_id++ };
+    auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     e->AddEvent(qe);
     auto src_coroid = qe->GetCoroId();
       
@@ -463,7 +465,6 @@ Communicator::SendPrepare(Coordinator* coo,
               sids.size(),
               partition_id,
               tid);
-		DepId di = { "dep", Communicator::global_id++ };
     
 		Future::safe_release(proxy->async_Prepare(tid, sids, di, fuattr));
     if(follower_forwarding){
@@ -529,6 +530,7 @@ Communicator::SendCommit(Coordinator* coo,
     auto site_id = leader_id;
     auto proxies = rpc_par_proxies_[rp];
     if(follower_forwarding) n_total = 3;
+		DepId di = { "dep", Communicator::global_id++ };
     auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     qe->id_ = Communicator::global_id;
     auto src_coroid = qe->GetCoroId();
@@ -584,7 +586,6 @@ Communicator::SendCommit(Coordinator* coo,
       e->Test();
     };
 
-		DepId di = { "dep", Communicator::global_id++ };
     ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
     Log_debug("SendCommit to %ld tid:%ld\n", rp, tid);
     Future::safe_release(proxy->async_Commit(tid, di, fuattr));
@@ -636,6 +637,7 @@ Communicator::SendAbort(Coordinator* coo,
     auto leader_id = LeaderProxyForPartition(rp).first;
     auto site_id = leader_id;
     if(follower_forwarding) n_total = 3;
+		DepId di = { "dep", Communicator::global_id++ };
     auto qe = Reactor::CreateSpEvent<QuorumEvent>(n_total, 1);
     qe->id_ = Communicator::global_id;
     auto src_coroid = qe->GetCoroId();
@@ -692,7 +694,6 @@ Communicator::SendAbort(Coordinator* coo,
       e->Test();
     };
 
-		DepId di = { "dep", Communicator::global_id++ };
     ClassicProxy* proxy = LeaderProxyForPartition(rp).second;
     Log_debug("SendAbort to %ld tid:%ld\n", rp, tid);
     Future::safe_release(proxy->async_Abort(tid, di, fuattr));

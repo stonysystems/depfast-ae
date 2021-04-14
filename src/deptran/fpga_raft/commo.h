@@ -118,6 +118,7 @@ class FpgaRaftCommo : public Communicator {
 friend class FpgaRaftProxy;
  public:
 	std::unordered_map<siteid_t, uint64_t> matchedIndex {};
+	std::unordered_map<siteid_t, bool> resend {};
 	int index;
 	
   FpgaRaftCommo() = delete;

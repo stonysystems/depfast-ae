@@ -200,18 +200,59 @@ void Client::handle_error() {
 }
 
 void Client::handle_free() {
-	list<Future*> futures;
-  pending_fu_l_.lock();
+	//int begin_ = Time::now(true);
+	/*list<Future*> futures;
+	pending_fu_l_.lock();
   for (auto& it: pending_fu_) {
     futures.push_back(it.second);
   }
   pending_fu_.clear();
   pending_fu_l_.unlock();
 
+	//int end_ = Time::now(true);
+	//Log_info("time of free: %d", end_ - begin_);
+  
+	for (auto& fu: futures) {
+    if (fu != nullptr) {
+      // since we removed it from pending_fu_
+      fu->release();
+    }
+  }*/
+
+	if (pending_fu_.size() == 0) return;
+
+	list<Future*> futures;
+	int batches = 40;
+	int size;
+	int j;
+	int last_id;
+
+	for (int i = 0; i < batches; i++) {
+		j = 0;
+		int begin_ = Time::now(true);
+		pending_fu_l_.lock();
+		//int size_before = pending_fu_.size();
+		size = pending_fu_.size()/(batches-i);
+
+		for (auto it = pending_fu_.begin(); it != pending_fu_.end();) {
+			if (j == size) break;
+			futures.push_back(it->second);
+			it = pending_fu_.erase(it);
+			j++;
+		}
+
+		//int size_after = pending_fu_.size();
+		//Log_info("change in size: %d -> %d", size_before, size_after);
+
+		pending_fu_l_.unlock();
+		int end_ = Time::now(true);
+		Log_info("time of free: %d", end_-begin_);
+		usleep(100*1000);
+	}
+
   for (auto& fu: futures) {
     if (fu != nullptr) {
       // since we removed it from pending_fu_
-			fu->notify_delete();
       fu->release();
     }
   }
@@ -282,39 +323,35 @@ bool Client::handle_read(){
   return true;
 }
 
-bool Client::handle_read_two(int iters) {
+bool Client::handle_read_two() {
   if (status_ != CONNECTED) {
     return false;
   }
+
+	struct timespec begin_peek, begin_read, begin_marshal, begin_marshal_cpu;
+	struct timespec end_peek, end_read, end_marshal, end_marshal_cpu;
+  //return true;
   bool done = false;
-	int iters_ = 0;
-	//if (content_size() > 100000) Log_info("content: %ld and %ld", in_.content_size(), in_.alloc_count);
+	int iters = 0;
+	//Log_info("content: %ld", in_.content_size());
 	//if(in_.content_size() > 0){
-iters_ = 5;
+iters = 20;
 	//Log_info("iters: %ld", iters);
 
   if(client_){
-		iters_ = INT_MAX;
-	} else if (iters != 0) {
-		iters_ = iters;
+		iters = INT_MAX;
 	}
-  
-	if (!client_ && pending_fu_.size() > 0) {
-		Log_info("pending size is %d and %d", pending_fu_.size(), iters_);
-	}
-	
-	for(int i = 0; i < iters_; i++) {
+
+	for(int i = 0; i < iters; i++) {
     i32 packet_size;
 
-		//read_l_.lock();
     int n_peek = in_.peek(&packet_size, sizeof(i32));
 
-		//if (host() == "10.0.0.14" && (n_peek != sizeof(i32) || in_.content_size() < packet_size + sizeof(i32))) Log_info("we are breaking: %d - %d vs %d", i, content_size(), packet_size + sizeof(i32));
     if (n_peek == sizeof(i32)
         && in_.content_size() >= packet_size + sizeof(i32)) {
-			
+
 			verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
-			
+
       v64 v_reply_xid;
       v32 v_error_code;
 
@@ -327,35 +364,55 @@ iters_ = 5;
         Future* fu = it->second;
         verify(fu->xid_ == v_reply_xid.get());
 
+
+				struct timespec end;
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				/*long curr = (end.tv_sec - rpc_starts[fu->xid_].tv_sec)*1000000000 + end.tv_nsec - rpc_starts[fu->xid_].tv_nsec;
+				if (count_ >= 1000) {
+					if (index < 100) {
+						times[index] = curr;
+						index++;
+					} else {
+						total_time = 0;
+						for (int i = 0; i < 99; i++) {
+							times[i] = times[i+1];
+							total_time += times[i];
+						}
+						times[99] = curr;
+						total_time += times[99];
+					}
+					count_ = 0;
+				} else {
+					count_++;
+				}
+
+				if (index == 100) {
+					time_ = total_time/index;
+				} else {
+					time_ = 0;
+				}*/
+
         pending_fu_.erase(it);
         pending_fu_l_.unlock();
-				
+
 				fu->error_code_ = v_error_code.get();
         fu->reply_.read_from_marshal(in_,
 	    	                     packet_size - v_reply_xid.val_size()
 				         - v_error_code.val_size());
-        
-				//read_l_.unlock();
+
 				fu->notify_ready();
         fu->release();
       } else{
         pending_fu_l_.unlock();
-				
-				Marshal reply;
-				reply.read_from_marshal(in_,
-															packet_size - v_reply_xid.val_size()
-															- v_error_code.val_size());
-				//read_l_.unlock();
       }
     } else{
-			//read_l_.unlock();
       done = true;
       break;
     }
   }
+	//Log_info("time of read for %s: %d", host().c_str(), done);
 
-
-  if (iters == 0) Reactor::GetReactor()->Loop();
+	Reactor::GetReactor()->Loop();
 	return done;
 }
 
@@ -449,13 +506,27 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   pending_fu_[fu->xid_] = fu;
   pending_fu_l_.unlock();
 
+	if (!client_ && pending_fu_.size() > 0 && host() == "10.0.0.14") {
+		if (first_print) {
+			first_print = false;
+			pending_begin_time = Time::now();
+			Log_info("pending size is %d for %s", pending_fu_.size(), host().c_str());
+		} else {
+			int elapsed_time_us = Time::now() - pending_begin_time;
+			if (elapsed_time_us >= 1*1000*1000) {
+				Log_info("pending size is %d for %s", pending_fu_.size(), host().c_str());
+				pending_begin_time = Time::now();
+			}
+		}
+	}
+	
 	struct timespec begin;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 	//rpc_starts[fu->xid_] = begin;
 
   // check if the client gets closed in the meantime
   if (status_ != CONNECTED) {
-    pending_fu_l_.lock();
+    pending_fu_l_.lock(5000);
     unordered_map<i64, Future*>::iterator it = pending_fu_.find(fu->xid_);
     if (it != pending_fu_.end()) {
       it->second->release();
@@ -501,7 +572,7 @@ void Client::end_request() {
 			if (elapsed_time_us > 5*1000*1000) {
 				double rate = count/(double)elapsed_time_us;
 				Log_info("Warning rate is: %f %d %d", rate, count, time);
-				if (rate = 0.005) {
+				if (count >= 10) {
 					Log_info("Warning: dependency not found or not valid");
 				}
 				count = 0;

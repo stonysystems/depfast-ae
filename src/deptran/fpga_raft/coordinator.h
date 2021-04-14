@@ -16,7 +16,7 @@ class CoordinatorFpgaRaft : public Coordinator {
   enum Phase { INIT_END = 0, PREPARE = 1, ACCEPT = 2, COMMIT = 3, FORWARD = 4 };
   const int32_t n_phase_ = 4;
 
-  FpgaRaftCommo *commo() {
+	FpgaRaftCommo *commo() {
     // TODO fix this.
     verify(commo_ != nullptr);
     return (FpgaRaftCommo *) commo_;

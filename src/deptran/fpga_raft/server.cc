@@ -22,7 +22,7 @@ FpgaRaftServer::FpgaRaftServer(Frame * frame) {
   setIsFPGALeader(frame_->site_info_->locale_id == 0) ;
   setIsLeader(frame_->site_info_->locale_id == 0) ;
   stop_ = false ;
-  timer_ = new Timer() ;
+  //timer_ = new Timer() ;
 }
 
 void FpgaRaftServer::Setup() {
@@ -42,8 +42,10 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 	hb_loop_args_type* hb_loop_args = (hb_loop_args_type*) args;
 
 	FpgaRaftServer::looping = true;
+	int count = 0;
 	while(FpgaRaftServer::looping) {
-		usleep(100*1000);
+		usleep(5*1000);
+    std::lock_guard<std::recursive_mutex> lock(hb_loop_args->sch->mtx_);
 		uint64_t prevLogIndex = hb_loop_args->sch->lastLogIndex;	
 		
 		auto instance = hb_loop_args->sch->GetFpgaRaftInstance(prevLogIndex);
@@ -65,7 +67,7 @@ void* FpgaRaftServer::HeartbeatLoop(void* args) {
 				hb_loop_args->commo->SendAppendEntriesAgain(it->first,
 																				partition_id,
                                         slot,
-                                        ballot,
+																				ballot,
                                         hb_loop_args->sch->IsLeader(),
                                         term,
                                         prevLogIndex,
@@ -463,6 +465,8 @@ void FpgaRaftServer::StartTimer()
         }
 
 				/*if (rand() % 1000 == 0) {
+					//auto nv_event = Reactor::CreateSpEvent<NeverEvent>();
+					//nv_event->Wait(25*1000);
 					usleep(25*1000);
 				}*/
         cb();
@@ -491,6 +495,7 @@ void FpgaRaftServer::StartTimer()
                               const ballot_t ballot,
                               shared_ptr<Marshallable> &cmd) {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
+		//Log_info("OnCommit start");
 		struct timespec begin, end;
 		//clock_gettime(CLOCK_MONOTONIC, &begin);
 
@@ -507,9 +512,11 @@ void FpgaRaftServer::StartTimer()
             app_next_(*next_instance->log_);
             executeIndex++;
         } else {
+						//Log_info("breaking: %d", id);
             break;
         }
     }
+		//Log_info("OnCommit finish2");
     in_applying_logs_ = false;
 
 		/*clock_gettime(CLOCK_MONOTONIC, &end);

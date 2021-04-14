@@ -173,7 +173,9 @@ bool SchedulerClassic::OnPrepare(cmdid_t tx_id,
 		Log_info("time of prepare on server: %d", end.tv_nsec-begin.tv_nsec);*/
     //Log_info("The locale id: %d", coo->loc_id_);
     coo->Submit(sp_m);
+		//Log_info("before wait: %d", dep_id.second);
     sp_tx->prepare_result->Wait();
+		//Log_info("after wait: %d", dep_id.second);
 		slow_ = coo->slow_;
 		
 		quorum_events = coo->quorum_events_;
@@ -242,8 +244,9 @@ int SchedulerClassic::OnCommit(txnid_t tx_id,
 		/*clock_gettime(CLOCK_MONOTONIC, &end);
 		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
     coo->Submit(sp_m);
-    //Log_info("Before failing verify");
+		//Log_info("before wait: %d", dep_id.second);
     sp_tx->commit_result->Wait();
+		//Log_info("after wait: %d", dep_id.second);
 		slow_ = coo->slow_;
 		
 		quorum_events = coo->quorum_events_;

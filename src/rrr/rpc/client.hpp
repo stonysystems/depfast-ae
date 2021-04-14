@@ -124,6 +124,8 @@ public:
 		int index = 0;
 		int count_ = 0;
 		int begin_time = 0;
+		int pending_begin_time = 0;
+		bool first_print = true;
     enum {
         NEW, CONNECTED, CLOSED
     } status_;
@@ -205,7 +207,7 @@ public:
     int poll_mode();
     size_t content_size();
     //void handle_read_one();
-    bool handle_read_two(int iters = 0);
+    bool handle_read_two();
     bool handle_read();
     void handle_write();
     void handle_error();

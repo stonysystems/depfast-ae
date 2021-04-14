@@ -15,7 +15,7 @@ class CoordinatorMultiPaxos : public Coordinator {
   const int32_t n_phase_ = 4;
 
   MultiPaxosCommo *commo() {
-    // TODO fix this.
+		// TODO fix this.
     verify(commo_ != nullptr);
     return (MultiPaxosCommo *) commo_;
   }

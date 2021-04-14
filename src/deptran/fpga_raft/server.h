@@ -170,6 +170,8 @@ class FpgaRaftServer : public TxLogServer {
     *index = lastLogIndex ;
     lastLogIndex += 1;
     auto instance = GetFpgaRaftInstance(lastLogIndex);
+		//Log_info("setting log here: %d", lastLogIndex);
+		verify(cmd);
     instance->log_ = cmd;
 		instance->prevTerm = currentTerm;
     instance->term = currentTerm;

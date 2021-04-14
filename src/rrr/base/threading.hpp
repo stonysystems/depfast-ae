@@ -30,7 +30,7 @@ class Lockable: public NoCopy {
 public:
     enum type {MUTEX, SPINLOCK, EMPTY};
 
-    virtual void lock() = 0;
+    virtual void lock(int sleep = 0) = 0;
     virtual void unlock() = 0;
 //    virtual Lockable::type whatami() = 0;
 };
@@ -38,7 +38,8 @@ public:
 class SpinLock: public Lockable {
 public:
     SpinLock(): locked_(false) { }
-    void lock();
+		// need to have ''wait'' because some SpinLocks wait for too long
+    void lock(int sleep = 50000);
     void unlock() {
         __sync_lock_release(&locked_);
     }
@@ -123,7 +124,7 @@ public:
         Pthread_mutex_destroy(&m_);
     }
 
-    void lock() {
+    void lock(int sleep = 0) {
         Pthread_mutex_lock(&m_);
     }
     void unlock() {

@@ -51,6 +51,7 @@ class Reactor {
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
 	static std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> clients_;
 	static std::unordered_set<std::string> dangling_ips_;
+	static std::vector<std::shared_ptr<Event>> finalize_quorum_events_;
   bool looping_{false};
 	bool slow_{false};
 	long disk_times[50];

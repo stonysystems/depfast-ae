@@ -43,9 +43,12 @@ shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id
 
 void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 																			 uint64_t logIndex) {
+  //std::lock_guard<std::recursive_mutex> lock(mtx_);
 	//Log_info("heartbeat for log index: %d", logIndex);
+	DepId di = { "hb", -1 };
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
+	WAN_WAIT;
   for (auto& p : proxies) {
     if (p.first == this->loc_id_)
         continue;
@@ -53,17 +56,13 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
     auto proxy = (FpgaRaftProxy*) p.second;
     FutureAttr fuattr;
     
-		fuattr.callback = [this, follower_id, logIndex] (Future* fu) {
-      uint64_t index = 0;
+		fuattr.callback = [this, follower_id] (Future* fu) {
+			uint64_t index = 0;
 			
-      fu->get_reply() >> index;
-			this->matchedIndex[follower_id] = index;
-			
-			//Log_info("follower_index for %d: %d and leader_index: %d", follower_id, index, logIndex);
-			
+			fu->get_reply() >> index;
+			this->matchedIndex[follower_id] = std::max(index, this->matchedIndex[follower_id]);
     };
 
-		DepId di = { "hb", -1 };
     auto f = proxy->async_Heartbeat(logIndex, di, fuattr);
     Future::safe_release(f);
   }
@@ -72,6 +71,7 @@ void FpgaRaftCommo::BroadcastHeartbeat(parid_t par_id,
 void FpgaRaftCommo::SendHeartbeat(parid_t par_id,
 																	siteid_t site_id,
 																  uint64_t logIndex) {
+  //std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
 	WAN_WAIT;
@@ -101,6 +101,7 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 																					 uint64_t prevLogTerm,
 																					 uint64_t commitIndex,
 																					 shared_ptr<Marshallable> cmd) {
+  //std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
 	WAN_WAIT;
@@ -143,6 +144,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t prevLogTerm,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
+  //std::lock_guard<std::recursive_mutex> lock(mtx_);
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto proxies = rpc_par_proxies_[par_id];
 	
@@ -161,7 +163,8 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
 		//clients.push_back(cli);
 	}
   
-	auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1, -1, ip_addrs);
+	DepId di = { "dep", dep_id };
+	auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1, di, ip_addrs);
 	//auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n, -1, ip_addrs);
 
 	std::vector<std::shared_ptr<rrr::Client>> clients;
@@ -220,7 +223,6 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
 		//outbound++;
-		DepId di = { "dep", dep_id };
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
@@ -275,6 +277,7 @@ void FpgaRaftCommo::BroadcastDecide(const parid_t par_id,
 																			const i64 dep_id,
                                       const ballot_t ballot,
                                       const shared_ptr<Marshallable> cmd) {
+  //std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto proxies = rpc_par_proxies_[par_id];
   vector<Future*> fus;
   for (auto& p : proxies) {

@@ -547,7 +547,7 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 80
+        lower_cutoff_pct = 75
         upper_cutoff_pct = 100
 
         if (not self.recording_period):
@@ -555,6 +555,7 @@ class ClientController(object):
                 self.once += 1
             if (progress >= 2 and self.once == 1):
                 try:
+                    experiment = self.config['args'].experiment_name.split('-')[0]
 
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            taskset -ac 1 ~/inf & export inf=$!; \
@@ -569,6 +570,9 @@ class ClientController(object):
                            echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            mkdir " + experiment + "_mem;\
+                            ./get_mem.sh $pid " + experiment +"_mem &"
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host2':
                             time.sleep(0.1)
@@ -577,6 +581,8 @@ class ClientController(object):
                         if process_name == 'host5':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                        if process_name == 'host1':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
                     self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
@@ -632,7 +638,9 @@ class ClientController(object):
             if (progress >= upper_cutoff_pct):
                 try:
                     cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_end.txt;"
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_end.txt; \
+                            pid3=`ps aux | grep get_mem | head -1 | awk '{print $2}'`;\
+                            kill -9 $pid3"
                     for process_name, process in self.process_infos.items():
                         if process.name == "host1" and not self.end_profiled:
                             self.end_profiled = True

@@ -51,7 +51,7 @@ void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
 		int elapsed_time_us = rrr::Time::now() - begin_time;
 
 		if (elapsed_time_us >= PRINT_INTERVAL) {
-			if (needs_finalize_) {
+			if (print_warning) {
 				Log_info("Warning: We did not deal with backlog issues");
 			}
 			print_warning = false;

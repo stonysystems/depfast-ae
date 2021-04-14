@@ -20,6 +20,7 @@ thread_local std::shared_ptr<Reactor> Reactor::sp_disk_reactor_th_{};
 thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> Reactor::clients_{};
 std::unordered_set<std::string> Reactor::dangling_ips_{};
+std::vector<shared_ptr<Event>> Reactor::finalize_quorum_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::disk_events_{};
 //std::vector<std::shared_ptr<Event>> Reactor::ready_disk_events_{};
 SpinLock Reactor::disk_job_;
@@ -392,7 +393,7 @@ class PollMgr::PollThread {
 //    pthread_t finalize_th;
 		Log_info("starting disk thread");
     Pthread_create(&thiz->disk_th_, nullptr, PollMgr::PollThread::start_disk_loop, args);
-    //Pthread_create(&thiz->finalize_th_, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
+    Pthread_create(&thiz->finalize_th_, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
 		Log_info("starting poll thread");
     thiz->poll_loop();
@@ -414,7 +415,7 @@ class PollMgr::PollThread {
 				Log_info("done freeing");
 			}
 			Reactor::dangling_ips_.clear();
-      usleep(1*1000);
+      usleep(100*1000);
     }
     pthread_exit(nullptr);
     return nullptr;
@@ -543,9 +544,9 @@ void PollMgr::PollThread::poll_loop() {
 				index = 0;
 				count++;
 				double util = (double)total_cpu/total_time;
-				Log_info("elapsed CPU: %d", total_cpu);
+				/*Log_info("elapsed CPU: %d", total_cpu);
 				Log_info("elapsed time: %d", total_time);
-				Log_info("elapsed CPU time: %f", util);
+				Log_info("elapsed CPU time: %f", util);*/
 
 				if (util < 0.85) Reactor::GetReactor()->slow_ = true;
 			}

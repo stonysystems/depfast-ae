@@ -16,6 +16,7 @@ class TxLogServer;
 class FpgaRaftServer;
 class FpgaRaftServiceImpl : public FpgaRaftService {
  public:
+  std::recursive_mutex mtx_{};
   FpgaRaftServer* sched_;
   FpgaRaftServiceImpl(TxLogServer* sched);
 	void Heartbeat(const uint64_t& leaderPrevLogIndex,

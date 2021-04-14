@@ -57,7 +57,7 @@ uint64_t QuorumEvent::count = 0;
 							
 			int threshold = (int)(QuorumEvent::counts[ips_]/(QuorumEvent::history[ips_].size()));
 			for (auto it = QuorumEvent::history[ips_].begin(); it != QuorumEvent::history[ips_].end(); it++) {
-				if (it->second < (int)(threshold/100)) {
+				if (it->second == 0) {
 									
 					slow_nodes++;
 					//Log_info("Warning: the follower with address %s is slower than usual", it->first.c_str());
@@ -124,7 +124,7 @@ uint64_t QuorumEvent::count = 0;
 	void QuorumEvent::Finalize(int timeout, int flag) {
 		CalledFinalize();
 
-		if (QuorumEvent::counts_two[ips_] == FINALIZE_THRESHOLD) {
+		if (QuorumEvent::counts_two[ips_] == 250000) {
 			QuorumEvent::counts_two[ips_] = 0;
 			finalize_event->Wait(timeout);
 		} else {

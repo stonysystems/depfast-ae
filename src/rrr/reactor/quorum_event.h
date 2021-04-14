@@ -74,7 +74,7 @@ class QuorumEvent : public Event {
 
   QuorumEvent(int n_total,
               int quorum,
-							int dep_id = -1,
+							rrr::DepId dep_id = {"", 0},
 							std::unordered_set<std::string> ip_addrs = {}) : Event(),
 																															n_total_(n_total),
 																															quorum_(quorum){
@@ -99,6 +99,7 @@ class QuorumEvent : public Event {
 			ips_ = ip_addrs;
 			changing_ips_ = ip_addrs;
 		}
+
   }
 
 	void recordHistory(unordered_set<std::string> ip_addrs);

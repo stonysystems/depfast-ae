@@ -116,6 +116,7 @@ void CoordinatorClassic::GotoNextPhase() {
 				t->Wait(0.1*1000*1000);
 			}*/
 			DispatchAsync(true);
+			Log_info("finished dispatch");
       break;
       //break;
     case Phase::DISPATCH:
@@ -127,7 +128,7 @@ void CoordinatorClassic::GotoNextPhase() {
         Prepare();
       } else {
         phase_++;
-        Log_info("Aborting for some reason: %d", n_retry_);
+        //Log_info("Aborting for some reason: %d", n_retry_);
         EarlyAbort();
 				break;
       }
@@ -262,7 +263,7 @@ void CoordinatorClassic::DispatchAsync(bool last) {
   } else if (last && aborted_) {
 		GotoNextPhase();
 	}
-  //Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
+  //Log_info("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
 bool CoordinatorClassic::AllDispatchAcked() {
@@ -355,7 +356,7 @@ void CoordinatorClassic::Prepare() {
 		
 	}
 	if (commo()->slow) {
-		Log_info("prep_slow");
+		//Log_info("prep_slow");
 		prep_slow = true;
 	}
 	//if(commo()->slow  && commo()->total > 100 && !commo()->paused){
@@ -456,6 +457,7 @@ void CoordinatorClassic::Commit() {
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
 		
     else committed_ = true;
+		//Log_info("inside commit: %d and %d", committed_, aborted_);
     /*for (auto& rp : tx_data().partition_ids_) {
       n_finish_req_++;
       Log_debug("send commit for txn_id %"
@@ -473,6 +475,7 @@ void CoordinatorClassic::Commit() {
     auto quorum_event = commo()->SendAbort(this,
                                            tx_data().id_);
     quorum_event->Wait();
+		//Log_info("inside abort");
     quorum_event->log();
 
     if(cmd->reply_.res_ == REJECT) aborted_ = true;
@@ -494,16 +497,16 @@ void CoordinatorClassic::Commit() {
   }
 	//Log_info("slow inside Commit is: %d", commo()->slow);
 	//Log_info("commo window avg: %d", commo()->window_avg);
-	if(false && (prep_slow || commo()->slow)  && commo()->total > 10000 && !commo()->paused){
+	/*if(false && (prep_slow || commo()->slow)  && commo()->total > 10000 && !commo()->paused){
 		//double cpu_thres = 0.90/(1 + exp(-0.00107340141*(commo()->window_avg - 721.918226)));
 		//double cpu_thres = 0.29712171*log(commo()->window_avg) - 2.8758182;
-		/*double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
-		if(cpu_thres >= 0.85) cpu_thres = 0.85;
+		//double cpu_thres = 0.0000137325*commo()->window_avg - 0.23825;
+		//if(cpu_thres >= 0.85) cpu_thres = 0.85;
 		//Log_info("cpu vs lat_util_: %f vs %f", commo()->cpu, cpu_thres);
-		if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
-			commo()->last_cpu = commo()->cpu;
-			commo()->low_util++;
-		} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;*/
+		//if(commo()->cpu <= (cpu_thres*0.0) && !commo()->paused && commo()->cpu != commo()->last_cpu){
+		//	commo()->last_cpu = commo()->cpu;
+		//	commo()->low_util++;
+		//} else if(commo()->cpu > (cpu_thres*0.0)) commo()->low_util = 0;
 		if(commo()->slow || prep_slow){
 			commo()->low_util = 0;
 			Log_info("Reelection started: %d/%d", commo()->total_, concurrent-1);
@@ -526,7 +529,7 @@ void CoordinatorClassic::Commit() {
 			commo()->ResetProfiles();
 			commo()->total_ = 0;
 		}
-	}
+	}*/
 	prep_slow = false;
 }
 
@@ -581,7 +584,7 @@ void CoordinatorClassic::End() {
     verify(0);
   }
   tx_reply_buf.tx_id_ = ongoing_tx_id_;
-  Log_debug("call reply for tx_id: %"
+  Log_info("call reply for tx_id: %"
                 PRIx64, ongoing_tx_id_);
   tx_data->callback_(tx_reply_buf);
   ongoing_tx_id_ = 0;

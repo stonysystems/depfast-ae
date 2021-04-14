@@ -143,7 +143,6 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		//Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
@@ -178,6 +177,9 @@ void CoordinatorFpgaRaft::LeaderLearn() {
     uint64_t prevCommitIndex = this->sch_->commitIndex;
     verify(minIndex >= prevCommitIndex);
     this->sch_->commitIndex = std::max(this->sch_->commitIndex, minIndex);
+    auto next_instance = this->sch_->GetFpgaRaftInstance(this->sch_->commitIndex);
+		verify(next_instance->log_);
+		//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
     Log_debug("fpga-raft commit for partition: %d, slot %d, commit %d minIndex %d in loc:%d", 
       (int) par_id_, (int) slot_id_, sch_->commitIndex, minIndex, loc_id_);
 

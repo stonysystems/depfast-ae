@@ -9,6 +9,9 @@
 namespace rrr {
 using std::function;
 
+int Event::begin_time = 0;
+int Event::invalid_ids = 0;
+
 uint64_t Event::GetCoroId(){
   auto sp_coro = Coroutine::CurrentCoroutine();
   return sp_coro->id;
@@ -19,6 +22,7 @@ void Event::NeedsFinalize() {
 	sp_coro->needs_finalize_ = true;
 	sp_coro->quorum_events_.push_back(shared_from_this());
 }
+
 
 void Event::CalledFinalize() {
 	needs_finalize_ = false;
@@ -41,6 +45,10 @@ bool Event::IsSlow() {
 void Event::FreeDangling(std::string ip) {
 	//Reactor::GetReactor()->FreeDangling(ip);
 	Reactor::GetReactor()->dangling_ips_.insert(ip);
+}
+
+void Event::AddFinalize() {
+	Reactor::GetReactor()->finalize_quorum_events_.push_back(shared_from_this());
 }
 
 void Event::Wait(uint64_t timeout) {

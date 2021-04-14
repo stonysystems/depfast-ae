@@ -38,7 +38,7 @@ public:
     virtual size_t content_size() = 0;
     virtual bool handle_read() = 0;
     //virtual void handle_read_one() = 0;
-    virtual bool handle_read_two(int iters = 0) = 0;
+    virtual bool handle_read_two() = 0;
     virtual void handle_write() = 0;
     virtual void handle_error() = 0;
 		virtual void handle_free() = 0;
