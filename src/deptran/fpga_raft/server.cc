@@ -6,7 +6,7 @@
 #include "frame.h"
 #include "coordinator.h"
 #include "../classic/tpc_command.h"
-
+#include "rdb/rocksdb_wrapper.h"
 
 namespace janus {
 
@@ -448,12 +448,27 @@ void FpgaRaftServer::StartTimer()
 							struct KeyValue key_values[kv_vector.size()];
 							std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
-							auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
-							de->Wait();
+							//auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
+
+							//de->Wait();
+
+              //Changed here.
+              std::string index_key = std::to_string(this->lastLogIndex);
+              rdb::RocksdbWrapper rocksdb_wrapper("/db/data.txt");
+              auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_vector.size());
+              rocksdb_wrapper.Put(index_key,val);
+
             } else {
 							int value = -1;
-							auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
-              de->Wait();
+							//auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+
+              //de->Wait();
+
+              //Changed here.
+              std::string index_key = std::to_string(this->lastLogIndex);
+              rdb::RocksdbWrapper rocksdb_wrapper("/db/data.txt");
+              auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(value),sizeof(int));
+              rocksdb_wrapper.Put(index_key,val);
             }
         }
         else {

@@ -95,10 +95,22 @@ def configure(conf):
 #    conf.env.append_value('INCLUDES', [os.path.expanduser('~') + '/.linuxbrew/include'])
 #    conf.env.append_value('LIBPATH', [os.path.expanduser('~') + '/.linuxbrew/lib'])
     conf.env.LIB_PTHREAD = 'pthread'
+
     conf.check_cfg(package='yaml-cpp', uselib_store='YAML-CPP', args=pargs)
+    
+    conf.check_cfg(package='rocksdb', uselib_store='ROCKSDB', args=pargs)
+    conf.env.LIB_DL='dl'
+    conf.env.LIB_Z='z'
+    conf.env.LIB_ZSTD='zstd'
+    conf.env.LIB_BZ2='bz2'
+    conf.env.LIB_LZ4='lz4'
+    conf.env.LIB_SNAPPY='snappy'
 
     if sys.platform != 'darwin':
         conf.env.LIB_RT = 'rt'
+
+
+
 
     if Options.options.disable_check_python:
         pass
@@ -144,9 +156,15 @@ def build(bld):
 #              includes=". rrr rpc",
 #              use="base PTHREAD")
 
+
     bld.stlib(source=bld.path.ant_glob("src/memdb/*.cc"), target="memdb",
               includes="src src/rrr src/deptran src/base",
               use="rrr PTHREAD")
+
+    bld.stlib(source=bld.path.ant_glob("src/rdb/*.cc"), target="rdb",
+              includes="src/rdb",
+              uselib="ROCKSDB",
+              )
 
     bld.shlib(features="pyext",
               source=bld.path.ant_glob("src/rrr/pylib/simplerpc/*.cpp"),
@@ -161,27 +179,27 @@ def build(bld):
                                        excl=['src/deptran/s_main.cc', 'src/deptran/paxos_main_helper.cc']),
               target="deptran_objects",
               includes="src src/rrr src/deptran ",
-              uselib="YAML-CPP BOOST",
-              use="externc rrr memdb PTHREAD PROFILER RT")
+              uselib="YAML-CPP BOOST ROCKSDB",
+              use="externc rrr memdb Z DL ZSTD BZ2 LZ4 SNAPPY rdb PTHREAD PROFILER RT")
 
     bld.shlib(source=bld.path.ant_glob("src/deptran/paxos_main_helper.cc "),
               target="txlog",
               includes="src src/rrr src/deptran ",
-              uselib="YAML-CPP BOOST",
-              use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+              uselib="YAML-CPP BOOST ROCKSDB",
+              use="externc rrr memdb Z DL ZSTD BZ2 LZ4 SNAPPY rdb deptran_objects PTHREAD PROFILER RT")
 
     bld.program(source=bld.path.ant_glob("src/deptran/s_main.cc"),
               target="deptran_server",
               includes="src src/rrr src/deptran ",
-              uselib="YAML-CPP BOOST",
-              use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+              uselib="YAML-CPP BOOST ROCKSDB",
+              use="externc rrr memdb Z DL ZSTD BZ2 LZ4 SNAPPY rdb deptran_objects PTHREAD PROFILER RT")
 
     bld.program(source=bld.path.ant_glob("src/run.cc "
                                          "src/deptran/paxos_main_helper.cc"),
                 target="microbench",
                 includes="src src/rrr src/deptran ",
-                uselib="YAML-CPP BOOST",
-                use="externc rrr memdb deptran_objects PTHREAD PROFILER RT")
+                uselib="YAML-CPP BOOST ROCKSDB",
+                use="externc rrr memdb Z DL ZSTD BZ2 LZ4 SNAPPY rdb deptran_objects PTHREAD PROFILER RT")
 
     bld.add_post_fun(post)
 
