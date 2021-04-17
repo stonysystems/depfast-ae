@@ -284,8 +284,9 @@ void Client::handle_write() {
   }
 
   out_l_.lock();
-  out_.write_to_fd(sock_);
-	
+  out_count -= out_.write_to_fd(sock_);
+	out_count2++;
+
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);
   }
@@ -333,7 +334,6 @@ bool Client::handle_read_two() {
   //return true;
   bool done = false;
 	int iters = 0;
-	//Log_info("content: %ld", in_.content_size());
 	//if(in_.content_size() > 0){
 iters = 20;
 	//Log_info("iters: %ld", iters);
@@ -404,7 +404,9 @@ iters = 20;
         fu->release();
       } else{
         pending_fu_l_.unlock();
-      }
+        
+				//read_l_.unlock();
+			}
     } else{
       done = true;
       break;
@@ -515,6 +517,9 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
 			int elapsed_time_us = Time::now() - pending_begin_time;
 			if (elapsed_time_us >= 1*1000*1000) {
 				Log_info("pending size is %d for %s", pending_fu_.size(), host().c_str());
+				Log_info("out content size is: %d", out_.content_size());
+				Log_info("out count is: %d", out_count);
+				Log_info("out count2 is: %d", out_count2);
 				pending_begin_time = Time::now();
 			}
 		}
@@ -539,6 +544,7 @@ Future* Client::begin_request(i32 rpc_id, const FutureAttr& attr /* =... */) {
   }
 
   bmark_ = out_.set_bookmark(sizeof(i32)); // will fill packet size later
+	out_count += 32;
 
   *this << v64(fu->xid_);
   *this << rpc_id;

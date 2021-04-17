@@ -152,6 +152,8 @@ public:
 	 bool client_;
 	 long time_;
 	 int count;
+	 int out_count;
+	 int out_count2;
 	 i32 rpc_id_;
 
    virtual ~Client() {
@@ -172,9 +174,12 @@ public:
     template<class T>
     Client& operator <<(const T& v) {
 	//auto start = std::chrono::steady_clock::now();
+				int before_size = out_.content_size();
         if (status_ == CONNECTED) {
             this->out_ << v;
         }
+				int after_size = out_.content_size();
+				out_count += (after_size - before_size);
 	//auto end = std::chrono::steady_clock::now();
 	//auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 	//Log_info("Time of << is: %d", duration);
