@@ -159,6 +159,7 @@ void SchedulerJanus::OnAccept(const txnid_t txn_id,
                               const ballot_t &ballot,
                               shared_ptr<RccGraph> graph,
                               int32_t *res) {
+  verify(0);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(txn_id, rank));
   verify(rank = RANK_D);
