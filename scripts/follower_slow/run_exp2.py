@@ -547,8 +547,8 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 75
-        upper_cutoff_pct = 100
+        lower_cutoff_pct = 10
+        upper_cutoff_pct = 75
 
         if (not self.recording_period):
             if self.once == 0:

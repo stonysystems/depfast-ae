@@ -153,7 +153,8 @@ public:
 	 long time_;
 	 int count;
 	 int out_count;
-	 int out_count2;
+	 int read_count;
+	 int write_count;
 	 i32 rpc_id_;
 
    virtual ~Client() {
