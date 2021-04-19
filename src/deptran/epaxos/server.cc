@@ -1,25 +1,25 @@
 
 #include "../procedure.h"
-#include "graph.h"
+#include "../rcc/graph.h"
 #include "tx.h"
 #include "server.h"
-#include "commo.h"
+#include "../rcc/commo.h"
 #include "frame.h"
 
 namespace janus {
 
 
-RccServer::RccServer() : TxLogServer(), mtx_() {
+EPaxosServer::EPaxosServer() : TxLogServer(), mtx_() {
 //  RccGraph::sched_ = this;
 //  RccGraph::partition_id_ = TxLogServer::partition_id_;
   RccGraph::managing_memory_ = false;
   epoch_enabled_ = true;
 }
 
-RccServer::~RccServer() {
+EPaxosServer::~EPaxosServer() {
 }
 
-shared_ptr<Tx> RccServer::GetOrCreateTx(txnid_t tid, int rank, bool ro) {
+shared_ptr<Tx> EPaxosServer::GetOrCreateTx(txnid_t tid, int rank, bool ro) {
   auto dtxn = static_pointer_cast<RccTx>(
       TxLogServer::GetOrCreateTx(tid, ro));
   verify(rank == RANK_I || rank == RANK_D);
@@ -38,7 +38,7 @@ shared_ptr<Tx> RccServer::GetOrCreateTx(txnid_t tid, int rank, bool ro) {
   return dtxn;
 }
 
-int RccServer::OnDispatch(const vector<SimpleCommand>& cmd,
+int EPaxosServer::OnDispatch(const vector<SimpleCommand>& cmd,
                           TxnOutput* output,
                           shared_ptr<RccGraph> graph) {
   std::lock_guard<std::recursive_mutex> guard(mtx_);
@@ -92,7 +92,7 @@ int RccServer::OnDispatch(const vector<SimpleCommand>& cmd,
   return 0;
 }
 
-void RccServer::OnInquire(txnid_t tx_id, int rank, map<txid_t, parent_set_t>* ret) {
+void EPaxosServer::OnInquire(txnid_t tx_id, int rank, map<txid_t, parent_set_t>* ret) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(rank == RANK_D || rank == RANK_I);
   auto sp_tx = dynamic_pointer_cast<RccTx>(GetOrCreateTx(tx_id, rank));
@@ -110,7 +110,7 @@ void RccServer::OnInquire(txnid_t tx_id, int rank, map<txid_t, parent_set_t>* re
   }
 }
 
-void RccServer::InquiredGraph(RccTx& dtxn, shared_ptr<RccGraph> graph) {
+void EPaxosServer::InquiredGraph(RccTx& dtxn, shared_ptr<RccGraph> graph) {
   verify(0);
 /**
   verify(graph != nullptr);
@@ -128,7 +128,7 @@ void RccServer::InquiredGraph(RccTx& dtxn, shared_ptr<RccGraph> graph) {
 */
 }
 
-void RccServer::__DebugExamineFridge() {
+void EPaxosServer::__DebugExamineFridge() {
 #ifdef DEBUG_CODE
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   int in_ask = 0;
@@ -177,7 +177,7 @@ void RccServer::__DebugExamineFridge() {
 #endif
 }
 
-void RccServer::InquireAboutIfNeeded(RccTx& dtxn, rank_t rank) {
+void EPaxosServer::InquireAboutIfNeeded(RccTx& dtxn, rank_t rank) {
 //  Graph<RccDTxn> &txn_gra = dep_graph_->txn_gra_;
   auto& subtx = dtxn.subtx(rank);
   verify(subtx.status() < TXN_CMT);
@@ -235,7 +235,7 @@ void RccServer::InquireAboutIfNeeded(RccTx& dtxn, rank_t rank) {
 }
 
 
-void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex, int rank) {
+void EPaxosServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex, int rank) {
   if (vertex->subtx(rank).all_anc_cmt_hint) {
     return;
   }
@@ -543,7 +543,7 @@ void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex, int ran
 #endif
 }
 
-bool RccServer::AllAncCmt(RccTx* vertex, int rank) {
+bool EPaxosServer::AllAncCmt(RccTx* vertex, int rank) {
   verify(rank == RANK_D);
   bool all_anc_cmt = true;
   std::function<int(RccTx&)> func =
@@ -565,7 +565,7 @@ bool RccServer::AllAncCmt(RccTx* vertex, int rank) {
   return all_anc_cmt;
 }
 
-void RccServer::Decide(const RccScc& scc, int rank) {
+void EPaxosServer::Decide(const RccScc& scc, int rank) {
 //  verify(rank == RANK_D);
 #ifdef DEBUG_CHECK
   bool r = false;
@@ -592,7 +592,7 @@ void RccServer::Decide(const RccScc& scc, int rank) {
   }
 }
 
-bool RccServer::HasICycle(const RccScc& scc) {
+bool EPaxosServer::HasICycle(const RccScc& scc) {
   for (auto& vertex : scc) {
     set<RccTx*> walked;
     bool ret = false;
@@ -610,7 +610,7 @@ bool RccServer::HasICycle(const RccScc& scc) {
   return false;
 };
 
-bool RccServer::HasAbortedAncestor(const RccScc& scc) {
+bool EPaxosServer::HasAbortedAncestor(const RccScc& scc) {
   verify(0);
   return false;
   /*
@@ -633,7 +633,7 @@ bool RccServer::HasAbortedAncestor(const RccScc& scc) {
    */
 };
 
-bool RccServer::FullyDispatched(const RccScc& scc, rank_t rank) {
+bool EPaxosServer::FullyDispatched(const RccScc& scc, rank_t rank) {
   bool ret = std::all_of(scc.begin(),
                          scc.end(),
                          [this, rank](RccTx* v) {
@@ -653,7 +653,7 @@ bool RccServer::FullyDispatched(const RccScc& scc, rank_t rank) {
   return ret;
 }
 
-bool RccServer::IsExecuted(const RccScc& scc, rank_t rank) {
+bool EPaxosServer::IsExecuted(const RccScc& scc, rank_t rank) {
   verify(rank == RANK_D || rank == RANK_I);
   bool ret = std::any_of(scc.begin(),
                          scc.end(),
@@ -673,7 +673,7 @@ bool RccServer::IsExecuted(const RccScc& scc, rank_t rank) {
                          });
   return ret;
 }
-void RccServer::WaitNonSccParentsExecuted(const janus::RccScc& scc1, int rank){
+void EPaxosServer::WaitNonSccParentsExecuted(const janus::RccScc& scc1, int rank){
   verify(scc1.size() > 0);
   verify(rank == RANK_D || rank == RANK_I);
   // be careful, iteration with possible coroutine switch,
@@ -706,7 +706,7 @@ void RccServer::WaitNonSccParentsExecuted(const janus::RccScc& scc1, int rank){
   }
 }
 
-void RccServer::WaitUntilAllPredSccExecuted(const RccScc& scc) {
+void EPaxosServer::WaitUntilAllPredSccExecuted(const RccScc& scc) {
   verify(0);
   /*
   verify(scc.size() > 0);
@@ -734,7 +734,7 @@ void RccServer::WaitUntilAllPredSccExecuted(const RccScc& scc) {
    */
 }
 
-bool RccServer::AllAncFns(const RccScc& scc, int rank) {
+bool EPaxosServer::AllAncFns(const RccScc& scc, int rank) {
   verify(0);
   verify(scc.size() > 0);
   set<RccTx*> scc_set;
@@ -759,7 +759,7 @@ bool RccServer::AllAncFns(const RccScc& scc, int rank) {
   return all_anc_fns;
 }
 
-void RccServer::Execute(RccScc& scc, int rank) {
+void EPaxosServer::Execute(RccScc& scc, int rank) {
   verify(scc.size() > 0);
   verify(rank == RANK_D || rank == RANK_I);
   auto& v_begin = *scc.begin();
@@ -783,7 +783,7 @@ void RccServer::Execute(RccScc& scc, int rank) {
   }
 }
 
-void RccServer::Execute(RccTx& tx, int rank) {
+void EPaxosServer::Execute(RccTx& tx, int rank) {
   verify(rank == RANK_D || rank == RANK_I);
   verify(tx.subtx(rank).all_anc_cmt_hint);
   tx.subtx(rank).log_apply_started_ = true;
@@ -825,7 +825,7 @@ void RccServer::Execute(RccTx& tx, int rank) {
   tx.subtx(rank).log_apply_finished_.Set(1);
 }
 
-void RccServer::Execute(shared_ptr<RccTx>& sp_tx) {
+void EPaxosServer::Execute(shared_ptr<RccTx>& sp_tx) {
   verify(0);
 /*
   if (sp_tx->log_apply_started_) {
@@ -864,7 +864,7 @@ void RccServer::Execute(shared_ptr<RccTx>& sp_tx) {
 }
 
 
-void RccServer::Abort(const RccScc& scc) {
+void EPaxosServer::Abort(const RccScc& scc) {
   verify(0);
 //  verify(scc.size() > 0);
 //  for (auto v : scc) {
@@ -880,7 +880,7 @@ void RccServer::Abort(const RccScc& scc) {
 //  }
 }
 
-RccCommo* RccServer::commo() {
+RccCommo* EPaxosServer::commo() {
 //  if (commo_ == nullptr) {
 //    verify(0);
 //  }
@@ -889,7 +889,7 @@ RccCommo* RccServer::commo() {
   return commo;
 }
 
-void RccServer::DestroyExecutor(txnid_t txn_id) {
+void EPaxosServer::DestroyExecutor(txnid_t txn_id) {
   verify(0);
   /*
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(txn_id));
@@ -901,7 +901,7 @@ void RccServer::DestroyExecutor(txnid_t txn_id) {
   */
 }
 
-int RccServer::OnInquireValidation(txid_t tx_id, int rank) {
+int EPaxosServer::OnInquireValidation(txid_t tx_id, int rank) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(rank == RANK_D);
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(tx_id, rank));
@@ -919,14 +919,14 @@ int RccServer::OnInquireValidation(txid_t tx_id, int rank) {
   return ret;
 }
 
-void RccServer::OnNotifyGlobalValidation(txid_t tx_id, int rank, int validation_result) {
+void EPaxosServer::OnNotifyGlobalValidation(txid_t tx_id, int rank, int validation_result) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(rank == RANK_D);
   auto dtxn = dynamic_pointer_cast<RccTx>(GetOrCreateTx(tx_id, rank));
   dtxn->subtx(rank).global_validated_->Set(validation_result);
 }
 
-int RccServer::OnCommit(const txnid_t cmd_id,
+int EPaxosServer::OnCommit(const txnid_t cmd_id,
                         rank_t rank,
                         bool need_validation,
                         shared_ptr<RccGraph> sp_graph,
@@ -974,7 +974,7 @@ int RccServer::OnCommit(const txnid_t cmd_id,
 */
 }
 
-map<txnid_t, shared_ptr<RccTx>> RccServer::Aggregate(RccGraph &graph) {
+map<txnid_t, shared_ptr<RccTx>> EPaxosServer::Aggregate(RccGraph &graph) {
   verify(0);
   // aggregate vertexes
   map<txnid_t, shared_ptr<RccTx>> index;
@@ -1075,7 +1075,7 @@ map<txnid_t, shared_ptr<RccTx>> RccServer::Aggregate(RccGraph &graph) {
    */
 }
 
-int RccServer::OnPreAccept(txnid_t txn_id,
+int EPaxosServer::OnPreAccept(txnid_t txn_id,
                            rank_t rank,
                            const vector<SimpleCommand> &cmds,
                            parent_set_t& res_parents) {
@@ -1086,7 +1086,7 @@ int RccServer::OnPreAccept(txnid_t txn_id,
     return SUCCESS;
   }
   Log_debug("pre-accept tid %" PRIx64 ", rank %d, partition: %d, site: %d",
-      txn_id, rank, (int)RccServer::partition_id_, (int)RccServer::site_id_);
+      txn_id, rank, (int)EPaxosServer::partition_id_, (int)EPaxosServer::site_id_);
   verify(txn_id > 0);
   verify(cmds[0].root_id_ == txn_id);
   verify(rank == RANK_I || rank == RANK_D);
@@ -1121,7 +1121,7 @@ int RccServer::OnPreAccept(txnid_t txn_id,
   return SUCCESS;
 }
 
-int RccServer::OnAccept(const txnid_t txn_id,
+int EPaxosServer::OnAccept(const txnid_t txn_id,
                         const rank_t rank,
                         const ballot_t &ballot,
                         const parent_set_t& parents) {
@@ -1154,7 +1154,7 @@ int RccServer::OnAccept(const txnid_t txn_id,
 }
 
 
-int RccServer::OnCommit(const txnid_t cmd_id,
+int EPaxosServer::OnCommit(const txnid_t cmd_id,
                         const rank_t rank,
                         const bool need_validation,
                         const parent_set_t& parents,

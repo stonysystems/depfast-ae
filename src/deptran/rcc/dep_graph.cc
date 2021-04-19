@@ -393,9 +393,9 @@ map<txnid_t, shared_ptr<RccTx>> RccGraph::Aggregate(epoch_t epoch,
     if (dtxn.epoch_ == 0) {
       dtxn.epoch_ = epoch;
     }
-    if (sched_) {
-      sched_->epoch_mgr_.AddToEpoch(dtxn.epoch_, dtxn.tid_);
-    }
+//    if (sched_) {
+//      sched_->epoch_mgr_.AddToEpoch(dtxn.epoch_, dtxn.tid_);
+//    }
     verify(vertex->id() == pair.second->id());
     verify(vertex_index().count(vertex->id()) > 0);
     index[vertex->id()] = vertex;
