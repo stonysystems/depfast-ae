@@ -284,6 +284,7 @@ void Client::handle_write() {
   }
 
   out_l_.lock();
+	out_.write_to_fd(sock_);
 
   if (out_.empty()) {
     pollmgr_->update_mode(shared_from_this(), Pollable::READ);

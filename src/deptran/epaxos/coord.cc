@@ -22,6 +22,7 @@ void EPaxosCoord::launch_recovery(cmdid_t cmd_id) {
 }
 
 void EPaxosCoord::PreAccept() {
+	Log_info("pre-accept");
   WAN_WAIT;
   std::lock_guard<std::recursive_mutex> guard(mtx_);
 //  auto dtxn = sp_graph_->FindV(cmd_->id_);
