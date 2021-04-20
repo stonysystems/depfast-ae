@@ -467,7 +467,7 @@ void FpgaRaftServer::StartTimer()
               //Changed here.
               std::string index_key = std::to_string(this->lastLogIndex);
               rdb::RocksdbWrapper rocksdb_wrapper("/db/data.txt");
-              auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(value),sizeof(int));
+              auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
               rocksdb_wrapper.Put(index_key,val);
             }
         }
