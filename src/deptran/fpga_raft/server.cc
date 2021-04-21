@@ -6,7 +6,7 @@
 #include "frame.h"
 #include "coordinator.h"
 #include "../classic/tpc_command.h"
-#include "rdb/rocksdb_wrapper.h"
+
 
 namespace janus {
 
