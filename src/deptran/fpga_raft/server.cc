@@ -453,13 +453,10 @@ void FpgaRaftServer::StartTimer()
 							//de->Wait();
 
               //Changed here.
-	      Log_info("Create the rocksdb");
               std::string index_key = std::to_string(this->lastLogIndex);
-              rdb::RocksdbWrapper rocksdb_wrapper("/db/data");
-              auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_vector.size());
-              rocksdb_wrapper.Put(index_key,val);
-	      Log_info("Finish the rocksdb");
-
+	          auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_vector.size());
+	          rdb::rocksdb_wrapper()->Put(index_key,val);
+	      
             } else {
 							int value = -1;
 							//auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
@@ -467,12 +464,9 @@ void FpgaRaftServer::StartTimer()
               //de->Wait();
 
               //Changed here.
-	      Log_info("Create the rocksdb2");
               std::string index_key = std::to_string(this->lastLogIndex);
-              rdb::RocksdbWrapper rocksdb_wrapper("/db/data");
               auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
-              rocksdb_wrapper.Put(index_key,val);
-	      Log_info("Finish the rocksdb2");
+	          rdb::rocksdb_wrapper()->Put(index_key,val);
             }
         }
         else {

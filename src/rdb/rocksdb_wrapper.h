@@ -20,7 +20,11 @@ using namespace ROCKSDB_NAMESPACE;
 using colid_t=int;
 
 
+<<<<<<< HEAD
 const std::string default_db_path="/tmp/rocksdb_example";
+=======
+const std::string default_db_path="/db";
+>>>>>>> fix bug for rocksdb
 
 
 class RocksdbWrapper {
@@ -143,7 +147,14 @@ public:
 
     bool Put(ColumnFamilyHandle* column_handle, const Slice& key, Slice& val){
     
+<<<<<<< HEAD
         s = db->Put(WriteOptions(), column_handle ,key, val);
+=======
+
+	WriteOptions w;
+	//w.sync = true;
+        s = db->Put(w, column_handle ,key, val);
+>>>>>>> fix bug for rocksdb
         return s.ok();
 
     }
@@ -191,5 +202,8 @@ private:
         map.insert(std::make_pair(key,val));
     }
 };
+
+void rocksdb_wrapper_delete();
+RocksdbWrapper* rocksdb_wrapper();
 
 } //namespace rdb

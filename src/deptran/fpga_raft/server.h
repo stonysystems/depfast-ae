@@ -4,6 +4,7 @@
 #include "../constants.h"
 #include "../scheduler.h"
 #include "../classic/tpc_command.h"
+#include "rdb/rocksdb_wrapper.h"
 
 namespace janus {
 class Command;
@@ -193,20 +194,31 @@ class FpgaRaftServer : public TxLogServer {
 			std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
 			struct KeyValue key_value_[2];
-			auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
-			
+			//auto de = IO::write("/db", key_values, sizeof(struct KeyValue), kv_vector.size());
+
+			std::string index_key = std::to_string(this->lastLogIndex);
+            auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_vector.size());
+            rdb::rocksdb_wrapper()->Put(index_key,val);
+
+
+
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      de->Wait();
+      //de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {
 			int value = -1;
 			int value_;
-			auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+			//auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+
+            std::string index_key = std::to_string(this->lastLogIndex);
+            auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
+            rdb::rocksdb_wrapper()->Put(index_key,val);
+
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      de->Wait();
+      //de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     }
