@@ -1,10 +1,8 @@
 
-## Janus 
+# Dependably Fast 
 [![Build Status](https://travis-ci.org/NYU-NEWS/janus.svg?branch=master)](https://travis-ci.org/NYU-NEWS/janus)
 
-Code repo for our OSDI '16 paper:
-[Consolidating Concurrency Control and Consensus for Commits under Conflicts](http://mpaxos.com/pub/janus-osdi16.pdf)
-
+A programming framework and library for building fail-slow tolerant distributed systems
 
 ## Quick start (with Ubuntu 16.04 or newer)
 
