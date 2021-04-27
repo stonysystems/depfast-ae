@@ -117,7 +117,16 @@ EPaxosCommo::BroadcastPreAccept(
   auto ev = Reactor::CreateSpEvent<EPaxosPreAcceptQuorumEvent>(n, n);
   ev->partition_id_ = par_id;
 //  WAN_WAIT;
-  for (auto& p : rpc_par_proxies_[par_id]) {
+	Communicator::global_id++;
+	auto src_coroid = ev->GetCoroId();
+  
+	for (auto& p : rpc_par_proxies_[par_id]) {
+		auto server_id = p.first;
+
+		//Log_info("adding dep: %d, %d, %d", cli_id_, src_coroid, server_id);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+
     auto proxy = (p.second);
     verify(proxy != nullptr);
     FutureAttr fuattr;
@@ -157,10 +166,19 @@ EPaxosCommo::BroadcastPreAccept(
   auto n = rpc_par_proxies_[par_id].size();
   auto ev = Reactor::CreateSpEvent<EPaxosPreAcceptQuorumEvent>(n, n);
   ev->partition_id_ = par_id;
-  bool skip_graph = IsGraphOrphan(*sp_graph, txn_id);
+	
+	Communicator::global_id++;
+	auto src_coroid = ev->GetCoroId();
+	bool skip_graph = IsGraphOrphan(*sp_graph, txn_id);
 //  WAN_WAIT;
   for (auto& p : rpc_par_proxies_[par_id]) {
-    auto proxy = (p.second);
+		auto server_id = p.first;
+
+		//Log_info("{ %d, %d, %d, %d : %d/%d}", cli_id_, src_coroid, server_id, -1, n, n);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+    
+		auto proxy = (p.second);
     verify(proxy != nullptr);
     FutureAttr fuattr;
     fuattr.callback = [ev](Future* fu) {
@@ -229,8 +247,17 @@ shared_ptr<QuorumEvent> EPaxosCommo::BroadcastAccept(parid_t par_id,
   verify(rpc_par_proxies_.find(par_id) != rpc_par_proxies_.end());
   auto n = rpc_par_proxies_[par_id].size();
   auto ev = Reactor::CreateSpEvent<QuorumEvent>(n, n/2+1);
+	Communicator::global_id++;
+  
+	auto src_coroid = ev->GetCoroId();
 //  auto ev = Reactor::CreateSpEvent<QuorumEvent>(n, n/2+1);
   for (auto& p : rpc_par_proxies_[par_id]) {
+		auto server_id = p.first;
+
+		//Log_info("{ %d, %d, %d, %d : %d/%d}", cli_id_, src_coroid, server_id, -1, n, n);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+    
     auto proxy = (p.second);
     verify(proxy != nullptr);
     FutureAttr fuattr;
@@ -264,8 +291,17 @@ shared_ptr<QuorumEvent> EPaxosCommo::BroadcastAccept(parid_t par_id,
   verify(rpc_par_proxies_.find(par_id) != rpc_par_proxies_.end());
   auto n = rpc_par_proxies_[par_id].size();
   auto ev = Reactor::CreateSpEvent<QuorumEvent>(n, n/2+1);
-  for (auto& p : rpc_par_proxies_[par_id]) {
+  auto src_coroid = ev->GetCoroId();
+	Communicator::global_id++;
+  
+	for (auto& p : rpc_par_proxies_[par_id]) {
     auto proxy = (p.second);
+		auto server_id = p.first;
+
+		//Log_info("{ %d, %d, %d, %d : %d/%d}", cli_id_, src_coroid, server_id, -1, n, n);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+    
     verify(proxy != nullptr);
     FutureAttr fuattr;
     fuattr.callback = [ev](Future* fu) {
@@ -295,9 +331,17 @@ shared_ptr<QuorumEvent> EPaxosCommo::BroadcastAccept(parid_t par_id,
 shared_ptr<QuorumEvent> EPaxosCommo::CollectValidation(txid_t txid, set<parid_t> pars) {
   auto n = pars.size();
   auto ev = Reactor::CreateSpEvent<QuorumEvent>(n, n);
+	Communicator::global_id++;
+	auto src_coroid = ev->GetCoroId();
 
   for (auto partition_id : pars) {
     auto proxy = NearestProxyForPartition(partition_id).second;
+    auto server_id = NearestProxyForPartition(partition_id).first;
+
+		//Log_info("{ %d, %d, %d, %d : %d/%d}", cli_id_, src_coroid, server_id, -1, n, n);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+    
     FutureAttr fuattr;
     fuattr.callback = [ev] (Future* fu) {
       int res;
@@ -372,7 +416,16 @@ EPaxosCommo::BroadcastCommit(parid_t par_id,
   verify(rpc_par_proxies_.find(par_id) != rpc_par_proxies_.end());
   int n = rpc_par_proxies_[par_id].size();
   auto ev = Reactor::CreateSpEvent<QuorumEvent>(n, 1);
+	Communicator::global_id++;
+  
+	auto src_coroid = ev->GetCoroId();
   for (auto& p : rpc_par_proxies_[par_id]) {
+		auto server_id = p.first;
+
+		//Log_info("{ %d, %d, %d, %d : %d/%d}", cli_id_, src_coroid, server_id, -1, n, n);
+		ev->add_dep(cli_id_, src_coroid, server_id, -1);
+		ev->id_ = Communicator::global_id;
+    
     auto proxy = (p.second);
     verify(proxy != nullptr);
     FutureAttr fuattr;

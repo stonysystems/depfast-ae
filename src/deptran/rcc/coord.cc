@@ -33,6 +33,7 @@ void RccCoord::PreDispatch() {
 
 
 void RccCoord::DispatchAsync() {
+	//Log_info("dispatch");
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto txn = (TxData*) cmd_;
   verify(txn->root_id_ == txn->id_);

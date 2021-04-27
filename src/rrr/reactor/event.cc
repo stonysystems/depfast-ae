@@ -204,9 +204,39 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
+void SharedIntEvent::log() {
+	if (true) {
+    std::ofstream of(log_file, std::fstream::app);
+		
+		/*
+		 * Format:
+		 * 1. source server id (represented by thread id)
+		 * 2. source coroutine id
+		 * 3. target server id (represented by thread id)
+		 * 4. target coroutine id
+		 * 5. event id (currently not used/set to -1)
+		 * 6. quorum size over total (set to -1/-1 for IntEvent) @Shuai: feel free to change this part
+		 */
+		if (src_id_ != -1 && src_coro_ != -1 && tgt_id_ != -1 && tgt_coro_ != -1) {
+			of << "{ " << src_id_ << ", " << src_coro_ << ", " << tgt_id_ << ", " << tgt_coro_ << ", " << -1 << ": " << -1 << "/" << -1 << " }\n";
+		}
+    of.close();
+	}
+}
+
+
 int SharedIntEvent::Set(const int& v) {
   auto ret = value_;
   value_ = v;
+
+	// setting target fields
+	auto thread = std::this_thread::get_id();
+	auto ptr = (int*) &thread;
+	tgt_id_ = *ptr;
+	tgt_coro_ = Coroutine::CurrentCoroutine()->id;
+	log();
+
+	//Log_info("target: %d and %d", Reactor::GetReactor()->thread_id_, Coroutine::CurrentCoroutine()->id);
   for (auto& sp_ev : events_) {
     if (sp_ev->status_ <= Event::WAIT) {
       if (sp_ev->target_ <= v) {
@@ -221,6 +251,15 @@ void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
   if (value_ >= x) {
     return;
   }
+
+	// setting source fields
+	auto thread = std::this_thread::get_id();
+	auto ptr = (int*) &thread;
+	src_id_ = *ptr;
+	src_coro_ = Coroutine::CurrentCoroutine()->id;
+	log();
+	
+	//Log_info("source: %ld and %ld", Reactor::GetReactor()->thread_id_, Coroutine::CurrentCoroutine()->id);
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->target_ = x;
@@ -233,7 +272,15 @@ void SharedIntEvent::Wait(function<bool(int v)> f) {
   if (f(value_)) {
     return;
   }
-  auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
+
+	//setting source fields
+	auto thread = std::this_thread::get_id();
+	auto ptr = (int*) &thread;
+	src_id_ = *ptr;
+	src_coro_ = Coroutine::CurrentCoroutine()->id;
+	log();
+  
+	auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->test_ = f;
   events_.push_back(sp_ev);

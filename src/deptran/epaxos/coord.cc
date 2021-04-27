@@ -9,6 +9,7 @@ namespace janus {
 
 EPaxosCommo* EPaxosCoord::commo() {
   if (commo_ == nullptr) {
+		Log_info("null");
     commo_ = frame_->CreateCommo(nullptr);
     commo_->loc_id_ = loc_id_;
   }
@@ -22,7 +23,7 @@ void EPaxosCoord::launch_recovery(cmdid_t cmd_id) {
 }
 
 void EPaxosCoord::PreAccept() {
-	Log_info("pre-accept");
+	//Log_info("pre-accept: %d", cli_id_);
   WAN_WAIT;
   std::lock_guard<std::recursive_mutex> guard(mtx_);
 //  auto dtxn = sp_graph_->FindV(cmd_->id_);
@@ -43,6 +44,7 @@ void EPaxosCoord::PreAccept() {
   }
   bool fast_path = true;
   for (const auto& ev: events) {
+		ev->log();
     ev->Wait();
     verify(ev->Yes()); // TODO tolerate failure recovery.
     if (!FastQuorumGraphCheck(*ev)) {
@@ -76,6 +78,7 @@ void EPaxosCoord::prepare() {
 }
 
 void EPaxosCoord::Accept() {
+	//Log_info("accept");
   WAN_WAIT;
   std::lock_guard<std::recursive_mutex> guard(mtx_);
   verify(!fast_path_);
@@ -96,6 +99,7 @@ void EPaxosCoord::Accept() {
   }
 
   for (auto ev : events) {
+		ev->log();
     ev->Wait(100*1000*1000);
     verify(ev->Yes()); // TODO handle failure recovery.
   }
@@ -103,6 +107,7 @@ void EPaxosCoord::Accept() {
 }
 
 void EPaxosCoord::Commit() {
+	//Log_info("commit");
   if (rank_ == RANK_I) {
     verify(!mocking_janus_);
     sp_ev_commit_->Set(1);
@@ -126,6 +131,7 @@ void EPaxosCoord::Commit() {
   aborted_ = false;
   for (auto i = 0 ; i < events.size(); i++) {
     auto &ev = events[i];
+		ev->log();
     ev->Wait(100 * 1000 * 1000);
     verify(ev->status_ != Event::TIMEOUT);
     if (ev->No()) {
@@ -154,10 +160,12 @@ void EPaxosCoord::Commit() {
 
 void EPaxosCoord::NotifyValidation() {
 //  __debug_notifying_ = true;
+	//Log_info("notifying");
   verify(phase_ % 6 == COMMIT);
   verify(rank_ == RANK_D);
   auto& partitions = GetTxPartitions(*cmd_, rank_);
   auto ev1 = commo()->CollectValidation(cmd_->id_, partitions);
+	ev1->log();
   ev1->Wait(100*1000*1000);
   verify(ev1->status_ != Event::TIMEOUT);
   int res;

@@ -242,8 +242,14 @@ class IntEvent : public Event {
 
 class SharedIntEvent {
  public:
+	 std::string log_file{"logs.txt"};
+	int src_id_{-1};
+	int src_coro_{-1};
+	int tgt_id_{-1};
+	int tgt_coro_{-1};
   int value_{};
   vector<shared_ptr<IntEvent>> events_{};
+	void log();
   int Set(const int& v);
   void Wait(function<bool(int)> f);
   void WaitUntilGreaterOrEqualThan(int x, int timeout=0);

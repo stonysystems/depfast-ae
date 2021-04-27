@@ -240,7 +240,9 @@ void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex, int ran
     return;
   }
   if (vertex->subtx(rank).waiting_all_anc_committing_) {
+		Log_info("waiting for commit_done_ at %d: ", site_id_);
     vertex->subtx(rank).wait_all_anc_commit_done_.WaitUntilGreaterOrEqualThan(1);
+		//Log_info("done waiting for commit_done_ at %d: ", site_id_);
   }
 
 
@@ -521,8 +523,9 @@ void RccServer::WaitUntilAllPredecessorsAtLeastCommitting(RccTx* vertex, int ran
         verify(parent.subtx(rank).status() >= TXN_CMT);
         return r;
       };
-  std::function<void(RccTx&)> func_end = [rank] (RccTx& v) -> void {
+  std::function<void(RccTx&)> func_end = [this, rank] (RccTx& v) -> void {
     v.subtx(rank).all_anc_cmt_hint = true;
+		Log_info("setting for commit_done_ at %d: ", this->site_id_);
     v.subtx(rank).wait_all_anc_commit_done_.Set(1);
   };
   TraversePredNonRecursive(*vertex, rank, func, func_end);
@@ -792,6 +795,7 @@ void RccServer::Execute(RccTx& tx, int rank) {
 
   if (tx.mocking_janus_) {
     if (tx.subtx(rank).Involve(partition_id_)) {
+			Log_info("waiting for commit_received_ at %d: ", site_id_);
       tx.subtx(rank).commit_received_.WaitUntilGreaterOrEqualThan(1);
 //    Coroutine::CreateRun([sp_tx, this]() {
       verify(rank == RANK_D);
@@ -1215,6 +1219,7 @@ int RccServer::OnCommit(const txnid_t cmd_id,
   verify(subtx.commit_received_.value_ == 0);
   verify(!subtx.__debug_local_validated_foreign_);
   verify(!subtx.local_validated_->is_set_);
+	Log_info("setting commit_received_ at %d: ", site_id_);
   subtx.commit_received_.Set(1);
   UpgradeStatus(*sp_tx, rank, TXN_CMT);
   sp_tx->__DebugCheckParents(rank);
@@ -1231,7 +1236,7 @@ int RccServer::OnCommit(const txnid_t cmd_id,
 //  WaitUntilAllPredSccExecuted(scc);
 //  if (FullyDispatched(scc, rank) && !IsExecuted(scc, rank)) {
 //  if (!IsExecuted(scc, rank)) {
-  Execute(scc, rank);
+	Execute(scc, rank);
 //  subtx.local_validated_->Wait();
 //  }
   // TODO verify by a wait time.
