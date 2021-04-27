@@ -24,6 +24,11 @@ class IO {
 			de->AddToList();
 			return de;
 		}
+		static std::shared_ptr<DiskEvent> write(std::function<void()> f){
+			auto de = Reactor::CreateSpEvent<DiskEvent>(f);
+			de->AddToList();
+			return de;
+		}
 
 };
 }

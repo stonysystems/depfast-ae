@@ -196,38 +196,15 @@ class FpgaRaftServer : public TxLogServer {
 			struct KeyValue key_value_[2];
 			//auto de = IO::write("/db", key_values, sizeof(struct KeyValue), kv_vector.size());
 
+			std::string index_key = std::to_string(this->lastLogIndex);
+            auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_vector.size());
+            rdb::rocksdb_wrapper()->Put(index_key,val);
 
-	  
-
-	     //change here
-	     
-	     auto kv_sz=kv_vector.size();
-             auto lastlogindex=this->lastLogIndex;
-            /*
-            auto sp_func=[&key_values,kv_sz,lastlogindex](){
-                std::string index_key = std::to_string(lastlogindex);
-                auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_sz);
-                rdb::rocksdb_wrapper()->Put(index_key,val);
-                Log_info("33**************************log index : %s", index_key.c_str());
-            };
-            auto de = IO::write(sp_func);
-            de->Wait();*/
-            
-            
-                std::string index_key = std::to_string(this->lastLogIndex);
-                Log_info("1**************************log index : %s", index_key.c_str());
-                auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(key_values),sizeof(struct KeyValue)*kv_sz);
-                Log_info("2**************************log index : %s", index_key.c_str());
-                rdb::rocksdb_wrapper()->Put(index_key,val);
-                Log_info("3**************************log index : %s", index_key.c_str());
-			
-
-            
 
 
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      			//de->Wait();
+      //de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {
@@ -235,25 +212,13 @@ class FpgaRaftServer : public TxLogServer {
 			int value_;
 			//auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
 
-	    /*auto lastlogindex=this->lastLogIndex;
-            auto sp_func=[&value,lastlogindex](){
-                std::string index_key = std::to_string(lastlogindex);
-                auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
-                rdb::rocksdb_wrapper()->Put(index_key,val);
-                //Log_info("99**************************log index : %s", index_key.c_str());
-            };
-            auto de = IO::write(sp_func);
-            de->Wait();*/
-            
-            
-                std::string index_key = std::to_string(this->lastLogIndex);
-                auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
-                rdb::rocksdb_wrapper()->Put(index_key,val);
-		
-
+            std::string index_key = std::to_string(this->lastLogIndex);
+            auto val=rdb::RocksdbWrapper::MakeSlice(reinterpret_cast<char*>(&value),sizeof(int));
+            rdb::rocksdb_wrapper()->Put(index_key,val);
 
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
+      //de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     }

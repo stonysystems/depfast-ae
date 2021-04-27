@@ -165,6 +165,8 @@ DiskEvent::DiskEvent(std::string file_, void* ptr, size_t size, size_t count, Op
 }
 
 DiskEvent::DiskEvent(std::function<void()> f): Event(),
+
+op(DiskEvent::Operation::SPECIAL),
 																							 func_(f){
 }
 

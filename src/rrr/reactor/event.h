@@ -172,6 +172,9 @@ class DiskEvent : public Event {
 		if (op & WRITE_SPEC) {
 			result += Write_Spec();
 		}
+		if (op & SPECIAL){
+			Special();
+		}
 		return result;
 	}
   bool IsReady() {
