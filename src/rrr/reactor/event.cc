@@ -248,16 +248,16 @@ int SharedIntEvent::Set(const int& v) {
 }
 
 void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
-  if (value_ >= x) {
-    return;
-  }
-
 	// setting source fields
 	auto thread = std::this_thread::get_id();
 	auto ptr = (int*) &thread;
 	src_id_ = *ptr;
 	src_coro_ = Coroutine::CurrentCoroutine()->id;
 	log();
+  
+	if (value_ >= x) {
+    return;
+  }
 	
 	//Log_info("source: %ld and %ld", Reactor::GetReactor()->thread_id_, Coroutine::CurrentCoroutine()->id);
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
@@ -269,10 +269,6 @@ void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
 }
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {
-  if (f(value_)) {
-    return;
-  }
-
 	//setting source fields
 	auto thread = std::this_thread::get_id();
 	auto ptr = (int*) &thread;
@@ -280,6 +276,10 @@ void SharedIntEvent::Wait(function<bool(int v)> f) {
 	src_coro_ = Coroutine::CurrentCoroutine()->id;
 	log();
   
+  if (f(value_)) {
+    return;
+  }
+
 	auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->test_ = f;

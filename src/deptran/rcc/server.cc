@@ -1236,6 +1236,9 @@ int RccServer::OnCommit(const txnid_t cmd_id,
 //  WaitUntilAllPredSccExecuted(scc);
 //  if (FullyDispatched(scc, rank) && !IsExecuted(scc, rank)) {
 //  if (!IsExecuted(scc, rank)) {
+	if (scc.size() > 1) {
+		Log_info("current coroutine: %d", Coroutine::CurrentCoroutine()->id);
+	}
 	Execute(scc, rank);
 //  subtx.local_validated_->Wait();
 //  }
