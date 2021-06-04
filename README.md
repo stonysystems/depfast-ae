@@ -1,10 +1,15 @@
-
 # Dependably Fast 
 [![Build Status](https://travis-ci.org/NYU-NEWS/janus.svg?branch=master)](https://travis-ci.org/NYU-NEWS/janus)
 
 A programming framework and library for building fail-slow tolerant distributed systems
 
 ## Quick start (with Ubuntu 16.04 or newer)
+
+Get source code:
+
+```
+git clone --recursive https://github.com/WolfDOS/depfast.git
+```
 
 Install dependencies:
 
@@ -24,12 +29,8 @@ sudo apt-get install -y \
     python3-wheel \
     python3-setuptools \
     libgoogle-perftools-dev
+cd depfast
 sudo pip3 install -r requirements.txt
-```
-
-Get source code:
-```
-git clone --recursive https://github.com/NYU-NEWS/janus.git
 ```
 
 Build:
