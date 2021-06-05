@@ -414,6 +414,28 @@ void FpgaRaftServer::OnAppendEntries(
     *followerCurrentTerm = this->currentTerm;
     *followerLastLogIndex = this->lastLogIndex;
 
+
+    /*Is that the right way to store logs?*/
+    Marshal m;
+    instance->log_->ToMarshal(m);
+    int cnt=m.content_size();
+    int all_cnt=sizeof(int64_t)*4+cnt;
+    char* m_buf=new char[all_cnt];
+    log2bytes(instance,m_buf);
+
+    auto sp_func = [&m_buf, all_cnt, slot_id]() {
+        std::string index_key = std::to_string(slot_id);
+        auto val =
+            rdb::RocksdbWrapper::MakeSlice(m_buf,
+                                           all_cnt);
+        rdb::rocksdb_wrapper()->Put(index_key, val);
+      };
+    auto de = IO::write(sp_func);
+    de->Wait();
+    delete[] m_buf;
+
+
+
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE) {
       auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
       auto sp_vec_piece =
