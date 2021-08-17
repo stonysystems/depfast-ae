@@ -91,6 +91,7 @@ namespace janus {
 #define MODE_EPAXOS        (0x80)
 #define MODE_TAPIR         (0x100)
 #define MODE_MENCIUS       (0x200)
+#define MODE_COPILOT        (0x4000)
 #define MODE_NOT_READY     (0x00)
 
 #define OP_IR   (0x1)
@@ -119,5 +120,7 @@ namespace janus {
 #define TPCC_REAL_DIST_PART (4)
 #define MICRO_BENCH (5)
 
+#define YES (1)
+#define NO  (0)
 
 } // namespace janus

@@ -18,6 +18,38 @@ abstract service MultiPaxos {
                MarshallDeputy cmd);
 }
 
+abstract service Copilot {
+  defer Forward(MarshallDeputy cmd);
+
+  defer Prepare(uint8_t is_pilot,
+                uint64_t slot,
+                ballot_t ballot |
+                MarshallDeputy ret_cmd,
+                ballot_t max_ballot,
+                uint64_t dep,
+                status_t status);
+
+  defer FastAccept(uint8_t is_pilot,
+                   uint64_t slot,
+                   ballot_t ballot,
+                   uint64_t dep,
+                   MarshallDeputy cmd |
+                   ballot_t max_ballot,
+                   uint64_t ret_dep);
+
+  defer Accept(uint8_t is_pilot,
+               uint64_t slot,
+               ballot_t ballot,
+               uint64_t dep,
+               MarshallDeputy cmd |
+               ballot_t max_ballot);
+
+  defer Commit(uint8_t is_pilot,
+               uint64_t slot,
+               uint64_t dep,
+               MarshallDeputy cmd);
+}
+
 // below is for 2PL and OCC
 abstract service Classic {
   defer MsgString(string arg | string ret);
