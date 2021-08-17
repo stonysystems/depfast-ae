@@ -56,14 +56,15 @@ def run(m, s, b, c):
     res = "INIT"
     try:
         f = open(output_path, "w")
-        r = call([run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "20"],
-                 stdout=f, stderr=f, timeout=5*60)
+        cmd = [run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "20"]
+        print(' '.join(cmd))
+        r = call(cmd, stdout=f, stderr=f, timeout=5*60)
         res = "OK" if r == 0 else "Failed"
     except subprocess.TimeoutExpired:
         res = "Timeout"
     except Error as e:
         print(e)
-    t2 = time();
+    t2 = time()
     print("%-15s%-10s%-10s%-15s%-6s \t %.2fs" % (m, s, b, c, res, t2-t1))
     pass
 
