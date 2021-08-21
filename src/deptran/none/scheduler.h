@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../classic/scheduler.h"
+#include "../classic/tx.h"
 
 namespace janus {
 
@@ -13,6 +14,16 @@ class SchedulerNone: public SchedulerClassic {
                              TxnOutput& ret_output) override {
     SchedulerClassic::DispatchPiece(tx, cmd, ret_output);
     ExecutePiece(tx, cmd, ret_output);
+    return true;
+  }
+
+  virtual bool Dispatch(cmdid_t cmd_id,
+                        shared_ptr<Marshallable> cmd,
+                        TxnOutput& ret_output) override {
+    auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
+    SchedulerClassic::Dispatch(cmd_id, cmd, ret_output);
+    sp_tx->fully_dispatched_->Wait();
+    OnCommit(cmd_id, SUCCESS);
     return true;
   }
 

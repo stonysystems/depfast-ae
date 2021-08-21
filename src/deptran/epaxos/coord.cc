@@ -16,6 +16,14 @@ EPaxosCommo* EPaxosCoord::commo() {
   return dynamic_cast<EPaxosCommo*>(commo_);
 }
 
+
+void EPaxosCoord::Submit(shared_ptr<Marshallable> &cmd,
+                         const std::function<void()> &func,
+                         const std::function<void()> &exe_callback) {
+  sp_cmd_ = cmd;
+  GotoNextPhase();
+}
+
 void EPaxosCoord::launch_recovery(cmdid_t cmd_id) {
   // TODO
   prepare();
@@ -102,11 +110,6 @@ void EPaxosCoord::Accept() {
 }
 
 void EPaxosCoord::Commit() {
-  if (rank_ == RANK_I) {
-    verify(!mocking_janus_);
-    sp_ev_commit_->Set(1);
-    ReportCommit();
-  }
   std::lock_guard<std::recursive_mutex> guard(mtx_);
   auto* txn = (TxData*) cmd_;
 //  auto dtxn = sp_graph_->FindV(cmd_->id_);
@@ -136,19 +139,8 @@ void EPaxosCoord::Commit() {
       verify(0);
     }
   }
-  if (mocking_janus_) {
-    NotifyValidation();
-  } else {
-    committed_ = !aborted_;
-    GotoNextPhase();
-  }
-//  txn().Merge(output);
-  // if collect enough results.
-  // if there are still more results to collect.
-//  GotoNextPhase();
-//  bool all_acked = txn().OutputReady();
-//  if (all_acked)
-//  GotoNextPhase();
+  committed_ = !aborted_;
+  GotoNextPhase();
 }
 
 void EPaxosCoord::NotifyValidation() {
@@ -227,36 +219,18 @@ bool EPaxosCoord::FastQuorumGraphCheck(EPaxosPreAcceptQuorumEvent& ev) {
 }
 
 void EPaxosCoord::GotoNextPhase() {
-  int n_phase = 6;
+  int n_phase = 5;
   int last_phase = phase_ % n_phase; // for debug
   phase_++;
-  if (rank_ == RANK_UNDEFINED) {
-    rank_ = RANK_D;
-  }
+  rank_ = RANK_D;
   switch (last_phase % n_phase) {
     case Phase::INIT_END:
-      PreDispatch();
-      verify(phase_ % n_phase == Phase::DISPATCH);
-      break;
-    case Phase::DISPATCH:
       verify(phase_ % n_phase == Phase::PREPARE);
       phase_++; // skip prepare for leader, TODO recovery coord.
       verify(phase_ % n_phase == Phase::PRE_ACCEPT);
-      if (par_i_.empty() && rank_ == RANK_I) {
-        rank_ = RANK_D;
-      }
-//      if (SKIP_I) {
-//        rank_ = RANK_D;
-//      }
       PreAccept();
       break;
     case Phase::PRE_ACCEPT:
-      if (SKIP_I && rank_ == RANK_I) {
-        rank_ = RANK_D;
-        phase_ = Phase::DISPATCH;
-        GotoNextPhase();
-        return;
-      }
       verify(phase_ % n_phase == Phase::ACCEPT);
       if (fast_path_) {
         phase_++;
@@ -275,14 +249,8 @@ void EPaxosCoord::GotoNextPhase() {
       verify(phase_ % n_phase == Phase::INIT_END);
       verify(committed_ != aborted_);
       if (committed_) {
-        if (rank_ == RANK_D) {
-          End();
-        } else if (rank_ == RANK_I) {
-          rank_ = RANK_D;
-          phase_+=1; // skip dispatch prepare
-          verify(phase_ % n_phase == Phase::DISPATCH);
-          GotoNextPhase(); // directly to PRE_ACCEPT
-        }
+//        End(); // do not call end because this is not from a client.
+//        TODO dealloac memory for this coordinator here?
       } else if (aborted_) {
         verify(rank_ == RANK_D && mocking_janus_);
         Restart();

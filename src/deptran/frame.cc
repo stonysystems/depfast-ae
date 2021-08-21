@@ -288,7 +288,7 @@ TxData* Frame::CreateTxnCommand(TxRequest& req, shared_ptr<TxnRegistry> reg) {
 Communicator* Frame::CreateCommo(PollMgr* pollmgr) {
   commo_ = new Communicator(pollmgr);
   if (mode_ == MODE_NONE) {
-    commo_->broadcasting_to_leaders_only_ = false;
+//    commo_->broadcasting_to_leaders_only_ = false;
   }
   return commo_;
 }
@@ -398,6 +398,9 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
   auto config = Config::GetConfig();
   auto result = std::vector<Service *>();
   switch(mode_) {
+    case MODE_EPAXOS:
+      // currently epaxos only works with none, so shouldn't double create the rpc services
+      break;
     case MODE_MDCC:
     case MODE_2PL:
     case MODE_OCC:

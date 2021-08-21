@@ -5,6 +5,7 @@
 #include "server.h"
 #include "../rcc/commo.h"
 #include "frame.h"
+#include "coord.h"
 
 namespace janus {
 
@@ -14,9 +15,18 @@ EPaxosServer::EPaxosServer() : TxLogServer(), mtx_() {
 //  RccGraph::partition_id_ = TxLogServer::partition_id_;
   RccGraph::managing_memory_ = false;
   epoch_enabled_ = true;
+  mode_ = MODE_EPAXOS;
 }
 
 EPaxosServer::~EPaxosServer() {
+}
+
+void EPaxosServer::Submit(shared_ptr<Marshallable>& cmd,
+                          const std::function<void()>& commit_callback,
+                          const std::function<void()>& exe_callback) {
+  auto *coord = new EPaxosCoord(0,0,0,0);
+  coord->Submit(cmd);
+  // TODO free coordinator?
 }
 
 shared_ptr<Tx> EPaxosServer::GetOrCreateTx(txnid_t tid, int rank, bool ro) {

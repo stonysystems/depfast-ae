@@ -8,9 +8,9 @@ namespace janus {
 REG_FRAME(MODE_EPAXOS, vector<string>({"epaxos"}), EPaxosFrame);
 
 TxLogServer *EPaxosFrame::CreateScheduler() {
-  TxLogServer *sched = new EPaxosServer();
-  sched->frame_ = this;
-  return sched;
+  TxLogServer *svr = new EPaxosServer();
+  svr->frame_ = this;
+  return svr;
 }
 
 Coordinator *EPaxosFrame::CreateCoordinator(cooid_t coo_id,

@@ -37,6 +37,9 @@ class EPaxosServer : public TxLogServer, public RccGraph {
 
   EPaxosServer();
   virtual ~EPaxosServer();
+  void Submit(shared_ptr<Marshallable>& cmd,
+              const std::function<void()>& commit_callback,
+              const std::function<void()>& exe_callback) override;
 
   using RccGraph::Aggregate; // C++ has strange hiding rules
   virtual map<txnid_t, shared_ptr<RccTx>> Aggregate(RccGraph &graph);

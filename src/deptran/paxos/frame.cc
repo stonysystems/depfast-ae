@@ -70,10 +70,11 @@ Coordinator *MultiPaxosFrame::CreateCoordinator(cooid_t coo_id,
 }
 
 TxLogServer *MultiPaxosFrame::CreateScheduler() {
-  TxLogServer *sch = nullptr;
-  sch = new PaxosServer();
-  sch->frame_ = this;
-  return sch;
+  TxLogServer *svr = nullptr;
+  svr = new PaxosServer();
+  svr->frame_ = this;
+  svr->mode_ = MODE_MULTI_PAXOS;
+  return svr;
 }
 
 Communicator *MultiPaxosFrame::CreateCommo(PollMgr *poll) {

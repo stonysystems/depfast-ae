@@ -11,10 +11,11 @@ class TroadCommo;
 class EPaxosCoord : public RccCoord {
  public:
   enum Phase {
-    INIT_END = 0, DISPATCH = 1, PREPARE = 2,
-    PRE_ACCEPT = 3, ACCEPT = 4, COMMIT = 5
+    INIT_END = 0, PREPARE = 1,
+    PRE_ACCEPT = 2, ACCEPT = 3, COMMIT = 4
   };
 
+  shared_ptr<Marshallable> sp_cmd_{nullptr};
   bool __debug_notifying_{false};
   cooid_t coo_id_;
 //  phase_t  phase_; // a phase identifier
@@ -28,6 +29,10 @@ class EPaxosCoord : public RccCoord {
   using RccCoord::RccCoord;
 
   virtual ~EPaxosCoord() {}
+
+  void Submit(shared_ptr<Marshallable> &cmd,
+              const std::function<void()> &func = []() {},
+              const std::function<void()> &exe_callback = []() {}) override;
 
   EPaxosCommo *commo();
   // Dispatch inherits from RccCoord;

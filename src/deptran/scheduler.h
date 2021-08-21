@@ -30,7 +30,7 @@ class TxLogServer {
   Recorder *recorder_ = nullptr;
   Frame *frame_ = nullptr;
   Frame *rep_frame_ = nullptr;
-  TxLogServer *rep_sched_ = nullptr;
+  TxLogServer *rep_log_server_ = nullptr;
   Communicator *commo_{nullptr};
   //  Coordinator* rep_coord_ = nullptr;
   shared_ptr<TxnRegistry> txn_reg_{nullptr};
@@ -84,6 +84,10 @@ class TxLogServer {
   TxLogServer();
   TxLogServer(int mode);
   virtual ~TxLogServer();
+
+  virtual void Submit(shared_ptr<Marshallable>& cmd,
+                      const std::function<void()>& commit_callback = [](){},
+                      const std::function<void()>& exe_callback = [](){});
 
   virtual void SetPartitionId(parid_t par_id) {
     partition_id_ = par_id;

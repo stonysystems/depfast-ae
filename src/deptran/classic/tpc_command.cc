@@ -52,10 +52,18 @@ Marshal& TpcPrepareCommand::FromMarshal(Marshal& m) {
 Marshal& TpcCommitCommand::ToMarshal(Marshal& m) const {
   m << tx_id_;
   m << ret_;
+  MarshallDeputy md(cmd_);
+  m << md;
   return m;
 }
 Marshal& TpcCommitCommand::FromMarshal(Marshal& m) {
   m >> tx_id_;
   m >> ret_;
+  MarshallDeputy md;
+  m >> md;
+  if (!cmd_)
+    cmd_ = md.sp_data_;
+  else
+    verify(0);
   return m;
 }

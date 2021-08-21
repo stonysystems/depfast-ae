@@ -192,13 +192,20 @@ TxLogServer::TxLogServer() : mtx_() {
   }
 }
 
+void TxLogServer::Submit(shared_ptr<Marshallable>& cmd,
+                         const std::function<void()>& commit_callback,
+                         const std::function<void()>& exe_callback) {
+  verify(mode_ == MODE_MULTI_PAXOS);
+  CreateRepCoord()->Submit(cmd, commit_callback, exe_callback);
+}
+
 Coordinator *TxLogServer::CreateRepCoord() {
   Coordinator *coord;
   static cooid_t cid = 0;
   int32_t benchmark = 0;
   static id_t id = 0;
-  verify(rep_frame_ != nullptr);
-  coord = rep_frame_->CreateCoordinator(cid++,
+  verify(frame_ != nullptr);
+  coord = frame_->CreateCoordinator(cid++,
                                         Config::GetConfig(),
                                         benchmark,
                                         nullptr,
