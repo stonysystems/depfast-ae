@@ -252,11 +252,11 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   } else {
     verify(0);
   }
-  if (sp_tx->is_leader_hint_) {
-    // mostly for debug
-    sp_tx->commit_result->Set(1);
-  }
-//  sp_tx->commit_result->Set(1);
+  // if (sp_tx->is_leader_hint_) {
+  //   // mostly for debug
+  //   sp_tx->commit_result->Set(1);
+  // }
+  sp_tx->commit_result->Set(1);
   sp_tx->ev_execute_ready_->Set(1);
   return 0;
 }

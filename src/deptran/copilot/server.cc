@@ -2,7 +2,7 @@
 #include "frame.h"
 #include "coordinator.h"
 
-// #define DEBUG
+#define DEBUG
 
 namespace janus {
 
@@ -121,23 +121,38 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
                                  const function<void()> &cb) {
   // TODO: deal with ballot
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("copilot server %d fast accept for %s slot: %lu", id_, toString(is_pilot), slot);
+  Log_debug("copilot server %d fast accept for %s slot: %lu, dep %lu", id_,
+            toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[1 - is_pilot];
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
 
-  for (slotid_t j = dep + 1; j <= log_info.max_committed_slot; j++) {
-    if (logs[j]->dep_id < slot) {
-      /**
-       * Otherwise, it sends a FastAcceptReply message to the pilot
-       * with its latest entry for the other pilot, P'.k,
-       * as its suggested dependency.
-       * TODO: definition on "latest"
-       */
-      suggest_dep = log_info.max_committed_slot;
-      break;
+  /**
+   * Thus, the check only needs to look at later entries in the other
+   * pilot’s log. The compatibility check passes unless the replica
+   * has already accepted a later entry P'.k (k > j) from the other
+   * pilot P0 with a dependency earlier than P.i, i.e., P'.k’s dependency
+   * is < P.i.
+   */
+  if (dep != 0) {
+    for (slotid_t j = dep + 1; j <= log_info.max_accepted_slot; j++) {
+      auto dep_id = logs[j]->dep_id;
+      if (dep_id != 0 && dep_id < slot) {
+        /**
+         * Otherwise, it sends a FastAcceptReply message to the pilot
+         * with its latest entry for the other pilot, P'.k,
+         * as its suggested dependency.
+         * TODO: definition on "latest"
+         */
+        suggest_dep = log_info.max_accepted_slot;
+        Log_debug(
+            "copilot server %d find imcompatiable dependence for %s slot: %lu, "
+            "dep: %lu. suggest dep: %lu",
+            id_, toString(is_pilot), slot, dep, suggest_dep);
+        break;
+      }
     }
   }
 
@@ -146,7 +161,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     ins->dep_id = dep;
     ins->cmd = cmd;
     ins->status = Status::FAST_ACCEPTED;
-    log_info.max_accepted_slot = std::max(log_info.max_accepted_slot, slot);
+    updateMaxAcptSlot(log_info, slot); 
   } else {
     // TODO
   }
@@ -164,7 +179,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
                              ballot_t* max_ballot,
                              const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("copilot server %d fast accept for %s slot: %lu", id_, toString(is_pilot), slot);
+  Log_debug("copilot server %d fast accept for %s slot: %lu, dep %lu", id_, toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[is_pilot];
@@ -174,7 +189,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
     ins->dep_id = dep;
     ins->cmd = cmd;
     ins->status = Status::ACCEPTED;
-    log_info.max_accepted_slot = std::max(log_info.max_accepted_slot, slot);
+    updateMaxAcptSlot(log_info, slot);
   } else {
     //TODO
   }
@@ -188,13 +203,13 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
                              const uint64_t& dep,
                              shared_ptr<Marshallable>& cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot server %d commit %s slot: %ld", id_, toString(is_pilot), slot);
+  Log_debug("Copilot server %d commit %s slot: %ld, dep %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
   ins->cmd = cmd;
   ins->status = Status::COMMITED;
 
   auto& log_info = log_infos_[is_pilot];
-  log_info.max_committed_slot = std::max(slot, log_info.max_committed_slot);
+  updateMaxCmtdSlot(log_info, slot);
   verify(slot > log_info.max_executed_slot);
 
   /**
@@ -233,6 +248,26 @@ inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
   auto& log_info = log_infos_[ins->is_pilot];
   if (ins->slot_id == log_info.max_executed_slot + 1)
     log_info.max_executed_slot = ins->slot_id;
+}
+
+void CopilotServer::updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot) {
+  slotid_t i;
+  for (i = log_info.max_accepted_slot + 1; i <= slot; i++) {
+    auto& log_entry = log_info.logs[i];
+    if (log_entry && log_entry->status < Status::FAST_ACCEPTED)
+      break;
+  }
+  log_info.max_accepted_slot = i - 1;
+}
+
+void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
+  slotid_t i;
+  for (i = log_info.max_committed_slot + 1; i <= slot; i++) {
+    auto& log_entry = log_info.logs[i];
+    if (log_entry && log_entry->status < Status::COMMITED)
+      break;
+  }
+  log_info.max_committed_slot = i - 1;
 }
 
 bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {

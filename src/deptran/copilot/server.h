@@ -94,6 +94,8 @@ class CopilotServer : public TxLogServer {
   bool findSCC(shared_ptr<CopilotData>& root);
   bool strongConnect(shared_ptr<CopilotData>& ins, int* index);
   void updateMaxExecSlot(shared_ptr<CopilotData>& ins);
+  void updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot);
+  void updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot);
   std::stack<shared_ptr<CopilotData> > stack_;
 };
 

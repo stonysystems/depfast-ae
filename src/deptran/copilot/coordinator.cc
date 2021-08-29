@@ -53,7 +53,7 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 void CoordinatorCopilot::Prepare() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Copilot coordinator broadcast prepare, "
-            "partition: %d, %s slot: %d", (int)par_id_, indicator[is_pilot_], (int)slot_id_);
+            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
   ballot_t new_ballot = pickGreaterBallot(curr_ballot_);
   int n_fastac = 0;
 
@@ -115,12 +115,12 @@ void CoordinatorCopilot::Prepare() {
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Copilot coordinator broadcast fast accept, "
-            "partition: %d, %s slot: %d", (int)par_id_, indicator[is_pilot_], (int)slot_id_);
+            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
 
   auto sq_quorum = commo()->BroadcastFastAccept(par_id_,
                                                 is_pilot_, slot_id_,
-                                                dep_,
                                                 curr_ballot_,
+                                                dep_,
                                                 cmd_now_);
   // sq_quorum->id_ = dep_id_;
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
@@ -163,12 +163,12 @@ void CoordinatorCopilot::FastAccept() {
 void CoordinatorCopilot::Accept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Copilot coordinator broadcast accept, "
-            "partition: %d, %s slot: %d", (int)par_id_, indicator[is_pilot_], (int)slot_id_);
+            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
 
   auto sp_quorum = commo()->BroadcastAccept(par_id_,
                                             is_pilot_, slot_id_,
-                                            dep_,
                                             curr_ballot_,
+                                            dep_,
                                             cmd_now_);
   // sp_quorum->id_ = dep_id_;
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
@@ -209,8 +209,10 @@ void CoordinatorCopilot::Commit() {
   if (!in_fast_takeover_ && dep_ != 0) {
     auto dep_ins = sch_->GetInstance(dep_, !is_pilot_);
     if (dep_ins->status != Status::COMMITED) {
-      verify(IsCopilot() || IsCopilot());
-      initFastTakeover(dep_ins);
+      verify(IsPilot() || IsCopilot());
+      Log_debug("initiate fast-takeover on %s for slot %lu 's dep %lu",
+                indicator[(int)IsPilot()], slot_id_, dep_);
+      // initFastTakeover(dep_ins);
     }
   }
 
@@ -261,7 +263,11 @@ void CoordinatorCopilot::GotoNextPhase() {
 
 void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout);
+  // TODO: fix wait forever
   e->Wait();
+
+  if (ins->status == Status::COMMITED)
+    return;
 
   // reuse current coordinator
   cmd_now_ = ins->cmd;
