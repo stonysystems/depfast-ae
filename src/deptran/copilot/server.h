@@ -62,7 +62,7 @@ class CopilotServer : public TxLogServer {
   void OnPrepare(const uint8_t& is_pilot,
                  const uint64_t& slot,
                  const ballot_t& ballot,
-                 shared_ptr<Marshallable> ret_cmd,
+                 MarshallDeputy* ret_cmd,
                  ballot_t* max_ballot,
                  uint64_t* dep,
                  status_t* status,

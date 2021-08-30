@@ -27,7 +27,7 @@ void CopilotServiceImpl::Prepare(const uint8_t& is_pilot,
   verify(sched_);
   sched_->OnPrepare(is_pilot, slot,
                     ballot,
-                    ret_cmd->sp_data_,
+                    ret_cmd,
                     max_ballot,
                     dep,
                     status,

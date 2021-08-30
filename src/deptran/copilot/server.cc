@@ -86,12 +86,14 @@ void CopilotServer::OnForward(shared_ptr<Marshallable>& cmd,
 void CopilotServer::OnPrepare(const uint8_t& is_pilot,
                               const uint64_t& slot,
                               const ballot_t& ballot,
-                              shared_ptr<Marshallable> ret_cmd,
+                              MarshallDeputy* ret_cmd,
                               ballot_t* max_ballot,
                               uint64_t* dep,
                               status_t* status,
                               const function<void()>& cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("copilot server %d prepare for %s slot: %ld", id_,
+            toString(is_pilot), slot);
   auto ins = GetInstance(slot, is_pilot);
 
   if (ins->ballot < ballot) {
@@ -104,7 +106,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
    * an id of the dependency's proposing pilot.
    */
   *max_ballot = ins->ballot;
-  ret_cmd = ins->cmd; // TODO: how to correctly return a marshallable?
+  ret_cmd->SetMarshallable(ins->cmd);
   *dep = ins->dep_id;
   *status = ins->status;
 

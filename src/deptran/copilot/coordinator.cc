@@ -52,7 +52,7 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
 void CoordinatorCopilot::Prepare() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot coordinator broadcast prepare, "
+  Log_debug("Copilot coordinator broadcast prepare for"
             "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
   ballot_t new_ballot = pickGreaterBallot(curr_ballot_);
   int n_fastac = 0;
@@ -212,7 +212,7 @@ void CoordinatorCopilot::Commit() {
       verify(IsPilot() || IsCopilot());
       Log_debug("initiate fast-takeover on %s for slot %lu 's dep %lu",
                 indicator[(int)IsPilot()], slot_id_, dep_);
-      // initFastTakeover(dep_ins);
+      initFastTakeover(dep_ins);
     }
   }
 

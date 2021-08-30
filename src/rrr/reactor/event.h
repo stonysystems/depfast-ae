@@ -124,11 +124,17 @@ class NeverEvent: public Event {
 class TimeoutEvent : public Event {
  public:
   uint64_t wakeup_time_{0};
-  TimeoutEvent(uint64_t wait_us_): wakeup_time_{Time::now()+wait_us_} {}
+  uint64_t wait_us_{0};
+  TimeoutEvent(uint64_t wait_us)
+      : wakeup_time_{Time::now() + wait_us}, wait_us_(wait_us) {}
 
   bool IsReady() override {
 //    Log_debug("test timeout");
     return (Time::now() > wakeup_time_);
+  }
+
+  void Wait() {
+    Event::Wait(wait_us_);
   }
 };
 
