@@ -8,7 +8,7 @@
 namespace janus {
 
 enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
-const size_t n_status = 4;
+const size_t n_status = 5;
 
 struct CopilotData {
   shared_ptr<Marshallable>  cmd{nullptr};  // command

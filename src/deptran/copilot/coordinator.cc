@@ -208,10 +208,13 @@ void CoordinatorCopilot::Commit() {
    */
   if (!in_fast_takeover_ && dep_ != 0) {
     auto dep_ins = sch_->GetInstance(dep_, !is_pilot_);
-    if (dep_ins->status != Status::COMMITED) {
+    if (dep_ins->status < Status::COMMITED) {
       verify(IsPilot() || IsCopilot());
-      Log_debug("initiate fast-takeover on %s for slot %lu 's dep %lu",
-                indicator[(int)IsPilot()], slot_id_, dep_);
+      Log_debug(
+          "initiate fast-takeover on %s for slot %lu 's dep:"
+          " %s, %lu, status: %d",
+          indicator[(int)IsPilot()], slot_id_, indicator[dep_ins->is_pilot],
+          dep_ins->slot_id, dep_ins->status);
       initFastTakeover(dep_ins);
     }
   }

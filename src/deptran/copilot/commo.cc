@@ -42,9 +42,9 @@ inline void CopilotPrepareQuorumEvent::FeedRetCmd(ballot_t ballot,
                                                   uint8_t is_pilot, slotid_t slot,
                                                   shared_ptr<Marshallable> cmd,
                                                   enum Status status) {
-  if (status == Status::COMMITED)
+  if (status >= Status::COMMITED)  // committed or executed
     committed_seen_ = true;
-  ret_cmds_by_status_[status].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, status, 0, 0});
+  ret_cmds_by_status_[Status::COMMITED].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, status, 0, 0});
 }
 
 inline size_t CopilotPrepareQuorumEvent::GetCount(enum Status status) {
