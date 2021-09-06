@@ -20,6 +20,7 @@ class CoordinatorCopilot : public Coordinator {
   bool fast_path_ = false;
   bool direct_commit_ = false;
   bool in_fast_takeover_ = false;
+  bool done_ = false;
 
  private:
   CopilotCommo *commo() {

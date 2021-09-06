@@ -7,7 +7,7 @@
 
 namespace janus {
 
-enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
+enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED, TAKEOVER };
 const size_t n_status = 5;
 
 struct CopilotData {

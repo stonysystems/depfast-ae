@@ -226,7 +226,7 @@ void ClientWorker::Work() {
   })));
 
   while (all_done_ == 0) {
-    Log_debug("wait for finish... n_ceased_cleints: %d,  "
+    Log_info("wait for finish... n_ceased_cleints: %d,  "
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());

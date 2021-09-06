@@ -2,13 +2,13 @@
 #include "frame.h"
 #include "coordinator.h"
 
-#define DEBUG
+// #define DEBUG
 
 namespace janus {
 
 const char* CopilotServer::toString(uint8_t is_pilot) {
   if (is_pilot)
-    return "PILOT";
+    return "PILOT  ";
   else
     return "COPILOT";
 }
@@ -39,22 +39,23 @@ std::pair<slotid_t, uint64_t> CopilotServer::PickInitSlotAndDep() {
   slotid_t assigned_slot;
   /**
    * It also assigns the initial dependency for this entry,
-   * which is the most recent entry from the other pilot it has seen.
+   * which is the most recent entry (latest accepted entry)
+   * from the other pilot it has seen.
    * 
    * initial slot id is 1, slot 0 is always empty
    */
   if (isPilot_) {
-    init_dep = log_infos_[NO].max_committed_slot;
+    init_dep = log_infos_[NO].max_accepted_slot;
     assigned_slot = ++log_infos_[YES].current_slot;
   } else if (isCopilot_) {
-    init_dep = log_infos_[YES].max_committed_slot;
+    init_dep = log_infos_[YES].max_accepted_slot;
     assigned_slot = ++log_infos_[NO].current_slot;
   } else {
     init_dep = 0;
     assigned_slot = 0;
   }
 
-  Log_debug("server %d %s slot %lu assigned dep %lu", id_, toString(isPilot_),
+  Log_debug("server %d assigned %s : %lu -> %lu", id_, toString(isPilot_),
             assigned_slot, init_dep);
 
   return { assigned_slot, init_dep };
@@ -92,10 +93,15 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
                               status_t* status,
                               const function<void()>& cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("copilot server %d prepare for %s slot: %ld", id_,
-            toString(is_pilot), slot);
   auto ins = GetInstance(slot, is_pilot);
 
+  /**
+   * The fast pilot does this by sending Prepare messages with a
+   * higher ballot number b' for the entry to all replicas. If b'
+   * is higher than the set ballot number for that entry, the
+   * replicas reply with PrepareOk messages and update their
+   * prepared ballot number for that entry.
+   */
   if (ins->ballot < ballot) {
     ins->ballot = ballot;
   }
@@ -110,6 +116,10 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
   *dep = ins->dep_id;
   *status = ins->status;
 
+  Log_debug(
+      "copilot server %d PREPARE for %s with %lu -> %lu status %d ballot %ld",
+      id_, toString(is_pilot), slot, *dep, *status, *max_ballot);
+
   cb();
 }
 
@@ -123,7 +133,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
                                  const function<void()> &cb) {
   // TODO: deal with ballot
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("copilot server %d fast accept for %s slot: %lu, dep %lu", id_,
+  Log_debug("server %d [FAST ACCEPT] %s : %lu -> %lu", id_,
             toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
@@ -137,22 +147,28 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
    * has already accepted a later entry P'.k (k > j) from the other
    * pilot P0 with a dependency earlier than P.i, i.e., P'.k’s dependency
    * is < P.i.
+   * 
+   * 
    */
   if (dep != 0) {
-    for (slotid_t j = dep + 1; j <= log_info.max_accepted_slot; j++) {
+    for (slotid_t j = std::max(dep, log_info.max_executed_slot) + 1; j <= log_info.max_accepted_slot; j++) {
       auto dep_id = logs[j]->dep_id;
       if (dep_id != 0 && dep_id < slot) {
+        if (GetInstance(dep_id, is_pilot)->status == Status::EXECUTED &&
+            logs[dep]->status == Status::EXECUTED)
+          continue;
         /**
          * Otherwise, it sends a FastAcceptReply message to the pilot
          * with its latest entry for the other pilot, P'.k,
          * as its suggested dependency.
-         * TODO: definition on "latest"
+         * //TODO: definition on "latest"
          */
         suggest_dep = log_info.max_accepted_slot;
         Log_debug(
-            "copilot server %d find imcompatiable dependence for %s slot: %lu, "
-            "dep: %lu. suggest dep: %lu",
+            "copilot server %d find imcompatiable dependence for %s : "
+            "%lu -> %lu. suggest dep: %lu",
             id_, toString(is_pilot), slot, dep, suggest_dep);
+        // verify(0);
         break;
       }
     }
@@ -163,12 +179,13 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     ins->dep_id = dep;
     ins->cmd = cmd;
     ins->status = Status::FAST_ACCEPTED;
-    updateMaxAcptSlot(log_info, slot); 
+    updateMaxAcptSlot(log_infos_[is_pilot], slot); 
   } else {
     // TODO
   }
   *max_ballot = ins->ballot;
   *ret_dep = suggest_dep;
+
 
   cb();
 }
@@ -181,7 +198,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
                              ballot_t* max_ballot,
                              const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("copilot server %d fast accept for %s slot: %lu, dep %lu", id_, toString(is_pilot), slot, dep);
+  Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[is_pilot];
@@ -205,7 +222,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
                              const uint64_t& dep,
                              shared_ptr<Marshallable>& cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot server %d commit %s slot: %ld, dep %ld", id_, toString(is_pilot), slot, dep);
+  Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
   ins->cmd = cmd;
   ins->status = Status::COMMITED;
@@ -247,6 +264,7 @@ void CopilotServer::setIsCopilot(bool isCopilot) {
 }
 
 inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
+  Log_debug("server %d [EXECUTE    ] %s : %lu -> %lu", id_, toString(ins->is_pilot), ins->slot_id, ins->dep_id);
   auto& log_info = log_infos_[ins->is_pilot];
   if (ins->slot_id == log_info.max_executed_slot + 1)
     log_info.max_executed_slot = ins->slot_id;
@@ -316,9 +334,10 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
     for (auto i = log_infos_[p].max_executed_slot + 1; i <= end; i++) {
       auto w = GetInstance(i, ins->is_pilot);
       if (!w->cmd) {
-        // TODO: (unlikely) this cmd has not been received, wait or return?
-        // either synchronously wait or return, otherwise the stack_ will be
+        // Q: (unlikely) this cmd has not been received, wait or return?
+        // A: either synchronously wait or return, otherwise the stack_ will be
         // in inconsistent state
+        Log_debug("%d, no cmd at %s : %lu", id_, toString(w->is_pilot), w->slot_id);
         return false;
       }
 
@@ -326,6 +345,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
 
       if (w->status != Status::COMMITED) {
         // TODO: this cmd has not been committed, wait or return?
+        Log_debug("%d, unCOMMITTED cmd %s : %lu -> %lu", id_, toString(w->is_pilot), w->slot_id, w->dep_id);
         return false;
       }
 

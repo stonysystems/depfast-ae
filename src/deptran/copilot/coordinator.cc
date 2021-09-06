@@ -28,13 +28,14 @@ inline ballot_t CoordinatorCopilot::makeUniqueBallot(ballot_t ballot) {
 }
 
 inline ballot_t CoordinatorCopilot::pickGreaterBallot(ballot_t ballot) {
-  return makeUniqueBallot(ballot >> 8 + 1);
+  return makeUniqueBallot((ballot >> 8) + 1);
 }
 
 void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
                                 const std::function<void()> &func,
                                 const std::function<void()> &exe_callback) {
   verify(IsPilot() || IsCopilot());  // only pilot or copilot can initiate command submission
+  done_ = false;
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(!cmd_now_);
 
@@ -52,14 +53,17 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
 void CoordinatorCopilot::Prepare() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot coordinator broadcast prepare for"
-            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
+  current_phase_ = Phase::PREPARE;
   ballot_t new_ballot = pickGreaterBallot(curr_ballot_);
   int n_fastac = 0;
 
   auto sq_quorum = commo()->BroadcastPrepare(par_id_,
                                              is_pilot_, slot_id_,
                                              new_ballot);
+  Log_debug(
+      "Copilot coordinator %u broadcast PREPARE for"
+      "partition: %u, %s slot: %lu ballot %ld", coo_id_,
+      par_id_, indicator[is_pilot_], slot_id_, new_ballot);
   // sq_quorum->id_ = dep_id_;
 
   sq_quorum->Wait();
@@ -95,7 +99,7 @@ void CoordinatorCopilot::Prepare() {
        * progress. Then pick no-op with an empty dependency.
        * TODO
        */
-      cmd_now_ = nullptr;
+      cmd_now_ = sq_quorum->GetCmds(Status::ACCEPTED)[0].cmd;  // no-op
       dep_ = 0;
     } else if (n_fastac >= maxFail()) {
       auto& slct_cmd = sq_quorum->GetCmds(Status::FAST_ACCEPTED)[0];
@@ -114,8 +118,10 @@ void CoordinatorCopilot::Prepare() {
 
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot coordinator broadcast fast accept, "
-            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
+  Log_debug(
+      "Copilot coordinator %u broadcast FAST ACCEPT, "
+      "partition: %u, %s : %lu -> %lu",
+      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
 
   auto sq_quorum = commo()->BroadcastFastAccept(par_id_,
                                                 is_pilot_, slot_id_,
@@ -148,7 +154,7 @@ void CoordinatorCopilot::FastAccept() {
        * executed by the other pilot
        */
       dep_ = sq_quorum->GetFinalDep();
-      Log_debug("continue on regular path");
+      Log_debug("Final dep: %lu, continue on regular path", dep_);
     } else if (sq_quorum->No()) {
       // TODO process the case: failed to get a majority.
       verify(0);
@@ -162,8 +168,11 @@ void CoordinatorCopilot::FastAccept() {
 
 void CoordinatorCopilot::Accept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("Copilot coordinator broadcast accept, "
-            "partition: %lu, %s slot: %lu", par_id_, indicator[is_pilot_], slot_id_);
+  verify(current_phase_ == Phase::ACCEPT);
+  Log_debug(
+      "Copilot coordinator %u broadcast ACCEPT, "
+      "partition: %u, %s : %lu -> %lu",
+      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
 
   auto sp_quorum = commo()->BroadcastAccept(par_id_,
                                             is_pilot_, slot_id_,
@@ -190,14 +199,14 @@ void CoordinatorCopilot::Accept() {
 
 void CoordinatorCopilot::Commit() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  verify(current_phase_ == Phase::COMMIT);
   commit_callback_();
-  Log_debug("Copilot broadcast commit for partition: %d, %s slot: %d",
-            (int)par_id_, indicator[is_pilot_], (int)slot_id_);
+  Log_debug("Copilot coordinator %u broadcast COMMIT for partition: %d, %s : %lu -> %lu",
+            coo_id_, (int)par_id_, indicator[is_pilot_], slot_id_, dep_);
   commo()->BroadcastCommit(par_id_,
                            is_pilot_, slot_id_,
                            dep_,
                            cmd_now_);
-  verify(current_phase_ == Phase::COMMIT);
   /**
    * A pilot sets a takeover-timeout when it has a committed
    * command but does not know the final dependencies of all
@@ -211,7 +220,7 @@ void CoordinatorCopilot::Commit() {
     if (dep_ins->status < Status::COMMITED) {
       verify(IsPilot() || IsCopilot());
       Log_debug(
-          "initiate fast-takeover on %s for slot %lu 's dep:"
+          "initiate fast-TAKEOVER on %s for slot %lu 's dep:"
           " %s, %lu, status: %d",
           indicator[(int)IsPilot()], slot_id_, indicator[dep_ins->is_pilot],
           dep_ins->slot_id, dep_ins->status);
@@ -219,7 +228,7 @@ void CoordinatorCopilot::Commit() {
     }
   }
 
-  GotoNextPhase();
+  clearStatus();
 }
 
 void CoordinatorCopilot::GotoNextPhase() {
@@ -256,24 +265,26 @@ void CoordinatorCopilot::GotoNextPhase() {
     current_phase_ = Phase::COMMIT;
     Commit();
     break;
-  case Phase::COMMIT:
-    clearStatus();
-    break;
   default:
     break;
   }
 }
 
 void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
+  // one coordiator is taking over this instance
+  if (ins->status == Status::TAKEOVER)
+    return;
   auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout);
   // TODO: fix wait forever
   e->Wait();
 
-  if (ins->status == Status::COMMITED)
+  if (ins->status >= Status::COMMITED)
     return;
 
+  ins->status = Status::TAKEOVER;  // prevent multiple takeover on the same instance
   // reuse current coordinator
   cmd_now_ = ins->cmd;
+  verify(cmd_now_);
   curr_ballot_ = ins->ballot;
   // is_pilot_ = !is_pilot_;
   is_pilot_ = IsCopilot() ? YES : NO;  // takeover another pilot
@@ -284,9 +295,12 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
 }
 
 inline void CoordinatorCopilot::clearStatus() {
+  if (done_)
+    return;
+  done_ = true;
   curr_ballot_ = 0;
   cmd_now_ = nullptr;
-  current_phase_ = 0;
+  current_phase_ = INIT_END;
   fast_path_ = false;
   direct_commit_ = false;
   in_fast_takeover_ = false;

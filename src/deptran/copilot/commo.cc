@@ -25,7 +25,7 @@ void CopilotFastAcceptQuorumEvent::FeedRetDep(uint64_t dep) {
 uint64_t CopilotFastAcceptQuorumEvent::GetFinalDep() {
   verify(ret_deps_.size() >= n_total_ / 2 + 1);
   std::sort(ret_deps_.begin(), ret_deps_.end());
-  return ret_deps_[n_total_ / 2 + 1];
+  return ret_deps_[n_total_ / 2];
 }
 
 bool CopilotFastAcceptQuorumEvent::FastYes() {
@@ -42,9 +42,11 @@ inline void CopilotPrepareQuorumEvent::FeedRetCmd(ballot_t ballot,
                                                   uint8_t is_pilot, slotid_t slot,
                                                   shared_ptr<Marshallable> cmd,
                                                   enum Status status) {
-  if (status >= Status::COMMITED)  // committed or executed
+  if (status >= Status::COMMITED) { // committed or executed
     committed_seen_ = true;
-  ret_cmds_by_status_[Status::COMMITED].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, status, 0, 0});
+    status = Status::COMMITED;  // reduce all status greater than COMMIT to COMMIT
+  }
+  ret_cmds_by_status_[status].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, status, 0, 0});
 }
 
 inline size_t CopilotPrepareQuorumEvent::GetCount(enum Status status) {
@@ -146,6 +148,7 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
       }
     };
 
+    verify(cmd);
     MarshallDeputy md(cmd);
     Future::safe_release(proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr));
   }
@@ -176,7 +179,7 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
     };
 
     MarshallDeputy md(cmd);
-    Future::safe_release(proxy->async_Accept(is_pilot, slot_id, ballot, dep, md));
+    Future::safe_release(proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr));
   }
 
   return e;
