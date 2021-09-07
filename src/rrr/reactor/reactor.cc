@@ -206,6 +206,16 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
   sp_running_coro_th_ = sp_old_coro;
 }
 
+void Reactor::DisplayWaitingEv() {
+  char buff[1000];
+  int offset = 0;
+  offset += sprintf(buff, "%p waiting events %d:\n", sp_reactor_th_.get(), waiting_events_.size());
+  for (auto& it : waiting_events_) {
+    offset += sprintf(buff+offset, "%s\n", it->wait_place_.c_str());
+  }
+  Log_info(buff);
+}
+
 // TODO PollThread -> Reactor
 // TODO PollMgr -> ReactorFactory
 class PollMgr::PollThread {

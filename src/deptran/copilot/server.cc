@@ -224,6 +224,15 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
+  if (ins->status >= Status::COMMITED) {
+    /**
+     * This case only happens when: this instance is fast-takovered on
+     * another server and that server sent a COMMIT for that instance
+     * to all replicas
+     */
+    return;
+  }
+  
   ins->cmd = cmd;
   ins->status = Status::COMMITED;
 
@@ -350,7 +359,16 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
       }
 
       if (w->dfn == 0) {
-        strongConnect(w, index);
+        if (!strongConnect(w, index)) {
+          // find uncommitted cmd
+          shared_ptr<CopilotData> v;
+          do {
+            v = stack_.top();
+            v->dfn = 0;
+            stack_.pop();
+          } while (v != w);
+          return false;
+        }
         ins->low = std::min(ins->low, w->low);
       } else {
         ins->low = std::min(w->dfn, ins->low);

@@ -5,6 +5,12 @@
 #include <algorithm>
 #include "../base/all.hpp"
 
+#define Wait_recordplace(sp_ev, wait_func) do { \
+  auto ref_ev = sp_ev; \
+  ref_ev->RecordPlace(__FILE__, __LINE__); \
+  ref_ev->wait_func; \
+} while(0)
+
 namespace rrr {
 using std::shared_ptr;
 using std::function;
@@ -27,6 +33,7 @@ class Event : public std::enable_shared_from_this<Event> {
   uint64_t type_{0};
   function<bool(int)> test_{};
   uint64_t wakeup_time_; // calculated by timeout, unit: microsecond
+  std::string wait_place_{"not recorded"};
 
   // An event is usually allocated on a coroutine stack, thus it cannot own a
   //   shared_ptr to the coroutine it is.
@@ -40,6 +47,8 @@ class Event : public std::enable_shared_from_this<Event> {
     test_ = f;
     Wait();
   }
+
+  void RecordPlace(const char* file, int line);
 
   virtual bool Test();
   virtual bool IsReady() {

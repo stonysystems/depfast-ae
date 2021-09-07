@@ -154,7 +154,7 @@ void ClientWorker::Work() {
   for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
     auto sp_job = std::make_shared<OneTimeJob>([this] () {
       // this wait tries to avoid launching clients all at once, especially for open-loop clients.
-      Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
+      Wait_recordplace(Reactor::CreateSpEvent<NeverEvent>(), Wait(RandomGenerator::rand(0, 1000000)));
       auto beg_time = Time::now() ;
       auto end_time = beg_time + duration * pow(10, 6);
       while (true) {
@@ -183,16 +183,16 @@ void ClientWorker::Work() {
         this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
-          ev->Wait(600*1000*1000);
+          Wait_recordplace(ev, Wait(600*1000*1000));
           verify(ev->status_ != Event::TIMEOUT);
         } else {
           auto sp_event = Reactor::CreateSpEvent<NeverEvent>();
-          sp_event->Wait(pow(10, 6));
+          Wait_recordplace(sp_event, Wait(pow(10, 6)));
         }
         Coroutine::CreateRun([this, coo](){
           verify(coo->_inuse_);
           auto ev = coo->sp_ev_done_;
-          ev->Wait();
+          Wait_recordplace(ev, Wait());
           verify(coo->coo_id_ > 0);
 //          ev->Wait(400*1000*1000);
           verify(coo->_inuse_);
@@ -230,6 +230,7 @@ void ClientWorker::Work() {
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
+      Reactor::GetReactor()->DisplayWaitingEv();
     sleep(1);
   }
 

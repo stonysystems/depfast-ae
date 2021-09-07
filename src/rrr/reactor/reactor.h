@@ -27,7 +27,7 @@ class Reactor {
    * in case it is freed by the caller after a yield.
    */
   std::list<std::shared_ptr<Event>> all_events_{};
-  std::list<std::shared_ptr<Event>> waiting_events_{};
+  std::set<std::shared_ptr<Event>> waiting_events_{};
   std::vector<std::shared_ptr<Event>> ready_events_{};
   std::list<std::shared_ptr<Event>> timeout_events_{};
   std::set<std::shared_ptr<Coroutine>> coros_{};
@@ -54,6 +54,7 @@ class Reactor {
   void CheckTimeout(std::vector<std::shared_ptr<Event>>&);
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);
   void Recycle(std::shared_ptr<Coroutine>& sp_coro);
+  void DisplayWaitingEv();
 
   ~Reactor() {
 //    verify(0);
