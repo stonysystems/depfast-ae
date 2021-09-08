@@ -13,7 +13,7 @@ void Event::Wait(uint64_t timeout) {
 //  verify(__debug_creator); // if this fails, the event is not created by reactor.
   verify(Reactor::sp_reactor_th_);
   verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
-  verify(status_ == INIT);
+  // verify(status_ == INIT);
   if (IsReady()) {
     status_ = DONE; // no need to wait.
     return;

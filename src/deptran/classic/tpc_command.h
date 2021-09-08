@@ -25,6 +25,7 @@ class TpcCommitCommand : public Marshallable {
   }
   txnid_t tx_id_ = 0;
   int ret_ = -1;
+  shared_ptr<Marshallable> cmd_{nullptr};
   virtual Marshal& ToMarshal(Marshal&) const override;
   virtual Marshal& FromMarshal(Marshal&) override;
 };

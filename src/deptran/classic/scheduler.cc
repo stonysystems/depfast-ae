@@ -195,6 +195,8 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     auto cmd = std::make_shared<TpcCommitCommand>();
     cmd->tx_id_ = tx_id;
     cmd->ret_ = commit_or_abort;
+    cmd->cmd_ = sp_tx->cmd_;
+    sp_tx->is_leader_hint_ = true;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
     CreateRepCoord()->Submit(sp_m);
     sp_tx->commit_result->Wait();
@@ -238,6 +240,8 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   if (sp_tx->commit_result->IsReady())
     return 0;
   int commit_or_abort = tpc_commit_cmd.ret_;
+  if (!sp_tx->cmd_)
+    sp_tx->cmd_ = tpc_commit_cmd.cmd_;
   if (!sp_tx->is_leader_hint_) {
     if (commit_or_abort == REJECT) {
       sp_tx->commit_result->Set(1);
@@ -245,7 +249,7 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
     } else {
       verify(sp_tx->cmd_);
       unique_ptr<TxnOutput> out = std::make_unique<TxnOutput>();
-      Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
+      SchedulerClassic::Dispatch(sp_tx->tid_, sp_tx->cmd_, *out);
       DoPrepare(sp_tx->tid_);
     }
   }
