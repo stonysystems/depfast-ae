@@ -6,7 +6,7 @@
 
 namespace janus {
 
-const uint64_t takeover_timeout = 2000;
+const uint64_t takeover_timeout = 200000;  // TODO: what to set here?
 
 class CopilotCommo;
 class CopilotServer;

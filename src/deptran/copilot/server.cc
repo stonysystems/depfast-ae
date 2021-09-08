@@ -112,6 +112,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
    * an id of the dependency's proposing pilot.
    */
   *max_ballot = ins->ballot;
+  verify(ins->cmd);
   ret_cmd->SetMarshallable(ins->cmd);
   *dep = ins->dep_id;
   *status = ins->status;
@@ -133,7 +134,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
                                  const function<void()> &cb) {
   // TODO: deal with ballot
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  Log_debug("server %d [FAST ACCEPT] %s : %lu -> %lu", id_,
+  Log_debug("server %d [FAST_ACCEPT] %s : %lu -> %lu", id_,
             toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
@@ -209,8 +210,12 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
     ins->cmd = cmd;
     ins->status = Status::ACCEPTED;
     updateMaxAcptSlot(log_info, slot);
-  } else {
-    //TODO
+  } else {  // ins->ballot > ballot
+    /**
+     * This can happen when a fast-takeover ACCEPT reaches the replica before a regular
+     * ACCEPT amd set a higher ballot number for the instance, thus block the regular
+     * ACCEPT.
+     */
   }
 
   *max_ballot = ins->ballot;

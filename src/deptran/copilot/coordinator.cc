@@ -119,7 +119,7 @@ void CoordinatorCopilot::Prepare() {
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug(
-      "Copilot coordinator %u broadcast FAST ACCEPT, "
+      "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
 
@@ -188,8 +188,11 @@ void CoordinatorCopilot::Accept() {
   if (sp_quorum->Yes()) {
     committed_ = true;
   } else if (sp_quorum->No()) {
-    // TODO process the case: failed to get a majority.
-    verify(0);
+    /**
+     * TODO: process the case: failed to get a majority.
+     * An consensus instance with higher ballot is ongoing,
+     * abandon this one
+     */
   } else {
     // TODO process timeout.
     verify(0);
@@ -283,8 +286,6 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
 
   ins->status = Status::TAKEOVER;  // prevent multiple takeover on the same instance
   // reuse current coordinator
-  cmd_now_ = ins->cmd;
-  verify(cmd_now_);
   curr_ballot_ = ins->ballot;
   // is_pilot_ = !is_pilot_;
   is_pilot_ = IsCopilot() ? YES : NO;  // takeover another pilot
