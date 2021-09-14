@@ -113,15 +113,22 @@ void CoordinatorCopilot::Prepare() {
   } else {
     verify(0);
   }
-  GotoNextPhase();
+
+  if (sch_->GetInstance(slot_id_, is_pilot_)->status >= Status::COMMITED) {
+    // instance already committed, end fast-takeover in advance
+    current_phase_ = Phase::COMMIT;
+  } else {
+    GotoNextPhase();
+  }
 }
 
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
-      "partition: %u, %s : %lu -> %lu",
-      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
+      "partition: %u, %s : %lu -> %lu, tx: %x",
+      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_,
+      dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_);
 
   auto sq_quorum = commo()->BroadcastFastAccept(par_id_,
                                                 is_pilot_, slot_id_,
@@ -278,7 +285,6 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   if (ins->status == Status::TAKEOVER)
     return;
   auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout);
-  // TODO: fix wait forever
   e->Wait();
 
   if (ins->status >= Status::COMMITED)
@@ -288,8 +294,8 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   // reuse current coordinator
   curr_ballot_ = ins->ballot;
   // is_pilot_ = !is_pilot_;
-  is_pilot_ = IsCopilot() ? YES : NO;  // takeover another pilot
-  slot_id_ = dep_;
+  is_pilot_ = ins->is_pilot;  // takeover another pilot
+  slot_id_ = ins->slot_id;
   dep_ = 0; // dependency doesn't matter
   in_fast_takeover_ = true;
   Prepare();
