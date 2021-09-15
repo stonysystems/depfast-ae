@@ -183,6 +183,11 @@ void ClientWorker::Work() {
         this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
+#if 1
+          char txid[20];
+          sprintf(txid, "%" PRIx64 "|", coo->ongoing_tx_id_);
+          ev->wait_place_ = std::string(txid);
+#endif
           Wait_recordplace(ev, Wait(600*1000*1000));
           verify(ev->status_ != Event::TIMEOUT);
         } else {
@@ -230,7 +235,6 @@ void ClientWorker::Work() {
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
-      Reactor::GetReactor()->DisplayWaitingEv();
     sleep(1);
   }
 

@@ -55,7 +55,7 @@ std::pair<slotid_t, uint64_t> CopilotServer::PickInitSlotAndDep() {
     assigned_slot = 0;
   }
 
-  if (id_ == 0) Log_debug("server %d assigned %s : %lu -> %lu", id_, toString(isPilot_),
+  Log_debug("server %d assigned %s : %lu -> %lu", id_, toString(isPilot_),
             assigned_slot, init_dep);
 
   return { assigned_slot, init_dep };
@@ -117,7 +117,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
   *dep = ins->dep_id;
   *status = ins->status;
 
-  if (id_ == 0) Log_debug(
+  Log_debug(
       "server %d [PREPARE    ] %s : %lu -> %lu status %d ballot %ld",
       id_, toString(is_pilot), slot, *dep, *status, *max_ballot);
 
@@ -134,7 +134,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
                                  const function<void()> &cb) {
   // TODO: deal with ballot
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  if (id_ == 0) Log_debug("server %d [FAST_ACCEPT] %s : %lu -> %lu", id_,
+  Log_debug("server %d [FAST_ACCEPT] %s : %lu -> %lu", id_,
             toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
@@ -165,7 +165,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
          * //TODO: definition on "latest"
          */
         suggest_dep = log_info.max_accepted_slot;
-        if (id_ == 0) Log_debug(
+        Log_debug(
             "copilot server %d find imcompatiable dependence for %s : "
             "%lu -> %lu. suggest dep: %lu",
             id_, toString(is_pilot), slot, dep, suggest_dep);
@@ -175,7 +175,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     }
   }
 
-  if (ins->ballot <= ballot) {
+  if (ins->ballot <= ballot && suggest_dep == dep) {
     ins->ballot = ballot;
     ins->dep_id = dep;
     ins->cmd = cmd;
@@ -184,7 +184,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   } else {
     // TODO
   }
-  *max_ballot = ins->ballot;
+  *max_ballot = ballot;
   *ret_dep = suggest_dep;
 
 
@@ -199,7 +199,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
                              ballot_t* max_ballot,
                              const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  if (id_ == 0) Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
+  Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[is_pilot];
@@ -227,7 +227,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
                              const uint64_t& dep,
                              shared_ptr<Marshallable>& cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  if (id_ == 0) Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
+  Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
   if (ins->status >= Status::COMMITED) {
     /**
@@ -242,6 +242,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   ins->status = Status::COMMITED;
 
   auto& log_info = log_infos_[is_pilot];
+  auto& another_log_info = log_infos_[1-is_pilot];
   updateMaxCmtdSlot(log_info, slot);
   verify(slot > log_info.max_executed_slot);
 
@@ -251,9 +252,28 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
    * but for better programbility and understandability,
    * we should execute cmds here
    */
-  if (executeCmd(ins)) {
-    // log_info.max_executed_slot = slot;
-    // if (id_ == 0) Log_debug("server %d %s max EXECUTED slot advance to %lu", id_, toString(is_pilot), ins->slot_id);
+  /**
+   * @Xuhao's note:
+   * We should not only execute the committed cmd here, but also try to execute
+   * cmds in both logs up-to max committed index. Cases are that later cmds have
+   * committed before this cmd, and fail to execute due to this cmd had not been
+   * committed at that time. The commit of this cmd makes executing later cmd possible.
+   * 
+   * If a cmd is committed but fail to execute due to uncommitted dependency, one way
+   * for it to execute eventually is by executing a later cmd, which will execute all
+   * cmds before it according to the order requirement. But a later cmd may not be
+   * proposed if client is blocked and stop issuing new cmds. Thus the only way to
+   * execute it in this case is to execute it when its dependent cmd commits, which is
+   * bound to happen.
+   */
+  for (slotid_t i = slot; i <= log_info.max_committed_slot; i++) {
+    auto is = GetInstance(i, is_pilot);
+    executeCmd(is);
+  }
+  for (slotid_t i = std::max(dep, another_log_info.max_executed_slot + 1);
+       i <= another_log_info.max_committed_slot; i++) {
+    auto is = GetInstance(i, 1 - is_pilot);
+    executeCmd(is);
   }
 
   // TODO: should support snapshot for freeing memory.
@@ -278,11 +298,11 @@ void CopilotServer::setIsCopilot(bool isCopilot) {
 }
 
 inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
-  if (id_ == 0) Log_debug("server %d [EXECUTE    ] %s : %lu -> %lu", id_, toString(ins->is_pilot), ins->slot_id, ins->dep_id);
+  Log_debug("server %d [EXECUTE    ] %s : %lu -> %lu", id_, toString(ins->is_pilot), ins->slot_id, ins->dep_id);
   auto& log_info = log_infos_[ins->is_pilot];
   if (ins->slot_id == log_info.max_executed_slot + 1) {
     log_info.max_executed_slot = ins->slot_id;
-    if (id_ == 0) Log_debug("server %d [max EXECUTE] %s : + %lu", id_, toString(ins->is_pilot), ins->slot_id);
+    Log_debug("server %d [max EXECUTE] %s : + %lu", id_, toString(ins->is_pilot), ins->slot_id);
   }
 }
 
@@ -307,8 +327,8 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
 }
 
 bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
-  // if (!(ins->cmd))
-  //   return true;  // no-op
+  if (ins->status == Status::EXECUTED)
+    return true;
   
   if (ins->dep_id == 0) {
     app_next_(*ins->cmd);
@@ -332,7 +352,6 @@ bool CopilotServer::findSCC(shared_ptr<CopilotData>& root) {
     // auto v = stack_.top();
     // v->dfn = 0;
     stack_.pop();
-    // if (id_ == 0) Log_debug("out %s : %lu (%d,)", toString(v->is_pilot), v->slot_id, v->dfn);
   }
   
   return strongConnect(root, &index);
@@ -343,7 +362,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
   ins->low = *index;
   *index = *index + 1;
   stack_.push(ins);
-  if (id_ == 0) Log_debug("SCC %s : %lu -> %lu (%d, %d)", toString(ins->is_pilot), ins->slot_id, ins->dep_id, ins->dfn, ins->low);
+  Log_debug("SCC %s : %lu -> %lu (%d, %d)", toString(ins->is_pilot), ins->slot_id, ins->dep_id, ins->dfn, ins->low);
 
   std::vector<uint8_t> order = ins->is_pilot ? std::vector<uint8_t>{YES, NO}
                                              : std::vector<uint8_t>{NO, YES};
@@ -357,7 +376,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
         // Q: (unlikely) this cmd has not been received, wait or return?
         // A: either synchronously wait or return, otherwise the stack_ will be
         // in inconsistent state
-        if (id_ == 0) Log_debug("%d, no cmd at %s : %lu", id_, toString(w->is_pilot), w->slot_id);
+        Log_debug("%d, no cmd at %s : %lu", id_, toString(w->is_pilot), w->slot_id);
         ins->dfn = 0;
         return false;
       }
@@ -366,7 +385,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
 
       if (w->status < Status::COMMITED) {
         // TODO: this cmd has not been committed, wait or return?
-        if (id_ == 0) Log_debug("%d, unCOMMITTED cmd %s : %lu -> %lu", id_, toString(w->is_pilot), w->slot_id, w->dep_id);
+        Log_debug("%d, unCOMMITTED cmd %s : %lu -> %lu", id_, toString(w->is_pilot), w->slot_id, w->dep_id);
         ins->dfn = 0;
         return false;
       }
@@ -379,7 +398,6 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
             v = stack_.top();
             v->dfn = 0;
             stack_.pop();
-            // Log_debug("out %s : %lu (%d,)", toString(v->is_pilot), v->slot_id, v->dfn);
           } while (v != ins);
           return false;
         }

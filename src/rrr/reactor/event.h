@@ -33,6 +33,7 @@ class Event : public std::enable_shared_from_this<Event> {
   uint64_t type_{0};
   function<bool(int)> test_{};
   uint64_t wakeup_time_; // calculated by timeout, unit: microsecond
+  bool rcd_wait_ = false;
   std::string wait_place_{"not recorded"};
 
   // An event is usually allocated on a coroutine stack, thus it cannot own a

@@ -126,7 +126,7 @@ void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
-      "partition: %u, %s : %lu -> %lu, tx: %x",
+      "partition: %u, %s : %lu -> %lu, tx: %lx",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_,
       dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_);
 

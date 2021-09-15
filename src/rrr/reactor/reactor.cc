@@ -11,6 +11,8 @@
 #include "event.h"
 #include "epoll_wrapper.h"
 
+// #define DEBUG_WAIT
+
 namespace rrr {
 
 thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
@@ -209,9 +211,9 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 void Reactor::DisplayWaitingEv() {
   char buff[1000];
   int offset = 0;
-  offset += sprintf(buff, "%p waiting events %d:\n", sp_reactor_th_.get(), waiting_events_.size());
+  offset += sprintf(buff, "%p waiting events %d:", sp_reactor_th_.get(), waiting_events_.size());
   for (auto& it : waiting_events_) {
-    offset += sprintf(buff+offset, "%s\n", it->wait_place_.c_str());
+    offset += sprintf(buff+offset, "\n%s", it->wait_place_.c_str());
   }
   Log_info(buff);
 }
@@ -312,6 +314,7 @@ PollMgr::~PollMgr() {
 }
 
 void PollMgr::PollThread::poll_loop() {
+  uint64_t last_time = Time::now();
   while (!stop_flag_) {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
@@ -323,6 +326,14 @@ void PollMgr::PollThread::poll_loop() {
     std::list<shared_ptr<Pollable>> remove_poll(pending_remove_.begin(), pending_remove_.end());
     pending_remove_.clear();
     pending_remove_l_.unlock();
+
+#ifdef DEBUG_WAIT
+    auto time_now = Time::now();
+    if (time_now - last_time >= Time::RRR_USEC_PER_SEC) {
+      Reactor::GetReactor()->DisplayWaitingEv();
+      last_time = time_now;
+    }
+#endif
 
     for (auto& poll: remove_poll) {
       int fd = poll->fd();
