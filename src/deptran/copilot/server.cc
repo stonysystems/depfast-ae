@@ -175,12 +175,15 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     }
   }
 
-  if (ins->ballot <= ballot && suggest_dep == dep) {
+  if (ins->ballot <= ballot) {
     ins->ballot = ballot;
     ins->dep_id = dep;
     ins->cmd = cmd;
-    ins->status = Status::FAST_ACCEPTED;
-    updateMaxAcptSlot(log_infos_[is_pilot], slot); 
+    // still set the cmd here, to prevent prepare from getting empty cmd
+    if (suggest_dep == dep) {
+      ins->status = Status::FAST_ACCEPTED;
+      updateMaxAcptSlot(log_infos_[is_pilot], slot);
+    }
   } else {
     // TODO
   }
@@ -213,12 +216,12 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
   } else {  // ins->ballot > ballot
     /**
      * This can happen when a fast-takeover ACCEPT reaches the replica before a regular
-     * ACCEPT amd set a higher ballot number for the instance, thus block the regular
+     * ACCEPT and set a higher ballot number for the instance, thus block the regular
      * ACCEPT.
      */
   }
 
-  *max_ballot = ins->ballot;
+  *max_ballot = ballot;
   cb();
 }
 

@@ -216,13 +216,13 @@ int main(int argc, char *argv[]) {
   // stop profiling
   ProfilerStop();
 #endif // ifdef CPU_PROFILE
+  server_shutdown();
   fflush(stderr);
   fflush(stdout);
   exit(0);
   return 0;
   // TODO, FIXME pending_future in rpc cause error.
   client_shutdown();
-  server_shutdown();
   Log_info("all server workers have shut down.");
 
   RandomGenerator::destroy();

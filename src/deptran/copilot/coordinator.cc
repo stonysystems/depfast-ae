@@ -3,6 +3,7 @@
 #include "coordinator.h"
 #include "commo.h"
 #include "server.h"
+#include "frame.h"
 
 namespace janus {
 
@@ -53,6 +54,7 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
 void CoordinatorCopilot::Prepare() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  static_cast<CopilotFrame*>(frame_)->n_prepare_++;
   current_phase_ = Phase::PREPARE;
   ballot_t new_ballot = pickGreaterBallot(curr_ballot_);
   int n_fastac = 0;
@@ -124,6 +126,7 @@ void CoordinatorCopilot::Prepare() {
 
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  static_cast<CopilotFrame*>(frame_)->n_fast_accept_++;
   Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu, tx: %lx",
@@ -175,6 +178,7 @@ void CoordinatorCopilot::FastAccept() {
 
 void CoordinatorCopilot::Accept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  static_cast<CopilotFrame*>(frame_)->n_accept_++;
   verify(current_phase_ == Phase::ACCEPT);
   Log_debug(
       "Copilot coordinator %u broadcast ACCEPT, "
@@ -209,6 +213,7 @@ void CoordinatorCopilot::Accept() {
 
 void CoordinatorCopilot::Commit() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  static_cast<CopilotFrame*>(frame_)->n_commit_++;
   verify(current_phase_ == Phase::COMMIT);
   commit_callback_();
   Log_debug("Copilot coordinator %u broadcast COMMIT for partition: %d, %s : %lu -> %lu",
@@ -281,7 +286,7 @@ void CoordinatorCopilot::GotoNextPhase() {
 }
 
 void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
-  // one coordiator is taking over this instance
+  // another coordiator is already taking over this instance
   if (ins->status == Status::TAKEOVER)
     return;
   auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout);

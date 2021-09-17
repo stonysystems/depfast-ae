@@ -228,6 +228,7 @@ void ServerWorker::ShutDown() {
   for (auto service : services_) {
     delete service;
   }
+  delete rep_frame_;
 //  thread_pool_g->release();
   svr_poll_mgr_->release();
 }

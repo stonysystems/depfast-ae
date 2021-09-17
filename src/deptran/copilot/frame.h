@@ -19,6 +19,7 @@ class CopilotFrame : public Frame {
 
  public:
   CopilotFrame(int mode);
+  virtual ~CopilotFrame();
 
   Coordinator *CreateCoordinator(cooid_t coo_id,
                                  Config *config,
@@ -35,6 +36,12 @@ class CopilotFrame : public Frame {
                                            TxLogServer *dtxn_sched,
                                            rrr::PollMgr *poll_mgr,
                                            ServerControlServiceImpl *scsi) override;
+
+  // Statistic
+  uint32_t n_fast_accept_ = 0;
+  uint32_t n_accept_ = 0;
+  uint32_t n_commit_ = 0;
+  uint32_t n_prepare_ = 0;
 
 };
 
