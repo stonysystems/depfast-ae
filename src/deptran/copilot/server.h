@@ -7,7 +7,7 @@
 
 namespace janus {
 
-enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED, TAKEOVER };
+enum Status : status_t { NOT_ACCEPTED = 0, TAKEOVER, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
 const size_t n_status = 5;
 
 struct CopilotData {
@@ -17,7 +17,8 @@ struct CopilotData {
   slotid_t                  slot_id;  // position
   ballot_t                  ballot;  // ballot
   status_t                  status;  // status
-  int                       low, dfn;  //torjan
+  int                       low, dfn;  //tarjan
+  SharedIntEvent            cmit_evt{};
 };
 
 struct CopilotLogInfo {
@@ -35,6 +36,8 @@ struct KeyValue {
 };
 
 class CopilotServer : public TxLogServer {
+  using copilot_stack_t = std::stack<shared_ptr<CopilotData> >;
+  using visited_map_t = std::map<shared_ptr<CopilotData>, bool>;
  private:
   uint16_t id_;
   bool isPilot_ = false;
@@ -91,12 +94,16 @@ class CopilotServer : public TxLogServer {
                 shared_ptr<Marshallable>& cmd);
  private:
   bool executeCmd(shared_ptr<CopilotData>& ins);
+  bool executeCmds(shared_ptr<CopilotData>& ins);
+  void waitAllPredCommit(shared_ptr<CopilotData>& ins);
+  void waitPredCmds(shared_ptr<CopilotData>& ins, visited_map_t *map);
   bool findSCC(shared_ptr<CopilotData>& root);
   bool strongConnect(shared_ptr<CopilotData>& ins, int* index);
+  // void strongConnect(shared_ptr<CopilotData>& ins, int* index, copilot_stack_t *stack);
   void updateMaxExecSlot(shared_ptr<CopilotData>& ins);
   void updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot);
   void updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot);
-  std::stack<shared_ptr<CopilotData> > stack_;
+  copilot_stack_t stack_;
 };
 
 } //namespace janus

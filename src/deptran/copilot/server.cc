@@ -3,6 +3,8 @@
 #include "coordinator.h"
 
 // #define DEBUG
+#define WAIT_AT_UNCOMMIT
+#define REVERSE(p) (1 - (p))
 
 namespace janus {
 
@@ -18,6 +20,8 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
   id_ = frame->site_info_->id;
   setIsPilot(frame_->site_info_->locale_id == 0);
   setIsCopilot(frame_->site_info_->locale_id == 1);
+
+  Setup();
 }
 
 shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
@@ -65,6 +69,9 @@ void CopilotServer::Setup() {
 
   log_infos_[NO] = {};
   log_infos_[YES] = {};
+
+  GetInstance(0, YES)->status = EXECUTED;
+  GetInstance(0, NO)->status = EXECUTED;
 }
 
 void CopilotServer::OnForward(shared_ptr<Marshallable>& cmd,
@@ -138,7 +145,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
             toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
-  auto& log_info = log_infos_[1 - is_pilot];
+  auto& log_info = log_infos_[REVERSE(is_pilot)];
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
 
@@ -179,7 +186,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     ins->ballot = ballot;
     ins->dep_id = dep;
     ins->cmd = cmd;
-    // still set the cmd here, to prevent prepare from getting empty cmd
+    // still set the cmd here, to prevent PREPARE from getting an empty cmd
     if (suggest_dep == dep) {
       ins->status = Status::FAST_ACCEPTED;
       updateMaxAcptSlot(log_infos_[is_pilot], slot);
@@ -189,7 +196,6 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   }
   *max_ballot = ballot;
   *ret_dep = suggest_dep;
-
 
   cb();
 }
@@ -243,12 +249,16 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   
   ins->cmd = cmd;
   ins->status = Status::COMMITED;
+#ifdef WAIT_AT_UNCOMMIT
+  ins->cmit_evt.Set(1);
+#endif
 
   auto& log_info = log_infos_[is_pilot];
-  auto& another_log_info = log_infos_[1-is_pilot];
+  auto& another_log_info = log_infos_[REVERSE(is_pilot)];
   updateMaxCmtdSlot(log_info, slot);
   verify(slot > log_info.max_executed_slot);
 
+#ifndef WAIT_AT_UNCOMMIT
   /**
    * Q: should we execute commands here?
    * A: We may use another threads to execute the commands,
@@ -271,13 +281,16 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
    */
   for (slotid_t i = slot; i <= log_info.max_committed_slot; i++) {
     auto is = GetInstance(i, is_pilot);
-    executeCmd(is);
+    executeCmds(is);
   }
   for (slotid_t i = std::max(dep, another_log_info.max_executed_slot + 1);
        i <= another_log_info.max_committed_slot; i++) {
-    auto is = GetInstance(i, 1 - is_pilot);
-    executeCmd(is);
+    auto is = GetInstance(i, REVERSE(is_pilot));
+    executeCmds(is);
   }
+#else
+  executeCmds(ins);
+#endif
 
   // TODO: should support snapshot for freeing memory.
   // for now just free anything 1000 slots before.
@@ -286,8 +299,6 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
     log_info.logs.erase(i++);
   }
   log_info.min_active_slot = i;
-
-
 }
 
 void CopilotServer::setIsPilot(bool isPilot) {
@@ -330,24 +341,42 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
 }
 
 bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
-  if (ins->status == Status::EXECUTED)
-    return true;
-  
-  if (ins->dep_id == 0) {
+  if (ins->cmd) {
     app_next_(*ins->cmd);
     updateMaxExecSlot(ins);
     ins->status = Status::EXECUTED;
     return true;
   } else {
-#ifdef DEBUG
-    app_next_(*ins->cmd);
-    ins->status = Status::EXECUTED;
+    verify(0);
+    return false;
+  }
+}
+
+bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
+  if (ins->status == Status::EXECUTED)
     return true;
+  
+  if (ins->dep_id == 0) {
+    return executeCmd(ins);
+  } else {
+#ifdef DEBUG
+    return executeCmd(ins);
 #else
     return findSCC(ins);
 #endif
   }
 }
+
+/**************************************************************************
+
+Traditional way to do command execution. Abort execution at unCOMMITed cmd
+
+adopted from:
+https://github.com/efficient/epaxos/blob/master/src/epaxos/epaxos-exec.go
+https://github.com/PlatformLab/epaxos/blob/master/src/epaxos/epaxos-exec.go
+
+**************************************************************************/
+#ifndef WAIT_AT_UNCOMMIT
 
 bool CopilotServer::findSCC(shared_ptr<CopilotData>& root) {
   int index = 1;
@@ -375,14 +404,6 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
     auto end = (p == ins->is_pilot) ? ins->slot_id - 1 : ins->dep_id;
     for (auto i = log_infos_[p].max_executed_slot + 1; i <= end; i++) {
       auto w = GetInstance(i, p);
-      if (!w->cmd) {
-        // Q: (unlikely) this cmd has not been received, wait or return?
-        // A: either synchronously wait or return, otherwise the stack_ will be
-        // in inconsistent state
-        Log_debug("%d, no cmd at %s : %lu", id_, toString(w->is_pilot), w->slot_id);
-        ins->dfn = 0;
-        return false;
-      }
 
       if (w->status == Status::EXECUTED) continue;
 
@@ -431,14 +452,116 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
               });
     
     for (auto& c : list) {
-      if (c->cmd) // in case no-op
-        app_next_(*(c->cmd));
-      updateMaxExecSlot(c);
-      c->status = Status::EXECUTED;
+      executeCmd(c);
     }
   }
 
   return true;
 }
+
+#else
+
+/**************************************************************************
+
+     New way to do command execution. Wait and yield at unCOMMITed cmd
+
+**************************************************************************/
+
+void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
+  std::map<shared_ptr<CopilotData>, bool> visited;
+
+  waitPredCmds(ins, &visited);
+}
+
+/**
+ * DFS traverse the dependence graph, if encountered an uncommitted cmd, wait and yield,
+ * stop at EXECUTED cmd. There can be multiple DFS instance going in parallel, so each
+ * DFS has an independent visited map.
+ */
+void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, visited_map_t *m) {
+  (*m)[w] = true;
+  auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
+  auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
+
+  if (pre_ins->status < EXECUTED && !(*m)[pre_ins]) {
+    if (pre_ins->status < COMMITED)
+      pre_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+    waitPredCmds(pre_ins, m);
+  }
+
+  if (dep_ins->status < EXECUTED && !(*m)[dep_ins]) {
+    if (dep_ins->status < COMMITED)
+      dep_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+    waitPredCmds(dep_ins, m);
+  }
+}
+
+bool CopilotServer::findSCC(shared_ptr<CopilotData>& root) {
+  int index = 1;
+  copilot_stack_t stack;
+  waitAllPredCommit(root);
+  return strongConnect(root, &index);
+}
+
+bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
+  // at this time all predecessor cmds must have committed so this function must complete successfully
+  ins->dfn = *index;
+  ins->low = *index;
+  *index = *index + 1;
+  stack_.push(ins);  // TODO: how to coordinate multiple findSCC?
+  Log_debug("SCC %s : %lu -> %lu (%d, %d)", toString(ins->is_pilot), ins->slot_id, ins->dep_id, ins->dfn, ins->low);
+
+
+  std::vector<uint8_t> order = ins->is_pilot ? std::vector<uint8_t>{YES, NO}
+                                             : std::vector<uint8_t>{NO, YES};
+  
+  for (auto& p : order) {
+    auto end = (p == ins->is_pilot) ? ins->slot_id - 1 : ins->dep_id;
+    for (auto i = log_infos_[p].max_executed_slot + 1; i <= end; i++) {
+      auto w = GetInstance(i, p);
+
+      if (w->status == Status::EXECUTED) continue;
+
+      if (w->status < Status::COMMITED) {
+        verify(0); // should not happen
+      }
+
+      if (w->dfn == 0) {
+        strongConnect(w, index);
+        ins->low = std::min(ins->low, w->low);
+      } else {
+        ins->low = std::min(w->dfn, ins->low);
+      }
+    }
+  }
+
+  if (ins->low == ins->dfn) {
+    std::vector<shared_ptr<CopilotData> > list;
+    shared_ptr<CopilotData> w;
+    
+    do {
+      w = stack_.top();
+      stack_.pop();
+      list.push_back(w);
+    } while (w != ins);
+
+    std::sort(list.begin(), list.end(),
+              [](const shared_ptr<CopilotData>& i1,
+                 const shared_ptr<CopilotData>& i2) -> bool {
+                if (i1->is_pilot == i2->is_pilot)
+                  return i1->slot_id < i2->slot_id;
+                else
+                  return i1->is_pilot;
+              });
+    
+    for (auto& c : list) {
+      executeCmd(c);
+    }
+  }
+
+  return true;
+}
+
+#endif
 
 } // namespace janus
