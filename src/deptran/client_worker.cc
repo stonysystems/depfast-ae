@@ -238,11 +238,12 @@ void ClientWorker::Work() {
     sleep(1);
   }
 
-  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
+  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u, Throughput: %.2f\n",
            num_txn.load(),
            success.load(),
            num_try.load(),
-           Config::GetConfig()->get_duration());
+           Config::GetConfig()->get_duration(),
+           static_cast<float>(num_txn.load()) / Config::GetConfig()->get_duration());
   fflush(stderr);
   fflush(stdout);
 

@@ -198,7 +198,8 @@ int SchedulerClassic::OnCommit(txnid_t tx_id, int commit_or_abort) {
     cmd->cmd_ = sp_tx->cmd_;
     sp_tx->is_leader_hint_ = true;
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
-    CreateRepCoord()->Submit(sp_m);
+    shared_ptr<Coordinator> coo(CreateRepCoord());
+    coo->Submit(sp_m);
     sp_tx->commit_result->Wait();
   } else {
     if (commit_or_abort == SUCCESS) {

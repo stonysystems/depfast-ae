@@ -5,6 +5,7 @@
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
 #define REVERSE(p) (1 - (p))
+#define N_CMD_KEEP (1000)
 
 namespace janus {
 
@@ -25,6 +26,7 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
 }
 
 shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
+  verify(slot == 0 || slot >= log_infos_[is_pilot].min_active_slot);
   auto& sp_instance = log_infos_[is_pilot].logs[slot];
   if (!sp_instance)
     sp_instance = std::make_shared<CopilotData>(
@@ -119,7 +121,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
    * an id of the dependency's proposing pilot.
    */
   *max_ballot = ins->ballot;
-  verify(ins->cmd);
+  verify(ins->cmd);  // TODO: occationally it fails at this point
   ret_cmd->SetMarshallable(ins->cmd);
   *dep = ins->dep_id;
   *status = ins->status;
@@ -160,7 +162,13 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
    */
   if (dep != 0) {
     for (slotid_t j = dep + 1; j <= log_info.max_accepted_slot; j++) {
-      auto dep_id = logs[j]->dep_id;
+      // if (!logs[j])
+      //   Log_fatal("slot %lu max acpt %lu", j, log_info.max_accepted_slot);
+      // auto dep_id = logs[j]->dep_id;
+      auto it = logs.find(j);
+      if (it == logs.end())
+        continue;
+      auto dep_id = it->second->dep_id;
       if (dep_id != 0 && dep_id < slot) {
         // if (GetInstance(dep_id, is_pilot)->status == Status::EXECUTED &&
         //     logs[dep]->status == Status::EXECUTED)
@@ -176,7 +184,6 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
             "copilot server %d find imcompatiable dependence for %s : "
             "%lu -> %lu. suggest dep: %lu",
             id_, toString(is_pilot), slot, dep, suggest_dep);
-        // verify(0);
         break;
       }
     }
@@ -295,8 +302,9 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   // TODO: should support snapshot for freeing memory.
   // for now just free anything 1000 slots before.
   int i = log_info.min_active_slot;
-  while (i + 1000 < log_info.max_executed_slot) {
-    log_info.logs.erase(i++);
+  while (i + N_CMD_KEEP < log_info.max_executed_slot) {
+    // remove unused cmds. a removed cmd must have been executed
+    removeCmd(log_info, i++);
   }
   log_info.min_active_slot = i;
 }
@@ -338,6 +346,12 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
       break;
   }
   log_info.max_committed_slot = i - 1;
+}
+
+void CopilotServer::removeCmd(CopilotLogInfo& log_info, slotid_t slot) {
+  auto cmd = dynamic_pointer_cast<TpcCommitCommand>(log_info.logs[slot]->cmd);
+  tx_sched_->DestroyTx(cmd->tx_id_);
+  log_info.logs.erase(slot);
 }
 
 bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {

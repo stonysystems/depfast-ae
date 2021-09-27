@@ -76,10 +76,12 @@ shared_ptr<Tx> TxLogServer::GetOrCreateTx(txnid_t tid, bool ro) {
 }
 
 void TxLogServer::DestroyTx(i64 tid) {
-  Log_debug("destroy tid %ld", tid);
+  Log_debug("destroy tid %lx", tid);
   auto it = dtxns_.find(tid);
-  verify(it != dtxns_.end());
-  dtxns_.erase(it);
+  // verify(it != dtxns_.end());
+  if (it != dtxns_.end()) {
+    dtxns_.erase(it);
+  }
 }
 
 shared_ptr<Tx> TxLogServer::GetTx(txnid_t tid) {

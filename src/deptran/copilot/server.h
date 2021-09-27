@@ -24,7 +24,7 @@ struct CopilotData {
 struct CopilotLogInfo {
   map<slotid_t, shared_ptr<CopilotData> > logs;
   slotid_t current_slot = 0;
-  slotid_t min_active_slot = 0; // anything before (lt) this slot is freed
+  slotid_t min_active_slot = 1; // anything before (lt) this slot is freed
   slotid_t max_executed_slot = 0;
   slotid_t max_committed_slot = 0;
   slotid_t max_accepted_slot = 0;
@@ -103,6 +103,7 @@ class CopilotServer : public TxLogServer {
   void updateMaxExecSlot(shared_ptr<CopilotData>& ins);
   void updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot);
   void updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot);
+  void removeCmd(CopilotLogInfo& log_info, slotid_t slot);
   copilot_stack_t stack_;
 };
 
