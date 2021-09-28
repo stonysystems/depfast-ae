@@ -37,7 +37,7 @@ struct KeyValue {
 
 class CopilotServer : public TxLogServer {
   using copilot_stack_t = std::stack<shared_ptr<CopilotData> >;
-  using visited_map_t = std::map<shared_ptr<CopilotData>, bool>;
+  using visited_map_t = std::vector<std::map<slotid_t, bool> >;
  private:
   uint16_t id_;
   bool isPilot_ = false;
@@ -105,6 +105,8 @@ class CopilotServer : public TxLogServer {
   void updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot);
   void removeCmd(CopilotLogInfo& log_info, slotid_t slot);
   copilot_stack_t stack_;
+
+  bool isExecuted(shared_ptr<CopilotData>& ins, slotid_t slot, uint8_t is_pilot);
 };
 
 } //namespace janus

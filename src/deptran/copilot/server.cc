@@ -5,7 +5,7 @@
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
 #define REVERSE(p) (1 - (p))
-#define N_CMD_KEEP (1000)
+#define N_CMD_KEEP (5000)
 
 namespace janus {
 
@@ -26,7 +26,8 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
 }
 
 shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
-  verify(slot == 0 || slot >= log_infos_[is_pilot].min_active_slot);
+  // if (slot < log_infos_[is_pilot].min_active_slot && slot != 0)
+  //   return nullptr;  // never re-create freed slot
   auto& sp_instance = log_infos_[is_pilot].logs[slot];
   if (!sp_instance)
     sp_instance = std::make_shared<CopilotData>(
@@ -303,7 +304,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   // for now just free anything 1000 slots before.
   int i = log_info.min_active_slot;
   while (i + N_CMD_KEEP < log_info.max_executed_slot) {
-    // remove unused cmds. a removed cmd must have been executed
+    // remove unused cmds. a removed cmd must have been executed.
     removeCmd(log_info, i++);
   }
   log_info.min_active_slot = i;
@@ -379,6 +380,13 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
     return findSCC(ins);
 #endif
   }
+}
+
+bool CopilotServer::isExecuted(shared_ptr<CopilotData>& ins, slotid_t slot, uint8_t is_pilot) {
+  if (ins)
+    return ins->status == Status::EXECUTED;
+  else
+    return slot <= log_infos_[is_pilot].max_executed_slot;
 }
 
 /**************************************************************************
@@ -482,7 +490,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
 **************************************************************************/
 
 void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
-  std::map<shared_ptr<CopilotData>, bool> visited;
+  visited_map_t visited(2);
 
   waitPredCmds(ins, &visited);
 }
@@ -493,17 +501,17 @@ void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
  * DFS has an independent visited map.
  */
 void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, visited_map_t *m) {
-  (*m)[w] = true;
+  (*m)[w->is_pilot][w->slot_id] = true;
   auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
   auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
 
-  if (pre_ins->status < EXECUTED && !(*m)[pre_ins]) {
+  if (pre_ins && pre_ins->status < EXECUTED && !(*m)[pre_ins->is_pilot][pre_ins->slot_id]) {
     if (pre_ins->status < COMMITED)
       pre_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
     waitPredCmds(pre_ins, m);
   }
 
-  if (dep_ins->status < EXECUTED && !(*m)[dep_ins]) {
+  if (dep_ins && dep_ins->status < EXECUTED && !(*m)[dep_ins->is_pilot][dep_ins->slot_id]) {
     if (dep_ins->status < COMMITED)
       dep_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
     waitPredCmds(dep_ins, m);
