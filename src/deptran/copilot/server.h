@@ -37,7 +37,7 @@ struct KeyValue {
 
 class CopilotServer : public TxLogServer {
   using copilot_stack_t = std::stack<shared_ptr<CopilotData> >;
-  using visited_map_t = std::vector<std::map<slotid_t, bool> >;
+  using visited_map_t = std::map<shared_ptr<CopilotData>, bool>;
  private:
   uint16_t id_;
   bool isPilot_ = false;
@@ -96,7 +96,7 @@ class CopilotServer : public TxLogServer {
   bool executeCmd(shared_ptr<CopilotData>& ins);
   bool executeCmds(shared_ptr<CopilotData>& ins);
   void waitAllPredCommit(shared_ptr<CopilotData>& ins);
-  void waitPredCmds(shared_ptr<CopilotData>& ins, visited_map_t *map);
+  void waitPredCmds(shared_ptr<CopilotData>& ins, shared_ptr<visited_map_t> map);
   bool findSCC(shared_ptr<CopilotData>& root);
   bool strongConnect(shared_ptr<CopilotData>& ins, int* index);
   // void strongConnect(shared_ptr<CopilotData>& ins, int* index, copilot_stack_t *stack);

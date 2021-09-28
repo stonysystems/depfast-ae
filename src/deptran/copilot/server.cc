@@ -5,7 +5,7 @@
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
 #define REVERSE(p) (1 - (p))
-#define N_CMD_KEEP (5000)
+#define N_CMD_KEEP (10000)
 
 namespace janus {
 
@@ -26,8 +26,10 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
 }
 
 shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
-  // if (slot < log_infos_[is_pilot].min_active_slot && slot != 0)
-  //   return nullptr;  // never re-create freed slot
+  if (slot < log_infos_[is_pilot].min_active_slot && slot != 0) {
+    Log_warn("server %d get freed ins %s %lu", id_, toString(is_pilot), slot);
+    return nullptr;  // never re-create freed slot
+  }
   auto& sp_instance = log_infos_[is_pilot].logs[slot];
   if (!sp_instance)
     sp_instance = std::make_shared<CopilotData>(
@@ -490,9 +492,9 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
 **************************************************************************/
 
 void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
-  visited_map_t visited(2);
+  shared_ptr<visited_map_t> visited = make_shared<visited_map_t>();
 
-  waitPredCmds(ins, &visited);
+  waitPredCmds(ins, visited);
 }
 
 /**
@@ -500,18 +502,18 @@ void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
  * stop at EXECUTED cmd. There can be multiple DFS instance going in parallel, so each
  * DFS has an independent visited map.
  */
-void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, visited_map_t *m) {
-  (*m)[w->is_pilot][w->slot_id] = true;
+void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, shared_ptr<visited_map_t> m) {
+  m->insert({w, true});
   auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
   auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
 
-  if (pre_ins && pre_ins->status < EXECUTED && !(*m)[pre_ins->is_pilot][pre_ins->slot_id]) {
+  if (pre_ins && pre_ins->status < EXECUTED && (m->find(pre_ins) == m->end())) {
     if (pre_ins->status < COMMITED)
       pre_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
     waitPredCmds(pre_ins, m);
   }
 
-  if (dep_ins && dep_ins->status < EXECUTED && !(*m)[dep_ins->is_pilot][dep_ins->slot_id]) {
+  if (dep_ins && dep_ins->status < EXECUTED && (m->find(dep_ins) == m->end())) {
     if (dep_ins->status < COMMITED)
       dep_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
     waitPredCmds(dep_ins, m);
