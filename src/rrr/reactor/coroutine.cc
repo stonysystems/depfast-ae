@@ -7,6 +7,7 @@
 #include "coroutine.h"
 #include "reactor.h"
 
+#define USE_PROTECTED_STACK
 
 namespace rrr {
 

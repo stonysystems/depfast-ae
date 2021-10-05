@@ -491,19 +491,48 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
 
 **************************************************************************/
 
+/**
+ * DFS traverse the dependence graph (iteratively), if encountered an uncommitted cmd, wait and yield,
+ * stop at EXECUTED cmd. There can be multiple DFS instance going in parallel, so each
+ * DFS has an independent visited map.
+ */
 void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
-  shared_ptr<visited_map_t> visited = make_shared<visited_map_t>();
+  visited_map_t visited;
+  copilot_stack_t stack;
 
-  waitPredCmds(ins, visited);
+  stack.push(ins);
+
+  while (!stack.empty()) {
+    auto& w = stack.top();
+    stack.pop();
+    
+    visited[w] = true;
+    auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
+    auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
+
+    if (pre_ins && pre_ins->status < EXECUTED && !visited[pre_ins]) {
+      if (pre_ins->status < COMMITED)
+        pre_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+      stack.push(pre_ins);
+    }
+
+    if (dep_ins && dep_ins->status < EXECUTED && !visited[dep_ins]) {
+      if (dep_ins->status < COMMITED)
+        dep_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+      stack.push(dep_ins);
+    }
+  }
+
+  // waitPredCmds(ins, visited);
 }
 
 /**
- * DFS traverse the dependence graph, if encountered an uncommitted cmd, wait and yield,
+ * DFS traverse the dependence graph (recursively), if encountered an uncommitted cmd, wait and yield,
  * stop at EXECUTED cmd. There can be multiple DFS instance going in parallel, so each
  * DFS has an independent visited map.
  */
 void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, shared_ptr<visited_map_t> m) {
-  m->insert({w, true});
+  (*m)[w] = true;
   auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
   auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
 
@@ -532,8 +561,9 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
   ins->dfn = *index;
   ins->low = *index;
   *index = *index + 1;
-  stack_.push(ins);  // TODO: how to coordinate multiple findSCC?
-  Log_debug("SCC %s : %lu -> %lu (%d, %d)", toString(ins->is_pilot), ins->slot_id, ins->dep_id, ins->dfn, ins->low);
+  stack_.push(ins);
+  verify(ins);
+  // Log_debug("SCC %s : %lu -> %lu (%d, %d)", toString(ins->is_pilot), ins->slot_id, ins->dep_id, ins->dfn, ins->low);
 
 
   std::vector<uint8_t> order = ins->is_pilot ? std::vector<uint8_t>{YES, NO}

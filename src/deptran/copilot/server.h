@@ -22,7 +22,7 @@ struct CopilotData {
 };
 
 struct CopilotLogInfo {
-  map<slotid_t, shared_ptr<CopilotData> > logs;
+  std::map<slotid_t, shared_ptr<CopilotData> > logs;
   slotid_t current_slot = 0;
   slotid_t min_active_slot = 1; // anything before (lt) this slot is freed
   slotid_t max_executed_slot = 0;

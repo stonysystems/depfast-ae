@@ -36,6 +36,8 @@ std::shared_ptr<Reactor>
 Reactor::GetReactor() {
   if (!sp_reactor_th_) {
     Log_debug("create a coroutine scheduler");
+    if (!REUSING_CORO)
+      Log_warn("reusing coroutine not enabled!");
     sp_reactor_th_ = std::make_shared<Reactor>();
     sp_reactor_th_->thread_id_ = std::this_thread::get_id();
   }
@@ -330,7 +332,8 @@ void PollMgr::PollThread::poll_loop() {
 #ifdef DEBUG_WAIT
     auto time_now = Time::now();
     if (time_now - last_time >= Time::RRR_USEC_PER_SEC) {
-      Reactor::GetReactor()->DisplayWaitingEv();
+      // Reactor::GetReactor()->DisplayWaitingEv();
+      Log_info("%p created coroutine %lu", Reactor::GetReactor().get(), Reactor::GetReactor()->n_created_coroutines_);
       last_time = time_now;
     }
 #endif
