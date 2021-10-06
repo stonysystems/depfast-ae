@@ -503,8 +503,11 @@ void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
   stack.push(ins);
 
   while (!stack.empty()) {
-    auto& w = stack.top();
+    auto w = stack.top();
     stack.pop();
+
+    if (visited[w])
+      continue;
     
     visited[w] = true;
     auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
