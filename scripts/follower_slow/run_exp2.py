@@ -229,9 +229,7 @@ class TxnInfo(object):
         logger.info("mid_time = {}".format(self.mid_time))
 
         if self.mid_retry_exhausted > 0:
-            m = [0]
-            if len(self.mid_latencies) > 0:
-              m = [max(self.mid_latencies)]
+            m = [max(self.mid_latencies)]
             self.mid_all_latencies.extend(m * self.mid_retry_exhausted)
 
         self.mid_latencies.sort()
@@ -297,18 +295,22 @@ class TxnInfo(object):
         if len(self.mid_latencies)>0:
             self.data['latency']['min'] = self.mid_latencies[0]
             self.data['latency']['max'] = self.mid_latencies[len(self.mid_latencies)-1]
+            self.data['latency']['avg'] = sum(self.mid_latencies)/len(self.mid_latencies)
         else:
             self.data['latency']['min'] = NO_VALUE
             self.data['latency']['max'] = NO_VALUE
+            self.data['latency']['avg'] = NO_VALUE
 
         self.data['all_latency'] = {}
         self.data['all_latency'].update(all_latencies)
         if len(self.mid_all_latencies)>0:
             self.data['all_latency']['min'] = self.mid_all_latencies[0]
             self.data['all_latency']['max'] = self.mid_all_latencies[len(self.mid_all_latencies)-1]
+            self.data['all_latency']['avg'] = sum(self.mid_all_latencies)/len(self.mid_all_latencies)
         else:
             self.data['all_latency']['min'] = NO_VALUE
             self.data['all_latency']['max'] = NO_VALUE
+            self.data['all_latency']['avg'] = NO_VALUE
 
         self.data['att_latency'] = {}
         self.data['att_latency'].update(att_latencies)
@@ -317,9 +319,11 @@ class TxnInfo(object):
             self.data['att_latency']['max'] = self.mid_attempt_latencies[
                 len(self.mid_attempt_latencies)-1
             ]
+            self.data['att_latency']['avg'] = sum(self.mid_attempt_latencies)/len(self.mid_attempt_latencies)
         else:
             self.data['att_latency']['min'] = NO_VALUE
             self.data['att_latency']['max'] = NO_VALUE
+            self.data['att_latency']['avg'] = NO_VALUE
 
         logger.info("\n__Data__\n{}\n__EndData__\n".format(yaml.dump(self.data)))
 
@@ -381,9 +385,14 @@ class ClientController(object):
         self.pre_run_nsec = 0
         self.n_asking = 0
         self.max_tps = 0
-
+        
+        self.pid = 0
+        self.pid2 = 0
+        self.once = 0
         self.recording_period = False
         self.print_max = False
+        self.start_profiled = False
+        self.end_profiled = False
 
     def client_run(self, do_sample, do_sample_lock):
         sites = ProcessInfo.get_sites(self.process_infos,
@@ -394,13 +403,15 @@ class ClientController(object):
 
         barriers = []
         for site in sites:
-            barriers.append(site.process.client_rpc_proxy.async_client_ready_block())
+            dep_id = (str.encode('dep'), 0)
+            barriers.append(site.process.client_rpc_proxy.async_client_ready_block(dep_id))
 
         for barrier in barriers:
             barrier.wait()
         logger.info("Clients all ready")
 
-        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
+        dep_id = (str.encode('dep'), 0)
+        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names(dep_id)
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
             self.txn_names[k] = v.decode()
@@ -425,7 +436,8 @@ class ClientController(object):
 
         futures = []
         for rpc_proxy in client_rpc:
-            futures.append(rpc_proxy.async_client_start())
+            dep_id = (str.encode('dep'), 0)
+            futures.append(rpc_proxy.async_client_start(dep_id))
 
         for future in futures:
             future.wait()
@@ -459,10 +471,12 @@ class ClientController(object):
             futures = []
             for proxy in rpc_proxy:
                 try:
-                    future = proxy.async_client_response()
+                    dep_id = (str.encode('dep'), 0)
+                    future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
+                    #logger.debug("Do nothing after failed client heartbeat")
             i=0
             for future in futures:
                 res = future.result
@@ -508,6 +522,7 @@ class ClientController(object):
             logger.debug("avg timing from {} servers: run_sec {:.2f}; run_nsec {:.2f}".format(len(futures), res.run_sec, res.run_nsec))
 
             self.cur_time = time.time()
+            #time.sleep(self.timeout)
             need_break = self.print_stage_result(do_sample, do_sample_lock)
             if (need_break):
                 break
@@ -532,10 +547,48 @@ class ClientController(object):
         #        #v.print_max()
         #        v.print_mid(self.config, self.num_proxies)
 
-        lower_cutoff_pct = 25
+        lower_cutoff_pct = 10
         upper_cutoff_pct = 75
 
         if (not self.recording_period):
+            if self.once == 0:
+                self.once += 1
+            if (progress >= 2 and self.once == 1):
+                try:
+                    experiment = self.config['args'].experiment_name.split('-')[0]
+
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           taskset -ac 1 ~/inf & export inf=$!; \
+                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
+                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
+                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
+                    
+                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           taskset -ac 1 ~/inf & export inf=$!; \
+                           sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
+                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
+                           echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            mkdir " + experiment + "_mem;\
+                            ./get_mem.sh $pid " + experiment +"_mem &"
+                    for process_name, process in self.process_infos.items():
+                        if process_name == 'host2':
+                            time.sleep(0.1)
+                            logger.info('slowing here')
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        if process_name == 'host5':
+                            time.sleep(0.1)
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                        if process_name == 'host1':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                    self.once += 1
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
                 self.recording_period = True
@@ -544,14 +597,66 @@ class ClientController(object):
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+
+            if (progress >= upper_cutoff_pct + 5):
+                try:
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
+                           kill -9 $pid2;"
+                    
+                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                           pid2=`ps aux | grep inf | head -1 | awk '{print $2}'`; \
+                           kill -9 $pid2;"
+
+                    for process_name, process in self.process_infos.items():
+                        if process.name == 'host2':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd])
+                        if process_name == 'host5':
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                        self.once += 1
+                
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
         else:
+            if (progress >= lower_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_start.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.start_profiled:
+                            self.start_profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+            
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_slow_end.txt; \
+                            pid3=`ps aux | grep get_mem | head -1 | awk '{print $2}'`;\
+                            kill -9 $pid3"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.end_profiled:
+                            self.end_profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
             if (progress >= upper_cutoff_pct):
                 logger.info("done with recording period")
                 self.recording_period = False
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-
+                
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
@@ -611,7 +716,8 @@ class ClientController(object):
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
         for site in sites:
             try:
-                site.rpc_proxy.sync_client_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_client_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 
@@ -649,15 +755,15 @@ class ServerController(object):
 
         if (taskset == 1):
             # set task on CPU 1
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 16)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 16)
             logger.info("Setting servers on CPU 1")
         elif (taskset == 2):
             # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 1)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 1)
             logger.info("Setting servers on CPU 0, odd number cores")
         elif (taskset == 3):
             # set task on CPU 0, even number cores, overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x)
             logger.info("Setting servers on CPU 0, even number cores")
         else:
             self.taskset_func = lambda x: ""
@@ -707,7 +813,8 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                dep_id = (str.encode('dep'), 0)
+                site.rpc_proxy.sync_server_shutdown(dep_id)
             except:
                 logger.error(traceback.format_exc())
 
@@ -726,7 +833,8 @@ class ServerController(object):
             for site in sites:
 
                 logger.info("call sync_server_ready on site {}".format(site.id))
-                while (site.rpc_proxy.sync_server_ready() != 1):
+                dep_id = (str.encode('dep'), 0)
+                while (site.rpc_proxy.sync_server_ready(dep_id) != 1):
                     logger.debug("site.rpc_proxy.sync_server_ready returns")
                     time.sleep(1) # waiting for server to initialize
                 logger.info("site %s ready", site.name)
@@ -742,71 +850,72 @@ class ServerController(object):
             sample_result = []
             while (not g_exit):
                 logger.debug("top server heartbeat loop")
-                do_statistics = False
-                do_sample_lock.acquire()
-                if do_sample.value == 1:
-                    do_statistics = True
-                    do_sample.value = 0
-                do_sample_lock.release()
-                i = 0
-                r_cnt_sum = 0
-                r_cnt_num = 0
-                r_sz_sum = 0
-                r_sz_num = 0
-                statistics = dict()
-                cpu_util = [0.0] * len(sites)
-                futures = []
+                #do_statistics = False
+                #do_sample_lock.acquire()
+                #if do_sample.value == 1:
+                #    do_statistics = True
+                #    do_sample.value = 0
+                #do_sample_lock.release()
+                #i = 0
+                #r_cnt_sum = 0
+                #r_cnt_num = 0
+                #r_sz_sum = 0
+                #r_sz_num = 0
+                #statistics = dict()
+                #cpu_util = [0.0] * len(sites)
+                #futures = []
 
-                try:
-                    for site in sites:
-#                        logger.debug("ping %s", site.name)
-                        if do_statistics:
-                            futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
-                        else:
-                            futures.append(site.rpc_proxy.async_server_heart_beat())
-                except:
-                    logger.fatal("server heart beat failure")
-                    break
+                #try:
+                #    for site in sites:
+                #        logger.debug("ping %s", site.name)
+                #        if do_statistics:
+                #            futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
+                #        else:
+                #            futures.append(site.rpc_proxy.async_server_heart_beat())
+                #except:
+                #    logger.fatal(traceback.format_exc())
+                #    logger.fatal("server heart beat failure")
+                #    break
 
 
-                i = 0
-                while (i < len(futures)):
-                    if do_statistics:
-                        ret = futures[i].result
-                        r_cnt_sum += ret.r_cnt_sum
-                        r_cnt_num += ret.r_cnt_num
-                        r_sz_sum += ret.r_sz_sum
-                        r_sz_num += ret.r_sz_num
-                        cpu_util[i] = ret.cpu_util
-                        logger.info("CPU {}: {}".format(i, ret.cpu_util))
-                        for k, v in ret.statistics.items():
-                            if k not in statistics:
-                                statistics[k] = ServerResponse(v)
-                            else:
-                                statistics[k].add_one(v)
-                    else:
-                        futures[i].wait()
-                    i += 1
-                if do_statistics:
-                    total_result = []
-                    interval_result = []
-                    cur_time = time.time()
-                    interval_time = cur_time - self.pre_time
-                    self.pre_time = cur_time
-                    for k, v in statistics.items():
-                        total_result.append([k, v.get_value(), v.get_times(), v.get_ave()])
-                        interval_result.append([k, v.get_value(), v.get_times(), v.get_ave(), interval_time])
-                    self.pre_statistics = statistics
-                    sample_result = interval_result
-                    avg_cpu_util = sum(cpu_util) / len(cpu_util)
-                    if r_cnt_num != 0:
-                        avg_r_cnt = (1.0 * r_cnt_sum) / r_cnt_num
-                    else:
-                        avg_r_cnt = -1.0
-                    if r_sz_num != 0:
-                        avg_r_sz = (1.0 * r_sz_sum) / r_sz_num
-                    else:
-                        avg_r_sz = -1.0
+                #i = 0
+                #while (i < len(futures)):
+                #    if do_statistics:
+                #        ret = futures[i].result
+                #        r_cnt_sum += ret.r_cnt_sum
+                #        r_cnt_num += ret.r_cnt_num
+                #        r_sz_sum += ret.r_sz_sum
+                #        r_sz_num += ret.r_sz_num
+                #        cpu_util[i] = ret.cpu_util
+                #        logger.info("CPU {}: {}".format(i, ret.cpu_util))
+                #        for k, v in ret.statistics.items():
+                #            if k not in statistics:
+                #                statistics[k] = ServerResponse(v)
+                #            else:
+                #                statistics[k].add_one(v)
+                    #else:
+                        #futures[i].wait()
+                #    i += 1
+                #if do_statistics:
+                #    total_result = []
+                #    interval_result = []
+                #    cur_time = time.time()
+                #    interval_time = cur_time - self.pre_time
+                #    self.pre_time = cur_time
+                #    for k, v in statistics.items():
+                #        total_result.append([k, v.get_value(), v.get_times(), v.get_ave()])
+                #        interval_result.append([k, v.get_value(), v.get_times(), v.get_ave(), interval_time])
+                #    self.pre_statistics = statistics
+                #    sample_result = interval_result
+                #    avg_cpu_util = sum(cpu_util) / len(cpu_util)
+                #    if r_cnt_num != 0:
+                #        avg_r_cnt = (1.0 * r_cnt_sum) / r_cnt_num
+                #    else:
+                #        avg_r_cnt = -1.0
+                #    if r_sz_num != 0:
+                #        avg_r_sz = (1.0 * r_sz_sum) / r_sz_num
+                #    else:
+                #        avg_r_sz = -1.0
                 cond.acquire()
                 if (s_init_finish.value == 0):
                     cond.release()
@@ -843,9 +952,9 @@ class ServerController(object):
             recording = ""
 
         s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
-               " ./build/deptran_server " + \
-               "-b " + \
-               "-d " + str(self.config['args'].c_duration) + " "
+            " ./build/deptran_server " + \
+            "-b " + \
+            "-d " + str(self.config['args'].c_duration) + " "
 
         for fn in self.config['args'].config_files:
             s += "-f '" + fn + "' "
@@ -930,7 +1039,7 @@ def create_parser():
                  "1: CPU 1; "
                  "2: CPU 0, odd cores; "
                  "3: CPU 0, even cores;",
-            default=0, action="store", metavar="[0|1|2|3]")
+            default=2, action="store", metavar="[0|1|2|3]")
 
     parser.add_argument("-c", "--client-taskset", dest="c_taskset",
             help="taskset client processes round robin", default=False,
@@ -950,6 +1059,7 @@ def create_parser():
     parser.add_argument("-H", "--hosts", dest="hosts_path",
             help="hosts path", default="./config/hosts-local",
             metavar="HOSTS_PATH")
+
     logger.debug(parser)
     return parser
 
