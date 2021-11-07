@@ -5,7 +5,7 @@
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
 #define REVERSE(p) (1 - (p))
-#define N_CMD_KEEP (10000)
+#define N_CMD_KEEP (15000)
 
 namespace janus {
 

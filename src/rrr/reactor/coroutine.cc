@@ -49,10 +49,10 @@ void Coroutine::Run() {
 
   const auto x = new boost_coro_task_t(
 #ifdef USE_PROTECTED_STACK
-      boost::coroutines2::protected_fixedsize_stack(boost::context::stack_traits::default_size() * 2),
+      boost::coroutines2::protected_fixedsize_stack(boost::context::stack_traits::default_size() * 4),
       // ATTENTION: STACK MEMORY IS PRECIOUS, AVOID EXCESSIVE RECURSION CALL
 #else
-      boost::coroutines2::default_stack(boost::context::stack_traits::default_size() * 2),
+      boost::coroutines2::default_stack(boost::context::stack_traits::default_size() * 3),
 #endif
       std::bind(&Coroutine::BoostRunWrapper, this, std::placeholders::_1)
 //    [this] (boost_coro_yield_t& yield) {
