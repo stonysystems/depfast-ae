@@ -27,7 +27,7 @@ cp scripts/$6_slow/run_all$exp.py .
 cp scripts/$6_slow/run$exp.py .
 
 if [[ $5 == "3" ]]; then
-	./run_all$exp.py -d $3 -hh config/hosts-nonlocal.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/tpca.yml -cc config/client_closed.yml -cc config/none_copilot.yml -cc config/concurrent_$2.yml -b tpca -m $cc:copilot $1
+	./run_all$exp.py -d $3 -hh config/hosts-local.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/tpca.yml -cc config/client_closed.yml -cc config/none_copilot.yml -cc config/concurrent_$2.yml -b tpca -m $cc:copilot $1
 else
 	./run_all$exp.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c '1:2:1' -r '5' -cc config/tpca.yml -cc config/client_closed.yml -cc config/tpl_ww_raft.yml -cc config/concurrent_$2.yml -b tpca -m $cc:fpga_raft $1
 fi
