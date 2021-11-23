@@ -17,6 +17,7 @@ sudo apt-get install -y \
     pkg-config \
     build-essential \
     clang \
+    cgroup-tools \
     libapr1-dev libaprutil1-dev \
     libboost-all-dev \
     libyaml-cpp-dev \

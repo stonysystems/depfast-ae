@@ -402,14 +402,14 @@ class ClientController(object):
         barriers = []
         for site in sites:
             dep_id = (str.encode('dep'), 0)
-            barriers.append(site.process.client_rpc_proxy.async_client_ready_block(dep_id))
+            barriers.append(site.process.client_rpc_proxy.async_client_ready_block())
 
         for barrier in barriers:
             barrier.wait()
         logger.info("Clients all ready")
 
         dep_id = (str.encode('dep'), 0)
-        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names(dep_id)
+        res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
             self.txn_names[k] = v.decode()
@@ -435,7 +435,7 @@ class ClientController(object):
         futures = []
         for rpc_proxy in client_rpc:
             dep_id = (str.encode('dep'), 0)
-            futures.append(rpc_proxy.async_client_start(dep_id))
+            futures.append(rpc_proxy.async_client_start())
 
         for future in futures:
             future.wait()
@@ -470,7 +470,7 @@ class ClientController(object):
             for proxy in rpc_proxy:
                 try:
                     dep_id = (str.encode('dep'), 0)
-                    future = proxy.async_client_response(dep_id)
+                    future = proxy.async_client_response()
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
@@ -528,17 +528,17 @@ class ClientController(object):
                 time.sleep(self.timeout)
 
         try:
-            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff swapfile; \
+                   sudo swapoff /dev/sdc; \
                    sudo cgdelete memory:janus;"
             
             cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff swapfile; \
+                   sudo swapoff /dev/sdc; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():
-                if process.name == 'host2':
+                if process.name == 'host3':
                     subprocess.call(['ssh', '-f', process.host_address, cmd])
                 if process.name == 'host5':
                     subprocess.call(['ssh', '-f', process.host_address, cmd_2])
@@ -574,24 +574,26 @@ class ClientController(object):
                 self.once += 1
             if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo mkswap /dev/sdc ; sudo swapon /dev/sdc; \
                            sudo mkdir /sys/fs/cgroup/memory/janus; \
                            echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
                            echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
+                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo mkswap /dev/sdc ; sudo swapon /dev/sdc; \
                            sudo mkdir /sys/fs/cgroup/memory/janus; \
                            echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
                            echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'host3':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
+                            logger.debug("call %s on %s@%s", cmd, process.name, process.host_address)
                         if process_name == 'host5':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+                            logger.debug("call %s on %s@%s", cmd_2, process.name, process.host_address)
                     self.once += 1
                 except subprocess.CalledProcessError as e:
                     logger.fatal('error')
@@ -675,7 +677,7 @@ class ClientController(object):
         for site in sites:
             try:
                 dep_id = (str.encode('dep'), 0)
-                site.rpc_proxy.sync_client_shutdown(dep_id)
+                site.rpc_proxy.sync_client_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -772,7 +774,7 @@ class ServerController(object):
         for site in sites:
             try:
                 dep_id = (str.encode('dep'), 0)
-                site.rpc_proxy.sync_server_shutdown(dep_id)
+                site.rpc_proxy.sync_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -793,7 +795,7 @@ class ServerController(object):
                 logger.info("call sync_server_ready on site {}".format(site.id))
                 
                 dep_id = (str.encode('dep'), 0)
-                while (site.rpc_proxy.sync_server_ready(dep_id) != 1):
+                while (site.rpc_proxy.sync_server_ready() != 1):
                     logger.debug("site.rpc_proxy.sync_server_ready returns")
                     time.sleep(1) # waiting for server to initialize
                 logger.info("site %s ready", site.name)
@@ -910,7 +912,7 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        s = "nohup " + ("" if process.name == "host4" else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

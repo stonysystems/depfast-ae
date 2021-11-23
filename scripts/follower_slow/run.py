@@ -713,7 +713,7 @@ class ServerController(object):
             logger.info("Setting servers on CPU 1")
         elif (taskset == 2):
             # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "" if x == 0 else "taskset -ac " + str(2 * x + 1)
+            self.taskset_func = lambda x: "taskset -ac " + str(2 * x + 1)
             logger.info("Setting servers on CPU 0, odd number cores")
         elif (taskset == 3):
             # set task on CPU 0, even number cores, overlapping with irq cores
@@ -905,7 +905,7 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        s = "nohup " + ("" if process.name == "host4" else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "
