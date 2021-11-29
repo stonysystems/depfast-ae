@@ -72,6 +72,10 @@ public:
         return error_code_;
     }
 
+    i64 get_xid() const {
+        return xid_;
+    }
+
     static inline void safe_release(Future* fu) {
         if (fu != nullptr) {
             fu->release();
@@ -180,6 +184,7 @@ public:
     void handle_read();
     void handle_write();
     void handle_error();
+    void handle_free(i64 xid);
 
 };
 

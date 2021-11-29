@@ -93,9 +93,10 @@ CopilotCommo::BroadcastPrepare(parid_t par_id,
   // WAN_WAIT
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy *)p.second;
+    auto site = p.first;
 
     FutureAttr fuattr;
-    fuattr.callback = [e, ballot, is_pilot, slot_id](Future *fu) {
+    fuattr.callback = [e, ballot, is_pilot, slot_id, site](Future *fu) {
       MarshallDeputy md;
       ballot_t b;
       uint64_t dep;
@@ -111,10 +112,13 @@ CopilotCommo::BroadcastPrepare(parid_t par_id,
                       const_cast<MarshallDeputy&>(md).sp_data_,
                       static_cast<enum Status>(status));
       }
+
+      e->RemoveXid(site);
     };
 
-    // ?Xuhao: is this release needed?
-    Future::safe_release(proxy->async_Prepare(is_pilot, slot_id, ballot, fuattr));
+    Future *f = proxy->async_Prepare(is_pilot, slot_id, ballot, fuattr);
+    e->AddXid(site, f->get_xid());
+    Future::safe_release(f);
   }
 
   return e;
@@ -134,9 +138,10 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
   // WAN_WAIT
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy *)p.second;
+    auto site = p.first;
 
     FutureAttr fuattr;
-    fuattr.callback = [e, dep, ballot](Future *fu) {
+    fuattr.callback = [e, dep, ballot, site](Future *fu) {
       ballot_t b;
       slotid_t sgst_dep;
 
@@ -146,11 +151,15 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
       if (ok) {
         e->FeedRetDep(sgst_dep);
       }
+
+      e->RemoveXid(site);
     };
 
     verify(cmd);
     MarshallDeputy md(cmd);
-    Future::safe_release(proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr));
+    Future *f = proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr);
+    e->AddXid(site, f->get_xid());
+    Future::safe_release(f);
   }
 
   return e;
@@ -170,16 +179,21 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
   // WAN_WAIT
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy *)p.second;
+    auto site = p.first;
 
     FutureAttr fuattr;
-    fuattr.callback = [e, ballot](Future *fu) {
+    fuattr.callback = [e, ballot, site](Future *fu) {
       ballot_t b;
       fu->get_reply() >> b;
       e->FeedResponse(ballot == b);
+
+      e->RemoveXid(site);
     };
 
     MarshallDeputy md(cmd);
-    Future::safe_release(proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr));
+    Future *f = proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr);
+    e->AddXid(site, f->get_xid());
+    Future::safe_release(f);
   }
 
   return e;
@@ -198,6 +212,7 @@ void CopilotCommo::BroadcastCommit(parid_t par_id,
     MarshallDeputy md(cmd);
 
     Future::safe_release(proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr));
+    // TODO: igure out a way to fremove dangling commit RPC (since there is no QuorumEvent here)
   }
 }
 

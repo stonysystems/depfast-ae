@@ -250,6 +250,16 @@ void Client::handle_read() {
   Reactor::GetReactor()->Loop();
 }
 
+void Client::handle_free(i64 xid) {
+  pending_fu_l_.lock();
+  auto it = pending_fu_.find(xid);
+  if (it != pending_fu_.end()) {
+    pending_fu_.erase(it);
+  }
+  pending_fu_l_.unlock();
+  Future::safe_release(it->second);
+}
+
 int Client::poll_mode() {
   int mode = Pollable::READ;
   out_l_.lock();
