@@ -232,10 +232,13 @@ void CoordinatorCopilot::Commit() {
   commit_callback_();
   Log_debug("Copilot coordinator %u broadcast COMMIT for partition: %d, %s : %lu -> %lu",
             coo_id_, (int)par_id_, indicator[is_pilot_], slot_id_, dep_);
-  commo()->BroadcastCommit(par_id_,
-                           is_pilot_, slot_id_,
-                           dep_,
-                           cmd_now_);
+  auto sp_quorum = commo()->BroadcastCommit(par_id_,
+                                            is_pilot_, slot_id_,
+                                            dep_,
+                                            cmd_now_);
+  sp_quorum->Wait();
+  sp_quorum->Finalize(finalize_timeout_us,
+                      std::bind(FreeDangling, commo(), std::placeholders::_1));
   /**
    * A pilot sets a takeover-timeout when it has a committed
    * command but does not know the final dependencies of all

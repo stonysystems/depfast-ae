@@ -199,21 +199,31 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
   return e;
 }
 
-void CopilotCommo::BroadcastCommit(parid_t par_id,
+shared_ptr<CopilotFakeQuorumEvent>
+CopilotCommo::BroadcastCommit(parid_t par_id,
                                    uint8_t is_pilot,
                                    slotid_t slot_id,
                                    uint64_t dep,
                                    shared_ptr<Marshallable> cmd) {
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+  auto e = Reactor::CreateSpEvent<CopilotFakeQuorumEvent>(n);
   auto proxies = rpc_par_proxies_[par_id];
+  
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy*) p.second;
+    auto site = p.first;
     FutureAttr fuattr;
-    fuattr.callback = [](Future* fu) {};
+    fuattr.callback = [e, site](Future* fu) {
+      e->FeedResponse();
+      e->RemoveXid(site);
+    };
     MarshallDeputy md(cmd);
-
-    Future::safe_release(proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr));
-    // TODO: igure out a way to fremove dangling commit RPC (since there is no QuorumEvent here)
+    Future *f = proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr);
+    e->AddXid(site, f->get_xid());
+    Future::safe_release(f);
   }
+
+  return e;
 }
 
 inline int CopilotCommo::maxFailure(int total) {

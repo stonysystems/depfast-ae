@@ -255,9 +255,9 @@ void Client::handle_free(i64 xid) {
   auto it = pending_fu_.find(xid);
   if (it != pending_fu_.end()) {
     pending_fu_.erase(it);
+    Future::safe_release(it->second);
   }
   pending_fu_l_.unlock();
-  Future::safe_release(it->second);
 }
 
 int Client::poll_mode() {

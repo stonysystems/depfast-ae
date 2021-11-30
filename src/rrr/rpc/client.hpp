@@ -112,6 +112,7 @@ public:
 
  class Client: public Pollable {
     Marshal in_, out_;
+    uint64_t cnt_;
 
     /**
      * NOT a refcopy! This is intended to avoid circular reference, which prevents everything from being released correctly.

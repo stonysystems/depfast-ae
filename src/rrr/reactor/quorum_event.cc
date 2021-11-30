@@ -15,15 +15,18 @@ QuorumEvent::QuorumEvent(int n_total, int quorum)
 void QuorumEvent::Finalize(
     uint64_t timeout,
     function<bool(vector<std::pair<uint16_t, rrr::i64> > &)> finalize_func) {
-  vector<std::pair<uint16_t, rrr::i64> > dangling_rpc;
-  for (auto &it : xids_)
-    dangling_rpc.push_back(it);  // fetch out dangling rpc info before it's freed
-
-  auto final_ev = finalize_event_;  // have to make a copy of finalized event (for reason, see next comment)
-  Coroutine::CreateRun([final_ev, timeout, finalize_func, &dangling_rpc]() {
+  
+  
+  Coroutine::CreateRun([timeout, finalize_func, this]() {
     bool ret = false;
+    
+    auto final_ev = finalize_event_;  // have to make a copy of finalized event (for reason, see comment A)
+    vector<std::pair<uint16_t, rrr::i64> > dangling_rpc;
+    for (auto &it : xids_)
+      dangling_rpc.push_back(it);  // fetch out dangling rpc info before it's freed (see comment A)
+
     final_ev->Wait(timeout);
-    /* by the time this fires, the quorum event could have been freed. Thus,
+    /* A: by the time this fires, the quorum event could have been freed. Thus,
      avoid accesing the quorum event object or its members after this line */
 
     // didn't receive all RPC replies

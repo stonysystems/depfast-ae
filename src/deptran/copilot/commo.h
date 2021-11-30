@@ -65,6 +65,18 @@ class CopilotPrepareQuorumEvent : public QuorumEvent {
   bool IsReady() override;
 };
 
+/**
+ * A "Quorum Event" which has no quorum
+ * Used for those who don't need quorum reply
+ */
+class CopilotFakeQuorumEvent : public QuorumEvent {
+ public:
+  CopilotFakeQuorumEvent(int n_total)
+    : QuorumEvent(n_total, 0) {}
+
+  void FeedResponse() { VoteYes(); }
+  bool IsReady() override { return true; }
+};
 
 class CopilotCommo : public Communicator {
 friend class CopilotProxy;
@@ -99,7 +111,8 @@ friend class CopilotProxy;
                   uint64_t dep,
                   shared_ptr<Marshallable> cmd);
   
-  void BroadcastCommit(parid_t par_id,
+  shared_ptr<CopilotFakeQuorumEvent>
+  BroadcastCommit(parid_t par_id,
                        uint8_t is_pilot,
                        slotid_t slot_id,
                        uint64_t dep,
