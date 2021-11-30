@@ -88,6 +88,7 @@ class IntEvent : public Event {
 
  public:
   IntEvent() {}
+  IntEvent(int tar) :target_(tar) {}
   int value_{0};
   int target_{1};
 

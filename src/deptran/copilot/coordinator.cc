@@ -9,6 +9,14 @@ namespace janus {
 
 const char* indicator[] = {"COPILOT", "PILOT"};
 
+bool FreeDangling(Communicator* comm, vector<std::pair<uint16_t, rrr::i64> > &dangling) {
+  for (auto &dang : dangling) {
+    comm->rpc_clients_[dang.first]->handle_free(dang.second);
+  }
+
+  return true;
+}
+
 CoordinatorCopilot::CoordinatorCopilot(uint32_t coo_id,
                                        int32_t benchmark,
                                        ClientControlServiceImpl *ccsi,
@@ -69,6 +77,8 @@ void CoordinatorCopilot::Prepare() {
   // sq_quorum->id_ = dep_id_;
 
   sq_quorum->Wait();
+  sq_quorum->Finalize(finalize_timeout_us,
+                      std::bind(FreeDangling, commo(), std::placeholders::_1));
   // sq_quorum->log();
   /**
    * TODO: very complex
@@ -142,6 +152,8 @@ void CoordinatorCopilot::FastAccept() {
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
 
   sq_quorum->Wait();
+  sq_quorum->Finalize(finalize_timeout_us,
+                      std::bind(FreeDangling, commo(), std::placeholders::_1));
   // sq_quorum->log();
 
   fast_path_ = false;
@@ -194,6 +206,8 @@ void CoordinatorCopilot::Accept() {
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
 
   sp_quorum->Wait();
+  sp_quorum->Finalize(finalize_timeout_us,
+                      std::bind(FreeDangling, commo(), std::placeholders::_1));
   // sp_quorum->log();
 
   if (sp_quorum->Yes()) {
@@ -228,7 +242,7 @@ void CoordinatorCopilot::Commit() {
    * potentially preceding entries, i.e., it has not seen a
    * commit for this entry’s final dependency.
    * 
-   * ? should fast takeover continue indefinitely?
+   * //? should fast takeover continue indefinitely?
    */
   if (!in_fast_takeover_ && dep_ != 0) {
     auto dep_ins = sch_->GetInstance(dep_, !is_pilot_);
@@ -289,7 +303,7 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   // another coordiator is already taking over this instance
   if (ins->status == Status::TAKEOVER)
     return;
-  auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout);
+  auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout_us);
   e->Wait();
 
   if (ins->status >= Status::COMMITED)

@@ -29,8 +29,7 @@ class QuorumEvent : public Event {
 
   QuorumEvent() = delete;
 
-  QuorumEvent(int n_total, int quorum)
-      : Event(), n_total_(n_total), quorum_(quorum) {}
+  QuorumEvent(int n_total, int quorum);
 
   /**
    * Record the TXid of an issued RPC and which site it's issued to
@@ -56,9 +55,9 @@ class QuorumEvent : public Event {
    * TODO: find a proper way to achieve this
    *
    * @param timeout time to wait after event-ready to do finalize
-   * @param finalize_func what to do in finalization
+   * @param finalize_func what to do in finalization, take a list of dangling RPC
    */
-  void Finalize(uint64_t timeout, function<bool()> finalize_func);
+  void Finalize(uint64_t timeout, function<bool(vector<std::pair<uint16_t, rrr::i64> >&)> finalize_func);
 
   bool Yes() {
     return n_voted_yes_ >= quorum_;
@@ -69,16 +68,9 @@ class QuorumEvent : public Event {
     return n_voted_no_ > (n_total_ - quorum_);
   }
 
-  void VoteYes() {
-    n_voted_yes_++;
-    Test();
+  void VoteYes();
 
-  }
-
-  void VoteNo() {
-    n_voted_no_++;
-    Test();
-  }
+  void VoteNo();
 
   bool IsReady() override {
     if (timeouted_) {
