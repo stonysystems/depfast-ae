@@ -10,7 +10,7 @@ bool SchedulerNone::Dispatch(cmdid_t cmd_id, shared_ptr<Marshallable> cmd,
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
 	SchedulerClassic::Dispatch(cmd_id, cmd, ret_output);
 	sp_tx->fully_dispatched_->Wait();
-	OnCommit(cmd_id, SUCCESS);
+	OnCommit(cmd_id, SUCCESS);  // it waits for the command to be executed
 	return true;
 }
 } // namespace janus

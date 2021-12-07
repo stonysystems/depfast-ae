@@ -4,7 +4,6 @@
 
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
-#define REVERSE(p) (1 - (p))
 #define N_CMD_KEEP (15000)
 
 namespace janus {
@@ -68,6 +67,42 @@ std::pair<slotid_t, uint64_t> CopilotServer::PickInitSlotAndDep() {
             assigned_slot, init_dep);
 
   return { assigned_slot, init_dep };
+}
+
+slotid_t CopilotServer::GetMaxCommittedSlot(uint8_t is_copilot) {
+  return log_infos_[is_copilot].max_committed_slot;
+}
+
+bool CopilotServer::WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int timeout) {
+  auto &event = log_infos_[is_pilot].max_cmit_evt;
+  event.WaitUntilGreaterOrEqualThan(slot, timeout);
+  return (event.value_ >= slot);
+}
+
+bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
+  auto& cmd = ins->cmd;
+  if (unlikely(!cmd))
+    return false;
+  if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT)) {
+    // check if cmd committed in tx scheduler, which virtually means cmd is executed
+    if (tx_sched_->CheckCommitted(*cmd)) {
+      ins->status = Status::EXECUTED;
+      updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+      updateMaxExecSlot(ins);
+      return true;
+    } else {
+      return false;
+    }
+  } else if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
+    // I don't think this case is possible
+    ins->status = Status::EXECUTED;
+    updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+    updateMaxExecSlot(ins);
+    return true;
+  } else {
+    verify(0);
+    return false;
+  }
 }
 
 void CopilotServer::Setup() {
@@ -163,13 +198,13 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
    * 
    * 
    */
-  if (dep != 0) {
+  if (likely(dep != 0)) {
     for (slotid_t j = dep + 1; j <= log_info.max_accepted_slot; j++) {
       // if (!logs[j])
       //   Log_fatal("slot %lu max acpt %lu", j, log_info.max_accepted_slot);
       // auto dep_id = logs[j]->dep_id;
       auto it = logs.find(j);
-      if (it == logs.end())
+      if (unlikely(it == logs.end()))
         continue;
       auto dep_id = it->second->dep_id;
       if (dep_id != 0 && dep_id < slot) {
@@ -253,6 +288,9 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
      * This case only happens when: this instance is fast-takovered on
      * another server and that server sent a COMMIT for that instance
      * to all replicas
+     * 
+     * We can return even if it's committed but yet executed, since a committed
+     * command is bound to get executed.
      */
     return;
   }
@@ -349,6 +387,7 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
       break;
   }
   log_info.max_committed_slot = i - 1;
+  log_info.max_cmit_evt.Set(log_info.max_committed_slot);
 }
 
 void CopilotServer::removeCmd(CopilotLogInfo& log_info, slotid_t slot) {
@@ -358,8 +397,9 @@ void CopilotServer::removeCmd(CopilotLogInfo& log_info, slotid_t slot) {
 }
 
 bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
-  if (ins->cmd) {
-    app_next_(*ins->cmd);
+  if (likely((bool)(ins->cmd))) {
+    if (likely(ins->cmd->kind_ != MarshallDeputy::CMD_NOOP))
+      app_next_(*ins->cmd);
     updateMaxExecSlot(ins);
     ins->status = Status::EXECUTED;
     return true;
@@ -373,7 +413,7 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
   if (ins->status == Status::EXECUTED)
     return true;
   
-  if (ins->dep_id == 0) {
+  if (unlikely(ins->dep_id == 0 || ins->cmd->kind_ == MarshallDeputy::CMD_NOOP)) {
     return executeCmd(ins);
   } else {
 #ifdef DEBUG

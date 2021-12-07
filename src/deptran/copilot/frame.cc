@@ -14,11 +14,11 @@ CopilotFrame::CopilotFrame(int mode) : Frame(mode) {}
 CopilotFrame::~CopilotFrame() {
   Log_info(
       "server %d, "
-      "[FAST_ACCEPT] %u "
+      "[FAST_ACCEPT] %u (fast %u regular %u) "
       "[ACCEPT] %u "
       "[COMMIT] %u "
       "[PREPARE] %u",
-      site_info_->id, n_fast_accept_, n_accept_, n_commit_, n_prepare_);
+      site_info_->id, n_fast_accept_, n_fast_path_, n_regular_path_, n_accept_, n_commit_, n_prepare_);
 }
 
 Coordinator *CopilotFrame::CreateCoordinator(cooid_t coo_id,

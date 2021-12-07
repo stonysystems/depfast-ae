@@ -2,6 +2,8 @@
 #include "../constants.h"
 #include "commo.h"
 
+// #define SKIP
+
 namespace janus {
 
 void CopilotFastAcceptQuorumEvent::FeedResponse(bool y, bool ok) {
@@ -18,7 +20,6 @@ void CopilotFastAcceptQuorumEvent::FeedResponse(bool y, bool ok) {
 
 void CopilotFastAcceptQuorumEvent::FeedRetDep(uint64_t dep) {
   verify(ret_deps_.size() < n_total_);
-  // TODO: may need thread safe methods
   ret_deps_.push_back(dep);
 }
 
@@ -140,6 +141,10 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
     auto proxy = (CopilotProxy *)p.second;
     auto site = p.first;
 
+#ifdef SKIP
+    if (site == 2) continue;
+#endif
+
     FutureAttr fuattr;
     fuattr.callback = [e, dep, ballot, site](Future *fu) {
       ballot_t b;
@@ -181,6 +186,10 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
     auto proxy = (CopilotProxy *)p.second;
     auto site = p.first;
 
+#ifdef SKIP
+    if (site == 2) continue;
+#endif
+
     FutureAttr fuattr;
     fuattr.callback = [e, ballot, site](Future *fu) {
       ballot_t b;
@@ -212,6 +221,11 @@ CopilotCommo::BroadcastCommit(parid_t par_id,
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy*) p.second;
     auto site = p.first;
+
+#ifdef SKIP
+    if (site == 2) continue;
+#endif
+
     FutureAttr fuattr;
     fuattr.callback = [e, site](Future* fu) {
       e->FeedResponse();

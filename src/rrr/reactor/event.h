@@ -15,6 +15,7 @@ namespace rrr {
 using std::shared_ptr;
 using std::function;
 using std::vector;
+using std::list;
 
 class Reactor;
 class Coroutine;
@@ -119,7 +120,7 @@ class IntEvent : public Event {
 class SharedIntEvent {
  public:
   int value_{};
-  vector<shared_ptr<IntEvent>> events_{};
+  list<shared_ptr<IntEvent>> events_{};
   int Set(const int& v);
   void Wait(function<bool(int)> f);
   void WaitUntilGreaterOrEqualThan(int x, int timeout=0);

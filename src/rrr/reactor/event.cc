@@ -159,9 +159,11 @@ void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->target_ = x;
-  events_.push_back(sp_ev);
+  auto it = events_.insert(events_.end(), sp_ev);
   sp_ev->Wait(timeout);
-  verify(sp_ev->status_ != Event::TIMEOUT);
+  // verify(sp_ev->status_ != Event::TIMEOUT);  // why can't it be timeout?
+  // remove the event from event vector after it entering a terminate state (READY or TIMEOUT)
+  events_.erase(it);
 }
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {

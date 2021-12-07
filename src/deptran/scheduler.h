@@ -155,6 +155,13 @@ class TxLogServer {
     app_next_ = learner_action;
   }
 
+  /**
+   * Check if the command is already committed
+   * @param commit_cmd command to be checked
+   * @return true if it's already committed, false otherwise
+   */
+  virtual bool CheckCommitted(Marshallable& commit_cmd) { verify(0); }
+
   virtual void Next(Marshallable& cmd) { verify(0); };
 
   // epoch related functions

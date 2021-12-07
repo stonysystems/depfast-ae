@@ -5,6 +5,8 @@
 #include "server.h"
 #include "frame.h"
 
+// #define DO_FINALIZE
+
 namespace janus {
 
 const char* indicator[] = {"COPILOT", "PILOT"};
@@ -62,6 +64,7 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
 void CoordinatorCopilot::Prepare() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+start_prepare:
   static_cast<CopilotFrame*>(frame_)->n_prepare_++;
   current_phase_ = Phase::PREPARE;
   ballot_t new_ballot = pickGreaterBallot(curr_ballot_);
@@ -77,11 +80,12 @@ void CoordinatorCopilot::Prepare() {
   // sq_quorum->id_ = dep_id_;
 
   sq_quorum->Wait();
+#ifdef DO_FINALIZE
   sq_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
+#endif
   // sq_quorum->log();
   /**
-   * TODO: very complex
    * The recovery value picking procedure is complex and its
    * full details appear in our accompanying technical report
    */
@@ -109,21 +113,32 @@ void CoordinatorCopilot::Prepare() {
       /**
        * There are < [f+1]/2 replies r 2 S with fast-accepted as their
        * progress. Then pick no-op with an empty dependency.
-       * TODO
        */
-      cmd_now_ = sq_quorum->GetCmds(Status::ACCEPTED)[0].cmd;  // no-op
+      cmd_now_ = make_shared<Marshallable>(MarshallDeputy::CMD_NOOP);  // no-op
       dep_ = 0;
     } else if (n_fastac >= maxFail()) {
+      /**
+       * There are >= f replies r 2 S with fast-accepted as their progress.
+       * Then pick r's comand and dependency
+       */
       auto& slct_cmd = sq_quorum->GetCmds(Status::FAST_ACCEPTED)[0];
       cmd_now_ = slct_cmd.cmd;
       dep_ = slct_cmd.dep_id;
     } else {
-      // TODO
+      /**
+       * The remaining case is when there are in the range of [ [f+1]/2, f) replies r 2 S
+       * with fast-accepted as their progress
+       * 
+       * In 3-replica(f=1) this case won't happen [1,1)
+       */
       cmd_now_ = sch_->GetInstance(slot_id_, is_pilot_)->cmd;
       dep_ = sch_->GetInstance(slot_id_, is_pilot_)->dep_id;
     }
   } else {
-    verify(0);
+    // retry with higher ballot number
+    Log_warn("%s : %lu -> %lu Prepare failed, retry",
+              indicator[is_pilot_], slot_id_, dep_);
+    goto start_prepare;
   }
 
   if (sch_->GetInstance(slot_id_, is_pilot_)->status >= Status::COMMITED) {
@@ -137,6 +152,10 @@ void CoordinatorCopilot::Prepare() {
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   static_cast<CopilotFrame*>(frame_)->n_fast_accept_++;
+  if ((static_cast<CopilotFrame*>(frame_)->n_fast_accept_ & 0xffff) == 0)
+      Log_info("fast/reg/total %u/%u/%u", static_cast<CopilotFrame*>(frame_)->n_fast_path_,
+        static_cast<CopilotFrame*>(frame_)->n_regular_path_,
+        static_cast<CopilotFrame*>(frame_)->n_fast_accept_);
   Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu, tx: %lx",
@@ -152,8 +171,10 @@ void CoordinatorCopilot::FastAccept() {
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
 
   sq_quorum->Wait();
+#ifdef DO_FINALIZE
   sq_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
+#endif
   // sq_quorum->log();
 
   fast_path_ = false;
@@ -166,6 +187,7 @@ void CoordinatorCopilot::FastAccept() {
      */
     fast_path_ = true;
     committed_ = true; // fast-path
+    static_cast<CopilotFrame*>(frame_)->n_fast_path_++;
     Log_debug("commit on fast path");
   } else {
     if (sq_quorum->Yes()) {
@@ -176,6 +198,7 @@ void CoordinatorCopilot::FastAccept() {
        * executed by the other pilot
        */
       dep_ = sq_quorum->GetFinalDep();
+      static_cast<CopilotFrame*>(frame_)->n_regular_path_++;
       Log_debug("Final dep: %lu, continue on regular path", dep_);
     } else if (sq_quorum->No()) {
       // TODO process the case: failed to get a majority.
@@ -206,8 +229,10 @@ void CoordinatorCopilot::Accept() {
   // Log_debug("current coroutine's dep_id: %d", Coroutine::CurrentCoroutine()->dep_id_);
 
   sp_quorum->Wait();
+#ifdef DO_FINALIZE
   sp_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
+#endif
   // sp_quorum->log();
 
   if (sp_quorum->Yes()) {
@@ -236,27 +261,40 @@ void CoordinatorCopilot::Commit() {
                                             is_pilot_, slot_id_,
                                             dep_,
                                             cmd_now_);
-  sp_quorum->Wait();
+  // sp_quorum->Wait();  // in fact this doesn't wait since it's a fake quorum event
+#ifdef DO_FINALIZE
   sp_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
+#endif
   /**
    * A pilot sets a takeover-timeout when it has a committed
    * command but does not know the final dependencies of all
    * potentially preceding entries, i.e., it has not seen a
    * commit for this entry’s final dependency.
-   * 
-   * //? should fast takeover continue indefinitely?
    */
   if (!in_fast_takeover_ && dep_ != 0) {
-    auto dep_ins = sch_->GetInstance(dep_, !is_pilot_);
-    if (dep_ins && dep_ins->status < Status::COMMITED) {
-      verify(IsPilot() || IsCopilot());
-      Log_debug(
-          "initiate fast-TAKEOVER on %s for slot %lu 's dep:"
-          " %s, %lu, status: %d",
-          indicator[(int)IsPilot()], slot_id_, indicator[dep_ins->is_pilot],
-          dep_ins->slot_id, dep_ins->status);
-      initFastTakeover(dep_ins);
+    // auto dep_ins = sch_->GetInstance(dep_, REVERSE(is_pilot_));
+    /* It must proceed after all entries before its dependency have committed
+     */
+    if (!sch_->WaitMaxCommittedGT(REVERSE(is_pilot_), dep_, takeover_timeout_us)) {
+      /*
+       if timeout but the final dependency is still not committed,
+       start takeover for all uncommitted entries
+      */
+      for (auto i = sch_->GetMaxCommittedSlot(REVERSE(is_pilot_)) + 1;
+          i <= dep_;
+          i++) {
+        auto ucmit_ins = sch_->GetInstance(i, REVERSE(is_pilot_));
+        if (ucmit_ins && ucmit_ins->status < Status::COMMITED) {
+          verify(IsPilot() || IsCopilot());
+          Log_info(
+              "initiate fast-TAKEOVER on %s for slot %lu 's dep:"
+              " %s, %lu, status: %d",
+              indicator[(int)IsPilot()], slot_id_, indicator[ucmit_ins->is_pilot],
+              ucmit_ins->slot_id, ucmit_ins->status);
+          initFastTakeover(ucmit_ins);
+        }
+      }
     }
   }
 
@@ -306,10 +344,13 @@ void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   // another coordiator is already taking over this instance
   if (ins->status == Status::TAKEOVER)
     return;
-  auto e = Reactor::CreateSpEvent<TimeoutEvent>(takeover_timeout_us);
-  e->Wait();
 
   if (ins->status >= Status::COMMITED)
+    return;
+  
+  /* When we reach this step, the shared int event should be either READY or TIMEOUT
+  thus, update on max_committed_evt should have no effect on it */
+  if (sch_->EliminateNullDep(ins))
     return;
 
   ins->status = Status::TAKEOVER;  // prevent multiple takeover on the same instance

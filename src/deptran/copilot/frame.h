@@ -39,6 +39,8 @@ class CopilotFrame : public Frame {
 
   // Statistic
   uint32_t n_fast_accept_ = 0;
+  uint32_t n_fast_path_ = 0;
+  uint32_t n_regular_path_ = 0;
   uint32_t n_accept_ = 0;
   uint32_t n_commit_ = 0;
   uint32_t n_prepare_ = 0;

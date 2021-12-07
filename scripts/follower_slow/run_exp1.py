@@ -607,13 +607,13 @@ class ClientController(object):
                     v.print_mid(self.config, self.num_proxies)
                 
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs"
                     for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
+                        if process.name == 'host3':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         if process.name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd_2])

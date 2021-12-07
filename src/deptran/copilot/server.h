@@ -5,6 +5,8 @@
 #include "../scheduler.h"
 #include "../classic/tpc_command.h"
 
+#define REVERSE(p) (1 - (p))
+
 namespace janus {
 
 enum Status : status_t { NOT_ACCEPTED = 0, TAKEOVER, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
@@ -28,6 +30,7 @@ struct CopilotLogInfo {
   slotid_t max_executed_slot = 0;
   slotid_t max_committed_slot = 0;
   slotid_t max_accepted_slot = 0;
+  SharedIntEvent max_cmit_evt{};
 };
 
 struct KeyValue {
@@ -56,6 +59,17 @@ class CopilotServer : public TxLogServer {
 
   shared_ptr<CopilotData> GetInstance(slotid_t slot, uint8_t is_pilot);
   std::pair<slotid_t, uint64_t> PickInitSlotAndDep();
+  slotid_t GetMaxCommittedSlot(uint8_t is_copilot);
+  bool WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int timeout=0);
+  
+  /**
+   * If the log entry has been executed (in another log), mark it as EXECUTED,
+   * and update max_committed_slot and max_executed_slot accordingly
+   * 
+   * @param ins log entry to be check
+   * @return true if executed, false otherwise
+   */
+  bool EliminateNullDep(shared_ptr<CopilotData>& ins);
 
   void Setup();
 
