@@ -5,6 +5,7 @@
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
 #define N_CMD_KEEP (15000)
+// #define USE_TARJAN
 
 namespace janus {
 
@@ -24,10 +25,10 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
   Setup();
 }
 
-shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
+shared_ptr<CopilotData>& CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
   if (slot < log_infos_[is_pilot].min_active_slot && slot != 0) {
     Log_warn("server %d get freed ins %s %lu", id_, toString(is_pilot), slot);
-    return nullptr;  // never re-create freed slot
+    return log_infos_[is_pilot].logs[0];  // never re-create freed slot
   }
   auto& sp_instance = log_infos_[is_pilot].logs[slot];
   if (!sp_instance)
@@ -140,7 +141,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
                               status_t* status,
                               const function<void()>& cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  auto ins = GetInstance(slot, is_pilot);
+  auto& ins = GetInstance(slot, is_pilot);
 
   /**
    * The fast pilot does this by sending Prepare messages with a
@@ -184,7 +185,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   Log_debug("server %d [FAST_ACCEPT] %s : %lu -> %lu", id_,
             toString(is_pilot), slot, dep);
 
-  auto ins = GetInstance(slot, is_pilot);
+  auto& ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[REVERSE(is_pilot)];
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
@@ -255,7 +256,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
 
-  auto ins = GetInstance(slot, is_pilot);
+  auto& ins = GetInstance(slot, is_pilot);
   auto& log_info = log_infos_[is_pilot];
 
   if (ins->ballot <= ballot) {
@@ -282,7 +283,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
                              shared_ptr<Marshallable>& cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
-  auto ins = GetInstance(slot, is_pilot);
+  auto& ins = GetInstance(slot, is_pilot);
   if (ins->status >= Status::COMMITED) {
     /**
      * This case only happens when: this instance is fast-takovered on
@@ -304,7 +305,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   auto& log_info = log_infos_[is_pilot];
   auto& another_log_info = log_infos_[REVERSE(is_pilot)];
   updateMaxCmtdSlot(log_info, slot);
-  verify(slot > log_info.max_executed_slot);
+  // verify(slot > log_info.max_executed_slot);
 
 #ifndef WAIT_AT_UNCOMMIT
   /**
@@ -337,7 +338,10 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
     executeCmds(is);
   }
 #else
-  executeCmds(ins);
+  if (EliminateNullDep(ins))
+    return;
+  else
+    executeCmds(ins); // log entry must be executed when return, otherwise deadlock may happen
 #endif
 
   // TODO: should support snapshot for freeing memory.
@@ -363,10 +367,14 @@ void CopilotServer::setIsCopilot(bool isCopilot) {
 inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
   Log_debug("server %d [EXECUTE    ] %s : %lu -> %lu", id_, toString(ins->is_pilot), ins->slot_id, ins->dep_id);
   auto& log_info = log_infos_[ins->is_pilot];
-  if (ins->slot_id == log_info.max_executed_slot + 1) {
-    log_info.max_executed_slot = ins->slot_id;
-    Log_debug("server %d [max EXECUTE] %s : + %lu", id_, toString(ins->is_pilot), ins->slot_id);
+  slotid_t i;
+  for (i = log_info.max_executed_slot + 1; i <= ins->slot_id; i++) {
+    auto& log_entry = log_info.logs[i];
+    if (log_entry && log_entry->status < Status::EXECUTED)
+      break;
   }
+  log_info.max_executed_slot = i - 1;
+  Log_debug("server %d [max EXECUTE] %s : + %lu", id_, toString(ins->is_pilot), i - 1);
 }
 
 void CopilotServer::updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot) {
@@ -409,6 +417,7 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
   }
 }
 
+#ifdef USE_TARJAN
 bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
   if (ins->status == Status::EXECUTED)
     return true;
@@ -424,11 +433,102 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
   }
 }
 
-bool CopilotServer::isExecuted(shared_ptr<CopilotData>& ins, slotid_t slot, uint8_t is_pilot) {
-  if (ins)
-    return ins->status == Status::EXECUTED;
-  else
-    return slot <= log_infos_[is_pilot].max_executed_slot;
+#else
+
+bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
+  if (ins->status == Status::EXECUTED)
+    return true;
+  
+  auto p = ins->is_pilot;
+  for (auto i = log_infos_[p].max_executed_slot + 1; i <= ins->slot_id; i++) {
+    auto& w = GetInstance(i, p);
+    auto& dep = GetInstance(w->dep_id, REVERSE(p));
+
+    if (w->status == Status::EXECUTED) {
+      // updateMaxExecSlot(w);
+      continue;
+    }
+
+    if (w->status < Status::COMMITED)
+      w->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+    
+    if (w->status >= Status::COMMITED)
+      log_infos_[p].max_dep = std::max(log_infos_[p].max_dep, w->dep_id);
+
+    // case 1: no dependency, no-op, or dependency has been executed
+    if (unlikely(w->dep_id == 0 ||
+        w->cmd->kind_ == MarshallDeputy::CMD_NOOP) ||
+        dep->status == Status::EXECUTED) {
+      executeCmd(w);
+      continue;
+    }
+
+    // case 2: A cycle exists between entry and depEntry and currPilot has higher priority
+    // (if it has lower priority, the cycle will be handled while processing the other pilot’s log)
+    bool has_cycle = log_infos_[REVERSE(p)].max_dep >= i;
+    if ((has_cycle && p == YES) ||
+        (dep->dep_id >= i && p == YES && log_infos_[REVERSE(p)].max_executed_slot >= w->dep_id - 1)) {
+      executeCmd(w);
+      continue;
+    }
+
+    if (checkAllDepExecuted(REVERSE(p), log_infos_[REVERSE(p)].max_executed_slot + 1, w->dep_id)) {
+      executeCmd(w);
+      continue;
+    }
+
+    // case 3: A cycle doesn't exist, must execute its dependency
+    for (auto j = log_infos_[REVERSE(p)].max_executed_slot + 1; j <= w->dep_id; j++) {
+      auto& d = GetInstance(j, REVERSE(p));
+      // case 1: A cycle exists and d is on thr lower priority. thus w is executable
+      if ((d->dep_id >= i) && (p == YES))
+        break;
+      
+      // case 2: cycle doesn't exist or d is on the higher priority, must wait after d commits
+      d->cmit_evt.WaitUntilGreaterOrEqualThan(1);
+      if (d->status >= Status::EXECUTED)
+        // case 2.1: d already executed else where
+        continue;
+      else if (d->dep_id == 0 || d->cmd->kind_ == MarshallDeputy::CMD_NOOP) {
+        // case 2.2: d has no dep or d is no-op
+        executeCmd(d);
+      } else if (d->dep_id >= i) {
+        // case 2.3: A cycle exists
+        if (p == YES)
+          // case 2.3.1: d is on lower priority. w is executable
+          break;
+        else
+          // case 2.3.2: d is on higher priority. d is executable
+          executeCmd(d);
+      } else {
+        // case 2.4: cycle doesn't exist, d depends on entry before w, which must already be executed
+        executeCmd(d);
+      }
+    }
+
+    // dependency executed, execute w
+    executeCmd(w);
+    // at the end of this iteration, w must be executed, otherwise we can't proceed to next entry
+  }
+
+  return true;
+}
+
+#endif
+
+bool CopilotServer::checkAllDepExecuted(uint8_t is_pilot, slotid_t start, slotid_t end) {
+  for (slotid_t i = start; i <= end; i++) {
+    auto& ins = GetInstance(i, is_pilot);
+    if (!EliminateNullDep(ins))
+      return false;
+  }
+
+  return true;
+}
+
+bool CopilotServer::isExecuted(shared_ptr<CopilotData>& ins) {
+  uint8_t p = ins->is_pilot;
+  return log_infos_[p].max_executed_slot >= ins->slot_id;
 }
 
 /**************************************************************************
@@ -550,16 +650,16 @@ void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
       continue;
     
     visited[w] = true;
-    auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
-    auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
+    auto& pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
+    auto& dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
 
-    if (pre_ins && pre_ins->status < EXECUTED && !visited[pre_ins]) {
+    if (pre_ins && !isExecuted(pre_ins) && !visited[pre_ins]) {
       if (pre_ins->status < COMMITED)
         pre_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
       stack.push(pre_ins);
     }
 
-    if (dep_ins && dep_ins->status < EXECUTED && !visited[dep_ins]) {
+    if (dep_ins && !isExecuted(dep_ins) && !visited[dep_ins]) {
       if (dep_ins->status < COMMITED)
         dep_ins->cmit_evt.WaitUntilGreaterOrEqualThan(1);
       stack.push(dep_ins);
@@ -576,8 +676,8 @@ void CopilotServer::waitAllPredCommit(shared_ptr<CopilotData>& ins) {
  */
 void CopilotServer::waitPredCmds(shared_ptr<CopilotData>& w, shared_ptr<visited_map_t> m) {
   (*m)[w] = true;
-  auto pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
-  auto dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
+  auto& pre_ins = GetInstance(w->slot_id - 1, w->is_pilot);
+  auto& dep_ins = GetInstance(w->dep_id, REVERSE(w->is_pilot));
 
   if (pre_ins && pre_ins->status < EXECUTED && (m->find(pre_ins) == m->end())) {
     if (pre_ins->status < COMMITED)
@@ -615,7 +715,7 @@ bool CopilotServer::strongConnect(shared_ptr<CopilotData>& ins, int* index) {
   for (auto& p : order) {
     auto end = (p == ins->is_pilot) ? ins->slot_id - 1 : ins->dep_id;
     for (auto i = log_infos_[p].max_executed_slot + 1; i <= end; i++) {
-      auto w = GetInstance(i, p);
+      auto& w = GetInstance(i, p);
 
       if (w->status == Status::EXECUTED) continue;
 

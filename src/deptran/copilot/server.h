@@ -30,6 +30,7 @@ struct CopilotLogInfo {
   slotid_t max_executed_slot = 0;
   slotid_t max_committed_slot = 0;
   slotid_t max_accepted_slot = 0;
+  slotid_t max_dep = 0;
   SharedIntEvent max_cmit_evt{};
 };
 
@@ -57,7 +58,7 @@ class CopilotServer : public TxLogServer {
   CopilotServer(Frame *frame);
   ~CopilotServer() {}
 
-  shared_ptr<CopilotData> GetInstance(slotid_t slot, uint8_t is_pilot);
+  shared_ptr<CopilotData>& GetInstance(slotid_t slot, uint8_t is_pilot);
   std::pair<slotid_t, uint64_t> PickInitSlotAndDep();
   slotid_t GetMaxCommittedSlot(uint8_t is_copilot);
   bool WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int timeout=0);
@@ -113,6 +114,7 @@ class CopilotServer : public TxLogServer {
   void waitPredCmds(shared_ptr<CopilotData>& ins, shared_ptr<visited_map_t> map);
   bool findSCC(shared_ptr<CopilotData>& root);
   bool strongConnect(shared_ptr<CopilotData>& ins, int* index);
+  bool checkAllDepExecuted(uint8_t is_pilot, slotid_t start, slotid_t end);
   // void strongConnect(shared_ptr<CopilotData>& ins, int* index, copilot_stack_t *stack);
   void updateMaxExecSlot(shared_ptr<CopilotData>& ins);
   void updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot);
@@ -120,7 +122,7 @@ class CopilotServer : public TxLogServer {
   void removeCmd(CopilotLogInfo& log_info, slotid_t slot);
   copilot_stack_t stack_;
 
-  bool isExecuted(shared_ptr<CopilotData>& ins, slotid_t slot, uint8_t is_pilot);
+  bool isExecuted(shared_ptr<CopilotData>& ins);
 };
 
 } //namespace janus
