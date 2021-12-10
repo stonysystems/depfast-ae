@@ -58,7 +58,7 @@ class CopilotServer : public TxLogServer {
   CopilotServer(Frame *frame);
   ~CopilotServer() {}
 
-  shared_ptr<CopilotData>& GetInstance(slotid_t slot, uint8_t is_pilot);
+  shared_ptr<CopilotData> GetInstance(slotid_t slot, uint8_t is_pilot);
   std::pair<slotid_t, uint64_t> PickInitSlotAndDep();
   slotid_t GetMaxCommittedSlot(uint8_t is_copilot);
   bool WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int timeout=0);

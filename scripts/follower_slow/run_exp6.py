@@ -530,12 +530,12 @@ class ClientController(object):
 
         try:
             cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   echo $pid | sudo tee /sys/fs/cgroup/memory/cgroup.procs; \
                    sudo swapoff /dev/sdc; \
                    sudo cgdelete memory:janus;"
             
             cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                   echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
+                   echo $pid | sudo tee /sys/fs/cgroup/memory/cgroup.procs; \
                    sudo swapoff /dev/sdc; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():

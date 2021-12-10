@@ -284,7 +284,7 @@ void CoordinatorCopilot::Commit() {
       for (auto i = sch_->GetMaxCommittedSlot(REVERSE(is_pilot_)) + 1;
           i <= dep_;
           i++) {
-        auto &ucmit_ins = sch_->GetInstance(i, REVERSE(is_pilot_));
+        auto ucmit_ins = sch_->GetInstance(i, REVERSE(is_pilot_));
         if (ucmit_ins && ucmit_ins->status < Status::COMMITED) {
           verify(IsPilot() || IsCopilot());
           Log_info(

@@ -261,6 +261,7 @@ void Communicator::BroadcastDispatch(
         TxnOutput outputs;
         fu->get_reply() >> ret >> outputs;
         // do nothing
+        callback(ret, outputs);
       };
   Future::safe_release(pair_proxies[1].second->async_Dispatch(cmd_id, md, fu2));
 }
