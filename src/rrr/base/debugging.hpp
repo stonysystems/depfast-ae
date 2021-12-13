@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <iostream>
 
 #ifndef likely
 #define likely(x)   __builtin_expect((x), 1)
@@ -16,7 +17,7 @@
  * Use verify() when the test is crucial for both debug and release binary.
  */
 #ifdef NDEBUG
-#define verify(expr) do { if (unlikely(!(expr))) { printf("  *** verify failed: %s at %s, line %d\n", #expr, __FILE__, __LINE__); ::rrr::print_stack_trace(); ::abort(); } } while (0)
+#define verify(expr) do { if (unlikely(!(expr))) { std::cout << "  *** verify failed: " << #expr << " at " << __FILE__ << ", line " << __LINE__ << std::endl; ::rrr::print_stack_trace(); ::abort(); } } while (0)
 #else
 #define verify(expr) assert(expr)
 #endif

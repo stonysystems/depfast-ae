@@ -594,7 +594,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc del dev eth0 root'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2' or process_name == 'host5':
+                        if process_name == 'host3' or process_name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once = True
                 except subprocess.CalledProcessError as e:

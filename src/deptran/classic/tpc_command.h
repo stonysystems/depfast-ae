@@ -30,4 +30,12 @@ class TpcCommitCommand : public Marshallable {
   virtual Marshal& FromMarshal(Marshal&) override;
 };
 
+class TpcNoopCommand : public Marshallable {
+  public:
+  TpcNoopCommand() : Marshallable(MarshallDeputy::CMD_NOOP) {}
+
+  Marshal& ToMarshal(Marshal&) const override;
+  Marshal& FromMarshal(Marshal&) override;
+};
+
 } // namespace janus

@@ -276,7 +276,9 @@ bool SchedulerClassic::CheckCommitted(Marshallable& tpc_commit_cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto &c = dynamic_cast<TpcCommitCommand&>(tpc_commit_cmd);
   auto tx_id = c.tx_id_;
-  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetTx(tx_id));
+  if (!sp_tx)  // it's too old that it's already deleted
+    return true;
   return (sp_tx->commit_result->IsReady());
 }
 

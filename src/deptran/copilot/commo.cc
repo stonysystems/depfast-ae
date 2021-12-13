@@ -228,7 +228,6 @@ CopilotCommo::BroadcastCommit(parid_t par_id,
 
     FutureAttr fuattr;
     fuattr.callback = [e, site](Future* fu) {
-      e->FeedResponse();
       e->RemoveXid(site);
     };
     MarshallDeputy md(cmd);

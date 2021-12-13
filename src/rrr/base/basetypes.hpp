@@ -124,7 +124,7 @@ public:
       clock_gettime(CLOCK_REALTIME, &spec );
 #else
       if (accurate) {
-        clock_gettime(CLOCK_REALTIME, &spec );
+        clock_gettime(CLOCK_MONOTONIC, &spec);
       } else {
         clock_gettime(CLOCK_REALTIME_COARSE, &spec);
       }

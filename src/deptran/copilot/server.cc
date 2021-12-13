@@ -162,8 +162,10 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
    * an id of the dependency's proposing pilot.
    */
   *max_ballot = ins->ballot;
-  verify(ins->cmd);  // TODO: occationally it fails at this point
-  ret_cmd->SetMarshallable(ins->cmd);
+  if (ins->cmd)  // TODO: occationally it fails at this point
+    ret_cmd->SetMarshallable(ins->cmd);
+  else
+    ret_cmd->SetMarshallable(make_shared<TpcNoopCommand>());
   *dep = ins->dep_id;
   *status = ins->status;
 
@@ -340,10 +342,12 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
     executeCmds(is);
   }
 #else
-  if (EliminateNullDep(ins))
-    return;
-  else
+#ifdef DEBUG
+    executeCmd(ins);
+#else
+  if (!EliminateNullDep(ins))
     executeCmds(ins); // log entry must be executed when return, otherwise deadlock may happen
+#endif
 #endif
 
   // TODO: should support snapshot for freeing memory.
@@ -401,8 +405,11 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
 }
 
 void CopilotServer::removeCmd(CopilotLogInfo& log_info, slotid_t slot) {
-  auto cmd = dynamic_pointer_cast<TpcCommitCommand>(log_info.logs[slot]->cmd);
-  tx_sched_->DestroyTx(cmd->tx_id_);
+  auto cmd = log_info.logs[slot]->cmd;
+  if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
+    auto tpc_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
+    tx_sched_->DestroyTx(tpc_cmd->tx_id_);
+  }
   log_info.logs.erase(slot);
 }
 
@@ -446,6 +453,9 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
     auto w = GetInstance(i, p);
     auto dep = GetInstance(w->dep_id, REVERSE(p));
 
+    if (!dep)
+      continue;
+
     if (w->status == Status::EXECUTED) {
       // updateMaxExecSlot(w);
       continue;
@@ -482,7 +492,7 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
         break;
 
       // if (EliminateNullDep(d))
-      //   continue;
+      //    continue;
       
       // case 2: cycle doesn't exist or d is on the higher priority, must wait after d commits
       d->cmit_evt.WaitUntilGreaterOrEqualThan(1);
