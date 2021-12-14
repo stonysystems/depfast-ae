@@ -4,6 +4,7 @@
 #include <functional>
 #include <unordered_map>
 #include "event.h"
+#include "base/basetypes.hpp"
 
 using rrr::Event;
 using rrr::IntEvent;
@@ -18,6 +19,7 @@ class QuorumEvent : public Event {
   int32_t n_voted_yes_{0};
   int32_t n_voted_no_{0};
   std::unordered_map<uint16_t, rrr::i64> xids_;
+  uint64_t begin_timestamp_;
 
  public:
   int32_t n_total_ = -1;
@@ -88,6 +90,8 @@ class QuorumEvent : public Event {
 //              (int)n_voted_, (int) quorum_);
     return false;
   }
+
+  void Log();
 
 };
 

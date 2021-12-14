@@ -63,6 +63,7 @@ class CopilotPrepareQuorumEvent : public QuorumEvent {
   size_t GetCount(enum Status status);
   vector<CopilotData>& GetCmds(enum Status status);
   bool IsReady() override;
+  void Show();
 };
 
 /**

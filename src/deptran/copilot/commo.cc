@@ -43,11 +43,14 @@ inline void CopilotPrepareQuorumEvent::FeedRetCmd(ballot_t ballot,
                                                   uint8_t is_pilot, slotid_t slot,
                                                   shared_ptr<Marshallable> cmd,
                                                   enum Status status) {
-  if (status >= Status::COMMITED) { // committed or executed
+  uint32_t int_status = static_cast<uint32_t>(status);
+  int_status &= (~FLAG_TAKEOVER);
+  verify(int_status <= n_status);
+  if (int_status >= Status::COMMITED) { // committed or executed
     committed_seen_ = true;
-    status = Status::COMMITED;  // reduce all status greater than COMMIT to COMMIT
+    int_status = Status::COMMITED;  // reduce all status greater than COMMIT to COMMIT
   }
-  ret_cmds_by_status_[status].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, status, 0, 0});
+  ret_cmds_by_status_[int_status].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, int_status, 0, 0});
 }
 
 inline size_t CopilotPrepareQuorumEvent::GetCount(enum Status status) {
@@ -77,6 +80,12 @@ bool CopilotPrepareQuorumEvent::IsReady() {
   //    Log_debug("voted: %d is smaller than quorum: %d",
   //              (int)n_voted_, (int) quorum_);
   return false;
+}
+
+void CopilotPrepareQuorumEvent::Show() {
+  std::cout << committed_seen_ << std::endl;
+  for (int i = 0; i < ret_cmds_by_status_.size(); i++)
+    std::cout << i << ":" << ret_cmds_by_status_[i].size() << std::endl;
 }
 
 

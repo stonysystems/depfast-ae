@@ -5,11 +5,13 @@
 namespace janus {
 
 using rrr::Coroutine;
+using rrr::Time;
 
 QuorumEvent::QuorumEvent(int n_total, int quorum)
     : Event(), n_total_(n_total), quorum_(quorum) {
   finalize_event_ = std::make_shared<IntEvent>(n_total_);
   finalize_event_->__debug_creator = 1;
+  begin_timestamp_ = Time::now(true);
 }
 
 void QuorumEvent::Finalize(
@@ -50,6 +52,7 @@ void QuorumEvent::RemoveXid(uint16_t site) {
 void QuorumEvent::VoteYes() {
   n_voted_yes_++;
   Test();
+  vec_timestamp_.push_back(Time::now(true) - begin_timestamp_);
 
   if (finalize_event_->status_ != Event::TIMEOUT)
     finalize_event_->Set(n_voted_yes_ + n_voted_no_);
@@ -61,6 +64,12 @@ void QuorumEvent::VoteNo() {
 
   if (finalize_event_->status_ != Event::TIMEOUT)
     finalize_event_->Set(n_voted_yes_ + n_voted_no_);
+}
+
+void QuorumEvent::Log() {
+  for (auto t : vec_timestamp_)
+    std::cout << " " << t;
+  std::cout << std::endl;
 }
 
 } // namespace janus

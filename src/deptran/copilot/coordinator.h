@@ -23,6 +23,11 @@ class CoordinatorCopilot : public Coordinator {
   bool in_fast_takeover_ = false;
   bool done_ = false;
 
+  uint64_t begin = 0;
+  uint64_t fac = 0;
+  uint64_t ac = 0;
+  uint64_t cmt = 0;
+
  private:
   CopilotCommo *commo() {
     // TODO: fix this (fix what?)
