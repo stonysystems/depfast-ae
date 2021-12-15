@@ -81,8 +81,10 @@ bool CopilotServer::WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int time
 }
 
 bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
+  verify(ins);
+  return false;
   auto& cmd = ins->cmd;
-  if (unlikely(!cmd))
+  if (ins->status < Status::FAST_ACCEPTED)
     return false;
   if (ins->status == Status::EXECUTED)
     return true;
@@ -417,13 +419,14 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
   if (likely((bool)(ins->cmd))) {
     if (likely(ins->cmd->kind_ != MarshallDeputy::CMD_NOOP))
       app_next_(*ins->cmd);
+  }
     updateMaxExecSlot(ins);
     ins->status = Status::EXECUTED;
     return true;
-  } else {
-    verify(0);
-    return false;
-  }
+  // } else {
+  //   verify(0);
+  //   return false;
+  // }
 }
 
 #ifdef USE_TARJAN
