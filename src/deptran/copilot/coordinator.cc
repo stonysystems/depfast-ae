@@ -306,7 +306,7 @@ void CoordinatorCopilot::Commit() {
         if (ucmit_ins
             && ucmit_ins->status < Status::COMMITED
             && ((ucmit_ins->status & FLAG_TAKEOVER) == 0) // another coordiator is not already taking over this instance
-            /*&& !sch_->EliminateNullDep(ucmit_ins)*/) {
+            && !sch_->EliminateNullDep(ucmit_ins)) {
           verify(IsPilot() || IsCopilot());
           Log_info(
               "initiate fast-TAKEOVER on %s for slot %lu 's dep:"

@@ -82,18 +82,20 @@ bool CopilotServer::WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int time
 
 bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
   verify(ins);
-  return false;
   auto& cmd = ins->cmd;
   if (ins->status < Status::FAST_ACCEPTED)
     return false;
-  if (ins->status == Status::EXECUTED)
+  if (ins->status == Status::EXECUTED) {
+    Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
     return true;
+  }
   if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT)) {
     // check if cmd committed in tx scheduler, which virtually means cmd is executed
     if (tx_sched_->CheckCommitted(*cmd)) {
       ins->status = Status::EXECUTED;
       updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
       updateMaxExecSlot(ins);
+      Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
       return true;
     } else {
       return false;
@@ -103,6 +105,7 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     ins->status = Status::EXECUTED;
     updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
     updateMaxExecSlot(ins);
+    Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
     return true;
   } else {
     verify(0);
@@ -419,14 +422,14 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
   if (likely((bool)(ins->cmd))) {
     if (likely(ins->cmd->kind_ != MarshallDeputy::CMD_NOOP))
       app_next_(*ins->cmd);
-  }
     updateMaxExecSlot(ins);
     ins->status = Status::EXECUTED;
     return true;
-  // } else {
-  //   verify(0);
-  //   return false;
-  // }
+  } else {
+    Log_warn("server %s execute %s cmd %ld, status %d", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
+    verify(0);
+    return false;
+  }
 }
 
 #ifdef USE_TARJAN
@@ -452,6 +455,7 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
     return true;
   
   auto p = ins->is_pilot;
+  Log_debug("server %d execute %s : %ld from %ld", id_, toString(ins->is_pilot), ins->slot_id, log_infos_[p].max_executed_slot + 1);
   for (auto i = log_infos_[p].max_executed_slot + 1; i <= ins->slot_id; i++) {
     auto w = GetInstance(i, p);
     auto dep = GetInstance(w->dep_id, REVERSE(p));
