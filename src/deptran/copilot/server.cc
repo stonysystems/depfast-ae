@@ -195,6 +195,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
             toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
+  verify(ins);
   auto& log_info = log_infos_[REVERSE(is_pilot)];
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
@@ -252,7 +253,8 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   *max_ballot = ballot;
   *ret_dep = suggest_dep;
 
-  cb();
+  if (cb)
+    cb();
 }
 
 void CopilotServer::OnAccept(const uint8_t& is_pilot,
@@ -266,6 +268,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
   Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
 
   auto ins = GetInstance(slot, is_pilot);
+  verify(ins);
   auto& log_info = log_infos_[is_pilot];
 
   if (ins->ballot <= ballot) {
@@ -283,7 +286,8 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
   }
 
   *max_ballot = ballot;
-  cb();
+  if (cb)
+    cb();
 }
 
 void CopilotServer::OnCommit(const uint8_t& is_pilot,

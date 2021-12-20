@@ -53,6 +53,7 @@ class Communicator {
   const int CONNECT_TIMEOUT_MS = 120*1000;
   const int CONNECT_SLEEP_MS = 1000;
   rrr::PollMgr *rpc_poll_ = nullptr;
+  TxLogServer *rep_sched_ = nullptr;
   locid_t loc_id_ = -1;
   map<siteid_t, shared_ptr<rrr::Client>> rpc_clients_{};
   map<siteid_t, ClassicProxy *> rpc_proxies_{};

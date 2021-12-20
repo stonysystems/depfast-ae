@@ -153,27 +153,35 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
 #ifdef SKIP
     if (site == 2) continue;
 #endif
-
-    FutureAttr fuattr;
-    fuattr.callback = [e, dep, ballot, site](Future *fu) {
+    if (site == loc_id_) {
       ballot_t b;
       slotid_t sgst_dep;
+      static_cast<CopilotServer *>(rep_sched_)->OnFastAccept(
+        is_pilot, slot_id, ballot, dep, cmd, &b, &sgst_dep, nullptr);
+      e->FeedResponse(true, true);
+      e->FeedRetDep(dep);
+    } else {
+      FutureAttr fuattr;
+      fuattr.callback = [e, dep, ballot, site](Future *fu) {
+        ballot_t b;
+        slotid_t sgst_dep;
 
-      fu->get_reply() >> b >> sgst_dep;
-      bool ok = (ballot == b);
-      e->FeedResponse(ok, sgst_dep == dep);
-      if (ok) {
-        e->FeedRetDep(sgst_dep);
-      }
+        fu->get_reply() >> b >> sgst_dep;
+        bool ok = (ballot == b);
+        e->FeedResponse(ok, sgst_dep == dep);
+        if (ok) {
+          e->FeedRetDep(sgst_dep);
+        }
 
-      e->RemoveXid(site);
-    };
+        e->RemoveXid(site);
+      };
 
-    verify(cmd);
-    MarshallDeputy md(cmd);
-    Future *f = proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr);
-    e->AddXid(site, f->get_xid());
-    Future::safe_release(f);
+      verify(cmd);
+      MarshallDeputy md(cmd);
+      Future *f = proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr);
+      e->AddXid(site, f->get_xid());
+      Future::safe_release(f);
+    }
   }
 
   return e;
@@ -198,20 +206,26 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
 #ifdef SKIP
     if (site == 2) continue;
 #endif
-
-    FutureAttr fuattr;
-    fuattr.callback = [e, ballot, site](Future *fu) {
+    if (site == loc_id_) {
       ballot_t b;
-      fu->get_reply() >> b;
-      e->FeedResponse(ballot == b);
+      static_cast<CopilotServer *>(rep_sched_)->OnAccept(
+        is_pilot, slot_id, ballot, dep, cmd, &b, nullptr);
+      e->FeedResponse(true);
+    } else {
+      FutureAttr fuattr;
+      fuattr.callback = [e, ballot, site](Future *fu) {
+        ballot_t b;
+        fu->get_reply() >> b;
+        e->FeedResponse(ballot == b);
 
-      e->RemoveXid(site);
-    };
+        e->RemoveXid(site);
+      };
 
-    MarshallDeputy md(cmd);
-    Future *f = proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr);
-    e->AddXid(site, f->get_xid());
-    Future::safe_release(f);
+      MarshallDeputy md(cmd);
+      Future *f = proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr);
+      e->AddXid(site, f->get_xid());
+      Future::safe_release(f);
+    }
   }
 
   return e;
@@ -234,15 +248,19 @@ CopilotCommo::BroadcastCommit(parid_t par_id,
 #ifdef SKIP
     if (site == 2) continue;
 #endif
-
-    FutureAttr fuattr;
-    fuattr.callback = [e, site](Future* fu) {
-      e->RemoveXid(site);
-    };
-    MarshallDeputy md(cmd);
-    Future *f = proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr);
-    e->AddXid(site, f->get_xid());
-    Future::safe_release(f);
+    if (site == loc_id_) {
+      static_cast<CopilotServer *>(rep_sched_)->OnCommit(
+        is_pilot, slot_id, dep, cmd);
+    } else {
+      FutureAttr fuattr;
+      fuattr.callback = [e, site](Future* fu) {
+        e->RemoveXid(site);
+      };
+      MarshallDeputy md(cmd);
+      Future *f = proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr);
+      e->AddXid(site, f->get_xid());
+      Future::safe_release(f);
+    }
   }
 
   return e;

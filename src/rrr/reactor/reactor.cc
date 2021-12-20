@@ -62,8 +62,8 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     sp_coro = std::make_shared<Coroutine>(func);
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;
-    if (n_created_coroutines_ % 100 == 0) {
-      Log_debug("created %d, busy %d, idle %d coroutines on this thread",
+    if (n_created_coroutines_ % 1000 == 0) {
+      Log_info("created %d, busy %d, idle %d coroutines on this thread",
                (int)n_created_coroutines_,
                (int)n_busy_coroutines_,
                (int)n_idle_coroutines_);

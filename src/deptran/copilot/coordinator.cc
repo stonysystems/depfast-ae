@@ -159,7 +159,7 @@ void CoordinatorCopilot::FastAccept() {
       Log_info("fast/reg/total %u/%u/%u", static_cast<CopilotFrame*>(frame_)->n_fast_path_,
         static_cast<CopilotFrame*>(frame_)->n_regular_path_,
         static_cast<CopilotFrame*>(frame_)->n_fast_accept_);
-  Log_debug(
+  Log_info(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu, tx: %lx",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_,
@@ -193,7 +193,7 @@ void CoordinatorCopilot::FastAccept() {
     fast_path_ = true;
     committed_ = true; // fast-path
     static_cast<CopilotFrame*>(frame_)->n_fast_path_++;
-    Log_debug("commit on fast path");
+    Log_info("commit on fast path");
   } else {
     if (sq_quorum->Yes()) {
       /**
@@ -204,7 +204,7 @@ void CoordinatorCopilot::FastAccept() {
        */
       dep_ = sq_quorum->GetFinalDep();
       static_cast<CopilotFrame*>(frame_)->n_regular_path_++;
-      Log_debug("Final dep: %lu, continue on regular path", dep_);
+      Log_info("Final dep: %lu, continue on regular path", dep_);
     } else if (sq_quorum->No()) {
       // TODO process the case: failed to get a majority.
       verify(0);
@@ -220,7 +220,7 @@ void CoordinatorCopilot::Accept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   static_cast<CopilotFrame*>(frame_)->n_accept_++;
   verify(current_phase_ == Phase::ACCEPT);
-  Log_debug(
+  Log_info(
       "Copilot coordinator %u broadcast ACCEPT, "
       "partition: %u, %s : %lu -> %lu",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
