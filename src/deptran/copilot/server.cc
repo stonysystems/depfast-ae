@@ -83,29 +83,29 @@ bool CopilotServer::WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int time
 bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
   verify(ins);
   auto& cmd = ins->cmd;
-  if (ins->status < Status::FAST_ACCEPTED)
+  if (GET_STATUS(ins->status) < Status::FAST_ACCEPTED)
     return false;
-  if (ins->status == Status::EXECUTED) {
-    Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
+  if (GET_STATUS(ins->status) == Status::EXECUTED) {
+    Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     return true;
   }
   if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT)) {
     // check if cmd committed in tx scheduler, which virtually means cmd is executed
     if (tx_sched_->CheckCommitted(*cmd)) {
+      Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
       ins->status = Status::EXECUTED;
       updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
       updateMaxExecSlot(ins);
-      Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
       return true;
     } else {
       return false;
     }
   } else if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     // I don't think this case is possible
+    Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     ins->status = Status::EXECUTED;
     updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
     updateMaxExecSlot(ins);
-    Log_debug("server %d: eliminate %s entry %ld", id_, toString(ins->is_pilot), ins->slot_id);
     return true;
   } else {
     verify(0);
@@ -175,7 +175,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
   *status = ins->status;
 
   Log_debug(
-      "server %d [PREPARE    ] %s : %lu -> %lu status %d ballot %ld",
+      "server %d [PREPARE    ] %s : %lu -> %lu status %x ballot %ld",
       id_, toString(is_pilot), slot, *dep, *status, *max_ballot);
 
   cb();
@@ -293,7 +293,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
-  if (ins->status >= Status::COMMITED) {
+  if (GET_STATUS(ins->status) >= Status::COMMITED) {
     /**
      * This case only happens when: this instance is fast-takovered on
      * another server and that server sent a COMMIT for that instance
@@ -426,7 +426,8 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
     ins->status = Status::EXECUTED;
     return true;
   } else {
-    Log_warn("server %s execute %s cmd %ld, status %d", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
+    Log_warn("server %d execute %s empty cmd %ld, status %x",
+      id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     verify(0);
     return false;
   }
@@ -463,12 +464,12 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
     if (!dep)
       continue;
 
-    if (w->status == Status::EXECUTED) {
+    if (GET_STATUS(w->status) == Status::EXECUTED) {
       // updateMaxExecSlot(w);
       continue;
     }
 
-    if (w->status < Status::COMMITED)
+    if (GET_STATUS(w->status) < Status::COMMITED)
       w->cmit_evt.WaitUntilGreaterOrEqualThan(1);
     
     // if (w->status >= Status::COMMITED)
@@ -477,7 +478,7 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
     // case 1: no dependency, no-op, or dependency has been executed
     if (unlikely(w->dep_id == 0 ||
         w->cmd->kind_ == MarshallDeputy::CMD_NOOP) ||
-        dep->status == Status::EXECUTED) {
+        GET_STATUS(dep->status) == Status::EXECUTED) {
       executeCmd(w);
       continue;
     }
@@ -503,7 +504,7 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
       
       // case 2: cycle doesn't exist or d is on the higher priority, must wait after d commits
       d->cmit_evt.WaitUntilGreaterOrEqualThan(1);
-      if (d->status >= Status::EXECUTED)
+      if (GET_STATUS(d->status) >= Status::EXECUTED)
         // case 2.1: d already executed else where
         continue;
       else if (d->dep_id == 0 || d->cmd->kind_ == MarshallDeputy::CMD_NOOP) {

@@ -304,13 +304,13 @@ void CoordinatorCopilot::Commit() {
       for (auto i = start; i <= end; i++) {
         auto ucmit_ins = sch_->GetInstance(i, REVERSE(cur_pilot));
         if (ucmit_ins
+            && (GET_TAKEOVER(ucmit_ins->status) == 0) // another coordiator is not taking over this instance
             && ucmit_ins->status < Status::COMMITED
-            && ((ucmit_ins->status & FLAG_TAKEOVER) == 0) // another coordiator is not already taking over this instance
             && !sch_->EliminateNullDep(ucmit_ins)) {
           verify(IsPilot() || IsCopilot());
           Log_info(
               "initiate fast-TAKEOVER on %s for slot %lu 's dep:"
-              " %s, %lu, status: %d",
+              " %s, %lu, status: %x",
               indicator[cur_pilot], cur_slot, indicator[ucmit_ins->is_pilot],
               ucmit_ins->slot_id, ucmit_ins->status);
           initFastTakeover(ucmit_ins);
@@ -362,7 +362,7 @@ void CoordinatorCopilot::GotoNextPhase() {
 
 void CoordinatorCopilot::initFastTakeover(shared_ptr<CopilotData>& ins) {
   // another coordiator is already taking over this instance
-  if ((ins->status & FLAG_TAKEOVER) != 0)
+  if (GET_TAKEOVER(ins->status) != 0)
     return;
 
   if (ins->status >= Status::COMMITED)

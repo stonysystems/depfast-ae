@@ -10,6 +10,10 @@
 namespace janus {
 
 const status_t FLAG_TAKEOVER = 0x80000000;
+const status_t CLR_FLAG_TAKEOVER = (~FLAG_TAKEOVER);
+#define GET_STATUS(s) ((s) & CLR_FLAG_TAKEOVER)
+#define GET_TAKEOVER(s) ((s) & FLAG_TAKEOVER)
+
 enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
 const size_t n_status = 4;
 
