@@ -921,7 +921,7 @@ class ServerController(object):
         
         cli_name = "host4" if len(host_process_counts) == 4 else "host6"
 
-        s = "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
+        s += "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

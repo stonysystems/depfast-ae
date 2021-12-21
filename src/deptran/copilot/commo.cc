@@ -248,19 +248,14 @@ CopilotCommo::BroadcastCommit(parid_t par_id,
 #ifdef SKIP
     if (site == 2) continue;
 #endif
-    if (site == loc_id_) {
-      static_cast<CopilotServer *>(rep_sched_)->OnCommit(
-        is_pilot, slot_id, dep, cmd);
-    } else {
-      FutureAttr fuattr;
-      fuattr.callback = [e, site](Future* fu) {
-        e->RemoveXid(site);
-      };
-      MarshallDeputy md(cmd);
-      Future *f = proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr);
-      e->AddXid(site, f->get_xid());
-      Future::safe_release(f);
-    }
+    FutureAttr fuattr;
+    fuattr.callback = [e, site](Future* fu) {
+      e->RemoveXid(site);
+    };
+    MarshallDeputy md(cmd);
+    Future *f = proxy->async_Commit(is_pilot, slot_id, dep, md, fuattr);
+    e->AddXid(site, f->get_xid());
+    Future::safe_release(f);
   }
 
   return e;

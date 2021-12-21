@@ -195,7 +195,7 @@ void ServerConnection::handle_read() {
             // the handler should delete req, and release server_connection refcopy.
             auto x = dynamic_pointer_cast<ServerConnection>(shared_from_this());
             auto y = it->second;
-            Coroutine::CreateRun([y, req, x] () {
+            auto coro = Coroutine::CreateRun([y, req, x] () {
 //              verify(x);
               verify(x->connected());
               y(req, x.get());
@@ -210,6 +210,11 @@ void ServerConnection::handle_read() {
 #endif
 //              f(r, c);
             });
+            // if (!coro) {
+            //     begin_reply(req, EBUSY);
+            //     end_reply();
+            //     delete req;
+            // }
         } else {
             rpc_id_missing_l_s.lock();
             bool surpress_warning = false;

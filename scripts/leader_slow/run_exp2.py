@@ -554,7 +554,7 @@ class ClientController(object):
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo 640 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
                     

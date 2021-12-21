@@ -548,7 +548,7 @@ class ClientController(object):
                 self.once += 1
             if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 2ms' #40ms
+                    cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 40ms' #40ms
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host1' or process_name == 'host5':
                             time.sleep(0.1)
@@ -876,7 +876,9 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        cli_name = "host4" if len(host_process_counts) == 4 else "host6"
+
+        s = "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

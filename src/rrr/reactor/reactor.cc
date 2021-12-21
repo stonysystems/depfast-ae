@@ -15,6 +15,8 @@
 
 namespace rrr {
 
+const int64_t n_max_coroutine = 2000;
+
 thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
 thread_local std::shared_ptr<Coroutine> Reactor::sp_running_coro_th_{};
 
@@ -59,6 +61,8 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
   } else {
+    if (n_created_coroutines_ >= n_max_coroutine)
+      return nullptr;
     sp_coro = std::make_shared<Coroutine>(func);
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;

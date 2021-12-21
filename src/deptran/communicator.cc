@@ -236,6 +236,8 @@ void Communicator::BroadcastDispatch(
         int32_t ret;
         TxnOutput outputs;
         fu->get_reply() >> ret >> outputs;
+        n_pending_rpc_--;
+        verify(n_pending_rpc_ >= 0);
         callback(ret, outputs);
       };
   // auto pair_leader_proxy = LeaderProxyForPartition(par_id);
@@ -251,8 +253,12 @@ void Communicator::BroadcastDispatch(
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
   MarshallDeputy md(sp_vpd); // ????
 
-  auto future = pair_proxies[0].second->async_Dispatch(cmd_id, md, fuattr);
-  Future::safe_release(future);
+  if (n_pending_rpc_ < max_pending_rpc_) {
+  // if (true) {
+    auto future = pair_proxies[0].second->async_Dispatch(cmd_id, md, fuattr);
+    Future::safe_release(future);
+    n_pending_rpc_++;
+  }
 
   rrr::FutureAttr fu2;
   fu2.callback =

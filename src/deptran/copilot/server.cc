@@ -94,6 +94,8 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     if (tx_sched_->CheckCommitted(*cmd)) {
       Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
       ins->status = Status::EXECUTED;
+      if (ins->cmit_evt.value_ < 1)
+        ins->cmit_evt.Set(1);
       updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
       updateMaxExecSlot(ins);
       return true;
@@ -104,6 +106,8 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     // I don't think this case is possible
     Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     ins->status = Status::EXECUTED;
+    if (ins->cmit_evt.value_ < 1)
+        ins->cmit_evt.Set(1);
     updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
     updateMaxExecSlot(ins);
     return true;
@@ -503,8 +507,8 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
       if ((d->dep_id >= i) && (p == YES))
         break;
 
-      // if (EliminateNullDep(d))
-      //    continue;
+      if (EliminateNullDep(d))
+         continue;
       
       // case 2: cycle doesn't exist or d is on the higher priority, must wait after d commits
       d->cmit_evt.WaitUntilGreaterOrEqualThan(1);

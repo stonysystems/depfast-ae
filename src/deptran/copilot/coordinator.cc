@@ -136,6 +136,9 @@ start_prepare:
       cmd_now_ = sch_->GetInstance(slot_id_, is_pilot_)->cmd;
       dep_ = sch_->GetInstance(slot_id_, is_pilot_)->dep_id;
     }
+  } else if (sq_quorum->GetCmds(Status::NOT_ACCEPTED).size() >= maxFail() + 1) {
+    cmd_now_ = make_shared<TpcNoopCommand>();  // no-op
+    dep_ = 0;
   } else {
     // retry with higher ballot number
     sq_quorum->Show();
@@ -159,7 +162,7 @@ void CoordinatorCopilot::FastAccept() {
       Log_info("fast/reg/total %u/%u/%u", static_cast<CopilotFrame*>(frame_)->n_fast_path_,
         static_cast<CopilotFrame*>(frame_)->n_regular_path_,
         static_cast<CopilotFrame*>(frame_)->n_fast_accept_);
-  Log_info(
+  Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu, tx: %lx",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_,
@@ -193,7 +196,7 @@ void CoordinatorCopilot::FastAccept() {
     fast_path_ = true;
     committed_ = true; // fast-path
     static_cast<CopilotFrame*>(frame_)->n_fast_path_++;
-    Log_info("commit on fast path");
+    Log_debug("commit on fast path");
   } else {
     if (sq_quorum->Yes()) {
       /**
@@ -204,7 +207,7 @@ void CoordinatorCopilot::FastAccept() {
        */
       dep_ = sq_quorum->GetFinalDep();
       static_cast<CopilotFrame*>(frame_)->n_regular_path_++;
-      Log_info("Final dep: %lu, continue on regular path", dep_);
+      Log_debug("Final dep: %lu, continue on regular path", dep_);
     } else if (sq_quorum->No()) {
       // TODO process the case: failed to get a majority.
       verify(0);
@@ -220,7 +223,7 @@ void CoordinatorCopilot::Accept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   static_cast<CopilotFrame*>(frame_)->n_accept_++;
   verify(current_phase_ == Phase::ACCEPT);
-  Log_info(
+  Log_debug(
       "Copilot coordinator %u broadcast ACCEPT, "
       "partition: %u, %s : %lu -> %lu",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
@@ -273,7 +276,6 @@ void CoordinatorCopilot::Commit() {
                                             cmd_now_);
   sp_quorum->Wait();  // in fact this doesn't wait since it's a fake quorum event
   cmt = Time::now(true) - begin;
-  // cout << fac << endl;
 #ifdef DO_FINALIZE
   sp_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
@@ -285,6 +287,7 @@ void CoordinatorCopilot::Commit() {
    * commit for this entry’s final dependency.
    */
   auto dep_ins = sch_->GetInstance(dep_, REVERSE(is_pilot_));
+  int take = 0;
   if (dep_ins && !in_fast_takeover_ && dep_ != 0) {
   // if (false) {
     // auto dep_ins = sch_->GetInstance(dep_, REVERSE(is_pilot_));
@@ -305,9 +308,10 @@ void CoordinatorCopilot::Commit() {
         auto ucmit_ins = sch_->GetInstance(i, REVERSE(cur_pilot));
         if (ucmit_ins
             && (GET_TAKEOVER(ucmit_ins->status) == 0) // another coordiator is not taking over this instance
-            && ucmit_ins->status < Status::COMMITED
+            && GET_STATUS(ucmit_ins->status) < Status::COMMITED
             && !sch_->EliminateNullDep(ucmit_ins)) {
           verify(IsPilot() || IsCopilot());
+          take++;
           Log_info(
               "initiate fast-TAKEOVER on %s for slot %lu 's dep:"
               " %s, %lu, status: %x",
@@ -317,6 +321,8 @@ void CoordinatorCopilot::Commit() {
         }
       }
     }
+    uint64_t finish = Time::now(true) - begin;
+    // cout << fac << " " << cmt << " " << finish << " tkov: " << take << endl;
   }
   clearStatus();
 }
