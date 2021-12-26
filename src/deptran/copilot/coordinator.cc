@@ -87,6 +87,9 @@ start_prepare:
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
 #endif
   // sq_quorum->log();
+  auto curr_ins = sch_->GetInstance(slot_id_, is_pilot_);
+  if(!curr_ins)
+    return;
   /**
    * The recovery value picking procedure is complex and its
    * full details appear in our accompanying technical report
@@ -133,8 +136,8 @@ start_prepare:
        * 
        * In 3-replica(f=1) this case won't happen [1,1)
        */
-      cmd_now_ = sch_->GetInstance(slot_id_, is_pilot_)->cmd;
-      dep_ = sch_->GetInstance(slot_id_, is_pilot_)->dep_id;
+      cmd_now_ = curr_ins->cmd;
+      dep_ = curr_ins->dep_id;
     }
   } else if (sq_quorum->GetCmds(Status::NOT_ACCEPTED).size() >= maxFail() + 1) {
     cmd_now_ = make_shared<TpcNoopCommand>();  // no-op
@@ -147,7 +150,7 @@ start_prepare:
     goto start_prepare;
   }
 
-  if (sch_->GetInstance(slot_id_, is_pilot_)->status >= Status::COMMITED) {
+  if (curr_ins->status >= Status::COMMITED) {
     // instance already committed, end fast-takeover in advance
     current_phase_ = Phase::COMMIT;
   } else {

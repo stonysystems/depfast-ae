@@ -61,8 +61,8 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
   } else {
-    if (n_created_coroutines_ >= n_max_coroutine)
-      return nullptr;
+    // if (n_created_coroutines_ >= n_max_coroutine)
+    //   return nullptr;
     sp_coro = std::make_shared<Coroutine>(func);
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;

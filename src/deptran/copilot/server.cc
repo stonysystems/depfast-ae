@@ -153,6 +153,15 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
                               const function<void()>& cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto ins = GetInstance(slot, is_pilot);
+  if (!ins) {
+    // this entry is too old that it's already freed
+    ret_cmd->SetMarshallable(make_shared<TpcNoopCommand>());
+    *dep = 0;
+    *status = Status::EXECUTED;
+    *max_ballot = ballot;
+    goto finish;
+  }
+  verify(ins);
 
   /**
    * The fast pilot does this by sending Prepare messages with a
@@ -171,13 +180,14 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
    * an id of the dependency's proposing pilot.
    */
   *max_ballot = ins->ballot;
-  if (ins->cmd)  // TODO: occationally it fails at this point
+  if (ins->cmd)
     ret_cmd->SetMarshallable(ins->cmd);
   else
     ret_cmd->SetMarshallable(make_shared<TpcNoopCommand>());
   *dep = ins->dep_id;
   *status = ins->status;
 
+finish:
   Log_debug(
       "server %d [PREPARE    ] %s : %lu -> %lu status %x ballot %ld",
       id_, toString(is_pilot), slot, *dep, *status, *max_ballot);
@@ -301,6 +311,9 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
+  if (!ins)
+    return;
+  verify(ins);
   if (GET_STATUS(ins->status) >= Status::COMMITED) {
     /**
      * This case only happens when: this instance is fast-takovered on
