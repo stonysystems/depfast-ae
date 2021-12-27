@@ -22,6 +22,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
@@ -58,7 +59,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
+g_latencies_percentage = np.arange(0, 1, 0.01)
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -245,7 +246,7 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = percent*100
+            percent = round(percent*100)
             key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
@@ -527,12 +528,12 @@ class ClientController(object):
         try:
             cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff /dev/sdc; \
+                   sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
             
             cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff /dev/sdc; \
+                   sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():
                 if process.name == 'host1':
@@ -934,10 +935,10 @@ class ServerController(object):
 
     def gen_swap_cgroup_cmd(self):
         user = getpass.getuser()
-        memory_limit_MB = 100
+        memory_limit_MB = 300
         cmd =  "sudo cgcreate -a {}:{} -t {}:{} -g memory:janus; ".format(user, user, user, user)
         cmd += "echo {}M | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; ".format(memory_limit_MB)
-        cmd += "sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo mkswap /dev/sdc ; sudo swapon /dev/sdc; "
+        cmd += "sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon /db/swapfile; "
         return cmd
     
     def start(self):

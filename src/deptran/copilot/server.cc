@@ -27,7 +27,7 @@ CopilotServer::CopilotServer(Frame* frame) : log_infos_(2) {
 
 shared_ptr<CopilotData> CopilotServer::GetInstance(slotid_t slot, uint8_t is_pilot) {
   if (slot < log_infos_[is_pilot].min_active_slot && slot != 0) {
-    Log_warn("server %d get freed ins %s %lu", id_, toString(is_pilot), slot);
+    Log_debug("server %d get freed ins %s %lu", id_, toString(is_pilot), slot);
     return nullptr;  // never re-create freed slot
   }
   auto& sp_instance = log_infos_[is_pilot].logs[slot];
