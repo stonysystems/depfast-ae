@@ -934,7 +934,7 @@ class ServerController(object):
 
     def gen_swap_cgroup_cmd(self):
         user = getpass.getuser()
-        memory_limit_MB = 100
+        memory_limit_MB = 250
         cmd =  "sudo cgcreate -a {}:{} -t {}:{} -g memory:janus; ".format(user, user, user, user)
         cmd += "echo {}M | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; ".format(memory_limit_MB)
         cmd += "sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo mkswap /dev/sdc ; sudo swapon /dev/sdc; "

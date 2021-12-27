@@ -563,7 +563,7 @@ class ClientController(object):
                 self.once += 1
             if (progress >= 5 and self.once == 1):
                 try:
-                    cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 400ms'
+                    cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 40ms'
                     for process_name, process in self.process_infos.items():
                         if process_name == 'host3' or process_name == 'host5':
                             time.sleep(0.1)
