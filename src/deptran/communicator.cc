@@ -272,7 +272,8 @@ void Communicator::BroadcastDispatch(
   
 	auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
   Future::safe_release(future);
-  if (!broadcasting_to_leaders_only_) {
+  if (false) {
+    Log_info("multicast");
     for (auto& pair : rpc_par_proxies_[par_id]) {
       if (pair.first != pair_leader_proxy.first) {
         rrr::FutureAttr fu2;

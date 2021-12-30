@@ -176,8 +176,8 @@ class FpgaRaftServer : public TxLogServer {
 		instance->slot_id = slot_id;
 		instance->ballot = ballot;
 
-    if (cmd->kind_ == MarshallDeputy::CMD_TPC_PREPARE){
-      auto p_cmd = dynamic_pointer_cast<TpcPrepareCommand>(cmd);
+    if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
+      auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
       auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
 			vector<struct KeyValue> kv_vector;
 			int index = 0;

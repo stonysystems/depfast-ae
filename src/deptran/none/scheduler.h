@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../classic/scheduler.h"
+#include "../classic/tx.h"
 
 namespace janus {
 
@@ -25,6 +26,10 @@ class SchedulerNone: public SchedulerClassic {
   virtual bool DoPrepare(txnid_t tx_id) override {
     return false;
   }
+
+  virtual bool Dispatch(cmdid_t cmd_id,
+                        shared_ptr<Marshallable> cmd,
+                        TxnOutput& ret_output) override;
 
 };
 

@@ -68,27 +68,27 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
 #endif
   shared_ptr<Marshallable> sp = md.sp_data_;
 	//Log_info("CreateRunning2");
-  /*auto func = Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
+  Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {
     *res = SUCCESS;
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
     }
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
-  });*/
-  auto func = [cmd_id, sp, output, dep_id, res, coro_id, this, defer]() {
-    *res = SUCCESS;
-    auto sched = (SchedulerClassic*) dtxn_sched_;
-    if (!sched->Dispatch(cmd_id, dep_id, sp, *output)) {
-      *res = REJECT;
-    }
-    *coro_id = Coroutine::CurrentCoroutine()->id;
-    defer->reply();
-  };
+  });
+  // auto func = [cmd_id, sp, output, dep_id, res, coro_id, this, defer]() {
+  //   *res = SUCCESS;
+  //   auto sched = (SchedulerClassic*) dtxn_sched_;
+  //   if (!sched->Dispatch(cmd_id, dep_id, sp, *output)) {
+  //     *res = REJECT;
+  //   }
+  //   *coro_id = Coroutine::CurrentCoroutine()->id;
+  //   defer->reply();
+  // };
 
-  auto sched = (SchedulerClassic*) dtxn_sched_;
-  auto tx = dynamic_pointer_cast<TxClassic>(sched->GetOrCreateTx(cmd_id));
-	func();
+  // auto sched = (SchedulerClassic*) dtxn_sched_;
+  // auto tx = dynamic_pointer_cast<TxClassic>(sched->GetOrCreateTx(cmd_id));
+	// func();
 }
 
 

@@ -47,7 +47,6 @@ void CoordinatorFpgaRaft::Submit(shared_ptr<Marshallable>& cmd,
     Forward(cmd, func, exe_callback) ;
     return ;
   }
-
   
 	std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(!in_submission_);
@@ -101,7 +100,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
 		quorum_events_.push_back(sp_quorum);
-		Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
+		// Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
 		slow_ = sp_quorum->IsSlow();
 		
 		long leader_time;
