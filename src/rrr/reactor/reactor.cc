@@ -539,9 +539,9 @@ void PollMgr::PollThread::poll_loop() {
 				index = 0;
 				count++;
 				double util = (double)total_cpu/total_time;
-				Log_info("elapsed CPU: %d", total_cpu);
-				Log_info("elapsed time: %d", total_time);
-				Log_info("elapsed CPU time: %f", util);
+				Log_debug("elapsed CPU: %d", total_cpu);
+				Log_debug("elapsed time: %d", total_time);
+				Log_debug("elapsed CPU time: %f", util);
 
 				if (util < 0.85) Reactor::GetReactor()->slow_ = true;
 			}

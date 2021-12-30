@@ -135,7 +135,7 @@ class FpgaRaftServer : public TxLogServer {
     return 4 + RandomGenerator::rand(0, 6) ;
   }
  public:
-  slotid_t min_active_slot_ = 0; // anything before (lt) this slot is freed
+  slotid_t min_active_slot_ = 1; // anything before (lt) this slot is freed
   slotid_t max_executed_slot_ = 0;
   slotid_t max_committed_slot_ = 0;
   map<slotid_t, shared_ptr<FpgaRaftData>> logs_{};
@@ -295,5 +295,7 @@ class FpgaRaftServer : public TxLogServer {
                                vector<string>& conflicts) {
     verify(0);
   };
+
+  void removeCmd(slotid_t slot);
 };
 } // namespace janus

@@ -431,30 +431,30 @@ void FpgaRaftServer::StartTimer()
             *followerCurrentTerm = this->currentTerm;
             *followerLastLogIndex = this->lastLogIndex;
             
-						// if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
-            //   auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
-            //   auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+						if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
+              auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
+              auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
               
-						// 	vector<struct KeyValue> kv_vector;
-						// 	int index = 0;
-						// 	for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
-						// 		auto cmd_input = (*it)->input.values_;
-						// 		for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
-						// 			struct KeyValue key_value = {it2->first, it2->second.get_i32()};
-						// 			kv_vector.push_back(key_value);
-						// 		}
-						// 	}
+							vector<struct KeyValue> kv_vector;
+							int index = 0;
+							for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+								auto cmd_input = (*it)->input.values_;
+								for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
+									struct KeyValue key_value = {it2->first, it2->second.get_i32()};
+									kv_vector.push_back(key_value);
+								}
+							}
 
-						// 	struct KeyValue key_values[kv_vector.size()];
-						// 	std::copy(kv_vector.begin(), kv_vector.end(), key_values);
+							struct KeyValue key_values[kv_vector.size()];
+							std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
-						// 	auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
-						// 	de->Wait();
-            // } else {
-						// 	int value = -1;
-						// 	auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
-            //   de->Wait();
-            // }
+							auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
+							de->Wait();
+            } else {
+							int value = -1;
+							auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+              de->Wait();
+            }
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
@@ -512,6 +512,12 @@ void FpgaRaftServer::StartTimer()
     }
     in_applying_logs_ = false;
 
+    int i = min_active_slot_;
+    while (i + 6000 < executeIndex) {
+      removeCmd(i++);
+    }
+    min_active_slot_ = i;
+
 		/*clock_gettime(CLOCK_MONOTONIC, &end);
 		Log_info("time of decide on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
   }
@@ -536,6 +542,14 @@ void FpgaRaftServer::StartTimer()
               break;
           }
       }
+  }
+
+  void FpgaRaftServer::removeCmd(slotid_t slot) {
+    auto cmd = dynamic_pointer_cast<TpcCommitCommand>(raft_logs_[slot]->log_);
+    if (!cmd)
+      return;
+    tx_sched_->DestroyTx(cmd->tx_id_);
+    raft_logs_.erase(slot);
   }
 
 } // namespace janus

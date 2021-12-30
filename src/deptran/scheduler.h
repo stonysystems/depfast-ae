@@ -31,6 +31,7 @@ class TxLogServer {
   Frame *frame_ = nullptr;
   Frame *rep_frame_ = nullptr;
   TxLogServer *rep_sched_ = nullptr;
+  TxLogServer *tx_sched_ = nullptr;
   Communicator *commo_{nullptr};
   //  Coordinator* rep_coord_ = nullptr;
   shared_ptr<TxnRegistry> txn_reg_{nullptr};

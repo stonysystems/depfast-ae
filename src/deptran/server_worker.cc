@@ -60,6 +60,7 @@ void ServerWorker::SetupBase() {
     rep_sched_ = rep_frame_->CreateScheduler();
     rep_sched_->txn_reg_ = tx_reg_;
     rep_sched_->loc_id_ = site_info_->locale_id;
+    rep_sched_->tx_sched_ = tx_sched_;
     tx_sched_->rep_frame_ = rep_frame_;
     tx_sched_->rep_sched_ = rep_sched_;
   }
