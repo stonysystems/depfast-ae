@@ -865,7 +865,7 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        s = "nohup " + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "
