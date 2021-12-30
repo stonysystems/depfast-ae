@@ -21,6 +21,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
@@ -57,7 +58,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
+g_latencies_percentage = np.arange(0, 1, 0.01)
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -244,8 +245,8 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = percent*100
-            key = str(percent)
+            percent = int(percent*100)
+            key = percent
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
                 latencies[key] = self.mid_latencies[index]
@@ -865,7 +866,7 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + \
+        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

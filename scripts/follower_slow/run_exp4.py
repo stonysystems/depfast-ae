@@ -21,6 +21,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
