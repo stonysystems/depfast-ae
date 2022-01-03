@@ -58,7 +58,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
+g_latencies_percentage = np.arange(0, 1, 0.01)
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -245,7 +245,7 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = percent*100
+            percent = round(percent*100)
             key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
@@ -575,10 +575,13 @@ class ClientController(object):
 
             if (progress >= upper_cutoff_pct + 3):
                 try:
-                    cmd = "pid=`ps aux | grep dd | head -1 | awk '{print $2}'`; \
-                           pid2=`ps aux | grep dd | head -2 | tail -1 | awk '{print $2}'`; \
+                    cmd = "pid=`ps aux | grep 'dd if' | head -1 | awk '{print $2}'`; \
+                           pid2=`ps aux | grep 'dd if' | head -2 | tail -1 | awk '{print $2}'`; \
+                            echo $pid; echo $pid2; \
                            sudo kill -9 $pid; \
-                           sudo kill -9 $pid2;"
+                           sudo kill -9 $pid2; \
+                           sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'; \
+                           sudo rm /db/tmp.txt"
                     
                     for process_name, process in self.process_infos.items():
                         if process.name == 'host2' or process.name == 'host5':
@@ -917,6 +920,7 @@ class ServerController(object):
             logger.info("starting %s @ %s", process_name, process.host_address)
             cmd = self.gen_process_cmd(process, host_process_counts)
             logger.debug("running: %s", cmd)
+            subprocess.call(['ssh', '-f',process.host_address, 'sudo rm /db/data.txt ; sudo touch /db/data.txt ; sudo chmod o+w /db/data.txt'])
             subprocess.call(['ssh', '-f',process.host_address, cmd])
 
         logger.debug(self.process_infos)

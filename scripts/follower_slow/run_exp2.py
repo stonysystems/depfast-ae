@@ -245,8 +245,8 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = int(percent*100)
-            key = percent
+            percent = round(percent*100)
+            key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
                 latencies[key] = self.mid_latencies[index]
@@ -954,6 +954,7 @@ class ServerController(object):
             logger.info("starting %s @ %s", process_name, process.host_address)
             cmd = self.gen_process_cmd(process, host_process_counts)
             logger.debug("running: %s", cmd)
+            subprocess.call(['ssh', '-f',process.host_address, 'sudo rm /db/data.txt ; sudo touch /db/data.txt ; sudo chmod o+w /db/data.txt'])
             subprocess.call(['ssh', '-f',process.host_address, cmd])
 
         logger.debug(self.process_infos)

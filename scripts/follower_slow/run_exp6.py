@@ -15,6 +15,7 @@ import itertools
 import random
 import math
 import signal
+import getpass
 from threading import Thread
 from argparse import ArgumentParser
 from multiprocessing import Value
@@ -245,8 +246,8 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = int(percent*100)
-            key = percent
+            percent = round(percent*100)
+            key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
                 latencies[key] = self.mid_latencies[index]
@@ -528,12 +529,12 @@ class ClientController(object):
         try:
             cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff swapfile; \
+                   sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
             
             cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
-                   sudo swapoff swapfile; \
+                   sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():
                 if process.name == 'host2':
@@ -570,31 +571,31 @@ class ClientController(object):
         if (not self.recording_period):
             if self.once == 0:
                 self.once += 1
-            if (progress >= 5 and self.once == 1):
-                try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
-                           sudo mkdir /sys/fs/cgroup/memory/janus; \
-                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
-                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
+            # if (progress >= 5 and self.once == 1):
+            #     try:
+            #         cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            #                sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon /db/swapfile; \
+            #                sudo mkdir /sys/fs/cgroup/memory/janus; \
+            #                echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+            #                echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
                     
-                    cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
-                           sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon swapfile; \
-                           sudo mkdir /sys/fs/cgroup/memory/janus; \
-                           echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
-                           echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
-                    for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
-                            time.sleep(0.1)
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                        if process_name == 'host5':
-                            time.sleep(0.1)
-                            subprocess.call(['ssh', '-f', process.host_address, cmd_2])
-                    self.once += 1
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
+            #         cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            #                sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon /db/swapfile; \
+            #                sudo mkdir /sys/fs/cgroup/memory/janus; \
+            #                echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
+            #                echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
+            #         for process_name, process in self.process_infos.items():
+            #             if process_name == 'host2':
+            #                 time.sleep(0.1)
+            #                 subprocess.call(['ssh', '-f', process.host_address, cmd])
+            #             if process_name == 'host5':
+            #                 time.sleep(0.1)
+            #                 subprocess.call(['ssh', '-f', process.host_address, cmd_2])
+            #         self.once += 1
+            #     except subprocess.CalledProcessError as e:
+            #         logger.fatal('error')
+            #     except subprocess.TimeoutExpired as e:
+            #         logger.fatal('timeout')
 
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
@@ -904,7 +905,12 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        if process.name == 'host2' or process.name == 'host5':
+            s = "cgexec -g memory:janus "
+        else:
+            s = ""
+        
+        s += "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "
@@ -925,6 +931,14 @@ class ServerController(object):
         cmd.append(s)
         return ' '.join(cmd)
 
+    def gen_swap_cgroup_cmd(self):
+        user = getpass.getuser()
+        memory_limit_MB = 50
+        cmd =  "sudo cgcreate -a {}:{} -t {}:{} -g memory:janus; ".format(user, user, user, user)
+        cmd += "echo {}M | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; ".format(memory_limit_MB)
+        cmd += "sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon /db/swapfile; "
+        return cmd
+    
     def start(self):
         # this current starts all the processes
         # todo: separate this into a class that starts and stops deptran
@@ -932,7 +946,13 @@ class ServerController(object):
         def run_one_server(process, process_name, host_process_counts):
             logger.info("starting %s @ %s", process_name, process.host_address)
             cmd = self.gen_process_cmd(process, host_process_counts)
+            
+            if process_name == 'host2' or process_name == 'host5':
+                swap_cg_cmd = self.gen_swap_cgroup_cmd()
+                logger.debug("running: %s", swap_cg_cmd)
+                subprocess.call(['ssh', '-f', process.host_address, swap_cg_cmd])            
             logger.debug("running: %s", cmd)
+            subprocess.call(['ssh', '-f',process.host_address, 'sudo rm /db/data.txt ; sudo touch /db/data.txt ; sudo chmod o+w /db/data.txt'])
             subprocess.call(['ssh', '-f',process.host_address, cmd])
 
         logger.debug(self.process_infos)
