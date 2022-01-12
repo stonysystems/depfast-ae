@@ -141,22 +141,7 @@ class DiskEvent : public Event {
 	void Special() {
 		func_();
 	}
-	int Write_Spec() {
-		/*int fd = ::open(file.c_str(), O_WRONLY | O_APPEND | O_CREAT);
-		::write(fd, buffer, size_);
-		::close(fd);*/
-
-		FILE* f = fopen(file.c_str(), "ab");
-		int written = 0;
-		if (f != NULL){
-			written = fwrite(buffer, size_, count_, f);
-			fclose(f);
-		} else {
-			Log_info("file: %s", file.c_str());
-			Log_info("error is: %s", strerror(errno)); 
-		}
-		return written;
-	}
+	int Write_Spec();
 
 	int Handle() {
 		int result = 0;

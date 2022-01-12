@@ -49,6 +49,7 @@ class Reactor {
   std::set<std::shared_ptr<Coroutine>> coros_{};
   std::vector<std::shared_ptr<Coroutine>> available_coros_{};
   std::unordered_map<uint64_t, std::function<void(Event&)>> processors_{};
+  std::unordered_map<std::string, FILE*> opened_files_{};
 	static std::unordered_map<std::string, std::vector<std::shared_ptr<rrr::Pollable>>> clients_;
 	static std::unordered_set<std::string> dangling_ips_;
   bool looping_{false};
