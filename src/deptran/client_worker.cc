@@ -521,7 +521,7 @@ void ClientWorker::FailoverPreprocess(Coordinator* coo) {
 }
 
 void ClientWorker::DispatchRequest(Coordinator* coo) {
-  FailoverPreprocess(coo);
+//  FailoverPreprocess(coo);
   const char* f = __FUNCTION__;
   std::function<void()> task = [=]() {
     Log_debug("%s: %d", f, cli_id_);

@@ -410,7 +410,7 @@ void FpgaRaftServer::StartTimer()
 							cb();
 							return;
 						}*/
-
+            verify(this->lastLogIndex == leaderPrevLogIndex);
             this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
             uint64_t prevCommitIndex = this->commitIndex;
             this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);

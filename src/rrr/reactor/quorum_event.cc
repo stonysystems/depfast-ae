@@ -4,9 +4,9 @@
 
 namespace janus {
 
-history_t QuorumEvent::history{};
-count_t QuorumEvent::counts{};
-latency_t QuorumEvent::latencies{};
+thread_local history_t QuorumEvent::history{};
+thread_local count_t QuorumEvent::counts{};
+thread_local latency_t QuorumEvent::latencies{};
 uint64_t QuorumEvent::count = 0;
 	
 	void QuorumEvent::recordHistory(unordered_set<std::string> ip_addrs) {

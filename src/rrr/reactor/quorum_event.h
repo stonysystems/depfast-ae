@@ -56,9 +56,9 @@ class QuorumEvent : public Event {
 	//std::vector<rrr::Client> clients_{};
   dependencies_t deps{};
 	struct timespec begin;
-	static history_t history;
-	static count_t counts;
-	static latency_t latencies;
+	thread_local static history_t history;
+	thread_local static count_t counts;
+	thread_local static latency_t latencies;
 	enum TimeoutFlag {FLAG_FREE};
   std::string log_file = "logs.txt";
 

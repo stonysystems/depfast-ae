@@ -82,8 +82,9 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		
 
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
+                                                     this->sch_->site_id_,
                                                      slot_id_,
-																										 dep_id_,
+                                                     dep_id_,
                                                      curr_ballot_,
                                                      this->sch_->IsLeader(),
                                                      this->sch_->currentTerm,

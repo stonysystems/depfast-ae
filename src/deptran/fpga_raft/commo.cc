@@ -140,8 +140,9 @@ void FpgaRaftCommo::SendAppendEntriesAgain(siteid_t site_id,
 
 shared_ptr<FpgaRaftAppendQuorumEvent>
 FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
+                                      siteid_t leader_site_id,
                                       slotid_t slot_id,
-																			i64 dep_id,
+                                      i64 dep_id,
                                       ballot_t ballot,
                                       bool isLeader,
                                       uint64_t currentTerm,
@@ -153,48 +154,45 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
   auto e = Reactor::CreateSpEvent<FpgaRaftAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
-	unordered_set<std::string> ip_addrs {};
-	std::vector<std::shared_ptr<rrr::Client>> clients;
+  unordered_set<std::string> ip_addrs {};
+  std::vector<std::shared_ptr<rrr::Client>> clients;
 
   vector<Future*> fus;
   WAN_WAIT;
 
-	for (auto& p : proxies) {
-		auto id = p.first;
+  for (auto& p : proxies) {
+    auto id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
-
-		auto cli_it = rpc_clients_.find(id);
-		std::string ip = "";
-		if (cli_it != rpc_clients_.end()) {
-			ip = cli_it->second->host();
+    auto cli_it = rpc_clients_.find(id);
+    std::string ip = "";
+    if (cli_it != rpc_clients_.end()) {
+      ip = cli_it->second->host();
 			//cli = cli_it->second;
-		}
-		ip_addrs.insert(ip);
+    }
+    ip_addrs.insert(ip);
 		//clients.push_back(cli);
-	}
-	e->recordHistory(ip_addrs);
-	e->changing_ips_ = ip_addrs;
-	//e->clients_ = clients;
+  }
+  e->recordHistory(ip_addrs);
+  e->changing_ips_ = ip_addrs;
+  //e->clients_ = clients;
   
-	for (auto& p : proxies) {	
-		auto follower_id = p.first;
+  for (auto& p : proxies) {
+    auto follower_id = p.first;
     auto proxy = (FpgaRaftProxy*) p.second;
-    
-		auto cli_it = rpc_clients_.find(follower_id);
-		std::string ip = "";
-		if (cli_it != rpc_clients_.end()) {
-			ip = cli_it->second->host();
-		}
-
-		if (p.first == this->loc_id_) {
+    auto cli_it = rpc_clients_.find(follower_id);
+    std::string ip = "";
+    if (cli_it != rpc_clients_.end()) {
+      ip = cli_it->second->host();
+    }
+	if (p.first == leader_site_id) {
         // fix the 1c1s1p bug
+        Log_info("leader_site_id %d", leader_site_id);
         e->FeedResponse(true, prevLogIndex + 1, ip);
         continue;
     }
     FutureAttr fuattr;
-		
-		struct timespec begin;
-		clock_gettime(CLOCK_MONOTONIC, &begin);
+    struct timespec begin;
+    clock_gettime(CLOCK_MONOTONIC, &begin);
 
     fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
       uint64_t accept = 0;
@@ -232,8 +230,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                         fuattr);
     Future::safe_release(f);
   }
-
-	verify(!e->IsReady());
+  verify(!e->IsReady());
   return e;
 }
 

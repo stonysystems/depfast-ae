@@ -184,8 +184,9 @@ friend class FpgaRaftProxy;
                        const function<void(Future*)> &callback);
   shared_ptr<FpgaRaftAppendQuorumEvent>
   BroadcastAppendEntries(parid_t par_id,
+                         siteid_t leader_site_id,
                          slotid_t slot_id,
-												 i64 dep_id,
+                         i64 dep_id,
                          ballot_t ballot,
                          bool isLeader,
                          uint64_t currentTerm,
