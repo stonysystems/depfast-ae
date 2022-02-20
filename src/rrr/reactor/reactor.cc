@@ -250,14 +250,14 @@ void Reactor::DiskLoop(){
 	clock_gettime(CLOCK_MONOTONIC, &begin);*/
 	for (auto it = sync_set.begin(); it != sync_set.end(); it++) {
     int fd;
-    auto itt = Reactor::GetReactor()->opened_files_.find(*it);
-    if (itt != Reactor::GetReactor()->opened_files_.end()) {
-      fd = fileno(itt->second);
-    } else {
+    // auto itt = Reactor::GetReactor()->opened_files_.find(*it);
+    // if (itt != Reactor::GetReactor()->opened_files_.end()) {
+    //   fd = fileno(itt->second);
+    // } else {
 		  fd = ::open(it->c_str(), O_WRONLY | O_APPEND | O_CREAT, 0777);
-    }
+    // }
 		::fsync(fd);
-		// ::close(fd);
+		::close(fd);
 		//Log_info("reaching here");
 	}
 	/*clock_gettime(CLOCK_MONOTONIC, &end);

@@ -53,6 +53,7 @@ class FpgaRaftServer : public TxLogServer {
   bool in_applying_logs_ = false ;
   bool failover_{false} ;
   atomic<int64_t> counter_{0};
+  const char *filename = "/dev/null";
 
 	static bool looping;
 	bool heartbeat_ = false;
@@ -192,21 +193,20 @@ class FpgaRaftServer : public TxLogServer {
 			struct KeyValue key_values[kv_vector.size()];
 			std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
-			struct KeyValue key_value_[2];
-			auto de = IO::write("/db/data.txt", key_values, sizeof(struct KeyValue), kv_vector.size());
+			// auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
 			
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      de->Wait();
+      // de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {
 			int value = -1;
 			int value_;
-			auto de = IO::write("/db/data.txt", &value, sizeof(int), 1);
+			// auto de = IO::write(filename, &value, sizeof(int), 1);
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      de->Wait();
+      // de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     }

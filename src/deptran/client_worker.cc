@@ -331,11 +331,12 @@ void ClientWorker::Work() {
     *failover_server_quit_ = true;
   }
 
-  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u\n",
+  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u, Tput %d\n",
            num_txn.load(),
            success.load(),
            num_try.load(),
-           Config::GetConfig()->get_duration());
+           Config::GetConfig()->get_duration(),
+           num_txn.load() / Config::GetConfig()->get_duration());
   fflush(stderr);
   fflush(stdout);
 

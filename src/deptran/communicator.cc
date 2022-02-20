@@ -259,8 +259,8 @@ void Communicator::BroadcastDispatch(
       };
   auto pair_leader_proxy = LeaderProxyForPartition(par_id);
   SetLeaderCache(par_id, pair_leader_proxy) ;
-  Log_debug("send dispatch to site %ld",
-            pair_leader_proxy.first);
+  Log_debug("send dispatch to site %ld, par %d",
+            pair_leader_proxy.first, par_id);
   auto proxy = pair_leader_proxy.second;
   shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;

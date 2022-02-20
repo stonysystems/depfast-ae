@@ -135,8 +135,8 @@ void CoordinatorFpgaRaft::AppendEntries() {
 			}
 		}
 		if (avg_ob > 0 && !slow_) {
-			Log_info("number of rpcs: %d", avg_ob);
-			Log_info("%d and %d", follower_times[0]/avg_ob, follower_times[1]/avg_ob);
+			Log_debug("number of rpcs: %d", avg_ob);
+			Log_debug("%d and %d", follower_times[0]/avg_ob, follower_times[1]/avg_ob);
 			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
 		}
 

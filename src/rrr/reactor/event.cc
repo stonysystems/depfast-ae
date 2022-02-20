@@ -181,17 +181,17 @@ int DiskEvent::Write_Spec() {
 		::write(fd, buffer, size_);
 		::close(fd);*/
     FILE* f;
-    auto it = Reactor::GetReactor()->opened_files_.find(file);
-    if (it != Reactor::GetReactor()->opened_files_.end()) {
-      f = it->second;
-    } else {
+    // auto it = Reactor::GetReactor()->opened_files_.find(file);
+    // if (it != Reactor::GetReactor()->opened_files_.end()) {
+    //   f = it->second;
+    // } else {
 		  f = fopen(file.c_str(), "ab");
-      Reactor::GetReactor()->opened_files_.insert(make_pair(file, f));
-    }
+    //   Reactor::GetReactor()->opened_files_.insert(make_pair(file, f));
+    // }
 		int written = 0;
 		if (f != NULL){
 			written = fwrite(buffer, size_, count_, f);
-			// fclose(f);
+			fclose(f);
 		} else {
 			Log_info("file: %s", file.c_str());
 			Log_info("error is: %s", strerror(errno)); 
