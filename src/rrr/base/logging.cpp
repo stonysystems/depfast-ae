@@ -10,6 +10,7 @@ namespace rrr {
 
 int Log::level_s = Log::DEBUG;
 FILE* Log::fp_s = stdout;
+std::ostream* Log::stm_s = &std::cout;
 pthread_mutex_t Log::m_s = PTHREAD_MUTEX_INITIALIZER;
 
 void Log::set_level(int level) {
@@ -58,8 +59,9 @@ void Log::log_v(int level, int line, const char* file, const char* fmt, va_list 
       offset += sprintf(buf+offset, "[%s:%d] ", filebase, line);
       offset += sprintf(buf+offset, "%s | ", now_str);
       offset += vsprintf(buf+offset, fmt, args);
-      offset += sprintf(buf+offset, "\n");
-      fprintf(fp_s, "%s", buf);
+    //   offset += sprintf(buf+offset, "\n");
+      // fprintf(fp_s, "%s", buf);
+      (*stm_s) << buf << std::endl;
 
 //      fprintf(fp_s, "%c ", indicator[level]);
 //        if (filebase != nullptr) {
