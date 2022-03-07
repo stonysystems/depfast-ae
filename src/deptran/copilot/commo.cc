@@ -99,6 +99,7 @@ CopilotCommo::BroadcastPrepare(parid_t par_id,
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<CopilotPrepareQuorumEvent>(n, quorumSize(n));
   auto proxies = rpc_par_proxies_[par_id];
+  struct DepId di;
 
   // WAN_WAIT
   for (auto& p : proxies) {
@@ -126,7 +127,7 @@ CopilotCommo::BroadcastPrepare(parid_t par_id,
       e->RemoveXid(site);
     };
 
-    Future *f = proxy->async_Prepare(is_pilot, slot_id, ballot, fuattr);
+    Future *f = proxy->async_Prepare(is_pilot, slot_id, ballot, di, fuattr);
     e->AddXid(site, f->get_xid());
     Future::safe_release(f);
   }
@@ -144,6 +145,7 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<CopilotFastAcceptQuorumEvent>(n, fastQuorumSize(n));
   auto proxies = rpc_par_proxies_[par_id];
+  struct DepId di;
 
   // WAN_WAIT
   for (auto& p : proxies) {
@@ -157,7 +159,7 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
       ballot_t b;
       slotid_t sgst_dep;
       static_cast<CopilotServer *>(rep_sched_)->OnFastAccept(
-        is_pilot, slot_id, ballot, dep, cmd, &b, &sgst_dep, nullptr);
+        is_pilot, slot_id, ballot, dep, cmd, di, &b, &sgst_dep, nullptr);
       e->FeedResponse(true, true);
       e->FeedRetDep(dep);
     } else {
@@ -178,7 +180,7 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
 
       verify(cmd);
       MarshallDeputy md(cmd);
-      Future *f = proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, fuattr);
+      Future *f = proxy->async_FastAccept(is_pilot, slot_id, ballot, dep, md, di, fuattr);
       e->AddXid(site, f->get_xid());
       Future::safe_release(f);
     }
@@ -197,6 +199,7 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<CopilotAcceptQuorumEvent>(n, quorumSize(n));
   auto proxies = rpc_par_proxies_[par_id];
+  struct DepId di;
 
   // WAN_WAIT
   for (auto& p : proxies) {
@@ -209,7 +212,7 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
     if (site == loc_id_) {
       ballot_t b;
       static_cast<CopilotServer *>(rep_sched_)->OnAccept(
-        is_pilot, slot_id, ballot, dep, cmd, &b, nullptr);
+        is_pilot, slot_id, ballot, dep, cmd, di, &b, nullptr);
       e->FeedResponse(true);
     } else {
       FutureAttr fuattr;
@@ -222,7 +225,7 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
       };
 
       MarshallDeputy md(cmd);
-      Future *f = proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, fuattr);
+      Future *f = proxy->async_Accept(is_pilot, slot_id, ballot, dep, md, di, fuattr);
       e->AddXid(site, f->get_xid());
       Future::safe_release(f);
     }
