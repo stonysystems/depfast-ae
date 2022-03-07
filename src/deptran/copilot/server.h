@@ -85,6 +85,7 @@ class CopilotServer : public TxLogServer {
   void OnPrepare(const uint8_t& is_pilot,
                  const uint64_t& slot,
                  const ballot_t& ballot,
+                 const struct DepId& dep_id,
                  MarshallDeputy* ret_cmd,
                  ballot_t* max_ballot,
                  uint64_t* dep,
@@ -96,6 +97,7 @@ class CopilotServer : public TxLogServer {
                     const ballot_t& ballot,
                     const uint64_t& dep,
                     shared_ptr<Marshallable>& cmd,
+                    const struct DepId& dep_id,
                     ballot_t* max_ballot,
                     uint64_t* ret_dep,
                     const function<void()> &cb);
@@ -105,6 +107,7 @@ class CopilotServer : public TxLogServer {
                 const ballot_t& ballot,
                 const uint64_t& dep,
                 shared_ptr<Marshallable>& cmd,
+                const struct DepId& dep_id,
                 ballot_t* max_ballot,
                 const function<void()> &cb);
 

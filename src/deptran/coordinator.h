@@ -33,6 +33,7 @@ class Coordinator {
   uint32_t n_start_ = 0;
   locid_t loc_id_ = -1;
   uint32_t coo_id_;
+  i64 dep_id_ = -1;
   parid_t par_id_ = -1;
   int benchmark_;
   ClientControlServiceImpl *ccsi_ = nullptr;

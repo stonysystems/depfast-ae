@@ -194,7 +194,7 @@ TxLogServer::TxLogServer() : mtx_() {
   }
 }
 
-Coordinator *TxLogServer::CreateRepCoord() {
+Coordinator *TxLogServer::CreateRepCoord(const i64& dep_id) {
   Coordinator *coord;
   static cooid_t cid = 0;
   int32_t benchmark = 0;
@@ -208,6 +208,7 @@ Coordinator *TxLogServer::CreateRepCoord() {
                                         txn_reg_);
   coord->par_id_ = partition_id_;
   coord->loc_id_ = this->loc_id_;
+  coord->dep_id_ = dep_id;
   return coord;
 }
 

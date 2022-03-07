@@ -23,7 +23,8 @@ abstract service Copilot {
 
   defer Prepare(uint8_t is_pilot,
                 uint64_t slot,
-                ballot_t ballot |
+                ballot_t ballot,
+                DepId dep_id |
                 MarshallDeputy ret_cmd,
                 ballot_t max_ballot,
                 uint64_t dep,
@@ -33,7 +34,8 @@ abstract service Copilot {
                    uint64_t slot,
                    ballot_t ballot,
                    uint64_t dep,
-                   MarshallDeputy cmd |
+                   MarshallDeputy cmd,
+                   DepId dep_id |
                    ballot_t max_ballot,
                    uint64_t ret_dep);
 
@@ -41,7 +43,8 @@ abstract service Copilot {
                uint64_t slot,
                ballot_t ballot,
                uint64_t dep,
-               MarshallDeputy cmd |
+               MarshallDeputy cmd,
+               DepId dep_id |
                ballot_t max_ballot);
 
   defer Commit(uint8_t is_pilot,
@@ -190,6 +193,11 @@ abstract service Classic {
                       i32 ret);
 
   defer CommitFebruus(txid_t tx_id, uint64_t timestamp | i32 ret);
+}
+
+struct DepId {
+	string str;
+	i64 id;
 }
 
 

@@ -25,6 +25,7 @@ class CopilotServiceImpl : public CopilotService {
   void Prepare(const uint8_t& is_pilot,
                const uint64_t& slot,
                const ballot_t& ballot,
+               const struct DepId& dep_id,
                MarshallDeputy* ret_cmd,
                ballot_t* max_ballot,
                uint64_t* dep,
@@ -36,6 +37,7 @@ class CopilotServiceImpl : public CopilotService {
                   const ballot_t& ballot,
                   const uint64_t& dep,
                   const MarshallDeputy& cmd,
+                  const struct DepId& dep_id,
                   ballot_t* max_ballot,
                   uint64_t* ret_dep,
                   rrr::DeferredReply* defer) override;
@@ -45,6 +47,7 @@ class CopilotServiceImpl : public CopilotService {
               const ballot_t& ballot,
               const uint64_t& dep,
               const MarshallDeputy& cmd,
+              const struct DepId& dep_id,
               ballot_t* max_ballot,
               rrr::DeferredReply* defer) override;
 

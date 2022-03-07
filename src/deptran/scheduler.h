@@ -106,7 +106,7 @@ class TxLogServer {
   virtual void Execute(Tx &txn_box,
                        innid_t inn_id);
 
-  Coordinator *CreateRepCoord();
+  Coordinator *CreateRepCoord(const i64& dep_id=0);
   virtual shared_ptr<Tx> GetTx(txnid_t tx_id);
   virtual shared_ptr<Tx> CreateTx(txnid_t tx_id,
                                   bool ro = false);
