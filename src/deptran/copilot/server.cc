@@ -463,6 +463,9 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
 }
 
 #ifdef USE_TARJAN
+
+/* Use a standard Tarjan algorithm to go through dependencies */
+
 bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
   if (ins->status == Status::EXECUTED)
     return true;
@@ -479,6 +482,8 @@ bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
 }
 
 #else
+
+/* Use a simplified Tarjan algorithm to go through dependencies (no recursive_call/stack) */
 
 bool CopilotServer::executeCmds(shared_ptr<CopilotData>& ins) {
   if (ins->status == Status::EXECUTED)
