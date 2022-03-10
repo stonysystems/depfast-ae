@@ -1,6 +1,7 @@
 #include "server.h"
 #include "frame.h"
 #include "coordinator.h"
+#include "../dep_util.h"
 
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT
@@ -216,6 +217,8 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
 
+  depid_login(dep_id, to_string(site_id_));
+
   /**
    * Thus, the check only needs to look at later entries in the other
    * pilot’s log. The compatibility check passes unless the replica
@@ -283,6 +286,8 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
                              const function<void()> &cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [ACCEPT     ] %s : %lu -> %lu", id_, toString(is_pilot), slot, dep);
+
+  depid_login(dep_id, to_string(site_id_));
 
   auto ins = GetInstance(slot, is_pilot);
   verify(ins);

@@ -238,8 +238,8 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
     const innid_t& inn_id = pair.first;
     verify(!dispatch_acks_.at(inn_id));
     dispatch_acks_[inn_id] = true;
-    Log_debug("get start ack %ld/%ld for cmd_id: %lx, inn_id: %d",
-              n_dispatch_ack_, n_dispatch_, cmd_->id_, inn_id);
+    Log_debug("get start ack %ld/%ld for cmd_id: %lx, inn_id: %d out %d",
+              n_dispatch_ack_, n_dispatch_, cmd_->id_, inn_id, outputs.size());
     txn->Merge(pair.first, pair.second);
   }
   if (txn->HasMoreUnsentPiece()) {

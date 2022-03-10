@@ -90,6 +90,8 @@ friend class CopilotProxy;
   CopilotCommo() = delete;
   CopilotCommo(PollMgr *);
 
+  uint64_t n_bcast_ = 0;
+
   shared_ptr<CopilotPrepareQuorumEvent>
   BroadcastPrepare(parid_t par_id,
                    uint8_t is_pilot,

@@ -7,6 +7,7 @@
 #include "command_marshaler.h"
 #include "procedure.h"
 #include "rcc_rpc.h"
+#include "dep_util.h"
 
 namespace janus {
 
@@ -246,16 +247,22 @@ void Communicator::BroadcastDispatch(
   // auto proxy = pair_leader_proxy.second;
   auto pair_proxies = PilotProxyForPartition(par_id);
   verify(pair_proxies.size() == 2);
-  Log_debug("send dispatch to site %d, %d",
+  Log_info("send dispatch to site %d, %d cmd %lx",
             pair_proxies[0].first,
-            pair_proxies[1].first);
+            pair_proxies[1].first, cmd_id);
   shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
   MarshallDeputy md(sp_vpd); // ????
 
+  struct DepId di;
+  di.id = cmd_id;
+  di.str = __func__;
+
+  depid_logout(di, std::to_string(site_id_), 2, 1);
+
   if (n_pending_rpc_ < max_pending_rpc_) {
   // if (true) {
-    auto future = pair_proxies[0].second->async_Dispatch(cmd_id, md, fuattr);
+    auto future = pair_proxies[0].second->async_Dispatch(cmd_id, md, di, fuattr);
     Future::safe_release(future);
     n_pending_rpc_++;
   }
@@ -268,7 +275,7 @@ void Communicator::BroadcastDispatch(
         fu->get_reply() >> ret >> outputs;
         callback(ret, outputs);
       };
-  Future::safe_release(pair_proxies[1].second->async_Dispatch(cmd_id, md, fu2));
+  Future::safe_release(pair_proxies[1].second->async_Dispatch(cmd_id, md, di, fu2));
 }
 
 void Communicator::SendStart(SimpleCommand& cmd,

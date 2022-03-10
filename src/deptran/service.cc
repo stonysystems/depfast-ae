@@ -13,6 +13,7 @@
 #include "janus/scheduler.h"
 #include "februus/scheduler.h"
 #include "benchmark_control_rpc.h"
+#include "dep_util.h"
 
 namespace janus {
 
@@ -39,6 +40,7 @@ ClassicServiceImpl::ClassicServiceImpl(TxLogServer* sched,
 
 void ClassicServiceImpl::Dispatch(const i64& cmd_id,
                                   const MarshallDeputy& md,
+                                  const struct DepId& dep_id,
                                   int32_t* res,
                                   TxnOutput* output,
                                   rrr::DeferredReply* defer) {
@@ -54,6 +56,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
       piece_count_[piece_count_key]++;
   piece_count_tid_.insert(header.tid);
 #endif
+  depid_login(dep_id, std::to_string(dtxn_sched()->site_id_));
   shared_ptr<Marshallable> sp = md.sp_data_;
   *res = SUCCESS;
   if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {

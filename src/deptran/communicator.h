@@ -57,6 +57,7 @@ class Communicator {
   rrr::PollMgr *rpc_poll_ = nullptr;
   TxLogServer *rep_sched_ = nullptr;
   locid_t loc_id_ = -1;
+  siteid_t site_id_ = -1;
   map<siteid_t, shared_ptr<rrr::Client>> rpc_clients_{};
   map<siteid_t, ClassicProxy *> rpc_proxies_{};
   map<parid_t, vector<SiteProxyPair>> rpc_par_proxies_{};

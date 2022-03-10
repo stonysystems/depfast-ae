@@ -39,6 +39,7 @@ class ClassicServiceImpl : public ClassicService {
 
   void Dispatch(const i64& cmd_id,
                 const MarshallDeputy& cmd,
+                const struct DepId& dep_id,
                 int32_t* res,
                 TxnOutput* output,
                 DeferredReply* defer_reply) override;

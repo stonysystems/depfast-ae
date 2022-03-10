@@ -1,5 +1,6 @@
 #include "../__dep__.h"
 #include "../constants.h"
+#include "../dep_util.h"
 #include "commo.h"
 
 // #define SKIP
@@ -147,6 +148,10 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
   struct DepId di;
 
+  di.id = n_bcast_++ | ((uint64_t)site_id_ << 48);
+  di.str = __func__;
+  depid_logout(di, std::to_string(site_id_), e->n_total_, e->quorum_);
+
   // WAN_WAIT
   for (auto& p : proxies) {
     auto proxy = (CopilotProxy *)p.second;
@@ -199,7 +204,11 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<CopilotAcceptQuorumEvent>(n, quorumSize(n));
   auto proxies = rpc_par_proxies_[par_id];
+  
   struct DepId di;
+  di.id = n_bcast_++ | ((uint64_t)site_id_ << 48);
+  di.str = __func__;
+  depid_logout(di, std::to_string(site_id_), e->n_total_, e->quorum_);
 
   // WAN_WAIT
   for (auto& p : proxies) {
