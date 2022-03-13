@@ -4,6 +4,21 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz as gv
 
+tmp_id2name = {
+	0: 's1',
+	1: 's2',
+	2: 's3',
+	3: 's4',
+	4: 's5',
+	5: 's6',
+	6: 's7',
+	7: 's8',
+	8: 's9',
+	9: 'c1',
+	10: 'c2',
+	11: 'c3'
+}
+
 class CallGroup(object):
 
 	def __init__(self, name: str, fr, to, tot=0, req=0) -> None:
@@ -99,15 +114,15 @@ def deduplicate(calls: dict):
 
 def draw_dep_graph_nx(calls: 'set[CallGroup]', sites: set):
 	G = nx.MultiDiGraph()
-	G.add_nodes_from(sites)
+	for si in sites:
+		G.add_node(si, label=tmp_id2name[si])
 	
 	for cg in calls:
 		for des in cg.dest:
-			G.add_edge(cg.fr, des)
+			G.add_edge(cg.fr, des, color='green' if cg.req < cg.total else 'red', label='{}/{}'.format(cg.req, cg.total))
 			print(cg.fr, "->", des)
 
-	nx.draw_kamada_kawai(G, with_labels=True, connectionstyle='arc3, rad = 0.1')
-	plt.show()
+	nx.write_graphml(G, 'graph.graphml')
 
 
 def draw_dep_graph_gv(calls: 'set[CallGroup]', sites: set):
@@ -130,5 +145,5 @@ if __name__ == '__main__':
 	filter_dep_traces(filename)
 	calls, sites = extract_trace_data(filename)
 	calls = deduplicate(calls)
-	draw_dep_graph_gv(calls, sites)
-	# draw_dep_graph_nx(calls, sites)
+	# draw_dep_graph_gv(calls, sites)
+	draw_dep_graph_nx(calls, sites)
