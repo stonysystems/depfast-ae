@@ -9,6 +9,7 @@
 #include "communicator.h"
 #include "config.h"
 #include "coordinator.h"
+#include "dep_util.h"
 #include "februus/scheduler.h"
 #include "janus/scheduler.h"
 #include "procedure.h"
@@ -66,6 +67,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
       piece_count_[piece_count_key]++;
   piece_count_tid_.insert(header.tid);
 #endif
+depid_login(dep_id, std::to_string(dtxn_sched()->site_id_));
   shared_ptr<Marshallable> sp = md.sp_data_;
 	//Log_info("CreateRunning2");
   Coroutine::CreateRun([cmd_id, sp, output, res, coro_id, this, defer]() {

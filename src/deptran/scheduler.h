@@ -158,7 +158,7 @@ class TxLogServer {
 
   virtual void Next(Marshallable& cmd) { verify(0); };
 
-	virtual void Setup() { verify(0); } ;
+	virtual void Setup() { } ;
   virtual bool IsLeader() { verify(0); } ;
   virtual bool IsFPGALeader() { verify(0); } ;
 	

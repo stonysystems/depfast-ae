@@ -119,6 +119,8 @@ friend class FpgaRaftProxy;
  public:
 	std::unordered_map<siteid_t, uint64_t> matchedIndex {};
 	int index;
+
+  uint64_t n_bcast_ = 0;
 	
   FpgaRaftCommo() = delete;
   FpgaRaftCommo(PollMgr*);
@@ -189,6 +191,7 @@ friend class FpgaRaftProxy;
                          i64 dep_id,
                          ballot_t ballot,
                          bool isLeader,
+                         struct DepId& di,
                          uint64_t currentTerm,
                          uint64_t prevLogIndex,
                          uint64_t prevLogTerm,

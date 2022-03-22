@@ -388,6 +388,7 @@ void FpgaRaftServer::StartTimer()
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         //StartTimer() ;
+        depid_login(dep_id, to_string(site_id_));
         
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",

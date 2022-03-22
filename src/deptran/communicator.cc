@@ -8,6 +8,7 @@
 #include "command_marshaler.h"
 #include "procedure.h"
 #include "rcc_rpc.h"
+#include "dep_util.h"
 #include <typeinfo>
 
 namespace janus {
@@ -266,9 +267,11 @@ void Communicator::BroadcastDispatch(
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
   MarshallDeputy md(sp_vpd); // ????
 
-	DepId di;
-	di.str = "dep";
-	di.id = Communicator::global_id++;
+	  DepId di;
+		di.str = __func__;
+		di.id = cmd_id;
+
+    depid_logout(di, std::to_string(site_id_), 1, 1);
   
 	auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
   Future::safe_release(future);
@@ -384,8 +387,10 @@ std::shared_ptr<IntEvent> Communicator::BroadcastDispatch(
     outbound_[src_coroid] = make_pair((rrr::i64)start_.tv_sec, (rrr::i64)start_.tv_nsec);
 
 		DepId di;
-		di.str = "dep";
-		di.id = Communicator::global_id++;
+		di.str = __func__;
+		di.id = cmd_id;
+
+    depid_logout(di, std::to_string(site_id_), 1, 1);
     
 		auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
     Future::safe_release(future);

@@ -1,6 +1,7 @@
 
 #include "../__dep__.h"
 #include "../constants.h"
+#include "../dep_util.h"
 #include "coordinator.h"
 #include "commo.h"
 
@@ -76,9 +77,15 @@ void CoordinatorFpgaRaft::AppendEntries() {
     instance->log_ = cmd_;
     instance->term = this->sch_->currentTerm;*/
 
+    struct DepId di;
+
+    di.id = commo()->n_bcast_++ | ((uint64_t)(commo()->site_id_) << 48);
+    di.str = __func__;
+    depid_logout(di, std::to_string(commo()->site_id_), 3, 2);
+
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
-		this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, slot_id_, curr_ballot_) ;
+		this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, di, slot_id_, curr_ballot_) ;
 		
 
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
@@ -87,6 +94,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
                                                      dep_id_,
                                                      curr_ballot_,
                                                      this->sch_->IsLeader(),
+                                                     di,
                                                      this->sch_->currentTerm,
                                                      prevLogIndex,
                                                      prevLogTerm,

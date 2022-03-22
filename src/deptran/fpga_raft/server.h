@@ -4,6 +4,7 @@
 #include "../constants.h"
 #include "../scheduler.h"
 #include "../classic/tpc_command.h"
+#include "../dep_util.h"
 
 namespace janus {
 class Command;
@@ -166,7 +167,7 @@ class FpgaRaftServer : public TxLogServer {
     return fpga_is_leader_ ;
   }
   
-  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index, slotid_t slot_id = -1, ballot_t ballot = 1 ){
+  void SetLocalAppend(shared_ptr<Marshallable>& cmd, uint64_t* term, uint64_t* index, struct DepId& di, slotid_t slot_id = -1, ballot_t ballot = 1 ){
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     *index = lastLogIndex ;
     lastLogIndex += 1;
@@ -176,6 +177,8 @@ class FpgaRaftServer : public TxLogServer {
     instance->term = currentTerm;
 		instance->slot_id = slot_id;
 		instance->ballot = ballot;
+
+    depid_login(di, to_string(site_id_));
 
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
       auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);

@@ -145,6 +145,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
                                       i64 dep_id,
                                       ballot_t ballot,
                                       bool isLeader,
+                                      struct DepId& di,
                                       uint64_t currentTerm,
                                       uint64_t prevLogIndex,
                                       uint64_t prevLogTerm,
@@ -216,9 +217,7 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
 		outbound++;
-		DepId di;
-		di.str = "dep";
-		di.id = dep_id;
+
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,

@@ -212,6 +212,7 @@ void ServerWorker::SetupCommo() {
     tx_commo_ = tx_frame_->CreateCommo(svr_poll_mgr_);
     if (tx_commo_) {
       tx_commo_->loc_id_ = site_info_->locale_id;
+      tx_commo_->site_id_ = site_info_->id;
     }
     tx_sched_->commo_ = tx_commo_;
   }
@@ -219,6 +220,7 @@ void ServerWorker::SetupCommo() {
     rep_commo_ = rep_frame_->CreateCommo(svr_poll_mgr_);
     if (rep_commo_) {
       rep_commo_->loc_id_ = site_info_->locale_id;
+      rep_commo_->site_id_ = site_info_->id;
     }
     rep_sched_->commo_ = rep_commo_;
 		rep_sched_->Setup();
