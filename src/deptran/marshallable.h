@@ -41,6 +41,7 @@ class MarshallDeputy {
     CMD_TPC_EMPTY = 7,
     CMD_TPC_PREPARE_CAROUSEL = 8,
 		CMD_BLK_PXS = 9,
+    CMD_NOOP = 10
   };
   /**
    * This should be called by the rpc layer.

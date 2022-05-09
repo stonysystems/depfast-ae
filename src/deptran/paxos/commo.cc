@@ -29,7 +29,7 @@ MultiPaxosCommo::SendForward(parid_t par_id,
     fu->get_reply() >> coro_id;
     e->FeedResponse(1);
     Log_info("adding dependency");
-    e->add_dep(follower_id, src_coroid, leader_id, coro_id);
+    // e->add_dep(follower_id, src_coroid, leader_id, coro_id);
   };
 
   MarshallDeputy md(cmd);
@@ -67,7 +67,7 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
   for (auto& p : proxies) {
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
-    e->add_dep(leader_id, src_coroid, follower_id, -1);
+    // e->add_dep(leader_id, src_coroid, follower_id, -1);
 
     FutureAttr fuattr;
     fuattr.callback = [e, ballot, leader_id, src_coroid, follower_id](Future* fu) {
@@ -75,8 +75,8 @@ MultiPaxosCommo::BroadcastPrepare(parid_t par_id,
       uint64_t coro_id = 0;
       fu->get_reply() >> b >> coro_id;
       e->FeedResponse(b==ballot);
-      e->deps[leader_id][src_coroid][follower_id].erase(-1);
-      e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
+      // e->deps[leader_id][src_coroid][follower_id].erase(-1);
+      // e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
       // TODO add max accepted value.
     };
     Future::safe_release(proxy->async_Prepare(slot_id, ballot, fuattr));
@@ -115,7 +115,7 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
     auto proxy = (MultiPaxosProxy*) p.second;
     auto follower_id = p.first;
 
-    e->add_dep(leader_id, src_coroid, follower_id, -1);
+    // e->add_dep(leader_id, src_coroid, follower_id, -1);
 
     FutureAttr fuattr;
     fuattr.callback = [e, start, ballot, leader_id, src_coroid, follower_id] (Future* fu) {
@@ -126,8 +126,8 @@ MultiPaxosCommo::BroadcastAccept(parid_t par_id,
       auto end = chrono::system_clock::now();
       auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
       //Log_info("The duration of Accept() for %d is: %d", follower_id, duration);
-      e->deps[leader_id][src_coroid][follower_id].erase(-1);
-      e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
+      // e->deps[leader_id][src_coroid][follower_id].erase(-1);
+      // e->deps[leader_id][src_coroid][follower_id].insert(coro_id);
     };
     MarshallDeputy md(cmd);
     auto start1 = chrono::system_clock::now();

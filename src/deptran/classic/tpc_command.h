@@ -42,4 +42,12 @@ class TpcEmptyCommand : public Marshallable {
   void Done() { event->Set(1); };
 };
 
+class TpcNoopCommand : public Marshallable {
+  public:
+  TpcNoopCommand() : Marshallable(MarshallDeputy::CMD_NOOP) {}
+
+  Marshal& ToMarshal(Marshal&) const override;
+  Marshal& FromMarshal(Marshal&) override;
+};
+
 } // namespace janus

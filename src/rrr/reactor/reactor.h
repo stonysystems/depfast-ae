@@ -39,7 +39,7 @@ class Reactor {
    * in case it is freed by the caller after a yield.
    */
   std::list<std::shared_ptr<Event>> all_events_{};
-  std::list<std::shared_ptr<Event>> waiting_events_{};
+  std::set<std::shared_ptr<Event>> waiting_events_{};
   std::vector<std::shared_ptr<Event>> ready_events_{};
   std::list<std::shared_ptr<Event>> timeout_events_{};
   std::vector<std::shared_ptr<Event>> disk_events_{};
@@ -79,11 +79,11 @@ class Reactor {
   std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
   void Loop(bool infinite = false, bool check_timeout = false);
   void CheckTimeout(std::vector<std::shared_ptr<Event>>&);
-	void FreeDangling(std::string ip);
 	void DiskLoop();
 	void NetworkLoop();
   void ContinueCoro(std::shared_ptr<Coroutine> sp_coro);
   void Recycle(std::shared_ptr<Coroutine>& sp_coro);
+  void DisplayWaitingEv();
 
   ~Reactor() {
 //    verify(0);

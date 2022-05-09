@@ -197,7 +197,7 @@ void server_failover_co(bool random, bool leader, int srv_idx)
         failover_server_idx = idx ;
         //sleep(run_int) ;
         auto r = Reactor::CreateSpEvent<TimeoutEvent>(run_int * 1000 * 1000);
-        r->Wait(run_int * 1000 * 1000) ;        
+        r->Wait();
         if(idx == -1) 
         {
           // TODO other types
@@ -228,7 +228,7 @@ void server_failover_co(bool random, bool leader, int srv_idx)
         Log_info("server %d paused for failover test", idx);
         //sleep(stop_int) ;
         auto s = Reactor::CreateSpEvent<TimeoutEvent>(stop_int * 1000 * 1000);
-        s->Wait(stop_int * 1000 * 1000) ;        
+        s->Wait() ;        
         for (int i = 0; i < client_workers_g.size() ; ++i)
         {
           while(failover_triggers[i]) {

@@ -49,7 +49,7 @@ void Event::Wait(uint64_t timeout) {
   verify(Reactor::sp_reactor_th_->thread_id_ == std::this_thread::get_id());
 	if (needs_finalize_) NeedsFinalize();
   if (status_ == DONE) return; // TODO: yidawu add for the second use the event.
-  verify(status_ == INIT);
+  // verify(status_ == INIT);
   if (IsReady()) {
     status_ = DONE; // no need to wait.
     return;
@@ -67,8 +67,11 @@ void Event::Wait(uint64_t timeout) {
     verify(sp_coro);
 //    verify(_dbg_p_scheduler_ == nullptr);
 //    _dbg_p_scheduler_ = Reactor::GetReactor().get();
-//    auto& waiting_events = Reactor::GetReactor()->waiting_events_; // Timeout???
-//    waiting_events.push_back(shared_from_this());
+    if (rcd_wait_) {
+      auto& waiting_events =
+          Reactor::GetReactor()->waiting_events_;  // Timeout???
+      waiting_events.insert(shared_from_this());
+    }
 #ifdef EVENT_TIMEOUT_CHECK
     if (timeout == 0) {
       __debug_timeout_ = true;
@@ -110,6 +113,13 @@ void Event::Wait(uint64_t timeout) {
   }
 }
 
+void Event::RecordPlace(const char* file, int line) {
+  char buff[200];
+  sprintf(buff, "%s:%d", file, line);
+  wait_place_ += std::string(buff);
+  rcd_wait_ = true;
+}
+
 bool Event::Test() {
   verify(__debug_creator); // if this fails, the event is not created by reactor.
   if (IsReady()) {
@@ -124,6 +134,11 @@ bool Event::Test() {
 //      verify(sched->__debug_set_all_coro_.count(sp_coro.get()) > 0);
 //      verify(sched->coros_.count(sp_coro) > 0);
       status_ = READY;
+      if (rcd_wait_) {
+        auto& waiting_events = Reactor::GetReactor()->waiting_events_;
+        auto it = waiting_events.find(shared_from_this());
+        if (it != waiting_events.end()) waiting_events.erase(it);
+      }
       Reactor::GetReactor()->ready_events_.push_back(shared_from_this());
     } else if (status_ == READY) {
       // This could happen for a quorum event.
@@ -239,9 +254,11 @@ void SharedIntEvent::WaitUntilGreaterOrEqualThan(int x, int timeout) {
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->target_ = x;
-  events_.push_back(sp_ev);
+  auto it = events_.insert(events_.end(), sp_ev);
   sp_ev->Wait(timeout);
-  verify(sp_ev->status_ != Event::TIMEOUT);
+  // verify(sp_ev->status_ != Event::TIMEOUT);  // why can't it be timeout?
+  // remove the event from event vector after it entering a terminate state (READY or TIMEOUT)
+  events_.erase(it);
 }
 
 void SharedIntEvent::Wait(function<bool(int v)> f) {

@@ -55,6 +55,10 @@ class FpgaRaftVoteQuorumEvent: public QuorumEvent {
       }      
     }
   }
+  
+  int64_t Term() {
+    return highest_term_;
+  }
 };
 
 class FpgaRaftVote2FPGAQuorumEvent: public QuorumEvent {
@@ -73,6 +77,10 @@ class FpgaRaftVote2FPGAQuorumEvent: public QuorumEvent {
         highest_term_ = term ;
       }      
     }
+  }
+  
+  int64_t Term() {
+    return highest_term_;
   }
 };
 
@@ -101,9 +109,9 @@ class FpgaRaftAppendQuorumEvent: public QuorumEvent {
                 minIndex = index;
             else
                 minIndex = std::min(minIndex, index);
-            VoteYes(ip_addr);
+            VoteYes();
         } else {
-            VoteNo(ip_addr);
+            VoteNo();
         }
         /*Log_debug("fpga-raft comm accept event, "
                   "yes vote: %d, no vote: %d, min index: %d",

@@ -36,6 +36,7 @@ class Frame {
   int mode_;
   Config::SiteInfo *site_info_ = nullptr;
   Frame(int mode) : mode_(mode) {};
+  virtual ~Frame() {};
   // for both dtxn and rep
   virtual Coordinator *CreateCoordinator(cooid_t coo_id,
                                          Config *config,

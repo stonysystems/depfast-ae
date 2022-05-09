@@ -24,7 +24,7 @@ shared_ptr<FpgaRaftForwardQuorumEvent> FpgaRaftCommo::SendForward(parid_t par_id
       // sleep for 2 seconds cos no leader
       int32_t timeout = 2*1000*1000 ;
       auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(timeout);
-      sp_e->Wait(timeout);    
+      sp_e->Wait();    
     }
     auto proxies = rpc_par_proxies_[par_id];
     WAN_WAIT;
@@ -172,8 +172,6 @@ FpgaRaftCommo::BroadcastAppendEntries(parid_t par_id,
     ip_addrs.insert(ip);
 		//clients.push_back(cli);
   }
-  e->recordHistory(ip_addrs);
-  e->changing_ips_ = ip_addrs;
   //e->clients_ = clients;
   
   for (auto& p : proxies) {

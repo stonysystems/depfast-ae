@@ -189,38 +189,6 @@ void Client::handle_error() {
   close();
 }
 
-void Client::handle_free() {
-	list<Future*> futures;
-	long j;
-	long iters;
-  std::unordered_map<i64, Future*>::iterator it;
-	int batches = 10; // need batches because lock will block progress
-										// smaller batches may cause errors
-
-	for (int i = 0; i < batches; i++) {
-		j = 0;
-		pending_fu_l_.lock();
-		iters = (pending_fu_.size())/(batches - i);
-		it = pending_fu_.begin();
-		while (j < iters && it != pending_fu_.end()) {
-			futures.push_back(it->second);
-			it++;
-			j++;
-		}
-		pending_fu_.erase(pending_fu_.begin(), it);
-		//pending_fu_.clear();
-		pending_fu_l_.unlock();
-
-		for (auto& fu: futures) {
-			if (fu != nullptr) {
-				// since we removed it from pending_fu_
-				fu->release();
-			}
-		}
-		futures.clear();
-  }
-}
-
 void Client::handle_write() {
   //auto start = chrono::steady_clock::now();
   //Log_info("Handling write");
@@ -444,6 +412,16 @@ iters = 5;
   //auto duration = chrono::duration_cast<chrono::microseconds>(end-start).count();
   //Log_info("Duration of handle_read() is: %d", duration);
 }*/
+
+void Client::handle_free(i64 xid) {
+  pending_fu_l_.lock();
+  auto it = pending_fu_.find(xid);
+  if (it != pending_fu_.end()) {
+    pending_fu_.erase(it);
+    Future::safe_release(it->second);
+  }
+  pending_fu_l_.unlock();
+}
 
 int Client::poll_mode() {
   int mode = Pollable::READ;

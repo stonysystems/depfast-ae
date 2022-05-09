@@ -110,7 +110,6 @@ class Marshal(object):
         elif obj_t == "double":
             return self.write_double(o)
         elif obj_t == "DepId":
-            #print('failing here', o)
             self.write_str(o[0])
             return self.write_i64(o[1])
         elif obj_t in ["std::string", "string"]:

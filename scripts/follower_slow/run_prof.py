@@ -21,7 +21,6 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
-import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
@@ -58,7 +57,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = np.arange(0, 1, 0.01)
+g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -245,7 +244,7 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = round(percent*100)
+            percent = percent*100
             key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
@@ -386,11 +385,10 @@ class ClientController(object):
         self.pre_run_nsec = 0
         self.n_asking = 0
         self.max_tps = 0
-        
-        self.pid = 0
-        self.once = 0
+
         self.recording_period = False
         self.print_max = False
+        self.profiled = False
 
     def client_run(self, do_sample, do_sample_lock):
         sites = ProcessInfo.get_sites(self.process_infos,
@@ -466,7 +464,8 @@ class ClientController(object):
             futures = []
             for proxy in rpc_proxy:
                 try:
-                    future = proxy.async_client_response()
+                    dep_id = (str.encode('dep'), 0)
+                    future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
@@ -545,21 +544,6 @@ class ClientController(object):
         upper_cutoff_pct = 90
 
         if (not self.recording_period):
-            if(self.once == 0):
-                self.once += 1
-            if (progress >= 5 and self.once == 1):
-                try:
-                    cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 40ms' #40ms
-                    for process_name, process in self.process_infos.items():
-                        if process_name == 'host1' or process_name == 'host5':
-                            time.sleep(0.1)
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                    self.once += 1
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
-
             if (progress >= lower_cutoff_pct and progress <= upper_cutoff_pct):
                 logger.info("start recording period")
                 self.recording_period = True
@@ -575,22 +559,26 @@ class ClientController(object):
 
                 for k, v in self.txn_infos.items():
                     v.print_mid(self.config, self.num_proxies)
-                
-                try:
-                    cmd = 'sudo /sbin/tc qdisc del dev eth0 root'
-                    for process_name, process in self.process_infos.items():
-                        if process_name == 'host1' or process_name == 'host5':
-                            subprocess.call(['ssh', '-f', process.host_address, cmd])
-                    self.once += 1
-                except subprocess.CalledProcessError as e:
-                    logger.fatal('error')
-                except subprocess.TimeoutExpired as e:
-                    logger.fatal('timeout')
+
                 do_sample_lock.acquire()
                 do_sample.value = 1
                 do_sample_lock.release()
                 for k, v in self.txn_infos.items():
                     v.set_mid_status()
+            
+            if (progress >= upper_cutoff_pct):
+                try:
+                    cmd_3 = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                            top -p $pid -n 1 -b | grep $pid | awk '{print $10}' | sudo tee -a curr_mem_fast.txt;"
+                    for process_name, process in self.process_infos.items():
+                        if process.name == "host1" and not self.profiled:
+                            self.profiled = True
+                            subprocess.call(['ssh', '-f', process.host_address, cmd_3])
+                except subprocess.CalledProcessError as e:
+                    logger.fatal('error')
+                except subprocess.TimeoutExpired as e:
+                    logger.fatal('timeout')
+
         output_str = "\nProgress: " + str(progress) + "%\n"
         total_table = []
         interval_table = []
@@ -741,7 +729,7 @@ class ServerController(object):
     def shutdown_sites(self, sites):
         for site in sites:
             try:
-                site.rpc_proxy.sync_server_shutdown()
+                site.rpc_proxy.async_server_shutdown()
             except:
                 logger.error(traceback.format_exc())
 
@@ -860,6 +848,7 @@ class ServerController(object):
             logger.info("AVG_LOG_FLUSH_CNT: " + str(avg_r_cnt))
             logger.info("AVG_LOG_FLUSH_SZ: " + str(avg_r_sz))
             logger.info("BENCHMARK SUCCESS!")
+            self.shutdown_sites(sites)
         except:
             logger.error(traceback.format_exc())
             cond.acquire()
@@ -877,10 +866,8 @@ class ServerController(object):
         else:
             recording = ""
 
-        cli_name = "host4" if len(host_process_counts) == 4 else "host6"
-
-        s = "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
-            " ./build/deptran_server " + \
+        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+            " env HEAPPROFILE=~/prof.hprof ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "
 
@@ -892,10 +879,10 @@ class ServerController(object):
              "-t " + str(self.config['args'].s_timeout) + " " \
              "-r '" + self.config['args'].log_dir + "' " + \
              recording + \
-             ">'" + self.log_dir + "/proc-" + process.name + ".log' " + \
+             "1>'" + self.log_dir + "/proc-" + process.name + ".log' " + \
+             "2>'" + self.log_dir + "/proc-" + process.name + ".err' " + \
              "&"
 
-             #"2>'" + self.log_dir + "/proc-" + process.name + ".err' " + \
         host_process_counts[process.host_address] += 1
         cmd.append(s)
         return ' '.join(cmd)
@@ -1240,8 +1227,11 @@ def main():
         logging.info("shutting down...")
         if server_controller is not None:
             try:
+                clients = ProcessInfo.get_sites(process_infos, SiteInfo.SiteType.Client)
+                for site in clients:
+                    site.rpc_proxy.async_client_shutdown()
                 #comment the following line when doing profiling
-                server_controller.server_kill()
+                #server_controller.server_kill()
                 pass
             except:
                 logging.error(traceback.format_exc())

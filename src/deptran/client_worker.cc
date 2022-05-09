@@ -267,23 +267,28 @@ void ClientWorker::Work() {
 					}
 					Log_info("total: %d", coo->commo_->total_);
 					auto t = Reactor::CreateSpEvent<TimeoutEvent>(0.1*1000*1000);
-					t->Wait(0.1*1000*1000);
+					t->Wait();
 				}
         
 				this->DispatchRequest(coo);
         if (config_->client_type_ == Config::Closed) {
           auto ev = coo->sp_ev_commit_;
-          ev->Wait(600*1000*1000);
-					this->outbound--;
+#if 1
+          char txid[20];
+          sprintf(txid, "%" PRIx64 "|", coo->ongoing_tx_id_);
+          ev->wait_place_ = std::string(txid);
+#endif
+          Wait_recordplace(ev, Wait(600*1000*1000));
+          this->outbound--;
           verify(ev->status_ != Event::TIMEOUT);
         } else {
           auto sp_event = Reactor::CreateSpEvent<NeverEvent>();
-          sp_event->Wait(pow(10, 6));
+          Wait_recordplace(sp_event, Wait(pow(10, 6)));
         }
         Coroutine::CreateRun([this, coo](){
           verify(coo->_inuse_);
           auto ev = coo->sp_ev_done_;
-          ev->Wait();
+          Wait_recordplace(ev, Wait());
           verify(coo->coo_id_ > 0);
 //          ev->Wait(400*1000*1000);
           verify(coo->_inuse_);
@@ -319,24 +324,23 @@ void ClientWorker::Work() {
   })));
 
   while (all_done_ == 0) {
-    // TODO: yidawu comment for test
     Log_info("wait for finish... n_ceased_cleints: %d,  "
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
-    sleep(1);
+    sleep(5);
   }
 
   if (failover_server_quit_ && !*failover_server_quit_) {
     *failover_server_quit_ = true;
   }
 
-  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u, Tput %d\n",
+  Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u, Throughput: %.2f\n",
            num_txn.load(),
            success.load(),
            num_try.load(),
            Config::GetConfig()->get_duration(),
-           num_txn.load() / Config::GetConfig()->get_duration());
+           static_cast<float>(num_txn.load()) / Config::GetConfig()->get_duration());
   fflush(stderr);
   fflush(stdout);
 
@@ -481,14 +485,14 @@ void ClientWorker::FailoverPreprocess(Coordinator* coo) {
       for (auto it = n_pause_concurrent_.begin(); it != n_pause_concurrent_.end(); it++) {
         while (!it->second) {
           auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
-          sp_e->Wait(300 * 1000);
+          sp_e->Wait();
         }
       }
       failover_pause_start = true;
     } else {
       while (!failover_pause_start) {
         auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
-        sp_e->Wait(300 * 1000);
+        sp_e->Wait();
       }
     }
 
@@ -500,7 +504,7 @@ void ClientWorker::FailoverPreprocess(Coordinator* coo) {
     }
     while (!*failover_trigger_) {
       auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
-      sp_e->Wait(300 * 1000);
+      sp_e->Wait();
       if (*failover_server_quit_) break;
     }
     if (coo->offset_ == 0) {
@@ -512,7 +516,7 @@ void ClientWorker::FailoverPreprocess(Coordinator* coo) {
     } else {
       while (failover_wait_leader_ && !*failover_server_quit_) {
         auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(500 * 1000);
-        sp_e->Wait(500 * 1000);
+        sp_e->Wait();
       }
     }
     n_pause_concurrent_[coo->coo_id_] = false;

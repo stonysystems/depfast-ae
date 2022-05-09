@@ -52,6 +52,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-S', '--db-checksum', dest='db_checksum',
                    default=False, action='store_true')
+    opt.add_option('-L', '--enable-leaksan', dest='leaksan',
+                   default=False, action='store_true')
     opt.parse_args();
 
 def configure(conf):
@@ -77,6 +79,7 @@ def configure(conf):
     _enable_reuse_coroutine(conf)
     _enable_simulate_wan(conf)
     _enable_db_checksum(conf)
+    _enable_leaksan(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -266,6 +269,11 @@ def _enable_db_checksum(conf):
     if Options.options.db_checksum:
         Logs.pprint("PINK", "db checksum")
         conf.env.append_value("CXXFLAGS", "-DDB_CHECKSUM")
+
+def _enable_leaksan(conf):
+    if Options.options.leaksan:
+        Logs.pprint("PINK", "leak sanitizer enabled")
+        conf.env.append_value("CXXFLAGS", "-fsanitize=leak")
 
 def _enable_pic(conf):
     conf.env.append_value("CXXFLAGS", "-fPIC")

@@ -223,6 +223,7 @@ void ServerWorker::SetupCommo() {
     rep_sched_->commo_ = rep_commo_;
 		rep_sched_->Setup();
 
+    rep_commo_->rep_sched_ = rep_sched_;
   }
 }
 
@@ -242,6 +243,7 @@ void ServerWorker::ShutDown() {
   for (auto service : services_) {
     delete service;
   }
+  delete rep_frame_;
 //  thread_pool_g->release();
   svr_poll_mgr_->release();
 }

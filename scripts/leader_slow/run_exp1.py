@@ -21,6 +21,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
@@ -57,7 +58,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
+g_latencies_percentage = np.arange(0, 1, 0.01)
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -244,7 +245,7 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = percent*100
+            percent = round(percent*100)
             key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
@@ -597,6 +598,7 @@ class ClientController(object):
                     for process_name, process in self.process_infos.items():
                         if process.name == 'host1':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
+                            logger.debug("call %s on %s@%s", cmd, process.name, process.host_address)
                         if process.name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd_2])
                         self.once += 1
@@ -895,7 +897,9 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        cli_name = "host4" if len(host_process_counts) == 4 else "host6"
+
+        s = "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

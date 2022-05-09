@@ -91,6 +91,7 @@ bool SchedulerClassic::Dispatch(cmdid_t cmd_id,
   auto tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));
   verify(tx);
 //  MergeCommands(tx.cmd_, cmd);
+  Log_debug("%d: received dispatch for tx id: %" PRIx64, site_id_, tx->tid_);
 //  verify(partition_id_ == piece_data.partition_id_);
   // pre-proces
   // TODO separate pre-process and process/commit
@@ -233,18 +234,9 @@ int SchedulerClassic::OnCommit(txnid_t tx_id,
     cmd->ret_ = commit_or_abort;
     cmd->cmd_ = sp_tx->cmd_;
     sp_tx->is_leader_hint_ = true;
-		
-		struct timespec begin, end;
-		//clock_gettime(CLOCK_MONOTONIC, &begin);
     auto sp_m = dynamic_pointer_cast<Marshallable>(cmd);
-    //here, we need to let the paxos coordinator know what the request is
-    //Log_info("This is dep_id: %d", dep_id);
-    auto coo = CreateRepCoord(dep_id.id);
-
-		/*clock_gettime(CLOCK_MONOTONIC, &end);
-		Log_info("time of commit on server: %d", (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);*/
+    shared_ptr<Coordinator> coo(CreateRepCoord(dep_id.id));
     coo->Submit(sp_m);
-    //Log_info("Before failing verify");
     sp_tx->commit_result->Wait();
 		slow_ = coo->slow_;
 		
@@ -282,6 +274,12 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto tx_id = tpc_commit_cmd.tx_id_;
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
+  /**
+   * In Copilot, the same cmd commits twice, one in pilot log, another
+   * in copilot log. Must omit the second attempt to commit
+   */
+  if (sp_tx->commit_result->IsReady())
+    return 0;
   int commit_or_abort = tpc_commit_cmd.ret_;
   if (!sp_tx->cmd_)
     sp_tx->cmd_ = tpc_commit_cmd.cmd_;
@@ -306,13 +304,23 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   } else {
     verify(0);
   }
-  if (sp_tx->is_leader_hint_) {
-    // mostly for debug
-    sp_tx->commit_result->Set(1);
-  }
-//  sp_tx->commit_result->Set(1);
+  // if (sp_tx->is_leader_hint_) {
+  //   // mostly for debug
+  //   sp_tx->commit_result->Set(1);
+  // }
+  sp_tx->commit_result->Set(1);
   sp_tx->ev_execute_ready_->Set(1);
   return 0;
+}
+
+bool SchedulerClassic::CheckCommitted(Marshallable& tpc_commit_cmd) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  auto &c = dynamic_cast<TpcCommitCommand&>(tpc_commit_cmd);
+  auto tx_id = c.tx_id_;
+  auto sp_tx = dynamic_pointer_cast<TxClassic>(GetTx(tx_id));
+  if (!sp_tx)  // it's too old that it's already deleted
+    return true;
+  return (sp_tx->commit_result->IsReady());
 }
 
 void SchedulerClassic::Next(Marshallable& cmd) {

@@ -1,141 +1,76 @@
 
 #include "quorum_event.h"
+#include "coroutine.h"
 
 
 namespace janus {
 
-thread_local history_t QuorumEvent::history{};
-thread_local count_t QuorumEvent::counts{};
-thread_local latency_t QuorumEvent::latencies{};
-uint64_t QuorumEvent::count = 0;
-	
-	void QuorumEvent::recordHistory(unordered_set<std::string> ip_addrs) {
-		auto it = QuorumEvent::history.find(ip_addrs);
-		clock_gettime(CLOCK_MONOTONIC, &begin);
+using rrr::Coroutine;
+using rrr::Time;
 
-		ips_ = ip_addrs;
-		if (it == QuorumEvent::history.end()) {
-			unordered_map<std::string, int> counts = {};
-			unordered_map<std::string, vector<long>> empties = {};
-			
-			for (std::string ip_addr : ip_addrs) {
-				counts.insert(std::make_pair(ip_addr, 0));
-				std::vector<long> empty{};
-				empties.insert(std::make_pair(ip_addr, empty));
-			}
+QuorumEvent::QuorumEvent(int n_total, int quorum)
+    : Event(), n_total_(n_total), quorum_(quorum) {
+  finalize_event_ = std::make_shared<IntEvent>(n_total_);
+  finalize_event_->__debug_creator = 1;
+  begin_timestamp_ = Time::now(true);
+}
 
-			QuorumEvent::history.insert(std::make_pair(ip_addrs, counts));
-			QuorumEvent::counts.insert(std::make_pair(ip_addrs, 0));
-			QuorumEvent::latencies.insert(std::make_pair(ip_addrs, empties));
-		}
-	}
+void QuorumEvent::Finalize(
+    uint64_t timeout,
+    function<bool(vector<std::pair<uint16_t, rrr::i64> > &)> finalize_func) {
+  
+  
+  Coroutine::CreateRun([timeout, finalize_func, this]() {
+    bool ret = false;
+    
+    auto final_ev = finalize_event_;  // have to make a copy of finalized event (for reason, see comment A)
+    vector<std::pair<uint16_t, rrr::i64> > dangling_rpc;
+    for (auto &it : xids_)
+      dangling_rpc.push_back(it);  // fetch out dangling rpc info before it's freed (see comment A)
 
-	void QuorumEvent::updateDataStructs(std::string ip_addr) {
-		QuorumEvent::history[ips_][ip_addr]++;
-		QuorumEvent::counts[ips_]++;
+    final_ev->Wait(timeout);
+    /* A: by the time this fires, the quorum event could have been freed. Thus,
+     avoid accesing the quorum event object or its members after this line */
 
-		struct timespec end;
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		long elapsed_time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-		QuorumEvent::latencies[ips_][ip_addr].push_back(elapsed_time);
-	}
-	
-	void QuorumEvent::verifyTransient(std::string ip_addr) {
-		int slow_nodes = 0;
-		int nodes = 0;
-		
-		if (QuorumEvent::counts[ips_] == 100000) {
-			std::vector<long> medians{};
-			std::vector<long> p99s{};
-			std::vector<std::string> ips{};
-							
-			int threshold = (int)(QuorumEvent::counts[ips_]/(QuorumEvent::history[ips_].size()));
-			for (auto it = QuorumEvent::history[ips_].begin(); it != QuorumEvent::history[ips_].end(); it++) {
-				if (it->second < (int)(threshold/100)) {
-									
-					slow_nodes++;
-					//Log_info("Warning: the follower with address %s is slower than usual", it->first.c_str());
-					//Log_info("Warning: information is %d and %d", it->first, it->second);
-				} else {
-					std::vector<long> lats = QuorumEvent::latencies[ips_][it->first];
-					std::sort(lats.begin(), lats.end());
-					medians.push_back(lats[lats.size()/2.0]);
-					p99s.push_back(lats[lats.size()*99/100.0]);
-					ips.push_back(it->first);
-				}
-				it->second = 0;
-				QuorumEvent::latencies[ips_][it->first].clear();
+    // didn't receive all RPC replies
+    if (final_ev->status_ == Event::TIMEOUT) {
+      // Log_info("finalized timeout");
+      ret = finalize_func(dangling_rpc);
+    }
+  });
+}
 
-				nodes++;
-			}
-			if (slow_nodes >= (nodes-quorum_)) {
-				Log_info("Warning: the replicated system is susceptible to transient performance");
-				for (int i = 0; i < medians.size(); i++) {
-					Log_info("Warning: transient performance info for %s; avg: %ld and p99: %ld", ips[i].c_str(), medians[i], p99s[i]);
-				}
-			}
+void QuorumEvent::AddXid(uint16_t site, rrr::i64 xid) {
+  xids_[site] = xid;
+}
 
-			QuorumEvent::counts[ips_] = 0;
-		}
-	}
+void QuorumEvent::RemoveXid(uint16_t site) {
+  auto it = xids_.find(site);
+  if (it != xids_.end())
+    xids_.erase(it);
+}
 
-	void QuorumEvent::updateHistory(std::string ip_addr) {
-		if (ip_addr != "") {
-			auto map = QuorumEvent::history.find(ips_);
-			auto count_ = QuorumEvent::counts.find(ips_);
+void QuorumEvent::VoteYes() {
+  n_voted_yes_++;
+  Test();
+  vec_timestamp_.push_back(Time::now(true) - begin_timestamp_);
 
-			if (map != QuorumEvent::history.end()) {
-				//Log_info("ip_addr here: %s", ip_addr.c_str());
-				auto ip_count = QuorumEvent::history[ips_].find(ip_addr);
-				
-				if (ip_count != map->second.end()) {
-					if (!IsReady()) {
-						updateDataStructs(ip_addr);
-						verifyTransient(ip_addr);
+  if (finalize_event_->status_ != Event::TIMEOUT)
+    finalize_event_->Set(n_voted_yes_ + n_voted_no_);
+}
 
-					}
-				}
-			}
-		}
-	}
-	long QuorumEvent::MemoryUtil() {
-		long page_size = sysconf(_SC_PAGE_SIZE) / 1024;
-		long rss;
-		std::string ignore;
+void QuorumEvent::VoteNo() {
+  n_voted_no_++;
+  Test();
 
-		pid_t pid_ = ::getpid();
-		std::string pid = std::to_string(pid_);
-		std::ifstream stat_file("/proc/"+pid+"/stat", std::ios_base::in);
+  if (finalize_event_->status_ != Event::TIMEOUT)
+    finalize_event_->Set(n_voted_yes_ + n_voted_no_);
+}
 
-		stat_file >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-							>> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-							>> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> rss;
-
-		return rss * page_size;
-	}
-
-	void QuorumEvent::Finalize(int timeout, int flag) {
-		CalledFinalize();
-
-		if (QuorumEvent::count == 100000) {
-			QuorumEvent::count = 0;
-			finalize_event->Wait(timeout);
-		} else {
-			QuorumEvent::count++;
-		}
-
-		if (finalize_event->status_ == TIMEOUT) {
-			if (flag == TimeoutFlag::FLAG_FREE) {
-				for (auto it = changing_ips_.begin(); it != changing_ips_.end(); it++) {
-					long mem_before = MemoryUtil();
-					FreeDangling(*it);
-					long mem_after = MemoryUtil();
-					Log_info("finalizing timeout: %ld -> %ld", mem_before, mem_after);
-				}			
-			}
-		}
-
-		changing_ips_.clear();
-	}
+void QuorumEvent::Log() {
+  for (auto t : vec_timestamp_)
+    std::cout << " " << t;
+  std::cout << std::endl;
+}
 
 } // namespace janus

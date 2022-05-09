@@ -7,6 +7,7 @@
 #include "coroutine.h"
 #include "reactor.h"
 
+// #define USE_PROTECTED_STACK
 
 namespace rrr {
 uint64_t Coroutine::global_id = 0;
@@ -26,7 +27,7 @@ void Coroutine::DoFinalize() {
 		auto qe = std::dynamic_pointer_cast<janus::QuorumEvent>(quorum_events_[i]);
 		verify(qe);
 		if (!qe->needs_finalize_) {
-			qe->finalize_event->Wait(1*1000*1000);
+			qe->finalize_event_->Wait(1*1000*1000);
 		}
 	}
 	quorum_events_.clear();
@@ -67,7 +68,10 @@ void Coroutine::Run() {
 
   const auto x = new boost_coro_task_t(
 #ifdef USE_PROTECTED_STACK
-      boost::coroutines2::protected_fixedsize_stack(),
+      boost::coroutines2::protected_fixedsize_stack(boost::context::stack_traits::default_size() * 2),
+      // ATTENTION: STACK MEMORY IS PRECIOUS, AVOID EXCESSIVE RECURSION CALL
+#else
+      boost::coroutines2::default_stack(boost::context::stack_traits::default_size() * 2),
 #endif
       std::bind(&Coroutine::BoostRunWrapper, this, std::placeholders::_1)
 //    [this] (boost_coro_yield_t& yield) {

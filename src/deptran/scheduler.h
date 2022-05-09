@@ -6,6 +6,7 @@
 #include "kvdb.h"
 #include "procedure.h"
 #include "tx.h"
+#include "rcc/tx.h"
 
 namespace janus {
 
@@ -107,7 +108,7 @@ class TxLogServer {
   virtual void Execute(Tx &txn_box,
                        innid_t inn_id);
 
-  Coordinator *CreateRepCoord(const i64& dep_id);
+  Coordinator *CreateRepCoord(const i64& dep_id=0);
   virtual shared_ptr<Tx> GetTx(txnid_t tx_id);
   virtual shared_ptr<Tx> CreateTx(txnid_t tx_id,
                                   bool ro = false);
@@ -155,6 +156,13 @@ class TxLogServer {
   void RegLearnerAction(function<void(Marshallable &)> learner_action) {
     app_next_ = learner_action;
   }
+
+  /**
+   * Check if the command is already committed
+   * @param commit_cmd command to be checked
+   * @return true if it's already committed, false otherwise
+   */
+  virtual bool CheckCommitted(Marshallable& commit_cmd) { verify(0); }
 
   virtual void Next(Marshallable& cmd) { verify(0); };
 

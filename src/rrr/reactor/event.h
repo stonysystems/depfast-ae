@@ -17,11 +17,17 @@
 #define SUCCESS (0)
 #define REPEAT (-5)
 #define REJECT (-10)
+#define Wait_recordplace(sp_ev, wait_func) do { \
+  auto ref_ev = sp_ev; \
+  ref_ev->RecordPlace(__FILE__, __LINE__); \
+  ref_ev->wait_func; \
+} while(0)
 
 namespace rrr {
 using std::shared_ptr;
 using std::function;
 using std::vector;
+using std::list;
 
 class Reactor;
 class Coroutine;
@@ -41,6 +47,8 @@ class Event : public std::enable_shared_from_this<Event> {
   function<bool(int)> test_{};
 	bool needs_finalize_{false};
   uint64_t wakeup_time_; // calculated by timeout, unit: microsecond
+  bool rcd_wait_ = false;
+  std::string wait_place_{"not recorded"};
 
   // An event is usually allocated on a coroutine stack, thus it cannot own a
   //   shared_ptr to the coroutine it is.
@@ -60,6 +68,8 @@ class Event : public std::enable_shared_from_this<Event> {
 	virtual void CalledFinalize();
 	virtual void FreeDangling(std::string ip);
   virtual uint64_t GetCoroId();
+  void RecordPlace(const char* file, int line);
+
   virtual bool Test();
 	virtual bool IsSlow();
   virtual bool IsReady() {
@@ -194,6 +204,7 @@ class IntEvent : public Event {
 
  public:
   IntEvent() {}
+  IntEvent(int tar) :target_(tar) {}
   int value_{0};
   int target_{1};
 
@@ -224,7 +235,7 @@ class IntEvent : public Event {
 class SharedIntEvent {
  public:
   int value_{};
-  vector<shared_ptr<IntEvent>> events_{};
+  list<shared_ptr<IntEvent>> events_{};
   int Set(const int& v);
   void Wait(function<bool(int)> f);
   void WaitUntilGreaterOrEqualThan(int x, int timeout=0);
@@ -241,11 +252,17 @@ class NeverEvent: public Event {
 class TimeoutEvent : public Event {
  public:
   uint64_t wakeup_time_{0};
-  TimeoutEvent(uint64_t wait_us_): wakeup_time_{Time::now()+wait_us_} {}
+  uint64_t wait_us_{0};
+  TimeoutEvent(uint64_t wait_us)
+      : wakeup_time_{Time::now() + wait_us}, wait_us_(wait_us) {}
 
   bool IsReady() override {
 //    Log_debug("test timeout");
     return (Time::now() > wakeup_time_);
+  }
+
+  void Wait() {
+    Event::Wait(wait_us_);
   }
 };
 

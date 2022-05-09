@@ -363,7 +363,7 @@ void FpgaRaftServer::StartTimer()
                     duration = randDuration() ;
                 }
                 auto sp_e2 = Reactor::CreateSpEvent<TimeoutEvent>(wait_int_);
-                sp_e2->Wait(wait_int_) ;
+                sp_e2->Wait() ;
             } 
         });
       init_ = true ;

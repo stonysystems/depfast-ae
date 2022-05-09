@@ -244,6 +244,11 @@ bool ServerConnection::handle_read() {
 //#endif
 //              f(r, c);
             });
+            // if (!coro) {
+            //     begin_reply(req, EBUSY);
+            //     end_reply();
+            //     delete req;
+            // }
         } else {
             rpc_id_missing_l_s.lock();
             bool surpress_warning = false;

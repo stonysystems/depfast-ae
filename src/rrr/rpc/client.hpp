@@ -73,6 +73,10 @@ public:
         return error_code_;
     }
 
+    i64 get_xid() const {
+        return xid_;
+    }
+
     static inline void safe_release(Future* fu) {
         if (fu != nullptr) {
             fu->release();
@@ -109,6 +113,7 @@ public:
 
  class Client: public Pollable {
     Marshal in_, out_;
+    uint64_t cnt_;
 
     /**
      * NOT a refcopy! This is intended to avoid circular reference, which prevents everything from being released correctly.
@@ -207,7 +212,7 @@ public:
     bool handle_read();
     void handle_write();
     void handle_error();
-		void handle_free();
+    void handle_free(i64 xid);
 
 };
 

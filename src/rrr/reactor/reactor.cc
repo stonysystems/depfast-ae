@@ -13,7 +13,11 @@
 #include "epoll_wrapper.h"
 #include "sys/times.h" 
 
+// #define DEBUG_WAIT
+
 namespace rrr {
+
+const int64_t n_max_coroutine = 2000;
 
 thread_local std::shared_ptr<Reactor> Reactor::sp_reactor_th_{};
 thread_local std::shared_ptr<Reactor> Reactor::sp_disk_reactor_th_{};
@@ -44,6 +48,8 @@ std::shared_ptr<Reactor>
 Reactor::GetReactor() {
   if (!sp_reactor_th_) {
     Log_debug("create a coroutine scheduler");
+    if (!REUSING_CORO)
+      Log_warn("reusing coroutine not enabled!");
     sp_reactor_th_ = std::make_shared<Reactor>();
     sp_reactor_th_->thread_id_ = std::this_thread::get_id();
   }
@@ -76,10 +82,12 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     verify(!sp_coro->func_);
     sp_coro->func_ = func;
   } else {
+    // if (n_created_coroutines_ >= n_max_coroutine)
+    //   return nullptr;
     sp_coro = std::make_shared<Coroutine>(func);
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;
-    if (n_created_coroutines_ % 100 == 0) {
+    if (n_created_coroutines_ % 1000 == 0) {
       Log_info("created %d, busy %d, idle %d coroutines on this thread",
                (int)n_created_coroutines_,
                (int)n_busy_coroutines_,
@@ -94,18 +102,6 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
   return sp_coro;
 }
 
-void Reactor::FreeDangling(std::string ip) {
-	auto it = Reactor::clients_.find(ip);
-	if (it != Reactor::clients_.end()) {
-		for (int i = 0; i < it->second.size(); i++) {
-			it->second[i]->handle_free();
-		}
-	} else {
-		for (auto it = clients_.begin(); it != clients_.end(); it++) {
-			Log_info("could not find client: %s", it->first.c_str());
-		}
-	}
-}
 void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
   auto time_now = Time::now();
   for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
@@ -235,7 +231,7 @@ void Reactor::DiskLoop(){
   Reactor::GetReactor()->disk_job_.unlock();
 	
 	int total_written = 0;
-	unordered_set<std::string> sync_set{};
+	std::unordered_set<std::string> sync_set{};
 	for (int i = 0; i < pending_disk_events_.size(); i++) {
 		total_written += pending_disk_events_[i]->Handle();
 		if (pending_disk_events_[i]->sync) {
@@ -352,6 +348,16 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
   sp_running_coro_th_ = sp_old_coro;
 }
 
+void Reactor::DisplayWaitingEv() {
+  char buff[1000];
+  int offset = 0;
+  offset += sprintf(buff, "%p waiting events %d:", sp_reactor_th_.get(), waiting_events_.size());
+  for (auto& it : waiting_events_) {
+    offset += sprintf(buff+offset, "\n%s", it->wait_place_.c_str());
+  }
+  Log_info(buff);
+}
+
 // TODO PollThread -> Reactor
 // TODO PollMgr -> ReactorFactory
 class PollMgr::PollThread {
@@ -413,10 +419,6 @@ class PollMgr::PollThread {
     Reactor::sp_reactor_th_ = args->reactor_th;
     
     while(!thiz->stop_flag_){
-			for (auto it = Reactor::dangling_ips_.begin(); it != Reactor::dangling_ips_.end(); it++) {
-				Reactor::GetReactor()->FreeDangling(*it);
-				Log_info("done freeing");
-			}
 			Reactor::dangling_ips_.clear();
       usleep(1*1000);
     }
@@ -628,6 +630,15 @@ void PollMgr::PollThread::poll_loop() {
     std::list<shared_ptr<Pollable>> remove_poll(pending_remove_.begin(), pending_remove_.end());
     pending_remove_.clear();
     pending_remove_l_.unlock();
+
+#ifdef DEBUG_WAIT
+    auto time_now = Time::now();
+    if (time_now - last_time >= Time::RRR_USEC_PER_SEC) {
+      // Reactor::GetReactor()->DisplayWaitingEv();
+      Log_info("%p created coroutine %lu", Reactor::GetReactor().get(), Reactor::GetReactor()->n_created_coroutines_);
+      last_time = time_now;
+    }
+#endif
 
     for (auto& poll: remove_poll) {
       int fd = poll->fd();

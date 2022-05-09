@@ -21,6 +21,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+import numpy as np
 from collections import OrderedDict
 
 # third-party python modules
@@ -57,7 +58,7 @@ deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
 
 ONE_BILLION = float(10 ** 9)
-g_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
+g_latencies_percentage = np.arange(0, 1, 0.01)
 g_latencies_header = [str(x * 100) + "% LATENCY" for x in g_latencies_percentage]
 g_att_latencies_percentage = [0.5, 0.9, 0.99, 0.999]
 g_att_latencies_header = [str(x * 100) + "% ATT_LT" for x in g_att_latencies_percentage]
@@ -244,7 +245,7 @@ class TxnInfo(object):
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
-            percent = percent*100
+            percent = round(percent*100)
             key = str(percent)
             if len(self.mid_latencies)>0:
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
@@ -467,7 +468,7 @@ class ClientController(object):
             for proxy in rpc_proxy:
                 try:
                     dep_id = (str.encode('dep'), 0)
-                    future = proxy.async_client_response(dep_id)
+                    future = proxy.async_client_response()
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
@@ -554,7 +555,7 @@ class ClientController(object):
                     cmd = "pid=`ss -tulpn | grep '0.0.0.0:10000' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            taskset -ac 1 ~/inf & export inf=$!; \
                            sudo mkdir /sys/fs/cgroup/cpu/cpulow /sys/fs/cgroup/cpu/cpuhigh; \
-                           echo 64 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
+                           echo 640 | sudo tee /sys/fs/cgroup/cpu/cpulow/cpu.shares; \
                            echo $pid | sudo tee /sys/fs/cgroup/cpu/cpulow/cgroup.procs; \
                            echo $inf | sudo tee /sys/fs/cgroup/cpu/cpuhigh/cgroup.procs;"
                     
@@ -907,7 +908,9 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
+        cli_name = "host4" if len(host_process_counts) == 4 else "host6"
+
+        s = "nohup " + ("" if process.name == cli_name else self.taskset_func(host_process_counts[process.host_address])) + \
             " ./build/deptran_server " + \
             "-b " + \
             "-d " + str(self.config['args'].c_duration) + " "

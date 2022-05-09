@@ -408,7 +408,7 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
   }
   Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
-  if (n_prepare_ack_ == cmd->partition_ids_.size()) {
+  if (n_prepare_ack_ == cmd->partition_ids_.size()*2) {
     Log_debug("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
@@ -553,13 +553,13 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
             cmd_->id_, n_finish_ack_, n_finish_req_);
   verify(cmd->GetPartitionIds().size() == n_finish_req_);
   // Perhaps a bug here?
-  if (n_finish_ack_ == cmd->GetPartitionIds().size()) {
-    if (cmd->reply_.res_ == REJECT) {
-      aborted_ = true;
-    } else {
-      committed_ = true;
-    }
-    //GotoNextPhase();
+  if (n_finish_ack_ == cmd->GetPartitionIds().size()*2) {  // TODO: fit both copilot and raft
+//    if (cmd->reply_.res_ == REJECT) {
+//      aborted_ = true;
+//    } else {
+//      committed_ = true;
+//    }
+    GotoNextPhase();
   }
   Log_debug("callback: %s, retry: %s",
             committed_ ? "True" : "False",
@@ -657,7 +657,7 @@ retry:
     }
   } else if (e->No()) {
     auto sp_e = Reactor::CreateSpEvent<TimeoutEvent>(300 * 1000);
-    sp_e->Wait(300 * 1000);
+    sp_e->Wait();
     // usleep(300 * 1000) ;  // 300 ms
     goto retry;
   } else {
