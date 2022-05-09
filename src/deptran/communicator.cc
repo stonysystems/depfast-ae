@@ -134,40 +134,6 @@ Communicator::LeaderProxyForPartition(parid_t par_id) const {
   }
 }
 
-std::vector<SiteProxyPair>
-Communicator::PilotProxyForPartition(parid_t par_id) const {
-  /**
-   * ad-hoc. No leader election. fixed pilot(id=0) and copilot(id=1)
-   */
-  auto it  = rpc_par_proxies_.find(par_id);
-  verify(it != rpc_par_proxies_.end());
-  auto& partition_proxies = it->second;
-  auto config = Config::GetConfig();
-  auto pilot_it =
-      std::find_if(partition_proxies.begin(), partition_proxies.end(),
-                   [config](const std::pair<siteid_t, ClassicProxy*>& p) {
-                     verify(p.second != nullptr);
-                     auto& site = config->SiteById(p.first);
-                     return site.locale_id == 0;
-                   });
-  if (pilot_it == partition_proxies.end())
-    Log_fatal("couldn't find pilot for partition %d", par_id);
-  verify(pilot_it->second);
-
-  auto copilot_it =
-      std::find_if(partition_proxies.begin(), partition_proxies.end(),
-                   [config](const std::pair<siteid_t, ClassicProxy*>& p) {
-                     verify(p.second != nullptr);
-                     auto& site = config->SiteById(p.first);
-                     return site.locale_id == 1;
-                   });
-  if (copilot_it == partition_proxies.end())
-    Log_fatal("couldn't find copilot for partition %d", par_id);
-  verify(copilot_it->second);
-
-  return { *pilot_it, *copilot_it };  
-}
-
 ClientSiteProxyPair
 Communicator::ConnectToClientSite(Config::SiteInfo& site,
                                   std::chrono::milliseconds timeout) {
@@ -276,6 +242,7 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 	return e;
 
 }
+
 void Communicator::BroadcastDispatch(
     shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
     Coordinator* coo,
@@ -289,43 +256,44 @@ void Communicator::BroadcastDispatch(
         int32_t ret;
         TxnOutput outputs;
         fu->get_reply() >> ret >> outputs;
-        n_pending_rpc_--;
-        verify(n_pending_rpc_ >= 0);
         callback(ret, outputs);
       };
-  // auto pair_leader_proxy = LeaderProxyForPartition(par_id);
-  // Log_debug("send dispatch to site %ld",
-  //           pair_leader_proxy.first);
-  // auto proxy = pair_leader_proxy.second;
-  auto pair_proxies = PilotProxyForPartition(par_id);  //TODO
-  verify(pair_proxies.size() == 2);
-  Log_debug("send dispatch to site %d, %d",
-            pair_proxies[0].first,
-            pair_proxies[1].first);
+  auto pair_leader_proxy = LeaderProxyForPartition(par_id);
+  SetLeaderCache(par_id, pair_leader_proxy) ;
+  Log_debug("send dispatch to site %ld, par %d",
+            pair_leader_proxy.first, par_id);
+  auto proxy = pair_leader_proxy.second;
   shared_ptr<VecPieceData> sp_vpd(new VecPieceData);
   sp_vpd->sp_vec_piece_data_ = sp_vec_piece;
-  MarshallDeputy md(sp_vpd);
+  MarshallDeputy md(sp_vpd); // ????
 
-  struct DepId di;
-  di.id = cmd_id;
-  di.str = __func__;
-
-  if (n_pending_rpc_ < max_pending_rpc_) {
-  // if (true) {
-    auto future = pair_proxies[0].second->async_Dispatch(cmd_id, di, md, fuattr);
-    Future::safe_release(future);
-    n_pending_rpc_++;
+	DepId di;
+	di.str = "dep";
+	di.id = Communicator::global_id++;
+  
+	auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
+  Future::safe_release(future);
+  if (false) {
+    Log_info("multicast");
+    for (auto& pair : rpc_par_proxies_[par_id]) {
+      if (pair.first != pair_leader_proxy.first) {
+        rrr::FutureAttr fu2;
+        fu2.callback =
+            [coo, this, callback](Future* fu) {
+              int32_t ret;
+              TxnOutput outputs;
+              fu->get_reply() >> ret >> outputs;
+              // do nothing
+            };
+				
+				DepId di2;
+				di2.str = "dep";
+				di2.id = Communicator::global_id++;
+        
+				Future::safe_release(pair.second->async_Dispatch(cmd_id, di2, md, fu2));
+      }
+    }
   }
-
-  rrr::FutureAttr fu2;
-  fu2.callback =
-      [coo, this, callback](Future* fu) {
-        int32_t ret;
-        TxnOutput outputs;
-        fu->get_reply() >> ret >> outputs;
-        callback(ret, outputs);
-      };
-  Future::safe_release(pair_proxies[1].second->async_Dispatch(cmd_id, di, md, fu2));
 }
 
 //need to change this code to solve the quorum info in the graphs
@@ -782,11 +750,9 @@ void Communicator::SendEarlyAbort(parid_t pid,
 #endif
   FutureAttr fuattr;
   fuattr.callback = [](Future*) {};
-  // ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
-  auto pair_proxies = PilotProxyForPartition(pid);
+  ClassicProxy* proxy = LeaderProxyForPartition(pid).second;
   Log_debug("SendAbort to %ld tid:%ld\n", pid, tid);
-  for (auto& p : pair_proxies)
-    Future::safe_release(p.second->async_EarlyAbort(tid, fuattr));
+  Future::safe_release(proxy->async_EarlyAbort(tid, fuattr));
 }
 
 /*void Communicator::SendAbort(parid_t pid, txnid_t tid,

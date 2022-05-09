@@ -69,6 +69,7 @@ Frame* Frame::GetFrame(int mode) {
   // some built-in mode
   switch (mode) {
     case MODE_NONE:
+    case MODE_NONE_COPILOT:
     case MODE_NOTX:
     case MODE_MDCC:
     case MODE_2PL:
@@ -207,6 +208,7 @@ Coordinator* Frame::CreateCoordinator(cooid_t coo_id,
 //      coo = (Coordinator*)new mdcc::MdccCoordinator(coo_id, id, config, ccsi);
       break;
     case MODE_NONE:
+    case MODE_NONE_COPILOT:
     default:
       coo = new CoordinatorNone(coo_id,
                           benchmark,
@@ -287,8 +289,16 @@ TxData* Frame::CreateTxnCommand(TxRequest& req, shared_ptr<TxnRegistry> reg) {
 //}
 
 Communicator* Frame::CreateCommo(PollMgr* pollmgr) {
-  commo_ = new Communicator(pollmgr);
-  if (mode_ == MODE_NONE) {
+  switch (mode_) {
+    case MODE_NONE_COPILOT:
+      commo_ = new CommunicatorNoneCopilot(pollmgr);
+      break;
+    default:
+      commo_ = new Communicator(pollmgr);
+      break;
+  }
+  
+  if (mode_ == MODE_NONE || mode_ == MODE_NONE_COPILOT) {
     commo_->broadcasting_to_leaders_only_ = false;
   }
   return commo_;
@@ -360,6 +370,7 @@ TxLogServer* Frame::CreateScheduler() {
       break;
     case MODE_NOTX:
     case MODE_NONE:
+    case MODE_NONE_COPILOT:
       sch = new SchedulerNone();
       break;
     case MODE_RPC_NULL:
@@ -425,6 +436,7 @@ vector<rrr::Service *> Frame::CreateRpcServices(uint32_t site_id,
 map<string, int> &Frame::FrameNameToMode() {
   static map<string, int> frame_name_mode_s = {
       {"none",          MODE_NONE},
+      {"none_copilot",  MODE_NONE_COPILOT},
       {"2pl",           MODE_2PL},
       {"occ",           MODE_OCC},
       {"snow",          MODE_RO6},

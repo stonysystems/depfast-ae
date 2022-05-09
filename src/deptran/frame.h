@@ -3,6 +3,7 @@
 #include "constants.h"
 #include "txn_reg.h"
 #include "config.h"
+#include "none_copilot/commo.h"
 
 namespace janus {
 

@@ -366,12 +366,13 @@ inline rrr::Marshal &operator<<(rrr::Marshal &m, const std::string &v) {
   }
 
 	if (v == "dep") {
-		//Log_info("dep: %s", v.c_str());
+		// Log_info("dep: %s", v.c_str());
 		m.found_dep = true;
 	} else if (v == "hb") { 
 		m.valid_id = true;
 	} else {
-		Log_info("not dep: %s", v.c_str());
+    m.valid_id = true;
+		// Log_info("not dep: %s", v.c_str());
 	}
 
   return m;

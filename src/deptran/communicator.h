@@ -127,8 +127,6 @@ class Communicator {
 
   SiteProxyPair RandomProxyForPartition(parid_t partition_id) const;
   SiteProxyPair LeaderProxyForPartition(parid_t) const;
-  std::vector<SiteProxyPair>
-  PilotProxyForPartition(parid_t) const;
   SiteProxyPair NearestProxyForPartition(parid_t) const;
   void SetLeaderCache(parid_t par_id, SiteProxyPair& proxy) {
     leader_cache_[par_id] = proxy;
@@ -155,7 +153,7 @@ class Communicator {
   void SendStart(SimpleCommand& cmd,
                  int32_t output_size,
                  std::function<void(Future *fu)> &callback);
-  void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
+  virtual void BroadcastDispatch(shared_ptr<vector<shared_ptr<SimpleCommand>>> vec_piece_data,
                          Coordinator *coo,
                          const std::function<void(int res, TxnOutput &)> &) ;
 

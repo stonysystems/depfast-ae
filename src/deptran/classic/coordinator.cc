@@ -30,6 +30,7 @@ CoordinatorClassic::CoordinatorClassic(uint32_t coo_id,
 
 Communicator* CoordinatorClassic::commo() {
   if (commo_ == nullptr) {
+    verify(0);
     commo_ = new Communicator;
   }
   verify(commo_ != nullptr);
@@ -234,6 +235,7 @@ void CoordinatorClassic::DispatchAsync() {
   Log_debug("Dispatch cnt: %d for tx_id: %" PRIx64, cnt, txn->root_id_);
 }
 
+// not used
 void CoordinatorClassic::DispatchAsync(bool last) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto txn = (TxData*) cmd_;
@@ -408,7 +410,7 @@ void CoordinatorClassic::PrepareAck(phase_t phase, int res) {
   }
   Log_debug("tid %llx; prepare result %d", (int64_t) cmd_->root_id_, res);
 
-  if (n_prepare_ack_ == cmd->partition_ids_.size()*2) {
+  if (n_prepare_ack_ == cmd->partition_ids_.size()) {
     Log_debug("2PL prepare finished for %ld", cmd->root_id_);
     if (!aborted_) {
       cmd->commit_.store(true);
@@ -553,13 +555,13 @@ void CoordinatorClassic::CommitAck(phase_t phase) {
             cmd_->id_, n_finish_ack_, n_finish_req_);
   verify(cmd->GetPartitionIds().size() == n_finish_req_);
   // Perhaps a bug here?
-  if (n_finish_ack_ == cmd->GetPartitionIds().size()*2) {  // TODO: fit both copilot and raft
-//    if (cmd->reply_.res_ == REJECT) {
-//      aborted_ = true;
-//    } else {
-//      committed_ = true;
-//    }
-    GotoNextPhase();
+  if (n_finish_ack_ == cmd->GetPartitionIds().size()) {
+    if (cmd->reply_.res_ == REJECT) {
+      aborted_ = true;
+    } else {
+      committed_ = true;
+    }
+    // GotoNextPhase();
   }
   Log_debug("callback: %s, retry: %s",
             committed_ ? "True" : "False",

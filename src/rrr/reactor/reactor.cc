@@ -311,21 +311,12 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 	struct timespec begin, end;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 
-	trying_job_.lock();
-	trying_count++;
-	int trying = trying_count;
-	trying_job_.unlock();
-
 	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
   } else {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
-
-	trying_job_.lock();
-	trying_count--;
-	trying_job_.unlock();
 	
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
