@@ -22,18 +22,6 @@ Coroutine::~Coroutine() {
 //  verify(0);
 }
 
-void Coroutine::DoFinalize() {
-	for (int i = 0; i < quorum_events_.size(); i++) {
-		auto qe = std::dynamic_pointer_cast<janus::QuorumEvent>(quorum_events_[i]);
-		verify(qe);
-		if (!qe->needs_finalize_) {
-			qe->finalize_event_->Wait(1*1000*1000);
-		}
-	}
-	quorum_events_.clear();
-	status_ = FINISHED;
-}
-
 void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
   boost_coro_yield_ = yield;
   verify(func_);
@@ -50,7 +38,6 @@ void Coroutine::BoostRunWrapper(boost_coro_yield_t& yield) {
 			Log_info("Warning: We did not deal with backlog issues");
 			needs_finalize_ = false;
 		}
-		quorum_events_.clear();
     Reactor::GetReactor()->n_active_coroutines_--;
     yield();
   }

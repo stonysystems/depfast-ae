@@ -38,7 +38,7 @@ class Coroutine {
  public:
   static std::shared_ptr<Coroutine> CurrentCoroutine();
   // the argument cannot be a reference because it could be declared on stack.
-  static std::shared_ptr<Coroutine> CreateRun(std::function<void()> func);
+  static std::shared_ptr<Coroutine> CreateRun(std::function<void()> func, const char *file="", int64_t line=0);
   static uint64_t global_id;
 	uint64_t dep_id_;
 	bool need_finalize_;
@@ -52,7 +52,6 @@ class Coroutine {
 
   std::shared_ptr<boost_coro_task_t> up_boost_coro_task_{nullptr};
   boost::optional<boost_coro_yield_t&> boost_coro_yield_{};
-	std::vector<std::shared_ptr<Event>> quorum_events_{};
 
   Coroutine() = delete;
   Coroutine(std::function<void()> func);

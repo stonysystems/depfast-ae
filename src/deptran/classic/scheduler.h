@@ -45,8 +45,7 @@ class SchedulerClassic: public TxLogServer {
   virtual bool OnPrepare(txnid_t tx_id,
                          const std::vector<i32> &sids,
                          struct DepId dep_id,
-												 bool& null_cmd,
-												 std::vector<shared_ptr<QuorumEvent>>& quorum_events);
+												 bool& null_cmd);
 
   virtual bool DoPrepare(txnid_t tx_id) {
     verify(0);
@@ -55,8 +54,7 @@ class SchedulerClassic: public TxLogServer {
 
   virtual int OnCommit(cmdid_t cmd_id,
                        struct DepId dep_id,
-                       int commit_or_abort,
-											 std::vector<shared_ptr<QuorumEvent>>& quorum_events);
+                       int commit_or_abort);
 
   virtual int OnEarlyAbort(txid_t tx_id);
 

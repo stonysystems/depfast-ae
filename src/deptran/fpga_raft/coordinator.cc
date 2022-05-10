@@ -100,7 +100,7 @@ void CoordinatorFpgaRaft::AppendEntries() {
 		struct timespec end_;
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
-		quorum_events_.push_back(sp_quorum);
+		// quorum_events_.push_back(sp_quorum);
 		// Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
 		slow_ = sp_quorum->IsSlow();
 		

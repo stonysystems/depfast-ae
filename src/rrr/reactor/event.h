@@ -64,9 +64,6 @@ class Event : public std::enable_shared_from_this<Event> {
   }
 
   virtual void log(){return;}
-	virtual void NeedsFinalize();
-	virtual void CalledFinalize();
-	virtual void FreeDangling(std::string ip);
   virtual uint64_t GetCoroId();
   void RecordPlace(const char* file, int line);
 
