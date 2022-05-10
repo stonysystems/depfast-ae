@@ -37,7 +37,7 @@ void QuorumEvent::Finalize(
       // Log_info("finalized timeout");
       ret = finalize_func(dangling_rpc);
     }
-  });
+  }, __FILE__, __LINE__);
 }
 
 void QuorumEvent::AddXid(uint16_t site, rrr::i64 xid) {

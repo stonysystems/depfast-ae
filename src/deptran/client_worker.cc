@@ -304,7 +304,7 @@ void ClientWorker::Work() {
           free_coordinators_.push_back(coo);
           coo->_inuse_ = false;
           n_pause_concurrent_[coo->coo_id_] = true;
-        });
+        }, __FILE__, __LINE__);
       }
       n_ceased_client_.Set(n_ceased_client_.value_+1);
     });

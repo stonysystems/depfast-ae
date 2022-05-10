@@ -36,9 +36,9 @@ std::shared_ptr<Coroutine> Coroutine::CurrentCoroutine() {
 }
 
 std::shared_ptr<Coroutine>
-Coroutine::CreateRun(std::function<void()> func) {
+Coroutine::CreateRun(std::function<void()> func, const char* file, int64_t line) {
   auto& reactor = *Reactor::GetReactor();
-  auto coro = reactor.CreateRunCoroutine(func);
+  auto coro = reactor.CreateRunCoroutine(func, file, line);
 
 	// some events might be triggered in the last coroutine.
   return coro;
@@ -71,7 +71,7 @@ Reactor::GetDiskReactor() {
  * @return
  */
 std::shared_ptr<Coroutine>
-Reactor::CreateRunCoroutine(const std::function<void()> func) {
+Reactor::CreateRunCoroutine(const std::function<void()> func, const char *file, int64_t line) {
   std::shared_ptr<Coroutine> sp_coro;
   const bool reusing = REUSING_CORO && !available_coros_.empty();
   if (reusing) {
@@ -87,11 +87,14 @@ Reactor::CreateRunCoroutine(const std::function<void()> func) {
     sp_coro = std::make_shared<Coroutine>(func);
     verify(sp_coro->status_ == Coroutine::INIT);
     n_created_coroutines_++;
-    if (n_created_coroutines_ % 1000 == 0) {
-      Log_info("created %d, busy %d, idle %d coroutines on this thread",
+    if (n_created_coroutines_ % 1024 == 0) {
+      Log_info("created %d, busy %d, idle %d coroutines on server %d, "
+               "recent %s:%llx",
                (int)n_created_coroutines_,
                (int)n_busy_coroutines_,
-               (int)n_idle_coroutines_);
+               (int)n_idle_coroutines_,
+               server_id_,
+               file, line);
     }
 
   }
@@ -393,12 +396,12 @@ class PollMgr::PollThread {
     pthread_t finalize_th;
 		Log_info("starting disk thread");
     Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
-    Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
+    // Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
 		Log_info("starting poll thread");
     thiz->poll_loop();
     delete args;
-		delete args;
+		delete args2;
     pthread_exit(nullptr);
     return nullptr;
   }
@@ -444,7 +447,7 @@ class PollMgr::PollThread {
       auto sp_job = *it;
       if (sp_job->Ready()) {
         //Log_info("Could be right before GotoNextPhase()");
-        Coroutine::CreateRun([sp_job]() {sp_job->Work();});
+        Coroutine::CreateRun([sp_job]() {sp_job->Work();}, __FILE__, __LINE__);
       }
       if (sp_job->Done()) {
         it = set_sp_jobs_.erase(it);
@@ -576,8 +579,8 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed CPU time3: %f", util2);
 		}*/
 
-#ifdef USE_KQUEUE
-		begins = poll_.Wait();
+#if 1
+		poll_.Wait();
 #else
 		begins = poll_.Wait_One(num_events, slow);
 		
@@ -609,7 +612,7 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed time4: %d", total_time3);
 			Log_info("elapsed CPU time4: %f", util3);
 		}*/
-    poll_.Wait_Two();
+    // poll_.Wait_Two();
 #endif
 
 		if (slow) Reactor::GetReactor()->slow_ = slow;

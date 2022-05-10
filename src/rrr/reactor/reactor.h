@@ -24,6 +24,7 @@ class Reactor {
   static thread_local std::shared_ptr<Reactor> sp_reactor_th_;
   static thread_local std::shared_ptr<Reactor> sp_disk_reactor_th_;
   static thread_local std::shared_ptr<Coroutine> sp_running_coro_th_;
+  int server_id_;
 
   struct thread_params{
 		std::string ip_;
@@ -76,7 +77,7 @@ class Reactor {
   /**
    * @param ev. is usually allocated on coroutine stack. memory managed by user.
    */
-  std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func);
+  std::shared_ptr<Coroutine> CreateRunCoroutine(std::function<void()> func, const char *file="", int64_t line=0);
   void Loop(bool infinite = false, bool check_timeout = false);
   void CheckTimeout(std::vector<std::shared_ptr<Event>>&);
 	void DiskLoop();

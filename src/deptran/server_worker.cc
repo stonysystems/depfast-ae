@@ -132,6 +132,7 @@ void ServerWorker::SetupService() {
   // init rrr::PollMgr 1 threads
   int n_io_threads = 1;
   svr_poll_mgr_ = new rrr::PollMgr(n_io_threads);
+  Reactor::GetReactor()->server_id_ = site_info_->id;
 //  svr_thread_pool_ = new rrr::ThreadPool(1);
 
   // init service implementation

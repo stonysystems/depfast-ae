@@ -56,7 +56,7 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
   // Log_debug("send dispatch to site %ld",
   //           pair_leader_proxy.first);
   // auto proxy = pair_leader_proxy.second;
-  auto pair_proxies = PilotProxyForPartition(par_id);  // TODO
+  auto pair_proxies = PilotProxyForPartition(par_id);
   verify(pair_proxies.size() == 2);
   Log_debug("send dispatch to site %d, %d", pair_proxies[0].first,
             pair_proxies[1].first);

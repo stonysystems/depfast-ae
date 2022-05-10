@@ -68,7 +68,7 @@ void Future::notify_ready() {
     auto x = attr_.callback;
     Coroutine::CreateRun([x, this]() {
       x(this);
-    });
+    }, __FILE__, __LINE__);
 //        attr_.callback(this);
   }
 }
@@ -243,6 +243,50 @@ bool Client::handle_read(){
 	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 	double util2 = (double) total_cpu2/total_time2;
 	Log_info("elapsed CPU time (client read): %f", util2);*/
+  for (;;) {
+    i32 packet_size;
+    int n_peek = in_.peek(&packet_size, sizeof(i32));
+    if (n_peek == sizeof(i32)
+        && in_.content_size() >= packet_size + sizeof(i32)) {
+      // consume the packet size
+      verify(in_.read(&packet_size, sizeof(i32)) == sizeof(i32));
+
+      v64 v_reply_xid;
+      v32 v_error_code;
+
+      in_ >> v_reply_xid >> v_error_code;
+
+      pending_fu_l_.lock();
+      unordered_map<i64, Future*>::iterator
+          it = pending_fu_.find(v_reply_xid.get());
+      if (it != pending_fu_.end()) {
+        Future* fu = it->second;
+        verify(fu->xid_ == v_reply_xid.get());
+        pending_fu_.erase(it);
+        pending_fu_l_.unlock();
+
+        fu->error_code_ = v_error_code.get();
+        fu->reply_.read_from_marshal(in_,
+                                     packet_size - v_reply_xid.val_size()
+                                         - v_error_code.val_size());
+
+        fu->notify_ready();
+
+        // since we removed it from pending_fu_
+        fu->release();
+      } else {
+        // the future might timed out
+        pending_fu_l_.unlock();
+      }
+
+    } else {
+      // packet incomplete or no more packets to process
+      break;
+    }
+  }
+  // This is a workaround, the Loop call should really happen
+  // between handle_read and handle_write in the epoll loop
+  Reactor::GetReactor()->Loop();
   return true;
 }
 
@@ -489,30 +533,6 @@ void Client::end_request() {
     delete bmark_;
     bmark_ = nullptr;
   }
-
-	if (!out_.valid_id) {
-		if (count == 0) {
-			begin = {};
-			clock_gettime(CLOCK_MONOTONIC, &begin);
-			count++;
-		} else {
-			struct timespec end;
-			clock_gettime(CLOCK_MONOTONIC, &end);
-			long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-			time /= 1000000;
-
-			if (time > 1000) {
-				double rate = count/(double)time;
-				Log_info("Warning rate is: %f %d %d", rate, count, time);
-				if (rate = 0.005) {
-					Log_info("Warning: dependency not found or not valid");
-				}
-				count = 0;
-			} else {
-				count++;
-			}
-		}
-	}
 
 	out_.found_dep = false;
 	out_.valid_id = false;
