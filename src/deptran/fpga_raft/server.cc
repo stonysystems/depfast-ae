@@ -448,12 +448,12 @@ void FpgaRaftServer::StartTimer()
 							struct KeyValue key_values[kv_vector.size()];
 							std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
-							// auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
-							// de->Wait();
+							auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
+							de->Wait();
             } else {
 							int value = -1;
-							// auto de = IO::write(filename, &value, sizeof(int), 1);
-              // de->Wait();
+							auto de = IO::write(filename, &value, sizeof(int), 1);
+              de->Wait();
             }
         }
         else {

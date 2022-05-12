@@ -193,11 +193,11 @@ class FpgaRaftServer : public TxLogServer {
 			struct KeyValue key_values[kv_vector.size()];
 			std::copy(kv_vector.begin(), kv_vector.end(), key_values);
 
-			// auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
+			auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
 			
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      // de->Wait();
+      de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {

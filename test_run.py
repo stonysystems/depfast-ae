@@ -11,38 +11,18 @@ run_app_     = "build/deptran_server"
 config_path_ = "config/"
 
 modes_ = [
-#    "none",
-#    "tpl_ww",
-#    "occ",
-    "tpl_ww_paxos",
-    "occ_paxos",
-    "tapir",
-#    "rcc",
-    "janus",
-#    "troad"
+    "none_copilot",
+    "none_fpga_raft"
 ]
 sites_ = [
-    "1c1s1p",
-    "2c2s1p",
-    "64c8s1p",
-    "3c3s3r1p",
-#    "64c8s3r1p"
+    "1c1s3r1p"
 ]
 benchmarks_ =  [
-#    "rw",
-    "tpca",
-    "tpcc",
-#    "tpcc_no",
-#    "tpcc_pm",
-#    "tpcc_dl",
-#    "tpcc_os",
-#    "tpcc_sl",
-#    "tpccd"
+   "rw",
 ]
 concurrent_ = [
-#    "concurrent_1",
-#    "concurrent_10",
-    "concurrent_100"
+   "concurrent_1",
+   "concurrent_10"
 ]
 
 def run(m, s, b, c):
@@ -52,12 +32,12 @@ def run(m, s, b, c):
     pc = config_path_ + c + ".yml"
 
     output_path = 'tmp/' + m + '-' + s + '-' + b + ".res"
-    t1 = time();
+    t1 = time()
     res = "INIT"
     try:
         f = open(output_path, "w")
-        cmd = [run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "20"]
-        print(' '.join(cmd))
+        cmd = [run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "10"]
+        # print(' '.join(cmd))
         r = call(cmd, stdout=f, stderr=f, timeout=5*60)
         res = "OK" if r == 0 else "Failed"
     except subprocess.TimeoutExpired:
@@ -79,7 +59,7 @@ def main():
     if not os.path.exists('tmp'):
        os.mkdir('tmp')
 
-    parser = argparse.ArgumentParser();
+    parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', help='running modes', default=modes_,
                         nargs='+', dest='modes')
     parser.add_argument('-s', '--site', help='sites', default=sites_,
