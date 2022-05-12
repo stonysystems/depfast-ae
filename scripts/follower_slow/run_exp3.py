@@ -552,7 +552,7 @@ class ClientController(object):
             if (progress >= 5 and self.once == 1):
                 try:
 
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; \
                            sudo mkdir /sys/fs/cgroup/blkio/janus; \
                            echo '8:32 131072' | sudo tee /sys/fs/cgroup/blkio/janus/blkio.throttle.read_bps_device; \
@@ -567,7 +567,7 @@ class ClientController(object):
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/janus/cgroup.procs;"
                     
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2':
+                        if process_name == 'host3':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         if process_name == 'host5':
@@ -590,14 +590,14 @@ class ClientController(object):
 
             if (progress >= upper_cutoff_pct + 3):
                 try:
-                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+                    cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
                     
                     cmd_2 = "pid=`ss -tulpn | grep '0.0.0.0:10004' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                            echo $pid | sudo tee /sys/fs/cgroup/blkio/cgroup.procs;"
 
                     for process_name, process in self.process_infos.items():
-                        if process.name == 'host2':
+                        if process.name == 'host3':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         if process_name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd_2])

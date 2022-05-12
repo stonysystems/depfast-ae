@@ -555,7 +555,7 @@ class ClientController(object):
                     cmd = "sudo nohup taskset -ac 2 dd if=/dev/zero of=/db/tmp.txt bs=1000 count=200000000 > /dev/null 2>&1 &"
                     
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2' or process_name == 'host5':
+                        if process_name == 'host3' or process_name == 'host5':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -584,7 +584,7 @@ class ClientController(object):
                            sudo rm /db/tmp.txt"
                     
                     for process_name, process in self.process_infos.items():
-                        if process.name == 'host2' or process.name == 'host5':
+                        if process.name == 'host3' or process.name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                         self.once += 1
                 

@@ -292,6 +292,7 @@ def run_experiment(config_file, name, args, benchmark, mode, num_client):
     cmd = [str(c) for c in cmd]
 
     logger.info("running: %s", " ".join(cmd))
+    print(" ".join(cmd))
     res = subprocess.call(cmd)
     if res != 0:
         logger.error("subprocess returned %d", res)

@@ -2,7 +2,7 @@
 # DepFast
 
 
-## Getting Started Instructions (with Ubuntu 16.04 or newer)
+## Getting Started Instructions (with Ubuntu 20.04 or newer)
 
 ### Install dependencies:
 
@@ -30,12 +30,13 @@ sudo pip3 install -r requirements.txt
 
 ### Get source code:
 ```
-git clone --recursive https://github.com/WolfDOS/depfast.git
+git clone --recursive https://github.com/stonysystems/depfast-ae.git
 ```
 
 ### Build:
 
 ```
+cd depfast-ae
 git checkout atc_ae
 python3 waf configure build 
 ```
@@ -54,6 +55,8 @@ This script tests DepFast in a single-node, single-process setting, where differ
 ## Detailed Instructions
 
 ### Run single evaluation:
+
+#### Command line usage
 ```sh
 ./start-exp.sh ${exp_name} ${N_concurrent} ${duration} ${exp} ${N_replica} ${slow_type} ${N_client} ${protocol}
 ```
@@ -80,9 +83,24 @@ e.g. the following command
 ```
 means: run Copilot in a 3-replica setting using 10 clients, each client has 10 outstanding requests, cpu slowness is injected to the follower, runs for 20s
 
+#### Cluster IP setting
+To config the ips of each node, please edit the config file after the `-hh` flag in line `36` of `start-exp.sh`.
+Here is an example config of a 3-replica cluster:
+```yaml
+# host-nonlocal.yml
+host:
+    host1: 10.0.0.13 # server 0
+    host2: 10.0.0.14 # server 1
+    host3: 10.0.0.15 # server 2
+    host4: 10.0.0.37 # client
+```
+For an n-replica cluster, the first n lines are the ip addresses of the n servers, the remaining lines are the ip addresses of clients.
+
+#### Results
 Key evaluation results will be written into `result${exp}_${N_replica}.csv` under the same folder, in the format of
 ```csv
 exp name, average throughput, average latency, median latency, 99% latency
 ```
+Full results are saved in `log` folder in the format of a yaml file
 
-
+### 

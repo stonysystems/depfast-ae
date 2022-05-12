@@ -527,7 +527,7 @@ class ClientController(object):
         try:
             cmd = "sudo /sbin/tc qdisc del dev eth0 root netem"
             for process_name, process in self.process_infos.items():
-                if process.name == 'host2' or process_name == 'host5':
+                if process.name == 'host3' or process_name == 'host5':
                     subprocess.call(['ssh', '-f', process.host_address, cmd])
                 
         except subprocess.CalledProcessError as e:
@@ -563,7 +563,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc add dev eth0 root netem delay 40ms'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2' or process_name == 'host5':
+                        if process_name == 'host3' or process_name == 'host5':
                             time.sleep(0.1)
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once += 1
@@ -591,7 +591,7 @@ class ClientController(object):
                 try:
                     cmd = 'sudo /sbin/tc qdisc del dev eth0 root'
                     for process_name, process in self.process_infos.items():
-                        if process_name == 'host2' or process_name == 'host5':
+                        if process_name == 'host3' or process_name == 'host5':
                             subprocess.call(['ssh', '-f', process.host_address, cmd])
                     self.once = True
                 except subprocess.CalledProcessError as e:

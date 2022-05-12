@@ -527,7 +527,7 @@ class ClientController(object):
                 time.sleep(self.timeout)
 
         try:
-            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
                    echo $pid | sudo tee /sys/fs/cgroup/cpu/cgroup.procs; \
                    sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
@@ -537,7 +537,7 @@ class ClientController(object):
                    sudo swapoff /db/swapfile; \
                    sudo cgdelete memory:janus;"
             for process_name, process in self.process_infos.items():
-                if process.name == 'host2':
+                if process.name == 'host3':
                     subprocess.call(['ssh', '-f', process.host_address, cmd])
                 if process.name == 'host5':
                     subprocess.call(['ssh', '-f', process.host_address, cmd_2])
@@ -573,7 +573,7 @@ class ClientController(object):
                 self.once += 1
             # if (progress >= 5 and self.once == 1):
             #     try:
-            #         cmd = "pid=`ss -tulpn | grep '0.0.0.0:10001' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
+            #         cmd = "pid=`ss -tulpn | grep '0.0.0.0:10002' | awk '{print $7}' | cut -f2 -d= | cut -f1 -d,`; \
             #                sudo sysctl vm.swappiness=60 ; sudo swapoff -a && sudo swapon -a ; sudo swapon /db/swapfile; \
             #                sudo mkdir /sys/fs/cgroup/memory/janus; \
             #                echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
@@ -585,7 +585,7 @@ class ClientController(object):
             #                echo 10485760 | sudo tee /sys/fs/cgroup/memory/janus/memory.limit_in_bytes; \
             #                echo $pid | sudo tee /sys/fs/cgroup/memory/janus/cgroup.procs;"
             #         for process_name, process in self.process_infos.items():
-            #             if process_name == 'host2':
+            #             if process_name == 'host3':
             #                 time.sleep(0.1)
             #                 subprocess.call(['ssh', '-f', process.host_address, cmd])
             #             if process_name == 'host5':
@@ -905,7 +905,7 @@ class ServerController(object):
         else:
             recording = ""
 
-        if process.name == 'host2' or process.name == 'host5':
+        if process.name == 'host3' or process.name == 'host5':
             s = "cgexec -g memory:janus "
         else:
             s = ""
@@ -947,7 +947,7 @@ class ServerController(object):
             logger.info("starting %s @ %s", process_name, process.host_address)
             cmd = self.gen_process_cmd(process, host_process_counts)
             
-            if process_name == 'host2' or process_name == 'host5':
+            if process_name == 'host3' or process_name == 'host5':
                 swap_cg_cmd = self.gen_swap_cgroup_cmd()
                 logger.debug("running: %s", swap_cg_cmd)
                 subprocess.call(['ssh', '-f', process.host_address, swap_cg_cmd])            

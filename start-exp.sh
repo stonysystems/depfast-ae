@@ -19,7 +19,7 @@ workload=rw
 # sudo chmod o+w /db/data.txt
 
 
-rm log/*
+# rm log/*
 rm archive/*
 rm tmp/*
 
@@ -29,16 +29,16 @@ else
 	exp="_exp$4"
 fi
 
-cp scripts/$6_slow/run_all$exp.py .
+cp scripts/$6_slow/run_all.py .
 cp scripts/$6_slow/run$exp.py .
 
 if [[ $5 == "3" ]]; then
-	./run_all.py -d $3 -hh config/hosts-local.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
+	./run_all.py -e ./run$exp.py -d $3 -hh config/hosts-local.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
 else
-	./run_all.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
+	./run_all.py -e ./run$exp.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
 fi
 
-rm run_all$exp.py run$exp.py
+rm run_all.py run$exp.py
 
 echo $(pwd)
 tar xzf archive/$1-${workload}_${cc}-${ab}_${nc}_1_-1.tgz
