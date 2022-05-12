@@ -4,7 +4,7 @@
 
 ## Getting Started Instructions (with Ubuntu 16.04 or newer)
 
-Install dependencies:
+### Install dependencies:
 
 ```sh
 sudo apt-get update
@@ -28,19 +28,19 @@ sudo wget https://github.com/mikefarah/yq/releases/download/v4.24.2/yq_linux_amd
 sudo pip3 install -r requirements.txt
 ```
 
-Get source code:
+### Get source code:
 ```
 git clone --recursive https://github.com/WolfDOS/depfast.git
 ```
 
-Build:
+### Build:
 
 ```
 git checkout atc_ae
 python3 waf configure build 
 ```
 
-Test run:
+### Test run:
 ```
 python3 test_run.py
 ```
@@ -53,6 +53,36 @@ This script tests DepFast in a single-node, single-process setting, where differ
 
 ## Detailed Instructions
 
-## More
-Check out the doc directory to find more about how to build the system on older or newer distros, how to run the system in a distributed setup, and how to generate figures in the paper, etc.
+### Run single evaluation:
+```sh
+./start-exp.sh ${exp_name} ${N_concurrent} ${duration} ${exp} ${N_replica} ${slow_type} ${N_client} ${protocol}
+```
+The meaning of each parameter are as follow:
+- `exp_name`(string): name of experiment
+- `N_concurrent`(int): max number of outstanding requests each client can have
+- `duration`(int): duration(s) of experiment
+- `exp`(int): which slowness to inject
+    - 0: no slowness
+    - 1: slow CPU
+    - 2: CPU contention
+    - 3: slow disk
+    - 4: disk contention
+    - 5: slow network
+    - 6: memory contention
+- `N_replica`(int): number of replica
+- `slow_type`(string): slowness injected to leader or follower, use `leader` or `follower`
+- `N_client`(int): number of client
+- `protocol`(string): consensus protocol to run, please use `fpga_raft` for Raft and `copilot` for Copilot
+
+e.g. the following command
+```sh
+./start-exp.sh test 10 20 1 3 follower 10 copilot
+```
+means: run Copilot in a 3-replica setting using 10 clients, each client has 10 outstanding requests, cpu slowness is injected to the follower, runs for 20s
+
+Key evaluation results will be written into `result${exp}_${N_replica}.csv` under the same folder, in the format of
+```csv
+exp name, average throughput, average latency, median latency, 99% latency
+```
+
 

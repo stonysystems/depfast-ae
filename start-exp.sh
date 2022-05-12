@@ -7,9 +7,10 @@
 # 5: replica
 # 6: follower/leader
 # 7: thread
+# 8: protocol
 
 cc=none
-ab=copilot
+ab=$8
 nc=$7
 workload=rw
 
