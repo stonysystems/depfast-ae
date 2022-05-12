@@ -249,6 +249,8 @@ def generate_config(args, experiment_name, benchmark, mode, zipf, client_load, n
 
     logger.debug("site and process config: %s", proc_and_site_config)
     cc_mode, ab_mode = mode.split(':')
+    if cc_mode == 'none' and ab_mode == 'copilot':
+        cc_mode = 'none_copilot'
     config_files = modify_dynamic_params(args, benchmark, cc_mode, ab_mode,
                                          zipf)
     config_files.insert(0, args.hosts_file)

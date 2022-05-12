@@ -9,14 +9,14 @@
 # 7: thread
 
 cc=none
-ab=fpga_raft
+ab=copilot
 nc=$7
+workload=rw
 
 # rm /db/data.txt
 # sudo touch /db/data.txt
 # sudo chmod o+w /db/data.txt
 
-cd depfast
 
 rm log/*
 rm archive/*
@@ -32,18 +32,17 @@ cp scripts/$6_slow/run_all$exp.py .
 cp scripts/$6_slow/run$exp.py .
 
 if [[ $5 == "3" ]]; then
-	./run_all$exp.py -d $3 -hh config/hosts-nonlocal.yml -s '2:3:1' -c $nc:$((nc+1)):1 -r '3' -cc config/rw.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b rw -m $cc:$ab $1
+	./run_all.py -d $3 -hh config/hosts-local.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
 else
-	./run_all$exp.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/tpca.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b tpca -m $cc:$ab $1
+	./run_all.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
 fi
 
 rm run_all$exp.py run$exp.py
 
-cd ../
 echo $(pwd)
-tar xzf depfast/archive/$1-tpca_${cc}-${ab}_${nc}_1_-1.tgz
-log=log/$1-tpca_$cc-${ab}_${nc}_1_-1.log
-yml=log/$1-tpca_$cc-${ab}_${nc}_1_-1.yml
+tar xzf archive/$1-${workload}_${cc}-${ab}_${nc}_1_-1.tgz
+log=log/$1-${workload}_$cc-${ab}_${nc}_1_-1.log
+yml=log/$1-${workload}_$cc-${ab}_${nc}_1_-1.yml
 # line1=`grep -n "all_latency" $log | cut -f1 -d: | head -1`
 # # echo $line1
 # line2=$((line1+1))
@@ -59,8 +58,8 @@ yml=log/$1-tpca_$cc-${ab}_${nc}_1_-1.yml
 # fi
 
 # tput=`grep "tps:" $log | awk '{print $2}'`
-tput=`yq e '.PAYMENT.tps' $yml`
-avg=`yq e '.PAYMENT.all_latency["avg"]' $yml`
-med=`yq e '.PAYMENT.all_latency[50]' $yml`
-tail99=`yq e '.PAYMENT.all_latency[99]' $yml`
+tput=`yq e '.WRITE.tps' $yml`
+avg=`yq e '.WRITE.all_latency["avg"]' $yml`
+med=`yq e '.WRITE.all_latency[50]' $yml`
+tail99=`yq e '.WRITE.all_latency[99]' $yml`
 echo "$1, $tput, $avg, $med, $tail99" >> result$4_$5.csv
