@@ -28,7 +28,6 @@ sudo apt-get install -y \
     libgoogle-perftools-dev
 sudo wget https://github.com/mikefarah/yq/releases/download/v4.24.2/yq_linux_amd64 \
     -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-sudo pip3 install -r requirements.txt
 ```
 
 ### Get source code:
@@ -41,6 +40,7 @@ git clone --recursive https://github.com/stonysystems/depfast-ae.git depfast
 ```sh
 cd depfast
 git checkout atc_ae
+sudo pip3 install -r requirements.txt
 python3 waf configure build 
 ```
 
