@@ -8,59 +8,53 @@
 # 6: follower/leader
 # 7: thread
 # 8: protocol
+# 9: environment
 
-cc=none
+name=$1
+dur=$2
+e=$3
+rep=$4
+typ=$5
+nc=$6
+conc=$7
 ab=$8
-nc=$7
+env=$9
+cc=none
 workload=rw
 
 # rm /db/data.txt
 # sudo touch /db/data.txt
 # sudo chmod o+w /db/data.txt
 
-
-# rm log/*
+rm log/*
 rm archive/*
 rm tmp/*
 
-if [[ $4 == "0" ]]; then
+if [[ $e == "0" ]]; then
 	exp=""
 else
-	exp="_exp$4"
+	exp="_exp$e"
 fi
 
-cp scripts/$6_slow/run_all.py .
-cp scripts/$6_slow/run$exp.py .
+cp scripts/${typ}_slow/run_all.py .
+cp scripts/${typ}_slow/run$exp.py .
+cp inf ~
 
-if [[ $5 == "3" ]]; then
-	./run_all.py -e ./run$exp.py -d $3 -hh config/hosts-local.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
+if [[ $rep == "3" ]]; then
+	./run_all.py -e ./run$exp.py -d $dur -hh config/hosts-$env.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '3' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$conc.yml -b ${workload} -m $cc:$ab $name
 else
-	./run_all.py -e ./run$exp.py -d $3 -hh config/hosts-nonlocal-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$2.yml -b ${workload} -m $cc:$ab $1
+	./run_all.py -e ./run$exp.py -d $dur -hh config/hosts-$env-5.yml -s '1:2:1' -c $nc:$((nc+1)):1 -r '5' -cc config/${workload}.yml -cc config/client_closed.yml -cc config/${cc}_${ab}.yml -cc config/concurrent_$conc.yml -b ${workload} -m $cc:$ab $name
 fi
 
 rm run_all.py run$exp.py
 
 echo $(pwd)
-tar xzf archive/$1-${workload}_${cc}-${ab}_${nc}_1_-1.tgz
-log=log/$1-${workload}_$cc-${ab}_${nc}_1_-1.log
-yml=log/$1-${workload}_$cc-${ab}_${nc}_1_-1.yml
-# line1=`grep -n "all_latency" $log | cut -f1 -d: | head -1`
-# # echo $line1
-# line2=$((line1+1))
-# med=`sed "${line1}q;d" $log | awk '{print $3}' | cut -f1 -d,`
-# tail99=`sed "${line1}q;d" $log | awk '{print $7}' | cut -f1 -d,`
-# line999=`sed "${line1}q;d" $log | awk '{print $8}' | cut -f1 -d,`
-# if [[ $line999 == "'99.9':" ]]; then
-#         tail999=`sed "${line1}q;d" $log | awk '{print $9}' | cut -f1 -d,`
-#         avg=`sed "${line2}q;d" $log | awk '{print $2}' | cut -f1 -d,`
-# else
-#         tail999=`sed "${line2}q;d" $log | awk '{print $2}' | cut -f1 -d,`
-#         avg=`sed "${line2}q;d" $log | awk '{print $4}' | cut -f1 -d,`
-# fi
+tar xzf archive/${name}-${workload}_${cc}-${ab}_${nc}_1_-1.tgz
+log=log/${name}-${workload}_${cc}-${ab}_${nc}_1_-1.log
+yml=log/${name}-${workload}_${cc}-${ab}_${nc}_1_-1.yml
 
-# tput=`grep "tps:" $log | awk '{print $2}'`
 tput=`yq e '.WRITE.tps' $yml`
 avg=`yq e '.WRITE.all_latency["avg"]' $yml`
 med=`yq e '.WRITE.all_latency[50]' $yml`
 tail99=`yq e '.WRITE.all_latency[99]' $yml`
-echo "$1, $tput, $avg, $med, $tail99" >> result$4_$5.csv
+echo "$name, $tput, $avg, $med, $tail99" >> result$e_$rep.csv
