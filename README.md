@@ -32,21 +32,29 @@ sudo pip3 install -r requirements.txt
 ```
 
 ### Get source code:
-```
+```sh
 git clone --recursive https://github.com/stonysystems/depfast-ae.git depfast
 ```
 
 ### Build:
 
-```
+```sh
 cd depfast
 git checkout atc_ae
 python3 waf configure build 
 ```
 
-### Test run:
-```
+### Prepare:
+```sh
 ulimit -n 10000
+rm /db/data.txt
+sudo mkdir /db
+sudo touch /db/data.txt
+sudo chmod o+w /db/data.txt
+```
+
+### Test run:
+```sh
 python3 test_run.py
 ```
 If the test passed, the output should show result as `OK`, like this:
@@ -98,7 +106,7 @@ The meaning of each parameter are as follow:
 - `N_client`(int): number of client
 - `N_concurrent`(int): max number of outstanding requests each client can have
 - `protocol`(string): consensus protocol to run, please use `fpga_raft` for Raft and `copilot` for Copilot
-- `env`(string): run on single node or a distributed cluster, use `local` to run on a single node and `non-local` to run on a distributed cluster
+- `env`(string): run on single node or a distributed cluster, use `local` to run on a single machine and `non-local` to run on a distributed cluster
 
 e.g. the following command
 ```sh
@@ -107,6 +115,8 @@ e.g. the following command
 means: run Copilot in a distributed 3-replica setting using 10 clients, each client has 10 outstanding requests, cpu slowness is injected to the follower, runs for 20s
 
 > ps: The `start-exp.sh` can be run on any machine (the *control node*) that has access to all cluster nodes (typically we run it on the client node). Please make sure that DepFast is installed in the home folder of the same user as the control node (if user `alice` is running the scripts in `/home/alice/depfast` on the control node, then DepFast should be installed under `/home/alice/depfast` on all server and client nodes), since we don't specify the username and credential when we ssh into those nodes. It's recommended to have DepFast installed on one node and use NFS to mount it to all other nodes.
+
+> Network slowness injection test is not runable on a single machine
 
 #### Results
 Key evaluation results will be written into `result${exp}_${N_replica}.csv` under the same folder, in the format of

@@ -53,7 +53,7 @@ class FpgaRaftServer : public TxLogServer {
   bool in_applying_logs_ = false ;
   bool failover_{false} ;
   atomic<int64_t> counter_{0};
-  const char *filename = "/dev/null";
+  const char *filename = "/db/data.txt";
 
 	static bool looping;
 	bool heartbeat_ = false;

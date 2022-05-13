@@ -22,10 +22,6 @@ env=$9
 cc=none
 workload=rw
 
-# rm /db/data.txt
-# sudo touch /db/data.txt
-# sudo chmod o+w /db/data.txt
-
 rm log/*
 rm archive/*
 rm tmp/*
