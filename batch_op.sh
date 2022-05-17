@@ -19,7 +19,7 @@ servers=(
 cmd1="cd $workdir/$repos ; mkdir -p log; mkdir -p archive; mkdir -p tmp;"
 cmd2="cd $workdir/$repos ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
 cmd3=""
-cmd4="sudo skill depfast;sudo pkill depfast;pkill -f run.py; sleep 1"
+cmd4="cd $workdir/$repos ; sudo bash batch_kill.sh"
 cmd5=""
 
 if [ $1 == 'scp' ]; then
@@ -29,7 +29,7 @@ elif [ $1 == 'dep' ]; then
 elif [ $1 == 'init' ]; then
     :
 elif [ $1 == 'kill' ]; then
-    :
+	eval $cmd4
 elif [ $1 == 'sync_tmp' ]; then
     :
 else
@@ -41,7 +41,7 @@ fi
 cmd1="mkdir -p $workdir; cd $workdir ; sudo rm -rf $repos; scp -r $USER@$c1:$workdir/$repos ."
 cmd2="cd $workdir/$repos ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
 cmd3="cd $workdir/$repos ; sudo bash init.sh "
-cmd4="sudo skill depfast;sudo pkill depfast;pkill -f run.py; sleep 1"
+cmd4="cd $workdir/$repos ; sudo bash batch_kill.sh"
 cmd5="cd $workdir/$repos/tmp; scp -r $USER@$c1:$workdir/$repos/tmp/* ."
 
 for host in ${servers[@]}
