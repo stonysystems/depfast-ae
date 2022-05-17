@@ -20,7 +20,7 @@ conc=$7
 ab=$8
 env=$9
 cc=none
-workload=rw
+workload=tpca
 
 rm log/*
 rm archive/*
@@ -54,3 +54,6 @@ avg=`yq e '.WRITE.all_latency["avg"]' $yml`
 med=`yq e '.WRITE.all_latency[50]' $yml`
 tail99=`yq e '.WRITE.all_latency[99]' $yml`
 echo "$name, $tput, $avg, $med, $tail99" >> result$e_$rep.csv
+
+mkdir -p results
+cp $yml results/
