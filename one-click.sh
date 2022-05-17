@@ -15,15 +15,32 @@ servers=(
 
 ulimit -n 10000
 
+# which slowness to injecta, 0-6
+exp=( 0 1 2 3 4 5 6 )
+# # of replicas 
+replicas=( 3 5 )
+# slow types: follower, leader
+slow_type=( follower leader )
+# number of client
+N_client=1
+
+
 setup () {
     bash ./batch_op.sh kill
 }
 
+# in figure5a
 experiment1() {
     python3 waf configure build
+    bash ./batch_op.sh init 
     bash ./batch_op.sh scp 
+    mkdir ./figure5a
    
-    ./start-exp.sh testname 60 0 3 follower 1 12
+    for i in "${array[@]}"
+    do
+    	echo "$i"
+    done
+    ./start-exp.sh testname 60 0 3 follower 1 12 copilot nonlocal
 }
 
 setup

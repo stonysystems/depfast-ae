@@ -44,7 +44,7 @@ In this section, we will build a actual distributed environment to reproduce our
 
 ### 1. setup machines
 To reproduce results in the paper, we need 
- - **obtain 4 machines**: 5 servers + 1 client running on Ubuntu 20.04
+ - **obtain 6 machines**: 5 servers + 1 client running on Ubuntu 20.04
  - obtain the IP of 6 machines: `[server-1-ip]`, `[server-2-ip]`, `[server-3-ip]`, `[server-4-ip]`, `[server-5-ip]`, `[client-1-ip]`.
  - ensure that 6 machines can connect to each other via `ssh` and share the same username which means you can connect to any other machines on any machine through `ssh ip` directly without username required
 
