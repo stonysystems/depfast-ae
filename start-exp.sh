@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # 1: name
-# 2: concurrent
-# 3: duration
-# 4: exp
-# 5: replica
-# 6: follower/leader
-# 7: thread
+# 2: duration
+# 3: exp
+# 4: replica
+# 5: follower/leader
+# 6: # of client
+# 7: concurrent
 # 8: protocol
-# 9: environment
+# 9: env
 
 name=$1
 dur=$2
