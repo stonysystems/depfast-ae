@@ -1,126 +1,84 @@
 
 # DepFast
 
-Please refer to https://github.com/stonysystems/depfast-ae/blob/atc_ae/README.md for the most up-to-date README.
+Welcome to the DepFast artifact for our ATC'22 submission.
 
-## Getting Started Instructions (with Ubuntu 20.04 or newer)
+*Building Fault-Tolerant Distributed Systems with DepFast*
 
-### Install dependencies:
+## Run the experiment locally
+In this section, you can set up DepFast locally for testing and verification, which is mainly for badges **Artifacts Available** and **Artifacts Evaluated - Functional**.
 
-```sh
-sudo apt-get update
-sudo apt-get install -y \
-    git \
-    wget \
-    python2 \
-    pkg-config \
-    build-essential \
-    clang \
-    cgroup-tools \
-    libapr1-dev libaprutil1-dev \
-    libboost-all-dev \
-    libyaml-cpp-dev \
-    libjemalloc-dev \
-    python3-dev \
-    python3-pip \
-    python3-wheel \
-    python3-setuptools \
-    libgoogle-perftools-dev
-sudo wget https://github.com/mikefarah/yq/releases/download/v4.24.2/yq_linux_amd64 \
-    -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-```
-
-### Get source code:
-```sh
-git clone --recursive https://github.com/stonysystems/depfast-ae.git depfast
-```
-
-### Build:
-
-```sh
-cd depfast
+### 1. create a Docker instance
+We run all our codes on ubuntu 20.04 which mainly depends on several Linux libraries (i.e., boost, gcc and libyaml-cpp-dev). We provide a docker image with all required dependencies and source code for ease so you can run on any local machine supporting Docker.
+```bash
+# on any machine with Docker support
+cd ~
+git clone https://github.com/stonysystems/depfast-ae.git
 git checkout atc_ae
-sudo pip3 install -r requirements.txt
-python3 waf configure -J build 
+cd ~/depfast-ae/docker
+bash run.sh
 ```
 
-### Prepare:
-```sh
-ulimit -n 10000
-rm /db/data.txt
-sudo mkdir /db
-sudo touch /db/data.txt
-sudo chmod o+w /db/data.txt
-```
+### 2. run minimal working examples locally
+You can start DepFast instance locally (using different processes to mimic actual distributed environment) to verify the functionability of the program inside the docker container now.
 
-### Test run:
-```sh
+```bash
+# enter the docker container (outside the container)
+sudo docker exec -it ubuntu_atc2022 /bin/bash
+
+# run 4 minimal experiments (inside the container): 
 python3 test_run.py
 ```
-If the test passed, the output should show result as `OK`, like this:
+
+If the test passed, the output should show result as OK, like this:
 ```
-mode           site      bench     concurrent     result         time 
-none_copilot   1c1s3r1p  rw        concurrent_1   OK             17.14s
+mode           site      bench     concurrent     result 	 time
+none_copilot   1c1s3r1p  rw        concurrent_1   OK     	 18.17s
+none_copilot   1c1s3r1p  rw        concurrent_10  OK     	 18.17s
+none_fpga_raft 1c1s3r1p  rw        concurrent_1   OK     	 18.12s
+none_fpga_raft 1c1s3r1p  rw        concurrent_10  OK     	 18.17s
 ```
-This script tests DepFast in a single-node, single-process setting, where different nodes are simulated with different threads.
 
-## Detailed Instructions
+## Run the expriment in actual distributed environment
+In this section, we will build a actual distributed environment to reproduce our results in the paper, which is mainly for badges **Results Reproduced**.
 
-### Run single evaluation:
+### 1. setup machines
+To reproduce results in the paper, we need 
+ - **obtain 4 machines**: 5 servers + 1 client running on Ubuntu 20.04
+ - obtain the IP of 6 machines: `[server-1-ip]`, `[server-2-ip]`, `[server-3-ip]`, `[server-4-ip]`, `[server-5-ip]`, `[client-1-ip]`.
+ - ensure that 6 machines can connect to each other via `ssh` and share the same username which means you can connect to any other machines on any machine through `ssh ip` directly without username required
 
-#### Set cluster IP
+### 2. setup environment on all machines
+Let's assume
+- `[server-1-ip]` -> `10.0.0.13`
+- `[server-2-ip]` -> `10.0.0.14`
+- `[server-3-ip]` -> `10.0.0.15`
+- `[server-4-ip]` -> `10.0.0.55`
+- `[server-5-ip]` -> `10.0.0.58`
+- `[client-1-ip]` -> `10.0.0.37`. 
 
-If you want to evaluate on a multi-node cluster, please first change the ip config file `config/host-nonlocal.yml`(for 3-replica) or `config/host-nonlocal-5.yml`(for 5-replica) to configure the ip of each node. Currently we only support 3-replica and 5-replica.
+Run all following commands on the `client-1-ip`.
+```bash
+mkdir -p ~/code
+cd ~/code
+git clone --recursive https://github.com/stonysystems/depfast-ae.git depfast
+cd ~/code/depfast
+git checkout atc_ae
 
-Here is an example config of a 3-replica cluster:
-```yaml
-# host-nonlocal.yml
-host:
-    host1: 10.0.0.13 # server 0
-    host2: 10.0.0.14 # server 1
-    host3: 10.0.0.15 # server 2
-    host4: 10.0.0.37 # client
+# config IPs
+./ip_config.sh 10.0.0.13 10.0.0.14 10.0.0.15 10.0.0.55 10.0.0.58 10.0.0.37 
+
+bash ./batch_op.sh scp
+bash ./batch_op.sh dep
+
+# compile
+python3 waf configure build
 ```
-For an n-replica cluster, the first n lines are the ip addresses of the n servers, the remaining lines are the ip addresses of clients.
 
-> ps: Please add the fingerprints of all ips in the config file into known_hosts by `ssh-keyscan -H ${ip_address} >> ~/.ssh/known_hosts`
-
-#### Command line usage
-To run a single evaluation, please use the `start-exp.sh` in the following way:
-```sh
-./start-exp.sh ${exp_name} ${duration} ${exp} ${N_replica} ${slow_type} ${N_client} ${N_concurrent} ${protocol} ${env}
+### 3. run all experiments in the one-click script
+We provide one-click runnable script to generate all results under folder ./results. It would take up to ~3 hours to run all experiments.
+```bash
+# run commands on the client-1-ip machine
+cd ~/code/depfast
+bash one-click.sh
 ```
-The meaning of each parameter are as follow:
-- `exp_name`(string): name of experiment
-- `duration`(int): duration(s) of experiment
-- `exp`(int): which slowness to inject
-    - 0: no slowness
-    - 1: slow CPU
-    - 2: CPU contention
-    - 3: slow disk
-    - 4: disk contention
-    - 5: slow network
-    - 6: memory contention
-- `N_replica`(int): number of replica
-- `slow_type`(string): slowness injected to leader or follower, use `leader` or `follower`
-- `N_client`(int): number of client
-- `N_concurrent`(int): max number of outstanding requests each client can have
-- `protocol`(string): consensus protocol to run, please use `fpga_raft` for Raft and `copilot` for Copilot
-- `env`(string): run on single node or a distributed cluster, use `local` to run on a single machine and `non-local` to run on a distributed cluster
-
-e.g. the following command
-```sh
-./start-exp.sh test 20 1 3 follower 10 10 copilot non-local
-```
-means: run Copilot in a distributed 3-replica setting using 10 clients, each client has 10 outstanding requests, cpu slowness is injected to the follower, runs for 20s
-
-> ps: The `start-exp.sh` can be run on any machine (the *control node*) that has access to all cluster nodes (typically we run it on the client node). Please make sure that DepFast is installed in the home folder of the same user as the control node (if user `alice` is running the scripts in `/home/alice/depfast` on the control node, then DepFast should be installed under `/home/alice/depfast` on all server and client nodes), since we don't specify the username and credential when we ssh into those nodes. It's recommended to have DepFast installed on one node and use NFS to mount it to all other nodes.
-
-> Network slowness injection test is not runable on a single machine
-
-#### Results
-Key evaluation results will be written into `result${exp}_${N_replica}.csv` under the same folder, in the format of
-```csv
-exp name, average throughput, average latency, median latency, 99% latency
-```
-Full results are saved in `log` folder in the format of a yaml file
