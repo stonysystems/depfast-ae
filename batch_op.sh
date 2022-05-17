@@ -14,15 +14,21 @@ servers=(
 )
 
 # local operation
-cmd1=""
-cmd2="cd $workdir ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
+cmd1="cd $workdir/$repos ; mkdir -p log; mkdir -p archive; mkdir -p tmp;"
+cmd2="cd $workdir/$repos ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
 cmd3=""
+cmd4="sudo skill depfast;sudo pkill depfast;pkill -f run.py; sleep 1"
+cmd5=""
 
 if [ $1 == 'scp' ]; then
-	:
+	eval $cmd1 
 elif [ $1 == 'dep' ]; then
+	eval $cmd2 
+elif [ $1 == 'init' ]; then
     :
 elif [ $1 == 'kill' ]; then
+    :
+elif [ $1 == 'sync_tmp' ]; then
     :
 else
   :
@@ -30,9 +36,11 @@ fi
 
 
 # sync to others
-cmd1="cd $workdir ; sudo rm -rf $repos; "
-cmd2="cd $workdir ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
-cmd3=""
+cmd1="mkdir -p $workdir; cd $workdir ; sudo rm -rf $repos; scp -r $USER@$c1:$workdir/$repos ."
+cmd2="cd $workdir/$repos ; sudo bash dep.sh; sudo pip3 install -r requirements.txt"
+cmd3="cd $workdir/$repos ; sudo bash init.sh "
+cmd4="sudo skill depfast;sudo pkill depfast;pkill -f run.py; sleep 1"
+cmd5="cd $workdir/$repos/tmp; scp -r $USER@$c1:$workdir/$repos/tmp/* ."
 
 for host in ${servers[@]}
 do
@@ -42,9 +50,16 @@ do
   elif [ $1 == 'dep' ]; then
     echo "scp to $host cmd: $cmd2"
     ssh $host "$cmd2" &
+elif [ $1 == 'init' ]; then
+    echo "init env $host cmd: $cmd3"
+    ssh $host "$cmd3" &
 elif [ $1 == 'kill' ]; then
-    :
-  else
+    echo "kill depfast $host cmd: $cmd4"
+    ssh $host "$cmd4"
+elif [ $1 == 'sync_tmp' ]; then
+    echo "sync tmp $host cmd: $cmd5"
+    ssh $host "$cmd5" &
+else
 	  :
   fi
 done
