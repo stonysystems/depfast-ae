@@ -41,7 +41,7 @@ git clone --recursive https://github.com/stonysystems/depfast-ae.git depfast
 cd depfast
 git checkout atc_ae
 sudo pip3 install -r requirements.txt
-python3 waf configure build 
+python3 waf configure -J build 
 ```
 
 ### Prepare:
