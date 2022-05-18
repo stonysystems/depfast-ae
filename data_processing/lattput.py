@@ -11,17 +11,17 @@ def getdata(proto, r):
         data_3, data_5 = processing.figure5a()
         if r == 3:
             for e in data_3:
-                lat.append(e[1])
-                tput.append(e[2])
+                lat.append(float(e[1]))
+                tput.append(float(e[2]))
         else:
             for e in data_5:
-                lat.append(e[1])
-                tput.append(e[2])
+                lat.append(float(e[1]))
+                tput.append(float(e[2]))
     else:  # copilot
-        data_r = processing.figure5b()
+        data_r = processing.figure6a()
         for e in data_r:
-            lat.append(e[1])
-            tput.append(e[2])
+            lat.append(float(e[1]))
+            tput.append(float(e[2]))
     
     return lat, tput
 
