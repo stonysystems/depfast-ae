@@ -6,7 +6,8 @@ Welcome to the DepFast artifact for our ATC'22 submission.
 *Building Fault-Tolerant Distributed Systems with DepFast*
 
 ## Run the experiment locally
-In this section, you can set up DepFast locally for testing and verification, which is mainly for badges <span style="color:orange;">Artifacts Available</span> and <span style="color:orange;">Artifacts Evaluated - Functional</span>. 
+<!-- https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md -->
+In this section, you can set up DepFast locally for testing and verification, which is mainly for badges :green_circle: `Artifacts Available` and :green_circle: `Artifacts Evaluated - Functional`. 
 
 ### 1. create a Docker instance
 We run all our codes on `ubuntu 20.04` which mainly depends on several Linux libraries (i.e., boost, gcc and libyaml-cpp-dev). We provide a docker image with all required dependencies and source code for ease so you can run on any local machine supporting Docker.
@@ -41,7 +42,7 @@ none_fpga_raft 1c1s3r1p  rw        concurrent_10  OK     	 18.17s
 ```
 
 ## Run the expriment in actual distributed environment
-In this section, we will build a actual distributed environment to reproduce our results in the paper, which is mainly for badges <span style="color:orange;">Results Reproduced</span>.
+In this section, we will build a actual distributed environment to reproduce our results in the paper, which is mainly for badges :green_circle: `Results Reproduced`.
 
 ### 1. setup machines
 To reproduce results in the paper, we need 
