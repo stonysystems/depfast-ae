@@ -15,18 +15,46 @@ servers=(
   $s5
 )
 
+
 ONLY_CMD=1
+SLOWDOWN_DUR=180
+SLOWDOWN_DUR_EXP=205
+TUPT_DUR=60
+TUPT_DUR_EXP=75
 
 ulimit -n 10000
 
 setup () {
-    bash ./batch_op.sh kill
+    if [ $ONLY_CMD -eq 0 ]
+    then
+      bash ./batch_op.sh kill
+    fi
 }
 
 build_scp() {
   python3 waf configure build
   bash ./batch_op.sh init
   bash ./batch_op.sh scp
+}
+
+timeout_process() {
+  cmd=$1
+  waitTime=$2
+  rerun=$3
+  eval $cmd &
+  myPid=$!
+
+  sleep $waitTime
+  if kill -0 "$myPid"; then
+    # still alive, kill it then re-run it
+    kill -9 "$myPid"
+    if [ $rerun -eq 1 ]
+    then
+       timeout_process "$cmd" $waitTime 0
+    fi
+  else
+    echo ""
+  fi
 }
 
 # figure5a:
@@ -42,18 +70,20 @@ experiment1() {
     mkdir -p ./figure5a
     rm -rf ./figure5a/*
 
-    rm -rf ./results   
+    rm -rf ./results
     # 3 replicas
     conc=( 20 40 60 80 100 130 160 190 220 260 300 340 380 420 )
+    conc=( 20 40 ) # testing
     for i in "${conc[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname 60 0 3 follower 1 $i fpga_raft nonlocal"
+      cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 1 $i fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
       else
-        eval $cmd
+        eval $cmd &
+        timeout_process "$cmd" $TUPT_DUR_EXP 1
       fi
       mv results ./figure5a/results_3_$i
     done
@@ -62,12 +92,12 @@ experiment1() {
     for i in "${conc[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname 60 0 5 follower 1 $i fpga_raft nonlocal"
+      cmd="./start-exp.sh testname $TUPT_DUR 0 5 follower 1 $i fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
       else
-        eval $cmd
+        timeout_process "$cmd" $TUPT_DUR_EXP 1
       fi
       mv results ./figure5a/results_5_$i
     done
@@ -91,12 +121,12 @@ experiment2() {
     for i in "${exp[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname 180 $i 3 follower 1 12 fpga_raft nonlocal"
+      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 200 fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
       else
-        eval $cmd
+        timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       fi
       mv results ./figure5b/results_3_$i
     done
@@ -105,12 +135,12 @@ experiment2() {
     for i in "${exp[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname 180 $i 5 follower 1 12 fpga_raft nonlocal"
+      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 5 follower 1 200 fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
       else
-        eval $cmd
+        timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       fi
       mv results ./figure5b/results_5_$i
     done
@@ -140,15 +170,16 @@ experiment5() {
 
   rm -rf ./results
   conc=( 1 2 4 6 8 10 12 14 16 18 20 )
+  conc=( 2 4 ) # testing
   for i in "${conc[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname 60 0 3 follower 1 $i copilot nonlocal"
+    cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 1 $i copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
     else
-      eval $cmd
+      timeout_process "$cmd" $TUPT_DUR_EXP 1
     fi
     mv results ./figure6a/results_$i
   done
@@ -172,12 +203,12 @@ experiment6() {
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname 180 $i 3 leader 1 12 copilot nonlocal"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 1 12 copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
     else
-      eval $cmd
+      timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
     fi
     mv results ./figure6b/results_leader_$i
   done
@@ -186,12 +217,12 @@ experiment6() {
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname 180 $i 3 follower 1 12 copilot nonlocal"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 12 copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
     else
-      eval $cmd
+      timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
     fi
     mv results ./figure6b/results_follower_$i
   done
@@ -231,4 +262,4 @@ experiment7
 echo -e "experiment-7\n"
 
 experiment8
-echo -e "experiment-8\n"
+echo -e "experiment-8\n"  
