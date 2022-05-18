@@ -381,7 +381,7 @@ class PollMgr::PollThread {
     pthread_t disk_th;
     pthread_t finalize_th;
 		Log_info("starting disk thread");
-    // Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
     // Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
 		Log_info("starting poll thread");
