@@ -78,8 +78,6 @@ class Communicator {
   static uint64_t global_id;
   const int CONNECT_TIMEOUT_MS = 120*1000;
   const int CONNECT_SLEEP_MS = 1000;
-  const uint32_t max_pending_rpc_ = 200;
-  uint32_t n_pending_rpc_ = 0;
   rrr::PollMgr *rpc_poll_ = nullptr;
   TxLogServer *rep_sched_ = nullptr;
   locid_t loc_id_ = -1;

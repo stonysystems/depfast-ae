@@ -48,8 +48,9 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
     int32_t ret;
     TxnOutput outputs;
     fu->get_reply() >> ret >> outputs;
-    n_pending_rpc_--;
-    verify(n_pending_rpc_ >= 0);
+    n_pending_rpc_[0]--;
+    verify(n_pending_rpc_[0] >= 0);
+    dispatch_quota.Set(dispatch_quota.value_ + 1);
     callback(ret, outputs);
   };
   // auto pair_leader_proxy = LeaderProxyForPartition(par_id);
@@ -68,12 +69,15 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
   di.id = cmd_id;
   di.str = __func__;
 
-  if (n_pending_rpc_ < max_pending_rpc_) {
+  dispatch_quota.WaitUntilGreaterOrEqualThan(0);
+
+  if (n_pending_rpc_[0] < max_pending_rpc_) {
     // if (true) {
     auto future =
         pair_proxies[0].second->async_Dispatch(cmd_id, di, md, fuattr);
     Future::safe_release(future);
-    n_pending_rpc_++;
+    n_pending_rpc_[0]++;
+    dispatch_quota.Set(dispatch_quota.value_ - 1);
   }
 
   rrr::FutureAttr fu2;
@@ -81,10 +85,18 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
     int32_t ret;
     TxnOutput outputs;
     fu->get_reply() >> ret >> outputs;
+    n_pending_rpc_[1]--;
+    verify(n_pending_rpc_[1] >= 0);
+    dispatch_quota.Set(dispatch_quota.value_ + 1);
     callback(ret, outputs);
   };
-  Future::safe_release(
-      pair_proxies[1].second->async_Dispatch(cmd_id, di, md, fu2));
+
+  if (n_pending_rpc_[1] < max_pending_rpc_) {
+    Future::safe_release(
+        pair_proxies[1].second->async_Dispatch(cmd_id, di, md, fu2));
+    n_pending_rpc_[1]++;
+    dispatch_quota.Set(dispatch_quota.value_ - 1);
+  }
 }
     
 } // namespace janus

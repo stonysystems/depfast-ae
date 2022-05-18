@@ -243,7 +243,7 @@ bool Client::handle_read(){
 	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
 	double util2 = (double) total_cpu2/total_time2;
 	Log_info("elapsed CPU time (client read): %f", util2);*/
-  for (;;) {
+  /*for (;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
     if (n_peek == sizeof(i32)
@@ -286,7 +286,7 @@ bool Client::handle_read(){
   }
   // This is a workaround, the Loop call should really happen
   // between handle_read and handle_write in the epoll loop
-  Reactor::GetReactor()->Loop();
+  Reactor::GetReactor()->Loop();*/
   return true;
 }
 

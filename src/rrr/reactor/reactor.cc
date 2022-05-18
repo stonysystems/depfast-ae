@@ -320,20 +320,6 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
-	
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	long time = (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec;
-	if (time > 10000000) Log_info("time of createrun: %ld and %d/%d", time, n_active_coroutines_, n_created_coroutines_);
-
-	/*clock_gettime(CLOCK_MONOTONIC_RAW, &end_marshal);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_marshal_cpu);
-	long total_cpu = (end_marshal_cpu.tv_sec - begin_marshal_cpu.tv_sec)*1000000000 + (end_marshal_cpu.tv_nsec - begin_marshal_cpu.tv_nsec);
-	long total_time = (end_marshal.tv_sec - begin_marshal.tv_sec)*1000000000 + (end_marshal.tv_nsec - begin_marshal.tv_nsec);
-	double util = (double) total_cpu/total_time;
-	if (total_time > 10000) {
-		Log_info("marshal time: %d with %d coros", total_time, coros_.size());
-		Log_info("marshal CPU: %f at %d", util, sp_coro->id);
-	}*/
 
   verify(sp_running_coro_th_ == sp_coro);
   if (sp_running_coro_th_ -> Finished()) {
@@ -395,7 +381,7 @@ class PollMgr::PollThread {
     pthread_t disk_th;
     pthread_t finalize_th;
 		Log_info("starting disk thread");
-    Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    // Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
     // Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
     
 		Log_info("starting poll thread");
@@ -523,63 +509,8 @@ void PollMgr::PollThread::poll_loop() {
 	while (!stop_flag_) {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
-		//if (num_events > 0) Log_info("number of events: %d", num_events);
-		if (!begins.empty() && num_events >= 5) {
-			//Log_info("number of events: %d", num_events);
 
-			struct timespec end, end_cpu;
-			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_cpu);
-			
-			if (index == 99) {
-				total_cpu += (end_cpu.tv_sec - first_cpu.tv_sec)*1000000000 + (end_cpu.tv_nsec - first_cpu.tv_nsec);
-				total_time += (end.tv_sec - first_begin.tv_sec)*1000000000 + (end.tv_nsec - first_begin.tv_nsec);
-				total_time -= wait_time;
-				total_cpu -= wait_cpu;
-				wait_time = 0;
-				wait_cpu = 0;
-				index = 0;
-				count++;
-				double util = (double)total_cpu/total_time;
-				Log_debug("elapsed CPU: %d", total_cpu);
-				Log_debug("elapsed time: %d", total_time);
-				Log_debug("elapsed CPU time: %f", util);
-
-				if (util < 0.85) Reactor::GetReactor()->slow_ = true;
-			}
-			/*if (util < 0.40) {
-				if (first == 0) first = count;
-				else {
-					if (count-first < 1000) {
-						if (diff_count >= 5) {
-							Reactor::GetReactor()->slow_ = true;
-							diff_count = 0;
-						} else {
-							diff_count++;
-						}
-					} else {
-						diff_count = 0;
-					}
-					//if (count-first < 1000) Log_info("slow slow");
-					first = count;
-				}
-			}*/
-			total_cpu = 0;
-			total_time = 0;
-		}
-
-		/*if (num_events >= 5) {
-			clock_gettime(CLOCK_MONOTONIC_RAW, &end2);
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
-			long total_cpu2 = (end2_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end2_cpu.tv_nsec - begins[1].tv_nsec);
-			long total_time2 = (end2.tv_sec - begins[0].tv_sec)*1000000000 + (end2.tv_nsec - begins[0].tv_nsec);
-			double util2 = (double) total_cpu2/total_time2;
-			Log_info("elapsed CPU3: %d", total_cpu2);
-			Log_info("elapsed time3: %d", total_time2);
-			Log_info("elapsed CPU time3: %f", util2);
-		}*/
-
-#if 1
+#if 0
 		poll_.Wait();
 #else
 		begins = poll_.Wait_One(num_events, slow);
@@ -612,7 +543,7 @@ void PollMgr::PollThread::poll_loop() {
 			Log_info("elapsed time4: %d", total_time3);
 			Log_info("elapsed CPU time4: %f", util3);
 		}*/
-    // poll_.Wait_Two();
+    poll_.Wait_Two();
 #endif
 
 		if (slow) Reactor::GetReactor()->slow_ = slow;
