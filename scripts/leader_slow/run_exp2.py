@@ -468,7 +468,7 @@ class ClientController(object):
             for proxy in rpc_proxy:
                 try:
                     dep_id = (str.encode('dep'), 0)
-                    future = proxy.async_client_response()
+                    future = proxy.async_client_response(dep_id)
                     futures.append(future)
                 except:
                     logger.error(traceback.format_exc())
