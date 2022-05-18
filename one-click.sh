@@ -15,8 +15,7 @@ servers=(
   $s5
 )
 
-
-ONLY_CMD=1
+ONLY_CMD=0
 SLOWDOWN_DUR=180
 SLOWDOWN_DUR_EXP=205
 TUPT_DUR=60
@@ -62,7 +61,7 @@ timeout_process() {
 #  2. no slowdown
 #  3. replicas: 3, 5
 #  4. fix # of client and then vary # of concurrent
-experiment1() {
+experiment5a() {
     if [ $ONLY_CMD -eq 0 ]
     then
       build_scp
@@ -73,7 +72,6 @@ experiment1() {
     rm -rf ./results
     # 3 replicas
     conc=( 20 40 60 80 100 130 160 190 220 260 300 340 380 420 )
-    conc=( 20 40 ) # testing
     for i in "${conc[@]}"
     do
       mkdir results
@@ -107,7 +105,7 @@ experiment1() {
 #  1. fail-slow on followers with fpga_raft
 #  2. with 6 slowdown types
 #  3. replicas: 3, 5
-experiment2() {
+experiment5b() {
     if [ $ONLY_CMD -eq 0 ]
     then
       build_scp
@@ -146,21 +144,11 @@ experiment2() {
     done
 }
 
-# figure5c: based on figure5b
-experiment3() {
-  echo ""
-}
-
-# figure5d: based on figure5b
-experiment4() {
-  echo ""
-}
-
 # figure6a:
 #  1. 3 replica setting on copilot
 #  2. no slowdown
 #  3. fix # of client and then vary # of concurrent
-experiment5() {
+experiment6a() {
   if [ $ONLY_CMD -eq 0 ]
   then
     build_scp
@@ -170,7 +158,6 @@ experiment5() {
 
   rm -rf ./results
   conc=( 1 2 4 6 8 10 12 14 16 18 20 )
-  conc=( 2 4 ) # testing
   for i in "${conc[@]}"
   do
     mkdir results
@@ -189,7 +176,7 @@ experiment5() {
 #  1. 3-replica setting on copilot
 #  2. slowdown type: 1, 2, 5, 6
 #  3. on follower and leader
-experiment6() {
+experiment6b() {
   if [ $ONLY_CMD -eq 0 ]
   then
     build_scp
@@ -228,38 +215,21 @@ experiment6() {
   done
 }
 
-# figure6c: based on figure6b
-experiment7() {
-  echo ""
-}
-
-# figure6d: based on figure6b
-experiment8() {
-  echo ""
-}
-
 setup
 
-experiment1
-echo -e "experiment-1\n"
+experiment5a
+echo -e "experiment-5a\n"
 
-experiment2
-echo -e "experiment-2\n"
+experiment5b
+echo -e "experiment-5b\n"
 
-experiment3
-echo -e "experiment-3\n"
+experiment6a
+echo -e "experiment-6a\n"
 
-experiment4
-echo -e "experiment-4\n"
+experiment6b
+echo -e "experiment-6b\n"
 
-experiment5
-echo -e "experiment-5\n"
-
-experiment6
-echo -e "experiment-6\n"
-
-experiment7
-echo -e "experiment-7\n"
-
-experiment8
-echo -e "experiment-8\n"  
+# after done
+eval cd $workdir/$repos/data_processing
+python3 plot_raft.py
+python3 plot_copilot.py
