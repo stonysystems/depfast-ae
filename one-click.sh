@@ -70,11 +70,13 @@ experiment5a() {
     rm -rf ./figure5a/*
 
     rm -rf ./results
+    rm -rf ./log
     # 3 replicas
     conc=( 20 40 60 80 100 130 160 190 220 260 300 340 380 420 )
     for i in "${conc[@]}"
     do
       mkdir results
+      mkdir log
       cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 1 $i fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
@@ -84,12 +86,14 @@ experiment5a() {
         timeout_process "$cmd" $TUPT_DUR_EXP 1
       fi
       mv results ./figure5a/results_3_$i
+      mv log ./figure5a/log_3_$i
     done
 
     # 5 replicas
     for i in "${conc[@]}"
     do
       mkdir results
+      mkdir log
       cmd="./start-exp.sh testname $TUPT_DUR 0 5 follower 1 $i fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
@@ -98,6 +102,7 @@ experiment5a() {
         timeout_process "$cmd" $TUPT_DUR_EXP 1
       fi
       mv results ./figure5a/results_5_$i
+      mv log ./figure5a/log_5_$i
     done
 }
 
@@ -114,11 +119,13 @@ experiment5b() {
     rm -rf ./figure5b/*
 
     rm -rf ./results
+    rm -rf ./log
     # 3 replicas
     exp=( 1 2 3 4 5 6 )
     for i in "${exp[@]}"
     do
       mkdir results
+      mkdir log
       cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 200 fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
@@ -127,12 +134,14 @@ experiment5b() {
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       fi
       mv results ./figure5b/results_3_$i
+      mv log ./figure5b/log_3_$i
     done
 
     # 5 replicas
     for i in "${exp[@]}"
     do
       mkdir results
+      mkdir log
       cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 5 follower 1 200 fpga_raft nonlocal"
       if [ $ONLY_CMD -eq 1 ]
       then
@@ -141,6 +150,7 @@ experiment5b() {
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       fi
       mv results ./figure5b/results_5_$i
+      mv log ./figure5b/log_5_$i
     done
 }
 
@@ -157,10 +167,12 @@ experiment6a() {
   rm -rf ./figure6a/*
 
   rm -rf ./results
+  rm -rf ./log
   conc=( 1 2 4 6 8 10 12 14 16 18 20 )
   for i in "${conc[@]}"
   do
     mkdir results
+    mkdir log
     cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 1 $i copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
@@ -169,6 +181,7 @@ experiment6a() {
       timeout_process "$cmd" $TUPT_DUR_EXP 1
     fi
     mv results ./figure6a/results_$i
+    mv log ./figure6a/log_$i
   done
 }
 
@@ -185,11 +198,13 @@ experiment6b() {
   rm -rf ./figure6b/*
 
   rm -rf ./results
+  rm -rf ./log
   exp=( 1 2 5 6 )
   # on the leader
   for i in "${exp[@]}"
   do
     mkdir results
+    mkdir log
     cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 1 12 copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
@@ -198,12 +213,14 @@ experiment6b() {
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
     fi
     mv results ./figure6b/results_leader_$i
+    mv log ./figure6b/log_leader_$i
   done
 
   # on the follower
   for i in "${exp[@]}"
   do
     mkdir results
+    mkdir log
     cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 12 copilot nonlocal"
     if [ $ONLY_CMD -eq 1 ]
     then
@@ -212,6 +229,7 @@ experiment6b() {
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
     fi
     mv results ./figure6b/results_follower_$i
+    mv log ./figure6b/log_follower_$i
   done
 }
 
