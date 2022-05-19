@@ -15,6 +15,7 @@
 #include "2pl/coordinator.h"
 #include "occ/tx.h"
 #include "occ/coordinator.h"
+#include "none_copilot/commo.h"
 
 #include "bench/tpcc_real_dist/sharding.h"
 #include "bench/tpcc/workload.h"
