@@ -7,6 +7,8 @@ import lattput
 import processing
 
 typ = 'leader'
+CK=200
+#CK=220
 
 num2exp = {
     0: 'No Slowness',
@@ -41,11 +43,11 @@ def load_process_data(protocol, ty, exp, rep):
             data_3, data_5 = processing.figure5a()
             if rep == 3:
                 for e in data_3:
-                    if e[0] == 190: 
+                    if e[0] == CK:
                         return e[2], e[1], e[3]
             else:
                 for e in data_5:
-                    if e[0] == 190: 
+                    if e[0] == CK:
                         return e[2], e[1], e[3]
         else:
             data_3, data_5 = processing.figure5b()

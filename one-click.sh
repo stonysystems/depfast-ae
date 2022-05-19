@@ -71,7 +71,7 @@ experiment5a() {
 
     rm -rf ./results
     # 3 replicas
-    conc=( 20 40 60 80 100 130 160 190 220 260 300 340 380 420 )
+    conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
     for i in "${conc[@]}"
     do
       mkdir results

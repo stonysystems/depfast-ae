@@ -4,6 +4,8 @@ import os
 
 # the library for the data-processing
 BASE="../"
+SK="PAYMENT"
+#SK="WRITE"
 
 def convert_yml_json(name):
   with open(name, 'r') as file:
@@ -27,13 +29,13 @@ def find_the_yml(folder_name):
 
 def figure5a():
     # 3 replicas
-    conc=[20, 40, 60, 80, 100, 130, 160, 190, 220, 260, 300, 340, 380, 420]
+    conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
     data_3=[] # (currency, 50th, tps, 99th)
     for i in conc:
         folder=BASE+"figure5a/results_3_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_3.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]["99"]))
+            data_3.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]))
         else:
             print("No yml found in " + folder)
     
@@ -43,7 +45,7 @@ def figure5a():
         folder=BASE+"figure5a/results_5_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_5.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]["99"]))
+            data_5.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]))
         else:
             print("No yml found in " + folder)
     return data_3, data_5
@@ -57,7 +59,7 @@ def figure5b():
         folder=BASE+"/figure5b/results_3_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_3.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]))
+            data_3.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]))
         else:
             print("No yml found in " + folder)
     
@@ -67,7 +69,7 @@ def figure5b():
         folder=BASE+"/figure5b/results_5_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_5.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]))
+            data_5.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]))
         else:
             print("No yml found in " + folder)
 
@@ -81,7 +83,7 @@ def figure6a():
         folder=BASE+"/figure6a/results_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_r.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]["99"]))
+            data_r.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]))
         else:
             print("No yml found in " + folder)
     
@@ -95,7 +97,7 @@ def figure6b():
         folder=BASE+"/figure6b/results_leader_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_l.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]))
+            data_l.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]))
         else:
             print("No yml found in " + folder)
     
@@ -105,7 +107,7 @@ def figure6b():
         folder=BASE+"/figure6b/results_follower_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_f.append((i, data["PAYMENT"]["all_latency"]["50"], data["PAYMENT"]["tps"], data["PAYMENT"]["all_latency"]))
+            data_f.append((i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]))
         else:
             print("No yml found in " + folder)
 
