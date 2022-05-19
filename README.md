@@ -9,19 +9,20 @@ Welcome to the DepFast artifact for our ATC'22 submission.
 <!-- https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md -->
 In this section, you can set up DepFast locally for testing and verification, which is mainly for badges :green_circle: `Artifacts Available` and :green_circle: `Artifacts Evaluated - Functional`. 
 
-### 1. create a Docker instance
+### 1. create a Docker instance (~30minutes)
 We run all our codes on `ubuntu 20.04` which mainly depends on several Linux libraries (i.e., boost, gcc and libyaml-cpp-dev). We provide a docker image with all required dependencies and source code for ease so you can run on any local machine supporting Docker.
 ```bash
 # on any machine with Docker support
 cd ~
 git clone https://github.com/stonysystems/depfast-ae.git
+cd ~/depfast-ae
 git checkout atc_ae
 cd ~/depfast-ae/docker
 sudo docker build -t ubuntu_atc2022 .
-sudo docker run --name ubuntu_atc2022 -t ubuntu_atc2022
+sudo docker run --name ubuntu_atc2022 -it ubuntu_atc2022
 ```
 
-### 2. run minimal working examples locally
+### 2. run minimal working examples locally (~5minutes)
 You can start DepFast instance locally (using different processes to mimic actual distributed environment) to verify the functionability of the program inside the docker container now.
 
 ```bash
@@ -80,8 +81,8 @@ python3 waf configure build
 bash ./batch_op.sh scp
 ```
 
-### 3. run all experiments in the one-click script
-We provide one-click runnable script to generate all results. It would take up to ~2.5 hours to run all experiments.
+### 3. run all experiments in the one-click script (~2.5hours)
+We provide one-click runnable script to generate all results.
 ```bash
 # run commands on the client-1-ip machine
 cd ~/code/depfast

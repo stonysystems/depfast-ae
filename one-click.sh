@@ -82,6 +82,11 @@ experiment5a() {
       else
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
+	# if error detected, re-run it
+        if ag 'raise ' ./figure5a/log_3_$i; then
+          eval $cmd
+          timeout_process "$cmd" $TUPT_DUR_EXP 0
+	fi
       fi
       mv results ./figure5a/results_3_$i
       cp -r log ./figure5a/log_3_$i
@@ -98,6 +103,11 @@ experiment5a() {
       else
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
+	# if error detected, re-run it
+        if ag 'raise ' ./figure5a/log_5_$i; then
+          eval $cmd
+          timeout_process "$cmd" $TUPT_DUR_EXP 0
+	fi
       fi
       mv results ./figure5a/results_5_$i
       cp -r log ./figure5a/log_5_$i
@@ -129,6 +139,11 @@ experiment5b() {
       else
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
+	# if error detected, re-run it
+        if ag 'raise ' ./figure5b/log_3_$i; then
+          eval $cmd
+          timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
+	fi
       fi
       mv results ./figure5b/results_3_$i
       cp -r log ./figure5b/log_3_$i
@@ -145,6 +160,11 @@ experiment5b() {
       else
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
+	# if error detected, re-run it
+        if ag 'raise ' ./figure5b/log_5_$i; then
+          eval $cmd
+          timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
+	fi
       fi
       mv results ./figure5b/results_5_$i
       cp -r log ./figure5b/log_5_$i
@@ -175,6 +195,11 @@ experiment6a() {
     else
       eval $cmd 
       timeout_process "$cmd" $TUPT_DUR_EXP 1
+      # if error detected, re-run it
+      if ag 'raise ' ./figure6a/log_$i; then
+        eval $cmd
+        timeout_process "$cmd" $TUPT_DUR_EXP 0
+      fi
     fi
     mv results ./figure6a/results_$i
     cp -r log ./figure6a/log_$i
@@ -206,6 +231,11 @@ experiment6b() {
     else 
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
+      # if error detected, re-run it
+      if ag 'raise ' ./figure6b/log_leader_$i; then
+        eval $cmd
+        timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
+      fi
     fi
     mv results ./figure6b/results_leader_$i
     cp -r log ./figure6b/log_leader_$i
@@ -222,6 +252,11 @@ experiment6b() {
     else
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
+      # if error detected, re-run it
+      if ag 'raise ' ./figure6b/log_follower_$i; then
+        eval $cmd
+        timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
+      fi
     fi
     mv results ./figure6b/results_follower_$i
     cp -r log ./figure6b/log_follower_$i
