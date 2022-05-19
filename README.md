@@ -81,14 +81,14 @@ bash ./batch_op.sh scp
 ```
 
 ### 3. run all experiments in the one-click script
-We provide one-click runnable script to generate all results. It would take up to several hours to run all experiments.
+We provide one-click runnable script to generate all results. It would take up to ~2.5 hours to run all experiments.
 ```bash
 # run commands on the client-1-ip machine
 cd ~/code/depfast
 bash one-click.sh
 ```
 
-Once everything is done, figures (`figure-5` and `figure-6`) reported in the paper are generated under `./data_processing/imgs`.
+Once everything is done, figures (`figure-5: depfast_raft.pdf` and `figure-6: depfast_copilot.pdf`) reported in the paper are generated under `./data_processing/imgs`.
 ```
 # ls -lh ./data_processing/imgs
 total 72K

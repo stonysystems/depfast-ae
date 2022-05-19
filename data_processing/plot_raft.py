@@ -38,7 +38,15 @@ typs = ['follower']
 def load_process_data(protocol, ty, exp, rep):
     if protocol == "raft":
         if exp == 0:
-            pass
+            data_3, data_5 = processing.figure5a()
+            if rep == 3:
+                for e in data_3:
+                    if e[0] == 190: 
+                        return e[2], e[1], e[3]
+            else:
+                for e in data_5:
+                    if e[0] == 190: 
+                        return e[2], e[1], e[3]
         else:
             data_3, data_5 = processing.figure5b()
             if rep == 3:
@@ -52,7 +60,15 @@ def load_process_data(protocol, ty, exp, rep):
     else:
         data_l, data_f = processing.figure6a()
         if exp == 0:
-            pass
+            data_r = processing.figure6a()
+            if ty == "follower":
+                for e in data_r:
+                    if e[0] == 12:
+                        return e[2], e[1], e[3]
+            else:
+                for e in data_r:
+                    if e[0] == 12:
+                        return e[2], e[1], e[3]
         else:
             data_l, data_f = processing.figure6b()
             if ty == "follower":

@@ -115,6 +115,6 @@ def figure6b():
 if __name__ == "__main__":
     #print(figure5a())
     #print(figure5b())
-    # print(figure6a())
-    # print(figure6b())
+    #print(figure6a())
+    #print(figure6b())
     pass
