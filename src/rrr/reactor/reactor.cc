@@ -364,6 +364,7 @@ class PollMgr::PollThread {
   pthread_t disk_th_;
   bool stop_flag_;
   bool pause_flag_;
+  bool need_disk_ = false;
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
@@ -380,9 +381,10 @@ class PollMgr::PollThread {
 
     pthread_t disk_th;
     pthread_t finalize_th;
-		Log_info("starting disk thread");
-    Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
-    // Pthread_create(&finalize_th, nullptr, PollMgr::PollThread::start_finalize_loop, args2);
+    if (thiz->need_disk_) {
+      Log_info("starting disk thread");
+      Pthread_create(&disk_th, nullptr, PollMgr::PollThread::start_disk_loop, args);
+    }
     
 		Log_info("starting poll thread");
     thiz->poll_loop();
@@ -474,11 +476,12 @@ class PollMgr::PollThread {
   void remove(std::shared_ptr<Job>);
 };
 
-PollMgr::PollMgr(int n_threads /* =... */)
-    : n_threads_(n_threads), poll_threads_() {
+PollMgr::PollMgr(int n_threads /* =... */, bool need_disk)
+    : n_threads_(n_threads), need_disk_(need_disk), poll_threads_() {
   verify(n_threads_ > 0);
   poll_threads_ = new PollThread[n_threads_];
   for (int i = 0; i < n_threads_; i++) {
+    poll_threads_[i].need_disk_ = need_disk_;
     poll_threads_[i].start(this);
   }
 }
@@ -510,9 +513,9 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
 
-#if 0
+    if (!need_disk_) {
 		poll_.Wait();
-#else
+    } else {
 		begins = poll_.Wait_One(num_events, slow);
 		
 		if (begins.size() == 4) {
@@ -533,18 +536,8 @@ void PollMgr::PollThread::poll_loop() {
 				wait_cpu += (begins[5].tv_sec - begins[4].tv_sec)*1000000000 + (begins[5].tv_nsec - begins[4].tv_nsec);
 			}
 		}
-		/*if (num_events >= 5) {
-			clock_gettime(CLOCK_MONOTONIC, &end3);
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end3_cpu);
-			long total_cpu3 = (end3_cpu.tv_sec - begins[1].tv_sec)*1000000000 + (end3_cpu.tv_nsec - begins[1].tv_nsec);
-			long total_time3 = (end3.tv_sec - begins[0].tv_sec)*1000000000 + (end3.tv_nsec - begins[0].tv_nsec);
-			double util3 = (double) total_cpu3/total_time3;
-			Log_info("elapsed CPU4: %d", total_cpu3);
-			Log_info("elapsed time4: %d", total_time3);
-			Log_info("elapsed CPU time4: %f", util3);
-		}*/
     poll_.Wait_Two();
-#endif
+    }
 
 		if (slow) Reactor::GetReactor()->slow_ = slow;
 

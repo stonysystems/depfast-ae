@@ -237,13 +237,8 @@ bool Client::handle_read(){
   if (bytes_read == 0) {
     return false;
   }
-	/*clock_gettime(CLOCK_MONOTONIC, &end2);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end2_cpu);
-	long total_cpu2 = (end2_cpu.tv_sec - begin2_cpu.tv_sec)*1000000000 + (end2_cpu.tv_nsec - begin2_cpu.tv_nsec);
-	long total_time2 = (end2.tv_sec - begin2.tv_sec)*1000000000 + (end2.tv_nsec - begin2.tv_nsec);
-	double util2 = (double) total_cpu2/total_time2;
-	Log_info("elapsed CPU time (client read): %f", util2);*/
-  /*for (;;) {
+
+  for (;;) {
     i32 packet_size;
     int n_peek = in_.peek(&packet_size, sizeof(i32));
     if (n_peek == sizeof(i32)
@@ -286,7 +281,23 @@ bool Client::handle_read(){
   }
   // This is a workaround, the Loop call should really happen
   // between handle_read and handle_write in the epoll loop
-  Reactor::GetReactor()->Loop();*/
+  Reactor::GetReactor()->Loop();
+  return true;
+}
+
+bool Client::handle_read_one() {
+	struct timespec begin2, begin2_cpu, end2, end2_cpu;
+  /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
+  if (status_ != CONNECTED) {
+    return false;
+  }
+
+  int bytes_read = in_.read_from_fd(sock_);
+  if (bytes_read == 0) {
+    return false;
+  }
+
   return true;
 }
 

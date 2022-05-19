@@ -126,12 +126,13 @@ void ServerWorker::SetupService() {
            site_info_->GetBindAddress().c_str());
 
   int ret;
+  auto config = Config::GetConfig();
   // set running mode and initialize transaction manager.
   std::string bind_addr = site_info_->GetBindAddress();
 
   // init rrr::PollMgr 1 threads
   int n_io_threads = 1;
-  svr_poll_mgr_ = new rrr::PollMgr(n_io_threads);
+  svr_poll_mgr_ = new rrr::PollMgr(n_io_threads, config->replica_proto_ == MODE_FPGA_RAFT);  // Raft needs a disk thread
   Reactor::GetReactor()->server_id_ = site_info_->id;
 //  svr_thread_pool_ = new rrr::ThreadPool(1);
 

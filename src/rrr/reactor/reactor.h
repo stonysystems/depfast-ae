@@ -115,6 +115,7 @@ class PollMgr: public rrr::RefCounted {
 
     PollThread* poll_threads_;
     const int n_threads_;
+    bool need_disk_ = false;
 
 protected:
 
@@ -123,7 +124,7 @@ protected:
 
 public:
 
-    PollMgr(int n_threads = 1);
+    PollMgr(int n_threads = 1, bool need_disk=false);
     PollMgr(const PollMgr&) = delete;
     PollMgr& operator=(const PollMgr&) = delete;
 

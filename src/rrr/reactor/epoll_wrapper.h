@@ -36,7 +36,8 @@ public:
     virtual int poll_mode() = 0;
     virtual size_t content_size() = 0;
     virtual bool handle_read() = 0;
-    //virtual void handle_read_one() = 0;
+    // Break handle_read into two halves to solve reverse backlog problem
+    virtual bool handle_read_one() = 0;
     virtual bool handle_read_two() = 0;
     virtual void handle_write() = 0;
     virtual void handle_error() = 0;
@@ -197,7 +198,7 @@ class Epoll {
 			found = true;
       Pollable* poll = (Pollable *) evlist[i].udata;
       if (evlist[i].filter & EVFILT_READ){
-        poll->handle_read();
+        poll->handle_read_one();
         pending.push_back(poll);
 				if (pending.size() > 10000) Log_info("other pending size: %d", pending.size());
       }
@@ -230,7 +231,7 @@ class Epoll {
       Pollable* poll = (Pollable *) evlist[i].data.ptr;
       verify(poll != nullptr);
       if (evlist[i].events & EPOLLIN) {
-					bool push = poll->handle_read();
+					bool push = poll->handle_read_one();
           if(push) pending.push_back(poll);
       }
       if (evlist[i].events & EPOLLOUT) {
