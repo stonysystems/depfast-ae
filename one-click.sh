@@ -21,6 +21,14 @@ SLOWDOWN_DUR_EXP=230
 TUPT_DUR=60
 TUPT_DUR_EXP=100
 
+SLOW_CONCURRENT_RAFT=200 # for tpca
+#SLOW_CONCURRENT_RAFT=220 # for rw
+
+# trials, by default: 1
+FIGURE5a_TARIALS=1
+FIGURE5b_TARIALS=1
+FIGURE6a_TARIALS=1
+FIGURE6b_TARIALS=1
 ulimit -n 10000
 
 setup () {
@@ -62,12 +70,13 @@ timeout_process() {
 #  3. replicas: 3, 5
 #  4. fix # of client and then vary # of concurrent
 experiment5a() {
+    suffix=_$1
     if [ $ONLY_CMD -eq 0 ]
     then
       build_scp
     fi
-    mkdir -p ./figure5a
-    rm -rf ./figure5a/*
+    mkdir -p ./figure5a$suffix
+    rm -rf ./figure5a$suffix/*
 
     rm -rf ./results
     # 3 replicas
@@ -83,13 +92,13 @@ experiment5a() {
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5a/log_3_$i; then
+        if ag 'raise ' ./figure5a$suffix/log_3_$i; then
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
       fi
-      mv results ./figure5a/results_3_$i
-      cp -r log ./figure5a/log_3_$i
+      mv results ./figure5a$suffix/results_3_$i
+      cp -r log ./figure5a$suffix/log_3_$i
     done
 
     # 5 replicas
@@ -104,13 +113,13 @@ experiment5a() {
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5a/log_5_$i; then
+        if ag 'raise ' ./figure5a$suffix/log_5_$i; then
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
       fi
-      mv results ./figure5a/results_5_$i
-      cp -r log ./figure5a/log_5_$i
+      mv results ./figure5a$suffix/results_5_$i
+      cp -r log ./figure5a$suffix/log_5_$i
     done
 }
 
@@ -119,12 +128,13 @@ experiment5a() {
 #  2. with 6 slowdown types
 #  3. replicas: 3, 5
 experiment5b() {
+    suffix=_$1
     if [ $ONLY_CMD -eq 0 ]
     then
       build_scp
     fi
-    mkdir -p ./figure5b
-    rm -rf ./figure5b/*
+    mkdir -p ./figure5b$suffix
+    rm -rf ./figure5b$suffix/*
 
     rm -rf ./results
     # 3 replicas
@@ -132,7 +142,7 @@ experiment5b() {
     for i in "${exp[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 200 fpga_raft nonlocal &"
+      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 $SLOW_CONCURRENT_RAFT fpga_raft nonlocal &"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
@@ -140,20 +150,20 @@ experiment5b() {
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5b/log_3_$i; then
+        if ag 'raise ' ./figure5b$suffix/log_3_$i; then
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
       fi
-      mv results ./figure5b/results_3_$i
-      cp -r log ./figure5b/log_3_$i
+      mv results ./figure5b$suffix/results_3_$i
+      cp -r log ./figure5b$suffix/log_3_$i
     done
 
     # 5 replicas
     for i in "${exp[@]}"
     do
       mkdir results
-      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 5 follower 1 200 fpga_raft nonlocal &"
+      cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 5 follower 1 $SLOW_CONCURRENT_RAFT fpga_raft nonlocal &"
       if [ $ONLY_CMD -eq 1 ]
       then
         echo $cmd
@@ -161,13 +171,13 @@ experiment5b() {
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5b/log_5_$i; then
+        if ag 'raise ' ./figure5b$suffix/log_5_$i; then
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
       fi
-      mv results ./figure5b/results_5_$i
-      cp -r log ./figure5b/log_5_$i
+      mv results ./figure5b$suffix/results_5_$i
+      cp -r log ./figure5b$suffix/log_5_$i
     done
 }
 
@@ -176,12 +186,13 @@ experiment5b() {
 #  2. no slowdown
 #  3. fix # of client and then vary # of concurrent
 experiment6a() {
+  suffix=_$1
   if [ $ONLY_CMD -eq 0 ]
   then
     build_scp
   fi
-  mkdir -p ./figure6a
-  rm -rf ./figure6a/*
+  mkdir -p ./figure6a$suffix
+  rm -rf ./figure6a$suffix/*
 
   rm -rf ./results
   conc=( 1 2 4 6 8 10 12 14 16 18 20 )
@@ -196,13 +207,13 @@ experiment6a() {
       eval $cmd 
       timeout_process "$cmd" $TUPT_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6a/log_$i; then
+      if ag 'raise ' ./figure6a$suffix/log_$i; then
         eval $cmd
         timeout_process "$cmd" $TUPT_DUR_EXP 0
       fi
     fi
-    mv results ./figure6a/results_$i
-    cp -r log ./figure6a/log_$i
+    mv results ./figure6a$suffix/results_$i
+    cp -r log ./figure6a$suffix/log_$i
   done
 }
 
@@ -211,12 +222,13 @@ experiment6a() {
 #  2. slowdown type: 1, 2, 5, 6
 #  3. on follower and leader
 experiment6b() {
+  suffix=_$1
   if [ $ONLY_CMD -eq 0 ]
   then
     build_scp
   fi
-  mkdir -p ./figure6b
-  rm -rf ./figure6b/*
+  mkdir -p ./figure6b$suffix
+  rm -rf ./figure6b$suffix/*
 
   rm -rf ./results
   exp=( 1 2 5 6 )
@@ -232,13 +244,13 @@ experiment6b() {
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6b/log_leader_$i; then
+      if ag 'raise ' ./figure6b$suffix/log_leader_$i; then
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
     fi
-    mv results ./figure6b/results_leader_$i
-    cp -r log ./figure6b/log_leader_$i
+    mv results ./figure6b$suffix/results_leader_$i
+    cp -r log ./figure6b$suffix/log_leader_$i
   done
 
   # on the follower
@@ -253,29 +265,37 @@ experiment6b() {
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6b/log_follower_$i; then
+      if ag 'raise ' ./figure6b$suffix/log_follower_$i; then
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
     fi
-    mv results ./figure6b/results_follower_$i
-    cp -r log ./figure6b/log_follower_$i
+    mv results ./figure6b$suffix/results_follower_$i
+    cp -r log ./figure6b$suffix/log_follower_$i
   done
 }
 
 setup
 
-experiment5a
-echo -e "experiment-5a\n"
+for (( c=1; c<=$FIGURE5a_TARIALS; c++ )); do 
+  experiment5a $c
+  echo -e "experiment-5a\n"
+done
 
-experiment5b
-echo -e "experiment-5b\n"
+for (( c=1; c<=$FIGURE5b_TARIALS; c++ )); do 
+  experiment5b $c
+  echo -e "experiment-5b\n"
+done
 
-experiment6a
-echo -e "experiment-6a\n"
+for (( c=1; c<=$FIGURE6a_TARIALS; c++ )); do 
+  experiment6a $c
+  echo -e "experiment-6a\n"
+done
 
-experiment6b
-echo -e "experiment-6b\n"
+for (( c=1; c<=$FIGURE6b_TARIALS; c++ )); do 
+  experiment6b $c
+  echo -e "experiment-6b\n"
+done
 
 # draw figures
 bash draw_figure.sh

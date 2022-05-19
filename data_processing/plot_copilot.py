@@ -7,8 +7,8 @@ import lattput
 import processing
 
 typ = 'leader'
-CK=200
-#CK=220
+CK=200 # for tpca
+#CK=220 # for rw
 
 num2exp = {
     0: 'No Slowness',

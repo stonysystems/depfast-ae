@@ -21,6 +21,7 @@ ab=$8
 env=$9
 cc=none
 workload=tpca
+#workload=rw
 
 rm log/*
 rm archive/*
