@@ -8,12 +8,18 @@ SK="PAYMENT" # for tpca
 #SK="WRITE" # for rw
 
 # trials, by default: 1
+# for rw
 FIGURE5a_TARIALS=1
 FIGURE5b_TARIALS=1
 FIGURE6a_TARIALS=1
 FIGURE6b_TARIALS=1
 
 def median(a):
+    m=max(a)
+    if m==0: return 0
+    for i in range(len(a)):
+        if a[i]==0:
+            a[i]=m
     return sorted(a)[len(a)//2]
 
 def convert_yml_json(name):
@@ -84,6 +90,7 @@ def figure5aTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
         else:
+            data_3.append([i, 0, 0, 0])
             print("No yml found in " + folder)
     
     # 5 replicas
@@ -94,6 +101,7 @@ def figure5aTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
         else:
+            data_5.append([i, 0, 0, 0])
             print("No yml found in " + folder)
     return data_3, data_5
 
@@ -140,6 +148,7 @@ def figure5bTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
         else:
+            data_3.append([i, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
     
     # 5 replicas
@@ -150,6 +159,7 @@ def figure5bTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
         else:
+            data_5.append([i, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
 
     return data_3, data_5
@@ -186,6 +196,7 @@ def figure6aTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_r.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
         else:
+            data_r.append([i, 0, 0, 0])
             print("No yml found in " + folder)
     
     return data_r
@@ -232,6 +243,7 @@ def figure6bTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_l.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
         else:
+            data_l.append([i, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
     
     # follower
@@ -242,6 +254,7 @@ def figure6bTrail(t):
             data=convert_yml_json(find_the_yml(folder))
             data_f.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
         else:
+            data_f.append([i, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
 
     return data_l, data_f
