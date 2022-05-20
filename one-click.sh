@@ -299,4 +299,7 @@ for (( c=1; c<=$FIGURE6b_TARIALS; c++ )); do
 done
 
 # draw figures
-bash draw_figure.sh
+if [ $ONLY_CMD -eq 0 ]
+then
+  bash draw_figure.sh
+fi
