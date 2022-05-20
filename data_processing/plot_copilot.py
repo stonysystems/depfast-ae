@@ -8,7 +8,9 @@ import processing
 
 typ = 'leader'
 CK=200 # for tpca
+D_X=10 # for tpca
 #CK=220 # for rw
+#D_X=4 # for rw
 
 num2exp = {
     0: 'No Slowness',
@@ -159,7 +161,7 @@ def plot_cdf(all_cdf, ty, rep, ax, plt_id):
 
     ax.set_ylabel('CDF')
     ax.set_ylim([0, 1])
-    ax.set_xlim([0, 10] if ty == 'leader' else 0)
+    ax.set_xlim([0, D_X] if ty == 'leader' else 0)
     ax.set_xlabel('Latency (ms)')
     # ax.set_xscale('log')
     ax.set_box_aspect(0.6)

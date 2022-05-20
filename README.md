@@ -77,7 +77,7 @@ bash ./batch_op.sh scp
 bash ./batch_op.sh dep
 
 # compile
-python3 waf configure build
+python3 waf configure -J build
 bash ./batch_op.sh scp
 ```
 
