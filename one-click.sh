@@ -40,7 +40,7 @@ setup () {
 }
 
 build_scp() {
-  python3 waf configure build
+  python3 waf configure -J build
   bash ./batch_op.sh init
   bash ./batch_op.sh scp
 }
