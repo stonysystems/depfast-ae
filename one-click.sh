@@ -26,6 +26,7 @@ SLOW_CONCURRENT_RAFT=200 # for tpca
 
 # trials, by default: 1
 # please keep same as the variable in ./data_processing/processing.py
+# for rw:trails
 FIGURE5a_TARIALS=1
 FIGURE5b_TARIALS=1
 FIGURE6a_TARIALS=1

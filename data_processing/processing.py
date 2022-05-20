@@ -8,7 +8,7 @@ SK="PAYMENT" # for tpca
 #SK="WRITE" # for rw
 
 # trials, by default: 1
-# for rw
+# for rw: for trails
 FIGURE5a_TARIALS=1
 FIGURE5b_TARIALS=1
 FIGURE6a_TARIALS=1
