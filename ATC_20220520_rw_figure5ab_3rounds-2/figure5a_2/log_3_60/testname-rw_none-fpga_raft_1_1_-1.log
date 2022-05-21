@@ -1,0 +1,889 @@
+DEBUG: 2022-05-20 08:03:53,237: logger initialized
+INFO: 2022-05-20 08:03:53,238: process host4 0 10.0.0.37:5555
+INFO: 2022-05-20 08:03:53,238: process host1 1 10.0.0.13:5556
+INFO: 2022-05-20 08:03:53,238: process host2 2 10.0.0.14:5557
+INFO: 2022-05-20 08:03:53,238: process host3 3 10.0.0.15:5558
+INFO: 2022-05-20 08:03:53,238: add_site: s0, server, 10000
+INFO: 2022-05-20 08:03:53,238: add_site: s1, server, 10001
+INFO: 2022-05-20 08:03:53,238: add_site: s2, server, 10002
+INFO: 2022-05-20 08:03:53,238: add_site: c0, client, 5555
+INFO: 2022-05-20 08:03:53,238: process infos: {'host4': <__main__.ProcessInfo object at 0x7f40657c8d30>, 'host1': <__main__.ProcessInfo object at 0x7f40657c8e80>, 'host2': <__main__.ProcessInfo object at 0x7f40657c8d68>, 'host3': <__main__.ProcessInfo object at 0x7f40657c8f98>}
+DEBUG: 2022-05-20 08:03:53,459: Existing Server or Client Processes:
+----------
+Server: 10.0.0.13
+-------------
+b'xuhao    20520 20519 20520  0    1  1350  2856   2 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20522 20520 20522  0    1  1241   884   3 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.37
+-------------
+b'xuhao    14799 14793 14799  0    1  6247 13676   1 08:03 pts/1    00:00:00 ssh 10.0.0.14 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    14801 14793 14801  0    1  6247 13604   1 08:03 pts/1    00:00:00 ssh 10.0.0.15 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    14803 14793 14803  0    1  6247 13532   1 08:03 pts/1    00:00:00 ssh 10.0.0.37 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    14812 14811 14812  0    1  1350  3000   2 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    14814 14812 14814  0    1  1241  2268   2 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.14
+-------------
+b'xuhao    16518 16517 16518  0    1  1351  2852   1 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    16520 16518 16520  0    1  1242   884   3 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.15
+-------------
+b'xuhao    20191 20190 20191  0    1  1350  2936   3 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20193 20191 20193  0    1  1241   820   2 08:03 ?        00:00:00 grep deptran_server\n'
+INFO: 2022-05-20 08:03:53,477: waiting for killall commands to finish.
+ERROR: 2022-05-20 08:03:53,609: host: 1; killall did not kill anything
+ERROR: 2022-05-20 08:03:53,622: host: 1; killall did not kill anything
+ERROR: 2022-05-20 08:03:53,622: host: 1; killall did not kill anything
+ERROR: 2022-05-20 08:03:53,625: host: 1; killall did not kill anything
+INFO: 2022-05-20 08:03:53,625: done waiting for killall commands to finish.
+DEBUG: 2022-05-20 08:03:53,809: Existing Server or Client After Kill:
+----------
+Server: 10.0.0.14
+-------------
+b'xuhao    16536 16535 16536  0    1  1351  2896   2 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    16538 16536 16538  0    1  1242   880   3 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.15
+-------------
+b'xuhao    20209 20208 20209  0    1  1350  3000   0 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20211 20209 20211  0    1  1241   880   1 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.13
+-------------
+b'xuhao    20538 20537 20538  0    1  1350  2892   2 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20540 20538 20540  0    1  1241   880   3 08:03 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.37
+-------------
+b'xuhao    14836 14793 14836  0    1  6247 13600   0 08:03 pts/1    00:00:00 ssh 10.0.0.37 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    14846 14845 14846  0    1  1350  2900   1 08:03 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    14848 14846 14848  0    1  1241  2308   3 08:03 ?        00:00:00 grep deptran_server\n'
+INFO: 2022-05-20 08:03:54,227: sync tmp folder....
+
+INFO: 2022-05-20 08:03:54,227: Setting servers on CPU 0, odd number cores
+DEBUG: 2022-05-20 08:03:54,227: before server_controller.start
+DEBUG: 2022-05-20 08:03:54,227: {'host4': <__main__.ProcessInfo object at 0x7f40657c8d30>, 'host1': <__main__.ProcessInfo object at 0x7f40657c8e80>, 'host2': <__main__.ProcessInfo object at 0x7f40657c8d68>, 'host3': <__main__.ProcessInfo object at 0x7f40657c8f98>}
+INFO: 2022-05-20 08:03:54,328: starting host4 @ 10.0.0.37
+DEBUG: 2022-05-20 08:03:54,328: running: cd /home/xuhao/code/depfast;  mkdir -p /home/xuhao/code/depfast/log;  nohup  ./build/deptran_server -b -d 60 -f '/home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml' -P 'host4' -p 5555 -t 30 -r '/home/xuhao/code/depfast/log' 1>'/home/xuhao/code/depfast/log/proc-host4.log' 2>'/home/xuhao/code/depfast/log/proc-host4.err' &
+INFO: 2022-05-20 08:03:54,429: starting host1 @ 10.0.0.13
+DEBUG: 2022-05-20 08:03:54,430: running: cd /home/xuhao/code/depfast;  mkdir -p /home/xuhao/code/depfast/log;  nohup taskset -ac 1 ./build/deptran_server -b -d 60 -f '/home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml' -P 'host1' -p 5556 -t 30 -r '/home/xuhao/code/depfast/log' 1>'/home/xuhao/code/depfast/log/proc-host1.log' 2>'/home/xuhao/code/depfast/log/proc-host1.err' &
+INFO: 2022-05-20 08:03:54,535: starting host2 @ 10.0.0.14
+DEBUG: 2022-05-20 08:03:54,535: running: cd /home/xuhao/code/depfast;  mkdir -p /home/xuhao/code/depfast/log;  nohup taskset -ac 1 ./build/deptran_server -b -d 60 -f '/home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml' -P 'host2' -p 5557 -t 30 -r '/home/xuhao/code/depfast/log' 1>'/home/xuhao/code/depfast/log/proc-host2.log' 2>'/home/xuhao/code/depfast/log/proc-host2.err' &
+INFO: 2022-05-20 08:03:54,643: starting host3 @ 10.0.0.15
+DEBUG: 2022-05-20 08:03:54,644: running: cd /home/xuhao/code/depfast;  mkdir -p /home/xuhao/code/depfast/log;  nohup taskset -ac 1 ./build/deptran_server -b -d 60 -f '/home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml' -P 'host3' -p 5558 -t 30 -r '/home/xuhao/code/depfast/log' 1>'/home/xuhao/code/depfast/log/proc-host3.log' 2>'/home/xuhao/code/depfast/log/proc-host3.err' &
+DEBUG: 2022-05-20 08:03:54,898: after server_controller.start
+DEBUG: 2022-05-20 08:03:54,899: in setup_heartbeat
+INFO: 2022-05-20 08:03:54,918: Waiting for server init ...
+DEBUG: 2022-05-20 08:03:54,919: in server_heart_beat
+DEBUG: 2022-05-20 08:03:54,920: sites: [<__main__.SiteInfo object at 0x7f40657dc828>, <__main__.SiteInfo object at 0x7f40657dc908>, <__main__.SiteInfo object at 0x7f40657dc940>]
+DEBUG: 2022-05-20 08:03:54,920: in connect_rpc 0
+INFO: 2022-05-20 08:03:54,920: start connect to server ctrl rpc for site s0 @ 10.0.0.13:20000
+INFO: 2022-05-20 08:03:56,844: Connected to site s0 @ 10.0.0.13
+DEBUG: 2022-05-20 08:03:56,844: in connect_rpc 1
+INFO: 2022-05-20 08:03:56,844: start connect to server ctrl rpc for site s1 @ 10.0.0.14:20001
+INFO: 2022-05-20 08:03:56,946: Connected to site s1 @ 10.0.0.14
+DEBUG: 2022-05-20 08:03:56,946: in connect_rpc 2
+INFO: 2022-05-20 08:03:56,946: start connect to server ctrl rpc for site s2 @ 10.0.0.15:20002
+INFO: 2022-05-20 08:03:57,047: Connected to site s2 @ 10.0.0.15
+INFO: 2022-05-20 08:03:57,048: call sync_server_ready on site 0
+INFO: 2022-05-20 08:03:57,048: site s0 ready
+INFO: 2022-05-20 08:03:57,049: call sync_server_ready on site 1
+INFO: 2022-05-20 08:03:57,049: site s1 ready
+INFO: 2022-05-20 08:03:57,049: call sync_server_ready on site 2
+INFO: 2022-05-20 08:03:57,049: site s2 ready
+DEBUG: 2022-05-20 08:03:57,050: top server heartbeat loop
+INFO: 2022-05-20 08:03:57,050: Waiting for server init ... Done
+DEBUG: 2022-05-20 08:03:57,050: in connect_rpc 3
+INFO: 2022-05-20 08:03:57,050: start connect to client ctrl rpc for site c0 @ 10.0.0.37:5555
+INFO: 2022-05-20 08:03:57,151: Connected to client site c0 @ 10.0.0.37
+INFO: 2022-05-20 08:03:57,151: Clients all ready
+DEBUG: 2022-05-20 08:03:57,152: txn: b'WRITE' - 100
+DEBUG: 2022-05-20 08:03:57,152: txn: b'READ' - 200
+INFO: 2022-05-20 08:03:57,152: client start send successfully.
+INFO: 2022-05-20 08:03:57,152: Clients started
+DEBUG: 2022-05-20 08:03:57,152: in benchmark_record
+INFO: 2022-05-20 08:03:57,152: contact 1 client rpc proxies
+DEBUG: 2022-05-20 08:03:57,152: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:03:57,153: before recording period: 100
+DEBUG: 2022-05-20 08:03:57,153: mid_pre_commit_txn (+0): 0
+DEBUG: 2022-05-20 08:03:57,153: before recording period: 200
+DEBUG: 2022-05-20 08:03:57,154: mid_pre_commit_txn (+0): 0
+DEBUG: 2022-05-20 08:03:57,154: timing from server: run_sec 0.00; run_nsec 589704.00
+DEBUG: 2022-05-20 08:03:57,154: avg timing from 1 servers: run_sec 0.00; run_nsec 589704.00
+INFO: 2022-05-20 08:03:57,154: Progress: 0
+INFO: 2022-05-20 08:03:57,154: total_time: 0.000589704
+INFO: 2022-05-20 08:03:57,156: 
+Progress: 0%
+TOTAL: elapsed time: 0.0
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+----     WRITE         0         0           0          0      0
+----     READ          0         0           0          0      0
+----     Total         0         0           0          0      0
+
+INTERVAL: elapsed time: 0.0
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+----     WRITE         0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total         0         0           0          0      0       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:02,157: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:02,251: before recording period: 100
+DEBUG: 2022-05-20 08:04:02,251: mid_pre_commit_txn (+35691): 35691
+DEBUG: 2022-05-20 08:04:02,251: before recording period: 200
+DEBUG: 2022-05-20 08:04:02,251: mid_pre_commit_txn (+0): 0
+DEBUG: 2022-05-20 08:04:02,251: timing from server: run_sec 5.00; run_nsec 5051834.00
+DEBUG: 2022-05-20 08:04:02,251: avg timing from 1 servers: run_sec 5.00; run_nsec 5051834.00
+INFO: 2022-05-20 08:04:02,252: Progress: 8
+INFO: 2022-05-20 08:04:02,252: total_time: 5.005051834
+INFO: 2022-05-20 08:04:02,253: 
+Progress: 8%
+TOTAL: elapsed time: 5.01
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE     35751     35691       35691      35691   7131
+0.0%     READ          0         0           0          0      0
+----     Total     35751     35691       35691      35691   7131
+
+INTERVAL: elapsed time: 5.0
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     35751     35691       35691      35691   7132   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     35751     35691       35691      35691   7132       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:04,551: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:07,256: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:07,354: before recording period: 100
+DEBUG: 2022-05-20 08:04:07,354: mid_pre_commit_txn (+75699): 75699
+DEBUG: 2022-05-20 08:04:07,354: before recording period: 200
+DEBUG: 2022-05-20 08:04:07,354: mid_pre_commit_txn (+0): 0
+DEBUG: 2022-05-20 08:04:07,354: timing from server: run_sec 10.00; run_nsec 103970385.00
+DEBUG: 2022-05-20 08:04:07,354: avg timing from 1 servers: run_sec 10.00; run_nsec 103970385.00
+INFO: 2022-05-20 08:04:07,354: Progress: 17
+INFO: 2022-05-20 08:04:07,354: start recording period
+INFO: 2022-05-20 08:04:07,355: total_time: 10.103970385
+INFO: 2022-05-20 08:04:07,355: 
+Progress: 17%
+TOTAL: elapsed time: 10.1
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE     75759     75699       75699      75699   7492
+0.0%     READ          0         0           0          0      0
+----     Total     75759     75699       75699      75699   7492
+
+INTERVAL: elapsed time: 5.1
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     40008     40008       40008      40008   7846   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     40008     40008       40008      40008   7846       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:12,059: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:12,362: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:12,467: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:12,468: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:12,468: timing from server: run_sec 15.00; run_nsec 209831189.00
+DEBUG: 2022-05-20 08:04:12,468: avg timing from 1 servers: run_sec 15.00; run_nsec 209831189.00
+INFO: 2022-05-20 08:04:12,468: Progress: 25
+INFO: 2022-05-20 08:04:12,468: total_time: 15.209831189
+INFO: 2022-05-20 08:04:12,469: 
+Progress: 25%
+TOTAL: elapsed time: 15.21
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    116076    116016      116016     116016   7628
+0.0%     READ          0         0           0          0      0
+----     Total    116076    116016      116016     116016   7628
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     40317     40317       40317      40317   7896   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     40317     40317       40317      40317   7896       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:17,472: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:17,571: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:17,572: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:17,572: timing from server: run_sec 20.00; run_nsec 320355029.00
+DEBUG: 2022-05-20 08:04:17,572: avg timing from 1 servers: run_sec 20.00; run_nsec 320355029.00
+INFO: 2022-05-20 08:04:17,573: Progress: 34
+INFO: 2022-05-20 08:04:17,573: total_time: 20.320355029
+INFO: 2022-05-20 08:04:17,574: 
+Progress: 34%
+TOTAL: elapsed time: 20.32
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    156118    156058      156058     156058   7680
+0.0%     READ          0         0           0          0      0
+----     Total    156118    156058      156058     156058   7680
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     40042     40042       40042      40042   7835   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     40042     40042       40042      40042   7835       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:19,564: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:22,575: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:22,675: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:22,679: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:22,679: timing from server: run_sec 25.00; run_nsec 423658614.00
+DEBUG: 2022-05-20 08:04:22,679: avg timing from 1 servers: run_sec 25.00; run_nsec 423658614.00
+INFO: 2022-05-20 08:04:22,679: Progress: 42
+INFO: 2022-05-20 08:04:22,679: total_time: 25.423658614
+INFO: 2022-05-20 08:04:22,680: 
+Progress: 42%
+TOTAL: elapsed time: 25.42
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    196274    196214      196214     196214   7718
+0.0%     READ          0         0           0          0      0
+----     Total    196274    196214      196214     196214   7718
+
+INTERVAL: elapsed time: 5.1
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     40156     40156       40156      40156   7869   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     40156     40156       40156      40156   7869       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:27,071: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:27,684: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:27,787: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:27,791: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:27,791: timing from server: run_sec 30.00; run_nsec 532352940.00
+DEBUG: 2022-05-20 08:04:27,791: avg timing from 1 servers: run_sec 30.00; run_nsec 532352940.00
+INFO: 2022-05-20 08:04:27,792: Progress: 51
+INFO: 2022-05-20 08:04:27,792: total_time: 30.53235294
+INFO: 2022-05-20 08:04:27,793: 
+Progress: 51%
+TOTAL: elapsed time: 30.53
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    235453    235393      235393     235393   7710
+0.0%     READ          0         0           0          0      0
+----     Total    235453    235393      235393     235393   7710
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     39179     39179       39179      39179   7669   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     39179     39179       39179      39179   7669       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:32,798: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:32,896: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:32,901: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:32,902: timing from server: run_sec 35.00; run_nsec 646038104.00
+DEBUG: 2022-05-20 08:04:32,902: avg timing from 1 servers: run_sec 35.00; run_nsec 646038104.00
+INFO: 2022-05-20 08:04:32,902: Progress: 59
+INFO: 2022-05-20 08:04:32,902: total_time: 35.646038104
+INFO: 2022-05-20 08:04:32,903: 
+Progress: 59%
+TOTAL: elapsed time: 35.65
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    274873    274813      274813     274813   7709
+0.0%     READ          0         0           0          0      0
+----     Total    274873    274813      274813     274813   7709
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     39420     39420       39420      39420   7709   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     39420     39420       39420      39420   7709       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:34,579: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:37,907: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:38,005: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:38,011: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:38,011: timing from server: run_sec 40.00; run_nsec 755600936.00
+DEBUG: 2022-05-20 08:04:38,011: avg timing from 1 servers: run_sec 40.00; run_nsec 755600936.00
+INFO: 2022-05-20 08:04:38,011: Progress: 68
+INFO: 2022-05-20 08:04:38,012: total_time: 40.755600936
+INFO: 2022-05-20 08:04:38,013: 
+Progress: 68%
+TOTAL: elapsed time: 40.76
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    314156    314096      314096     314096   7707
+0.0%     READ          0         0           0          0      0
+----     Total    314156    314096      314096     314096   7707
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     39283     39283       39283      39283   7688   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     39283     39283       39283      39283   7688       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:42,087: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:43,014: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:43,112: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:43,118: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:43,118: timing from server: run_sec 46.00; run_nsec -137601752.00
+DEBUG: 2022-05-20 08:04:43,118: avg timing from 1 servers: run_sec 46.00; run_nsec -137601752.00
+INFO: 2022-05-20 08:04:43,118: Progress: 76
+INFO: 2022-05-20 08:04:43,118: total_time: 45.862398248
+INFO: 2022-05-20 08:04:43,119: 
+Progress: 76%
+TOTAL: elapsed time: 45.86
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    353301    353241      353241     353241   7702
+0.0%     READ          0         0           0          0      0
+----     Total    353301    353241      353241     353241   7702
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     39145     39145       39145      39145   7665   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     39145     39145       39145      39145   7665       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:48,123: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:48,218: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:48,225: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:48,226: timing from server: run_sec 51.00; run_nsec -28956027.00
+DEBUG: 2022-05-20 08:04:48,226: avg timing from 1 servers: run_sec 51.00; run_nsec -28956027.00
+INFO: 2022-05-20 08:04:48,226: Progress: 85
+INFO: 2022-05-20 08:04:48,226: total_time: 50.971043973
+INFO: 2022-05-20 08:04:48,227: 
+Progress: 85%
+TOTAL: elapsed time: 50.97
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    392233    392173      392173     392173   7694
+0.0%     READ          0         0           0          0      0
+----     Total    392233    392173      392173     392173   7694
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     38932     38932       38932      38932   7621   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     38932     38932       38932      38932   7621       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:49,593: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:53,228: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:53,326: during recording period!!! 100
+DEBUG: 2022-05-20 08:04:53,333: during recording period!!! 200
+DEBUG: 2022-05-20 08:04:53,333: timing from server: run_sec 56.00; run_nsec 76247673.00
+DEBUG: 2022-05-20 08:04:53,333: avg timing from 1 servers: run_sec 56.00; run_nsec 76247673.00
+INFO: 2022-05-20 08:04:53,333: Progress: 93
+INFO: 2022-05-20 08:04:53,333: done with recording period
+INFO: 2022-05-20 08:04:53,333: mid_commit_txn: 430752
+INFO: 2022-05-20 08:04:53,333: mid_pre_commit_txn: 75699
+INFO: 2022-05-20 08:04:53,333: mid_time = 45.972277287999994
+INFO: 2022-05-20 08:04:53,750: percent: 0.0
+INFO: 2022-05-20 08:04:53,750: percent: 0.01
+INFO: 2022-05-20 08:04:53,750: percent: 0.02
+INFO: 2022-05-20 08:04:53,750: percent: 0.03
+INFO: 2022-05-20 08:04:53,750: percent: 0.04
+INFO: 2022-05-20 08:04:53,750: percent: 0.05
+INFO: 2022-05-20 08:04:53,751: percent: 0.06
+INFO: 2022-05-20 08:04:53,751: percent: 0.07
+INFO: 2022-05-20 08:04:53,751: percent: 0.08
+INFO: 2022-05-20 08:04:53,751: percent: 0.09
+INFO: 2022-05-20 08:04:53,751: percent: 0.1
+INFO: 2022-05-20 08:04:53,751: percent: 0.11
+INFO: 2022-05-20 08:04:53,751: percent: 0.12
+INFO: 2022-05-20 08:04:53,751: percent: 0.13
+INFO: 2022-05-20 08:04:53,751: percent: 0.14
+INFO: 2022-05-20 08:04:53,751: percent: 0.15
+INFO: 2022-05-20 08:04:53,751: percent: 0.16
+INFO: 2022-05-20 08:04:53,751: percent: 0.17
+INFO: 2022-05-20 08:04:53,751: percent: 0.18
+INFO: 2022-05-20 08:04:53,752: percent: 0.19
+INFO: 2022-05-20 08:04:53,752: percent: 0.2
+INFO: 2022-05-20 08:04:53,752: percent: 0.21
+INFO: 2022-05-20 08:04:53,752: percent: 0.22
+INFO: 2022-05-20 08:04:53,752: percent: 0.23
+INFO: 2022-05-20 08:04:53,752: percent: 0.24
+INFO: 2022-05-20 08:04:53,752: percent: 0.25
+INFO: 2022-05-20 08:04:53,752: percent: 0.26
+INFO: 2022-05-20 08:04:53,752: percent: 0.27
+INFO: 2022-05-20 08:04:53,752: percent: 0.28
+INFO: 2022-05-20 08:04:53,752: percent: 0.29
+INFO: 2022-05-20 08:04:53,752: percent: 0.3
+INFO: 2022-05-20 08:04:53,752: percent: 0.31
+INFO: 2022-05-20 08:04:53,752: percent: 0.32
+INFO: 2022-05-20 08:04:53,752: percent: 0.33
+INFO: 2022-05-20 08:04:53,753: percent: 0.34
+INFO: 2022-05-20 08:04:53,753: percent: 0.35000000000000003
+INFO: 2022-05-20 08:04:53,753: percent: 0.36
+INFO: 2022-05-20 08:04:53,753: percent: 0.37
+INFO: 2022-05-20 08:04:53,753: percent: 0.38
+INFO: 2022-05-20 08:04:53,753: percent: 0.39
+INFO: 2022-05-20 08:04:53,753: percent: 0.4
+INFO: 2022-05-20 08:04:53,753: percent: 0.41000000000000003
+INFO: 2022-05-20 08:04:53,753: percent: 0.42
+INFO: 2022-05-20 08:04:53,753: percent: 0.43
+INFO: 2022-05-20 08:04:53,753: percent: 0.44
+INFO: 2022-05-20 08:04:53,753: percent: 0.45
+INFO: 2022-05-20 08:04:53,753: percent: 0.46
+INFO: 2022-05-20 08:04:53,754: percent: 0.47000000000000003
+INFO: 2022-05-20 08:04:53,754: percent: 0.48
+INFO: 2022-05-20 08:04:53,754: percent: 0.49
+INFO: 2022-05-20 08:04:53,754: percent: 0.5
+INFO: 2022-05-20 08:04:53,754: percent: 0.51
+INFO: 2022-05-20 08:04:53,754: percent: 0.52
+INFO: 2022-05-20 08:04:53,754: percent: 0.53
+INFO: 2022-05-20 08:04:53,754: percent: 0.54
+INFO: 2022-05-20 08:04:53,754: percent: 0.55
+INFO: 2022-05-20 08:04:53,754: percent: 0.56
+INFO: 2022-05-20 08:04:53,754: percent: 0.5700000000000001
+INFO: 2022-05-20 08:04:53,754: percent: 0.58
+INFO: 2022-05-20 08:04:53,754: percent: 0.59
+INFO: 2022-05-20 08:04:53,754: percent: 0.6
+INFO: 2022-05-20 08:04:53,755: percent: 0.61
+INFO: 2022-05-20 08:04:53,755: percent: 0.62
+INFO: 2022-05-20 08:04:53,755: percent: 0.63
+INFO: 2022-05-20 08:04:53,755: percent: 0.64
+INFO: 2022-05-20 08:04:53,755: percent: 0.65
+INFO: 2022-05-20 08:04:53,755: percent: 0.66
+INFO: 2022-05-20 08:04:53,755: percent: 0.67
+INFO: 2022-05-20 08:04:53,755: percent: 0.68
+INFO: 2022-05-20 08:04:53,755: percent: 0.6900000000000001
+INFO: 2022-05-20 08:04:53,755: percent: 0.7000000000000001
+INFO: 2022-05-20 08:04:53,755: percent: 0.71
+INFO: 2022-05-20 08:04:53,755: percent: 0.72
+INFO: 2022-05-20 08:04:53,755: percent: 0.73
+INFO: 2022-05-20 08:04:53,755: percent: 0.74
+INFO: 2022-05-20 08:04:53,755: percent: 0.75
+INFO: 2022-05-20 08:04:53,756: percent: 0.76
+INFO: 2022-05-20 08:04:53,756: percent: 0.77
+INFO: 2022-05-20 08:04:53,756: percent: 0.78
+INFO: 2022-05-20 08:04:53,756: percent: 0.79
+INFO: 2022-05-20 08:04:53,756: percent: 0.8
+INFO: 2022-05-20 08:04:53,756: percent: 0.81
+INFO: 2022-05-20 08:04:53,756: percent: 0.8200000000000001
+INFO: 2022-05-20 08:04:53,756: percent: 0.8300000000000001
+INFO: 2022-05-20 08:04:53,756: percent: 0.84
+INFO: 2022-05-20 08:04:53,756: percent: 0.85
+INFO: 2022-05-20 08:04:53,756: percent: 0.86
+INFO: 2022-05-20 08:04:53,756: percent: 0.87
+INFO: 2022-05-20 08:04:53,756: percent: 0.88
+INFO: 2022-05-20 08:04:53,757: percent: 0.89
+INFO: 2022-05-20 08:04:53,757: percent: 0.9
+INFO: 2022-05-20 08:04:53,757: percent: 0.91
+INFO: 2022-05-20 08:04:53,757: percent: 0.92
+INFO: 2022-05-20 08:04:53,757: percent: 0.93
+INFO: 2022-05-20 08:04:53,757: percent: 0.9400000000000001
+INFO: 2022-05-20 08:04:53,757: percent: 0.9500000000000001
+INFO: 2022-05-20 08:04:53,757: percent: 0.96
+INFO: 2022-05-20 08:04:53,757: percent: 0.97
+INFO: 2022-05-20 08:04:53,757: percent: 0.98
+INFO: 2022-05-20 08:04:53,757: percent: 0.99
+INFO: 2022-05-20 08:04:53,892: 
+__Data__
+ab: fpga_raft
+all_latency: {'0': 41.1064453125, '1': 5.195068359375, '10': 6.046875, '11': 6.090576171875,
+  '12': 6.1337890625, '13': 6.179443359375, '14': 6.221435546875, '15': 6.26513671875,
+  '16': 6.306884765625, '17': 6.355224609375, '18': 6.406005859375, '19': 6.453125,
+  '2': 5.398681640625, '20': 6.5029296875, '21': 6.5498046875, '22': 6.5947265625,
+  '23': 6.64013671875, '24': 6.6845703125, '25': 6.72607421875, '26': 6.765380859375,
+  '27': 6.80517578125, '28': 6.84375, '29': 6.88232421875, '3': 5.545654296875, '30': 6.918701171875,
+  '31': 6.954833984375, '32': 6.988037109375, '33': 7.021728515625, '34': 7.056396484375,
+  '35': 7.090576171875, '36': 7.122802734375, '37': 7.155517578125, '38': 7.1884765625,
+  '39': 7.218505859375, '4': 5.661865234375, '40': 7.24951171875, '41': 7.279052734375,
+  '42': 7.30810546875, '43': 7.33984375, '44': 7.37255859375, '45': 7.403564453125,
+  '46': 7.434326171875, '47': 7.467529296875, '48': 7.501708984375, '49': 7.532958984375,
+  '5': 5.758544921875, '50': 7.564697265625, '51': 7.59716796875, '52': 7.63134765625,
+  '53': 7.665771484375, '54': 7.69921875, '55': 7.73388671875, '56': 7.7685546875,
+  '57': 7.80224609375, '58': 7.8349609375, '59': 7.86669921875, '6': 5.8310546875,
+  '60': 7.901123046875, '61': 7.936279296875, '62': 7.970458984375, '63': 8.005126953125,
+  '64': 8.037841796875, '65': 8.07275390625, '66': 8.108154296875, '67': 8.140869140625,
+  '68': 8.17529296875, '69': 8.210205078125, '7': 5.89111328125, '70': 8.2470703125,
+  '71': 8.28515625, '72': 8.32373046875, '73': 8.361572265625, '74': 8.3984375, '75': 8.43505859375,
+  '76': 8.470947265625, '77': 8.510009765625, '78': 8.54931640625, '79': 8.5888671875,
+  '8': 5.94580078125, '80': 8.6337890625, '81': 8.67919921875, '82': 8.725830078125,
+  '83': 8.77490234375, '84': 8.829833984375, '85': 8.881103515625, '86': 8.94091796875,
+  '87': 9.001708984375, '88': 9.068359375, '89': 9.140380859375, '9': 5.99853515625,
+  '90': 9.21435546875, '91': 9.30322265625, '92': 9.407958984375, '93': 9.510498046875,
+  '94': 9.637939453125, '95': 9.78515625, '96': 9.973876953125, '97': 10.23828125,
+  '98': 10.64794921875, '99': 11.6005859375, avg: 7.657375338358898, max: 41.1064453125,
+  min: 4.13232421875}
+att_latency: {'0': 41.106689453125, '1': 5.226318359375, '10': 6.08349609375, '11': 6.12890625,
+  '12': 6.17333984375, '13': 6.216552734375, '14': 6.2607421875, '15': 6.302734375,
+  '16': 6.350830078125, '17': 6.40283203125, '18': 6.4501953125, '19': 6.5009765625,
+  '2': 5.445068359375, '20': 6.551513671875, '21': 6.598388671875, '22': 6.645751953125,
+  '23': 6.689453125, '24': 6.73193359375, '25': 6.77392578125, '26': 6.814453125,
+  '27': 6.85400390625, '28': 6.892822265625, '29': 6.929443359375, '3': 5.593505859375,
+  '30': 6.96533203125, '31': 6.999755859375, '32': 7.032958984375, '33': 7.068603515625,
+  '34': 7.1015625, '35': 7.133544921875, '36': 7.166748046875, '37': 7.19970703125,
+  '38': 7.2314453125, '39': 7.261962890625, '4': 5.710205078125, '40': 7.291748046875,
+  '41': 7.323486328125, '42': 7.3564453125, '43': 7.388427734375, '44': 7.420654296875,
+  '45': 7.453369140625, '46': 7.488037109375, '47': 7.521484375, '48': 7.55224609375,
+  '49': 7.584228515625, '5': 5.798095703125, '50': 7.61767578125, '51': 7.652587890625,
+  '52': 7.685791015625, '53': 7.71875, '54': 7.75439453125, '55': 7.789306640625,
+  '56': 7.8232421875, '57': 7.85546875, '58': 7.889404296875, '59': 7.924560546875,
+  '6': 5.867431640625, '60': 7.95751953125, '61': 7.9912109375, '62': 8.025390625,
+  '63': 8.056640625, '64': 8.09326171875, '65': 8.126708984375, '66': 8.16064453125,
+  '67': 8.19580078125, '68': 8.23046875, '69': 8.26708984375, '7': 5.929443359375,
+  '70': 8.305419921875, '71': 8.343017578125, '72': 8.38134765625, '73': 8.418701171875,
+  '74': 8.45458984375, '75': 8.4951171875, '76': 8.534423828125, '77': 8.573974609375,
+  '78': 8.617919921875, '79': 8.6611328125, '8': 5.98486328125, '80': 8.705322265625,
+  '81': 8.749755859375, '82': 8.798095703125, '83': 8.8505859375, '84': 8.903076171875,
+  '85': 8.96044921875, '86': 9.020751953125, '87': 9.085693359375, '88': 9.152587890625,
+  '89': 9.21875, '9': 6.03662109375, '90': 9.300537109375, '91': 9.395751953125, '92': 9.484375,
+  '93': 9.601318359375, '94': 9.730712890625, '95': 9.874755859375, '96': 10.064697265625,
+  '97': 10.339599609375, '98': 10.71044921875, '99': 11.5810546875, avg: 7.710435091650269,
+  max: 41.106689453125, min: 4.13232421875}
+attempts: 355053
+benchmark: rw
+cc: none
+clients: 60
+commits: 355053
+duration: 45.972277287999994
+experiment_id: 1
+latency: {'0': 41.1064453125, '1': 5.22607421875, '10': 6.08349609375, '11': 6.12890625,
+  '12': 6.17333984375, '13': 6.216552734375, '14': 6.260498046875, '15': 6.302734375,
+  '16': 6.350830078125, '17': 6.402587890625, '18': 6.4501953125, '19': 6.5009765625,
+  '2': 5.445068359375, '20': 6.55126953125, '21': 6.598388671875, '22': 6.6455078125,
+  '23': 6.689208984375, '24': 6.731689453125, '25': 6.77392578125, '26': 6.814453125,
+  '27': 6.853759765625, '28': 6.892578125, '29': 6.929443359375, '3': 5.593505859375,
+  '30': 6.96533203125, '31': 6.99951171875, '32': 7.032958984375, '33': 7.068603515625,
+  '34': 7.1015625, '35': 7.13330078125, '36': 7.166748046875, '37': 7.19970703125,
+  '38': 7.2314453125, '39': 7.26171875, '4': 5.710205078125, '40': 7.291748046875,
+  '41': 7.323486328125, '42': 7.3564453125, '43': 7.388427734375, '44': 7.420654296875,
+  '45': 7.453369140625, '46': 7.488037109375, '47': 7.521484375, '48': 7.55224609375,
+  '49': 7.584228515625, '5': 5.7978515625, '50': 7.61767578125, '51': 7.652587890625,
+  '52': 7.685546875, '53': 7.718505859375, '54': 7.75439453125, '55': 7.789306640625,
+  '56': 7.8232421875, '57': 7.85546875, '58': 7.88916015625, '59': 7.92431640625,
+  '6': 5.867431640625, '60': 7.95751953125, '61': 7.9912109375, '62': 8.025390625,
+  '63': 8.056640625, '64': 8.09326171875, '65': 8.12646484375, '66': 8.16064453125,
+  '67': 8.19580078125, '68': 8.23046875, '69': 8.26708984375, '7': 5.929443359375,
+  '70': 8.305419921875, '71': 8.343017578125, '72': 8.38134765625, '73': 8.41845703125,
+  '74': 8.45458984375, '75': 8.4951171875, '76': 8.5341796875, '77': 8.573974609375,
+  '78': 8.617919921875, '79': 8.6611328125, '8': 5.98486328125, '80': 8.705322265625,
+  '81': 8.749755859375, '82': 8.798095703125, '83': 8.8505859375, '84': 8.903076171875,
+  '85': 8.96044921875, '86': 9.020751953125, '87': 9.085693359375, '88': 9.152587890625,
+  '89': 9.21875, '9': 6.036376953125, '90': 9.300537109375, '91': 9.3955078125, '92': 9.484375,
+  '93': 9.60107421875, '94': 9.730712890625, '95': 9.87451171875, '96': 10.064697265625,
+  '97': 10.339599609375, '98': 10.71044921875, '99': 11.5810546875, avg: 7.71038798573184,
+  max: 41.1064453125, min: 4.13232421875}
+retries_exhausted_cnt: 0
+start_cnt: 355053
+total_cnt: 355053
+tps: 7723.197999866725
+txn_name: WRITE
+zipf: -1
+
+__EndData__
+
+INFO: 2022-05-20 08:04:53,893: mid_commit_txn: 0
+INFO: 2022-05-20 08:04:53,893: mid_pre_commit_txn: 0
+INFO: 2022-05-20 08:04:53,893: mid_time = 45.972277287999994
+INFO: 2022-05-20 08:04:53,893: percent: 0.0
+INFO: 2022-05-20 08:04:53,893: percent: 0.01
+INFO: 2022-05-20 08:04:53,893: percent: 0.02
+INFO: 2022-05-20 08:04:53,893: percent: 0.03
+INFO: 2022-05-20 08:04:53,893: percent: 0.04
+INFO: 2022-05-20 08:04:53,893: percent: 0.05
+INFO: 2022-05-20 08:04:53,893: percent: 0.06
+INFO: 2022-05-20 08:04:53,893: percent: 0.07
+INFO: 2022-05-20 08:04:53,894: percent: 0.08
+INFO: 2022-05-20 08:04:53,894: percent: 0.09
+INFO: 2022-05-20 08:04:53,894: percent: 0.1
+INFO: 2022-05-20 08:04:53,894: percent: 0.11
+INFO: 2022-05-20 08:04:53,894: percent: 0.12
+INFO: 2022-05-20 08:04:53,894: percent: 0.13
+INFO: 2022-05-20 08:04:53,894: percent: 0.14
+INFO: 2022-05-20 08:04:53,894: percent: 0.15
+INFO: 2022-05-20 08:04:53,894: percent: 0.16
+INFO: 2022-05-20 08:04:53,894: percent: 0.17
+INFO: 2022-05-20 08:04:53,894: percent: 0.18
+INFO: 2022-05-20 08:04:53,894: percent: 0.19
+INFO: 2022-05-20 08:04:53,894: percent: 0.2
+INFO: 2022-05-20 08:04:53,894: percent: 0.21
+INFO: 2022-05-20 08:04:53,894: percent: 0.22
+INFO: 2022-05-20 08:04:53,895: percent: 0.23
+INFO: 2022-05-20 08:04:53,895: percent: 0.24
+INFO: 2022-05-20 08:04:53,895: percent: 0.25
+INFO: 2022-05-20 08:04:53,895: percent: 0.26
+INFO: 2022-05-20 08:04:53,895: percent: 0.27
+INFO: 2022-05-20 08:04:53,895: percent: 0.28
+INFO: 2022-05-20 08:04:53,895: percent: 0.29
+INFO: 2022-05-20 08:04:53,895: percent: 0.3
+INFO: 2022-05-20 08:04:53,895: percent: 0.31
+INFO: 2022-05-20 08:04:53,895: percent: 0.32
+INFO: 2022-05-20 08:04:53,895: percent: 0.33
+INFO: 2022-05-20 08:04:53,895: percent: 0.34
+INFO: 2022-05-20 08:04:53,895: percent: 0.35000000000000003
+INFO: 2022-05-20 08:04:53,895: percent: 0.36
+INFO: 2022-05-20 08:04:53,896: percent: 0.37
+INFO: 2022-05-20 08:04:53,896: percent: 0.38
+INFO: 2022-05-20 08:04:53,896: percent: 0.39
+INFO: 2022-05-20 08:04:53,896: percent: 0.4
+INFO: 2022-05-20 08:04:53,896: percent: 0.41000000000000003
+INFO: 2022-05-20 08:04:53,896: percent: 0.42
+INFO: 2022-05-20 08:04:53,896: percent: 0.43
+INFO: 2022-05-20 08:04:53,896: percent: 0.44
+INFO: 2022-05-20 08:04:53,896: percent: 0.45
+INFO: 2022-05-20 08:04:53,896: percent: 0.46
+INFO: 2022-05-20 08:04:53,896: percent: 0.47000000000000003
+INFO: 2022-05-20 08:04:53,896: percent: 0.48
+INFO: 2022-05-20 08:04:53,896: percent: 0.49
+INFO: 2022-05-20 08:04:53,896: percent: 0.5
+INFO: 2022-05-20 08:04:53,897: percent: 0.51
+INFO: 2022-05-20 08:04:53,897: percent: 0.52
+INFO: 2022-05-20 08:04:53,897: percent: 0.53
+INFO: 2022-05-20 08:04:53,897: percent: 0.54
+INFO: 2022-05-20 08:04:53,897: percent: 0.55
+INFO: 2022-05-20 08:04:53,897: percent: 0.56
+INFO: 2022-05-20 08:04:53,897: percent: 0.5700000000000001
+INFO: 2022-05-20 08:04:53,897: percent: 0.58
+INFO: 2022-05-20 08:04:53,897: percent: 0.59
+INFO: 2022-05-20 08:04:53,897: percent: 0.6
+INFO: 2022-05-20 08:04:53,897: percent: 0.61
+INFO: 2022-05-20 08:04:53,897: percent: 0.62
+INFO: 2022-05-20 08:04:53,897: percent: 0.63
+INFO: 2022-05-20 08:04:53,897: percent: 0.64
+INFO: 2022-05-20 08:04:53,897: percent: 0.65
+INFO: 2022-05-20 08:04:53,897: percent: 0.66
+INFO: 2022-05-20 08:04:53,897: percent: 0.67
+INFO: 2022-05-20 08:04:53,898: percent: 0.68
+INFO: 2022-05-20 08:04:53,898: percent: 0.6900000000000001
+INFO: 2022-05-20 08:04:53,898: percent: 0.7000000000000001
+INFO: 2022-05-20 08:04:53,898: percent: 0.71
+INFO: 2022-05-20 08:04:53,898: percent: 0.72
+INFO: 2022-05-20 08:04:53,898: percent: 0.73
+INFO: 2022-05-20 08:04:53,898: percent: 0.74
+INFO: 2022-05-20 08:04:53,898: percent: 0.75
+INFO: 2022-05-20 08:04:53,898: percent: 0.76
+INFO: 2022-05-20 08:04:53,898: percent: 0.77
+INFO: 2022-05-20 08:04:53,898: percent: 0.78
+INFO: 2022-05-20 08:04:53,898: percent: 0.79
+INFO: 2022-05-20 08:04:53,898: percent: 0.8
+INFO: 2022-05-20 08:04:53,898: percent: 0.81
+INFO: 2022-05-20 08:04:53,898: percent: 0.8200000000000001
+INFO: 2022-05-20 08:04:53,899: percent: 0.8300000000000001
+INFO: 2022-05-20 08:04:53,899: percent: 0.84
+INFO: 2022-05-20 08:04:53,899: percent: 0.85
+INFO: 2022-05-20 08:04:53,899: percent: 0.86
+INFO: 2022-05-20 08:04:53,899: percent: 0.87
+INFO: 2022-05-20 08:04:53,899: percent: 0.88
+INFO: 2022-05-20 08:04:53,899: percent: 0.89
+INFO: 2022-05-20 08:04:53,899: percent: 0.9
+INFO: 2022-05-20 08:04:53,899: percent: 0.91
+INFO: 2022-05-20 08:04:53,899: percent: 0.92
+INFO: 2022-05-20 08:04:53,899: percent: 0.93
+INFO: 2022-05-20 08:04:53,899: percent: 0.9400000000000001
+INFO: 2022-05-20 08:04:53,899: percent: 0.9500000000000001
+INFO: 2022-05-20 08:04:53,899: percent: 0.96
+INFO: 2022-05-20 08:04:53,899: percent: 0.97
+INFO: 2022-05-20 08:04:53,900: percent: 0.98
+INFO: 2022-05-20 08:04:53,900: percent: 0.99
+INFO: 2022-05-20 08:04:53,916: 
+__Data__
+ab: fpga_raft
+all_latency: {'0': 999999.99, '1': 999999.99, '10': 999999.99, '11': 999999.99, '12': 999999.99,
+  '13': 999999.99, '14': 999999.99, '15': 999999.99, '16': 999999.99, '17': 999999.99,
+  '18': 999999.99, '19': 999999.99, '2': 999999.99, '20': 999999.99, '21': 999999.99,
+  '22': 999999.99, '23': 999999.99, '24': 999999.99, '25': 999999.99, '26': 999999.99,
+  '27': 999999.99, '28': 999999.99, '29': 999999.99, '3': 999999.99, '30': 999999.99,
+  '31': 999999.99, '32': 999999.99, '33': 999999.99, '34': 999999.99, '35': 999999.99,
+  '36': 999999.99, '37': 999999.99, '38': 999999.99, '39': 999999.99, '4': 999999.99,
+  '40': 999999.99, '41': 999999.99, '42': 999999.99, '43': 999999.99, '44': 999999.99,
+  '45': 999999.99, '46': 999999.99, '47': 999999.99, '48': 999999.99, '49': 999999.99,
+  '5': 999999.99, '50': 999999.99, '51': 999999.99, '52': 999999.99, '53': 999999.99,
+  '54': 999999.99, '55': 999999.99, '56': 999999.99, '57': 999999.99, '58': 999999.99,
+  '59': 999999.99, '6': 999999.99, '60': 999999.99, '61': 999999.99, '62': 999999.99,
+  '63': 999999.99, '64': 999999.99, '65': 999999.99, '66': 999999.99, '67': 999999.99,
+  '68': 999999.99, '69': 999999.99, '7': 999999.99, '70': 999999.99, '71': 999999.99,
+  '72': 999999.99, '73': 999999.99, '74': 999999.99, '75': 999999.99, '76': 999999.99,
+  '77': 999999.99, '78': 999999.99, '79': 999999.99, '8': 999999.99, '80': 999999.99,
+  '81': 999999.99, '82': 999999.99, '83': 999999.99, '84': 999999.99, '85': 999999.99,
+  '86': 999999.99, '87': 999999.99, '88': 999999.99, '89': 999999.99, '9': 999999.99,
+  '90': 999999.99, '91': 999999.99, '92': 999999.99, '93': 999999.99, '94': 999999.99,
+  '95': 999999.99, '96': 999999.99, '97': 999999.99, '98': 999999.99, '99': 999999.99,
+  avg: 999999.99, max: 999999.99, min: 999999.99}
+att_latency: {'0': 999999.99, '1': 999999.99, '10': 999999.99, '11': 999999.99, '12': 999999.99,
+  '13': 999999.99, '14': 999999.99, '15': 999999.99, '16': 999999.99, '17': 999999.99,
+  '18': 999999.99, '19': 999999.99, '2': 999999.99, '20': 999999.99, '21': 999999.99,
+  '22': 999999.99, '23': 999999.99, '24': 999999.99, '25': 999999.99, '26': 999999.99,
+  '27': 999999.99, '28': 999999.99, '29': 999999.99, '3': 999999.99, '30': 999999.99,
+  '31': 999999.99, '32': 999999.99, '33': 999999.99, '34': 999999.99, '35': 999999.99,
+  '36': 999999.99, '37': 999999.99, '38': 999999.99, '39': 999999.99, '4': 999999.99,
+  '40': 999999.99, '41': 999999.99, '42': 999999.99, '43': 999999.99, '44': 999999.99,
+  '45': 999999.99, '46': 999999.99, '47': 999999.99, '48': 999999.99, '49': 999999.99,
+  '5': 999999.99, '50': 999999.99, '51': 999999.99, '52': 999999.99, '53': 999999.99,
+  '54': 999999.99, '55': 999999.99, '56': 999999.99, '57': 999999.99, '58': 999999.99,
+  '59': 999999.99, '6': 999999.99, '60': 999999.99, '61': 999999.99, '62': 999999.99,
+  '63': 999999.99, '64': 999999.99, '65': 999999.99, '66': 999999.99, '67': 999999.99,
+  '68': 999999.99, '69': 999999.99, '7': 999999.99, '70': 999999.99, '71': 999999.99,
+  '72': 999999.99, '73': 999999.99, '74': 999999.99, '75': 999999.99, '76': 999999.99,
+  '77': 999999.99, '78': 999999.99, '79': 999999.99, '8': 999999.99, '80': 999999.99,
+  '81': 999999.99, '82': 999999.99, '83': 999999.99, '84': 999999.99, '85': 999999.99,
+  '86': 999999.99, '87': 999999.99, '88': 999999.99, '89': 999999.99, '9': 999999.99,
+  '90': 999999.99, '91': 999999.99, '92': 999999.99, '93': 999999.99, '94': 999999.99,
+  '95': 999999.99, '96': 999999.99, '97': 999999.99, '98': 999999.99, '99': 999999.99,
+  avg: 999999.99, max: 999999.99, min: 999999.99}
+attempts: 0
+benchmark: rw
+cc: none
+clients: 60
+commits: 0
+duration: 45.972277287999994
+experiment_id: 1
+latency: {'0': 999999.99, '1': 999999.99, '10': 999999.99, '11': 999999.99, '12': 999999.99,
+  '13': 999999.99, '14': 999999.99, '15': 999999.99, '16': 999999.99, '17': 999999.99,
+  '18': 999999.99, '19': 999999.99, '2': 999999.99, '20': 999999.99, '21': 999999.99,
+  '22': 999999.99, '23': 999999.99, '24': 999999.99, '25': 999999.99, '26': 999999.99,
+  '27': 999999.99, '28': 999999.99, '29': 999999.99, '3': 999999.99, '30': 999999.99,
+  '31': 999999.99, '32': 999999.99, '33': 999999.99, '34': 999999.99, '35': 999999.99,
+  '36': 999999.99, '37': 999999.99, '38': 999999.99, '39': 999999.99, '4': 999999.99,
+  '40': 999999.99, '41': 999999.99, '42': 999999.99, '43': 999999.99, '44': 999999.99,
+  '45': 999999.99, '46': 999999.99, '47': 999999.99, '48': 999999.99, '49': 999999.99,
+  '5': 999999.99, '50': 999999.99, '51': 999999.99, '52': 999999.99, '53': 999999.99,
+  '54': 999999.99, '55': 999999.99, '56': 999999.99, '57': 999999.99, '58': 999999.99,
+  '59': 999999.99, '6': 999999.99, '60': 999999.99, '61': 999999.99, '62': 999999.99,
+  '63': 999999.99, '64': 999999.99, '65': 999999.99, '66': 999999.99, '67': 999999.99,
+  '68': 999999.99, '69': 999999.99, '7': 999999.99, '70': 999999.99, '71': 999999.99,
+  '72': 999999.99, '73': 999999.99, '74': 999999.99, '75': 999999.99, '76': 999999.99,
+  '77': 999999.99, '78': 999999.99, '79': 999999.99, '8': 999999.99, '80': 999999.99,
+  '81': 999999.99, '82': 999999.99, '83': 999999.99, '84': 999999.99, '85': 999999.99,
+  '86': 999999.99, '87': 999999.99, '88': 999999.99, '89': 999999.99, '9': 999999.99,
+  '90': 999999.99, '91': 999999.99, '92': 999999.99, '93': 999999.99, '94': 999999.99,
+  '95': 999999.99, '96': 999999.99, '97': 999999.99, '98': 999999.99, '99': 999999.99,
+  avg: 999999.99, max: 999999.99, min: 999999.99}
+retries_exhausted_cnt: 0
+start_cnt: 0
+total_cnt: 0
+tps: 0.0
+txn_name: READ
+zipf: -1
+
+__EndData__
+
+INFO: 2022-05-20 08:04:54,013: total_time: 56.076247673
+INFO: 2022-05-20 08:04:54,015: 
+Progress: 93%
+TOTAL: elapsed time: 56.08
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    430812    430752      430752     430752   7682
+0.0%     READ          0         0           0          0      0
+----     Total    430812    430752      430752     430752   7682
+
+INTERVAL: elapsed time: 5.11
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     38579     38579       38579      38579   7557   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     38579     38579       38579      38579   7557       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:04:57,094: top server heartbeat loop
+DEBUG: 2022-05-20 08:04:59,020: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:04:59,105: timing from server: run_sec 62.00; run_nsec -131277878.00
+DEBUG: 2022-05-20 08:04:59,105: avg timing from 1 servers: run_sec 62.00; run_nsec -131277878.00
+INFO: 2022-05-20 08:04:59,105: Progress: 103
+INFO: 2022-05-20 08:04:59,105: total_time: 61.868722122
+INFO: 2022-05-20 08:04:59,106: 
+Progress: 103%
+TOTAL: elapsed time: 61.87
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    464849    464849      464849     464849   7513
+0.0%     READ          0         0           0          0      0
+----     Total    464849    464849      464849     464849   7513
+
+INTERVAL: elapsed time: 5.79
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+100.0%   WRITE     34037     34097       34097      34097   5886   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+0.0%     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total     34037     34097       34097      34097   5886       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:05:04,108: top client heartbeat; timeout 5
+DEBUG: 2022-05-20 08:05:04,110: timing from server: run_sec 67.00; run_nsec -44106017.00
+DEBUG: 2022-05-20 08:05:04,110: avg timing from 1 servers: run_sec 67.00; run_nsec -44106017.00
+INFO: 2022-05-20 08:05:04,110: Progress: 112
+INFO: 2022-05-20 08:05:04,110: total_time: 66.955893983
+INFO: 2022-05-20 08:05:04,111: 
+Progress: 112%
+TOTAL: elapsed time: 66.96
+RATIO    NAME      start    finish    attempts    commits    TPS
+-------  ------  -------  --------  ----------  ---------  -----
+100.0%   WRITE    464849    464849      464849     464849   6943
+0.0%     READ          0         0           0          0      0
+----     Total    464849    464849      464849     464849   6943
+
+INTERVAL: elapsed time: 5.09
+RATIO    NAME      start    finish    attempts    commits    TPS    min lt    max lt    0.0% LATENCY    1.0% LATENCY    2.0% LATENCY    3.0% LATENCY    4.0% LATENCY    5.0% LATENCY    6.0% LATENCY    7.000000000000001% LATENCY    8.0% LATENCY    9.0% LATENCY    10.0% LATENCY    11.0% LATENCY
+-------  ------  -------  --------  ----------  ---------  -----  --------  --------  --------------  --------------  --------------  --------------  --------------  --------------  --------------  ----------------------------  --------------  --------------  ---------------  ---------------
+----     WRITE         0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     READ          0         0           0          0      0   99999.9   99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9         99999.9                       99999.9         99999.9         99999.9          99999.9          99999.9
+----     Total         0         0           0          0      0       0         0               0               0               0               0               0               0               0                             0               0               0                0                0
+	Total asking finish: 0
+----------------------------------------------------------------------
+
+DEBUG: 2022-05-20 08:05:04,595: top server heartbeat loop
+INFO: 2022-05-20 08:05:09,116: Duration: 71.96 seconds
+INFO: 2022-05-20 08:05:09,116: Benchmark finished
+DEBUG: 2022-05-20 08:05:12,103: top server heartbeat loop
+INFO: 2022-05-20 08:05:12,103: CPUINFO: 0.0
+INFO: 2022-05-20 08:05:12,103: AVG_LOG_FLUSH_CNT: 0.0
+INFO: 2022-05-20 08:05:12,103: AVG_LOG_FLUSH_SZ: 0.0
+INFO: 2022-05-20 08:05:12,104: BENCHMARK SUCCESS!
+INFO: 2022-05-20 08:05:12,105: shutting down...
+DEBUG: 2022-05-20 08:05:12,297: Existing Server or Client Processes:
+----------
+Server: 10.0.0.15
+-------------
+b'xuhao    20245     1 20245  0    3 136233 510452 1 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host3 -p 5558 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20245     1 20247 17    3 136233 510452 1 08:03 ?        00:00:13 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host3 -p 5558 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20245     1 20248  8    3 136233 510452 1 08:03 ?        00:00:06 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host3 -p 5558 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20272 20271 20272  0    1  1350  2928   3 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20274 20272 20274  0    1  1241   888   2 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.14
+-------------
+b'xuhao    16572     1 16572  0    3 160810 534964 1 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host2 -p 5557 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    16572     1 16574 16    3 160810 534964 1 08:03 ?        00:00:12 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host2 -p 5557 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    16572     1 16575  8    3 160810 534964 1 08:03 ?        00:00:06 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host2 -p 5557 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    16592 16591 16592  0    1  1351  2928   2 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    16594 16592 16594  0    1  1242   884   1 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.13
+-------------
+b'xuhao    20574     1 20574  0    3 136233 461200 1 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host1 -p 5556 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20574     1 20576 30    3 136233 461200 1 08:03 ?        00:00:23 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host1 -p 5556 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20574     1 20577 14    3 136233 461200 1 08:03 ?        00:00:11 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host1 -p 5556 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    20668 20667 20668  0    1  1350  3000   3 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20670 20668 20670  0    1  1241   816   2 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.37
+-------------
+b'xuhao    14937     1 14937  0    5 23978 46612   3 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host4 -p 5555 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    14937     1 14938  0    5 23978 46612   0 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host4 -p 5555 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    14937     1 14939  0    5 23978 46612   2 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host4 -p 5555 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    14937     1 14940  7    5 23978 46612   0 08:03 ?        00:00:06 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host4 -p 5555 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    14937     1 14962  0    5 23978 46612   0 08:03 ?        00:00:00 ./build/deptran_server -b -d 60 -f /home/xuhao/code/depfast/tmp/janus-final-testnamem99arwba.yml -P host4 -p 5555 -t 30 -r /home/xuhao/code/depfast/log\nxuhao    15209 14793 15209  1    1  6247 13548   2 08:05 pts/1    00:00:00 ssh 10.0.0.37 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    15213 14793 15213  1    1  6247 13840   0 08:05 pts/1    00:00:00 ssh 10.0.0.13 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    15220 15219 15220  0    1  1350  2956   1 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    15222 15220 15222  0    1  1241  2248   1 08:05 ?        00:00:00 grep deptran_server\n'
+INFO: 2022-05-20 08:05:12,316: waiting for killall commands to finish.
+INFO: 2022-05-20 08:05:12,474: done waiting for killall commands to finish.
+DEBUG: 2022-05-20 08:05:12,669: Existing Server or Client After Kill:
+----------
+Server: 10.0.0.15
+-------------
+b'xuhao    20290 20289 20290  0    1  1350  2980   2 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20292 20290 20292  0    1  1241   888   3 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.13
+-------------
+b'xuhao    20686 20685 20686  0    1  1350  2952   2 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    20688 20686 20688  0    1  1241   880   3 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.14
+-------------
+b'xuhao    16610 16609 16610  0    1  1351  2928   1 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    16612 16610 16612  0    1  1242   884   0 08:05 ?        00:00:00 grep deptran_server\n'
+----------
+Server: 10.0.0.37
+-------------
+b'xuhao    15251 14793 15251  0    1  6247 13668   0 08:05 pts/1    00:00:00 ssh 10.0.0.37 /bin/bash -c \'ps -eLF | grep "deptran_server"\'\nxuhao    15259 15258 15259  0    1  1350  2892   2 08:05 ?        00:00:00 /bin/bash -c ps -eLF | grep "deptran_server"\nxuhao    15261 15259 15261  0    1  1241  2368   0 08:05 ?        00:00:00 grep deptran_server\n'
+INFO: 2022-05-20 08:05:13,086: sync tmp folder....
+

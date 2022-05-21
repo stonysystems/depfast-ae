@@ -81,8 +81,8 @@ python3 waf configure -J build
 bash ./batch_op.sh scp
 ```
 
-### 3. run all experiments in the one-click script (~2.5hours)
-We provide one-click runnable script to generate all results.
+### 3. run all experiments in the one-click script (~8hours)
+We provide one-click runnable script to generate all results. **We strongly recommend you run this script within the `tmux` in case the task is terminated unexpectedly.**
 ```bash
 # run commands on the client-1-ip machine
 cd ~/code/depfast

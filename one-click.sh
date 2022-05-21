@@ -27,10 +27,10 @@ SLOW_CONCURRENT_RAFT=200 # for tpca
 # trials, by default: 1
 # please keep same as the variable in ./data_processing/processing.py
 # for rw:trails
-FIGURE5a_TARIALS=1
-FIGURE5b_TARIALS=1
-FIGURE6a_TARIALS=1
-FIGURE6b_TARIALS=1
+FIGURE5a_TARIALS=3
+FIGURE5b_TARIALS=3
+FIGURE6a_TARIALS=3
+FIGURE6b_TARIALS=3
 ulimit -n 10000
 
 setup () {
@@ -83,6 +83,7 @@ experiment5a() {
     rm -rf ./results
     # 3 replicas
     conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
+    # conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580) # for rw
     for i in "${conc[@]}"
     do
       mkdir results

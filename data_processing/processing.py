@@ -9,10 +9,10 @@ SK="PAYMENT" # for tpca
 
 # trials, by default: 1
 # for rw: for trails
-FIGURE5a_TARIALS=1
-FIGURE5b_TARIALS=1
-FIGURE6a_TARIALS=1
-FIGURE6b_TARIALS=1
+FIGURE5a_TARIALS=3
+FIGURE5b_TARIALS=3
+FIGURE6a_TARIALS=3
+FIGURE6b_TARIALS=3
 
 def median(a):
     m=max(a)
@@ -83,6 +83,7 @@ def figure5a():
 def figure5aTrail(t):
     # 3 replicas
     conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
+    #conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580] # for rw
     data_3=[] # (currency, 50th, tps, 99th)
     for i in conc:
         folder=BASE+"figure5a_"+str(t)+"/results_3_"+str(i)
