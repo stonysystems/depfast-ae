@@ -4,6 +4,8 @@
 #include "workload.h"
 #include "zipf.h"
 
+#define BATCH 50
+
 namespace janus {
 
 char TPCA_BRANCH[] = "branch";
@@ -168,6 +170,7 @@ void TpcaWorkload::RegisterPrecedures() {
        {TPCA_CUSTOMER, {TPCA_VAR_X}}, // s
        DF_NO,
        PROC {
+         for (int i = 0; i < BATCH; ++i) {
 //        Log::debug("output: %p, output_size: %p", output, output_size);
          Value buf;
          verify(cmd.input.size() >= 1);
@@ -188,6 +191,7 @@ void TpcaWorkload::RegisterPrecedures() {
          //         tx.WriteColumn(r, 1, buf, RANK_I);
          *res = SUCCESS;
        }
+       }
   );
 
   RegP(TPCA_PAYMENT, TPCA_PAYMENT_2,
@@ -197,6 +201,7 @@ void TpcaWorkload::RegisterPrecedures() {
        {TPCA_TELLER, {TPCA_VAR_Y} }, // s
        DF_REAL,
        PROC {
+         for (int i = 0; i < BATCH; i++) {
          auto buf = std::make_unique<Value>();
          verify(cmd.input.size() >= 1);
          mdb::Row *r = NULL;
@@ -210,6 +215,7 @@ void TpcaWorkload::RegisterPrecedures() {
          // TODO: yidawu commentted
          tx.WriteColumn(r, 1, *buf, TXN_DEFERRED);
          *res = SUCCESS;
+         }
        }
   );
 
@@ -220,6 +226,7 @@ void TpcaWorkload::RegisterPrecedures() {
        {TPCA_BRANCH, {TPCA_VAR_Z}},
        DF_REAL,
        PROC {
+         for (int i = 0; i < BATCH; i++) {
          Value buf;
          verify(cmd.input.size() >= 1);
          i32 output_index = 0;
@@ -235,6 +242,7 @@ void TpcaWorkload::RegisterPrecedures() {
          // TODO: yidawu commentted
          //         tx.WriteColumn(r, 1, buf, TXN_DEFERRED);
          *res = SUCCESS;
+         }
        }
   );
 }

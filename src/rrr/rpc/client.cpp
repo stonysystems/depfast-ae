@@ -286,6 +286,10 @@ bool Client::handle_read(){
 }
 
 bool Client::handle_read_one() {
+  // if (strcmp(host_.c_str(), "10.0.0.15") == 0) {
+  //     count_++;
+  //   Log_info("called %d", count_);
+  // }
 	struct timespec begin2, begin2_cpu, end2, end2_cpu;
   /*clock_gettime(CLOCK_MONOTONIC, &begin2);		
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &begin2_cpu);*/
@@ -320,9 +324,9 @@ iters = 5;
 		iters = INT_MAX;
 	}
   
-	if (pending_fu_.size() > 300000) {
-		Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
-	}
+	// if (pending_fu_.size() > 300000) {
+	// 	Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
+	// }
 	
 	for(int i = 0; i < iters; i++) {
     i32 packet_size;

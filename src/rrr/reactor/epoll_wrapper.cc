@@ -151,12 +151,12 @@ void Epoll::Wait() {
 		total_no_time += wait_time;
 	}
 
-	if ((have_count + no_count) % 1000 == 0)
-	  Log_info("have/no: %lld/%lld, avg wait: %f, have wait: %f, no wait: %f",
-	    have_count, no_count,
-	    (double)(total_have_time + total_no_time) / (have_count + no_count),
-	    (double)total_have_time / have_count,
-	    (double)total_no_time / no_count);
+	// if ((have_count + no_count) % 1000 == 0)
+	//   Log_info("have/no: %lld/%lld, avg wait: %f, have wait: %f, no wait: %f",
+	//     have_count, no_count,
+	//     (double)(total_have_time + total_no_time) / (have_count + no_count),
+	//     (double)total_have_time / have_count,
+	//     (double)total_no_time / no_count);
 
 	if(nev != 0){
 		/*Log_info("stuck here: %d", nev);
