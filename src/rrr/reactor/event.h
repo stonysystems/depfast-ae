@@ -235,7 +235,7 @@ class SharedIntEvent {
   list<shared_ptr<IntEvent>> events_{};
   int Set(const int& v);
   void Wait(function<bool(int)> f);
-  void WaitUntilGreaterOrEqualThan(int x, int timeout=0);
+  bool WaitUntilGreaterOrEqualThan(int x, int timeout=0);
 };
 
 

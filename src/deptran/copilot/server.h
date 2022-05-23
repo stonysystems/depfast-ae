@@ -11,6 +11,7 @@ namespace janus {
 
 const status_t FLAG_TAKEOVER = 0x80000000;
 const status_t CLR_FLAG_TAKEOVER = (~FLAG_TAKEOVER);
+const uint64_t PINGPONG_TIMEOUT_US = 5000;
 #define GET_STATUS(s) ((s) & CLR_FLAG_TAKEOVER)
 #define GET_TAKEOVER(s) ((s) & FLAG_TAKEOVER)
 
@@ -59,6 +60,9 @@ class CopilotServer : public TxLogServer {
  private:
   std::vector<CopilotLogInfo> log_infos_;
 
+  SharedIntEvent pingpong_event_{};
+  bool pingpong_ok_;
+
  public:
   CopilotServer(Frame *frame);
   ~CopilotServer() {}
@@ -78,6 +82,9 @@ class CopilotServer : public TxLogServer {
   bool EliminateNullDep(shared_ptr<CopilotData>& ins);
 
   void Setup();
+
+  // Wait for Ping-Pong signal from another pilot, or timeout and proceed to FastAccept
+  void WaitForPingPong();
 
   void OnForward(shared_ptr<Marshallable>& cmd,
                  const function<void()> &cb);

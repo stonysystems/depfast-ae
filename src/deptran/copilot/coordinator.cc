@@ -52,6 +52,8 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
   begin = Time::now(true);
 
+  sch_->WaitForPingPong();
+
   cmd_now_ = cmd;
   auto slot_and_dep = sch_->PickInitSlotAndDep();
   // TODO: check if this is correct, whether we can always set initial ballot as 0
@@ -161,7 +163,7 @@ start_prepare:
 void CoordinatorCopilot::FastAccept() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   static_cast<CopilotFrame*>(frame_)->n_fast_accept_++;
-  if ((static_cast<CopilotFrame*>(frame_)->n_fast_accept_ & 0xffff) == 0)
+  if ((static_cast<CopilotFrame*>(frame_)->n_fast_accept_ & 0xfff) == 0)
       Log_info("fast/reg/total %u/%u/%u", static_cast<CopilotFrame*>(frame_)->n_fast_path_,
         static_cast<CopilotFrame*>(frame_)->n_regular_path_,
         static_cast<CopilotFrame*>(frame_)->n_fast_accept_);
