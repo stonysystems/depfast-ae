@@ -71,6 +71,8 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
 
   dispatch_quota.WaitUntilGreaterOrEqualThan(0);
 
+  bool send = false;
+
   if (n_pending_rpc_[0] < max_pending_rpc_) {
     // if (true) {
     auto future =
@@ -78,6 +80,7 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
     Future::safe_release(future);
     n_pending_rpc_[0]++;
     dispatch_quota.Set(dispatch_quota.value_ - 1);
+    send = true;
   }
 
   rrr::FutureAttr fu2;
@@ -96,7 +99,10 @@ void CommunicatorNoneCopilot::BroadcastDispatch(shared_ptr<vector<shared_ptr<Sim
         pair_proxies[1].second->async_Dispatch(cmd_id, di, md, fu2));
     n_pending_rpc_[1]++;
     dispatch_quota.Set(dispatch_quota.value_ - 1);
+    send = true;
   }
+
+  verify(send);
 }
     
 } // namespace janus

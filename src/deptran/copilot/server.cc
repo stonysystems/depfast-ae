@@ -54,10 +54,10 @@ std::pair<slotid_t, uint64_t> CopilotServer::PickInitSlotAndDep() {
    * initial slot id is 1, slot 0 is always empty
    */
   if (isPilot_) {
-    init_dep = log_infos_[NO].max_accepted_slot;
+    init_dep = log_infos_[NO].current_slot;
     assigned_slot = ++log_infos_[YES].current_slot;
   } else if (isCopilot_) {
-    init_dep = log_infos_[YES].max_accepted_slot;
+    init_dep = log_infos_[YES].current_slot;
     assigned_slot = ++log_infos_[NO].current_slot;
   } else {
     init_dep = 0;
@@ -126,6 +126,28 @@ void CopilotServer::Setup() {
   GetInstance(0, NO)->status = EXECUTED;
 }
 
+void CopilotServer::WaitForPingPong() {
+  /**
+   * There could be multiple coroutine waiting for the Ping-Pong signal,
+   * they can be ready together, but only one can proceed to FastAccept.
+   * The first one to wake up will grab the `pingpong_ok_` and set it to false
+   * to prevent multiple coroutine from proceeding to FastAccept.
+   * 
+   * After other coroutines resume, they will see the `pingpong_ok_` as false
+   * and re-enter the waiting, unless they have timeout, in which case they will
+   * proceed to FastAccept and there will be multiple on-going FastAceept.
+   */
+  while (!pingpong_ok_) {
+    // Log_info("server %d blocked", id_);
+    if (pingpong_event_.WaitUntilGreaterOrEqualThan(1, PINGPONG_TIMEOUT_US)) {
+      Log_info("server %d ping pong timeout", id_);
+      break;
+    }
+  }
+  pingpong_ok_ = false;
+  pingpong_event_.Set(0);  // must set it to 0 to make event into unready state, otherwise WaitUntil.. won't wait.
+}
+
 void CopilotServer::OnForward(shared_ptr<Marshallable>& cmd,
                               const function<void()>& cb) {
   verify(isPilot_ || isCopilot_);
@@ -154,6 +176,7 @@ void CopilotServer::OnPrepare(const uint8_t& is_pilot,
                               const function<void()>& cb) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto ins = GetInstance(slot, is_pilot);
+  log_infos_[is_pilot].current_slot = std::max(slot, log_infos_[is_pilot].current_slot);
   if (!ins) {
     // this entry is too old that it's already freed
     ret_cmd->SetMarshallable(make_shared<TpcNoopCommand>());
@@ -212,6 +235,7 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
 
   auto ins = GetInstance(slot, is_pilot);
   verify(ins);
+  log_infos_[is_pilot].current_slot = std::max(slot, log_infos_[is_pilot].current_slot);
   auto& log_info = log_infos_[REVERSE(is_pilot)];
   auto& logs = log_info.logs;
   uint64_t suggest_dep = dep;
@@ -269,8 +293,11 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
   *max_ballot = ballot;
   *ret_dep = suggest_dep;
 
-  if (cb)
+  if (cb) {
+    pingpong_event_.Set(1);
+    pingpong_ok_ = true;
     cb();
+  }
 }
 
 void CopilotServer::OnAccept(const uint8_t& is_pilot,
@@ -287,6 +314,7 @@ void CopilotServer::OnAccept(const uint8_t& is_pilot,
   auto ins = GetInstance(slot, is_pilot);
   verify(ins);
   auto& log_info = log_infos_[is_pilot];
+  log_info.current_slot = std::max(slot, log_info.current_slot);
 
   if (ins->ballot <= ballot) {
     ins->ballot = ballot;
@@ -314,6 +342,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("server %d [COMMIT     ] %s : %ld -> %ld", id_, toString(is_pilot), slot, dep);
   auto ins = GetInstance(slot, is_pilot);
+  log_infos_[is_pilot].current_slot = std::max(slot, log_infos_[is_pilot].current_slot);
   if (!ins)
     return;
   verify(ins);
@@ -392,11 +421,15 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
 void CopilotServer::setIsPilot(bool isPilot) {
   verify(!isPilot || !isCopilot_);
   isPilot_ = isPilot;
+  if (isPilot)
+    pingpong_ok_ = true;  // hand the ball to Pilot first
 }
 
 void CopilotServer::setIsCopilot(bool isCopilot) {
   verify(!isCopilot || !isPilot_);
   isCopilot_ = isCopilot;
+  if (isCopilot)
+    pingpong_ok_ = false;  // hand the ball to Pilot first
 }
 
 inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
