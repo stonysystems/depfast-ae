@@ -320,9 +320,9 @@ iters = 5;
 		iters = INT_MAX;
 	}
   
-	if (pending_fu_.size() > 300000) {
-		Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
-	}
+	// if (pending_fu_.size() > 300000) {
+	// 	Log_info("Warning: pending size is %d likely due to slowness", pending_fu_.size());
+	// }
 	
 	for(int i = 0; i < iters; i++) {
     i32 packet_size;
