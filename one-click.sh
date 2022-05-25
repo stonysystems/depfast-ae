@@ -54,7 +54,7 @@ timeout_process() {
   waitTime=$2
   rerun=$3
   myPid=$!
-  echo "START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
+  echo "[$(date)]START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
 
   sleep $waitTime
   if kill -0 "$myPid"; then
@@ -98,15 +98,17 @@ experiment5a() {
         echo $cmd
       else
 	setup
-        eval $cmd 
+        eval $cmd
 	setup
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ! ag $TPS ./figure5a$suffix/log_3_$i; then
+        if ! ag $TPS ./log; then
+	  echo "[$(date)]not TPS\n " >> $LOG_FILE
 	  setup
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
+        ag $TPS ./log >> $LOG_FILE
       fi
       mv results ./figure5a$suffix/results_3_$i
       cp -r log ./figure5a$suffix/log_3_$i
@@ -122,14 +124,16 @@ experiment5a() {
         echo $cmd
       else
 	setup
-        eval $cmd 
+        eval $cmd
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ! ag $TPS ./figure5a$suffix/log_5_$i; then
+        if ! ag $TPS ./log; then
+	  echo "[$(date)]not TPS\n " >> $LOG_FILE
 	  setup
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
+        ag $TPS ./log >> $LOG_FILE
       fi
       mv results ./figure5a$suffix/results_5_$i
       cp -r log ./figure5a$suffix/log_5_$i
@@ -161,14 +165,16 @@ experiment5b() {
         echo $cmd
       else
 	setup
-        eval $cmd 
+        eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ! ag $TPS ./figure5b$suffix/log_3_$i; then
+        if ! ag $TPS ./log; then
+	  echo "[$(date)]not TPS\n " >> $LOG_FILE
 	  setup
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
+        ag $TPS ./log >> $LOG_FILE
       fi
       mv results ./figure5b$suffix/results_3_$i
       cp -r log ./figure5b$suffix/log_3_$i
@@ -184,14 +190,16 @@ experiment5b() {
         echo $cmd
       else
 	setup
-        eval $cmd 
+        eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ! ag $TPS ./figure5b$suffix/log_5_$i; then
+        if ! ag $TPS ./log; then
+	  echo "[$(date)]not TPS\n " >> $LOG_FILE
 	  setup
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
+        ag $TPS ./log >> $LOG_FILE
       fi
       mv results ./figure5b$suffix/results_5_$i
       cp -r log ./figure5b$suffix/log_5_$i
@@ -222,14 +230,16 @@ experiment6a() {
       echo $cmd
     else
       setup
-      eval $cmd 
+      eval $cmd
       timeout_process "$cmd" $TUPT_DUR_EXP 1
       # if error detected, re-run it
-      if ! ag $TPS ./figure6a$suffix/log_$i; then
+      if ! ag $TPS ./log; then
+	echo "[$(date)]not TPS\n " >> $LOG_FILE
 	setup
         eval $cmd
         timeout_process "$cmd" $TUPT_DUR_EXP 0
       fi
+      ag $TPS ./log >> $LOG_FILE
     fi
     mv results ./figure6a$suffix/results_$i
     cp -r log ./figure6a$suffix/log_$i
@@ -259,16 +269,18 @@ experiment6b() {
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
-    else 
+    else
       setup
-      eval $cmd 
+      eval $cmd
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ! ag $TPS ./figure6b$suffix/log_leader_$i; then
+      if ! ag $TPS ./log; then
+	echo "[$(date)]not TPS\n " >> $LOG_FILE
 	setup
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
+      ag $TPS ./log >> $LOG_FILE
     fi
     mv results ./figure6b$suffix/results_leader_$i
     cp -r log ./figure6b$suffix/log_leader_$i
@@ -284,14 +296,16 @@ experiment6b() {
       echo $cmd
     else
       setup
-      eval $cmd 
+      eval $cmd
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ! ag $TPS ./figure6b$suffix/log_follower_$i; then
+      if ! ag $TPS ./log; then
+	echo "[$(date)]not TPS\n " >> $LOG_FILE
 	setup
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
+      ag $TPS ./log >> $LOG_FILE
     fi
     mv results ./figure6b$suffix/results_follower_$i
     cp -r log ./figure6b$suffix/log_follower_$i
@@ -300,22 +314,22 @@ experiment6b() {
 
 setup
 
-for (( c=1; c<=$FIGURE5a_TARIALS; c++ )); do 
+for (( c=1; c<=$FIGURE5a_TARIALS; c++ )); do
   experiment5a $c
   echo -e "experiment-5a\n"
 done
 
-for (( c=1; c<=$FIGURE5b_TARIALS; c++ )); do 
+for (( c=1; c<=$FIGURE5b_TARIALS; c++ )); do
   experiment5b $c
   echo -e "experiment-5b\n"
 done
 
-for (( c=1; c<=$FIGURE6a_TARIALS; c++ )); do 
+for (( c=1; c<=$FIGURE6a_TARIALS; c++ )); do
   experiment6a $c
   echo -e "experiment-6a\n"
 done
 
-for (( c=1; c<=$FIGURE6b_TARIALS; c++ )); do 
+for (( c=1; c<=$FIGURE6b_TARIALS; c++ )); do
   experiment6b $c
   echo -e "experiment-6b\n"
 done
