@@ -52,8 +52,6 @@ void CoordinatorCopilot::Submit(shared_ptr<Marshallable> &cmd,
 
   begin = Time::now(true);
 
-  sch_->WaitForPingPong();
-
   cmd_now_ = cmd;
   auto slot_and_dep = sch_->PickInitSlotAndDep();
   // TODO: check if this is correct, whether we can always set initial ballot as 0
@@ -169,9 +167,9 @@ void CoordinatorCopilot::FastAccept() {
         static_cast<CopilotFrame*>(frame_)->n_fast_accept_);
   Log_debug(
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
-      "partition: %u, %s : %lu -> %lu, tx: %lx",
-      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_,
-      dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_);
+      "partition: %u, %s : %lu -> %lu",
+      coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
+      // dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_); // todo
   begin = Time::now(true);
   auto sq_quorum = commo()->BroadcastFastAccept(par_id_,
                                                 is_pilot_, slot_id_,

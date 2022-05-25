@@ -80,6 +80,15 @@ bool CopilotServer::WaitMaxCommittedGT(uint8_t is_pilot, slotid_t slot, int time
   return (event.value_ >= slot);
 }
 
+bool CopilotServer::allCmdComitted(shared_ptr<Marshallable> batch_cmd) {
+  auto cmds = dynamic_pointer_cast<TpcBatchCommand>(batch_cmd);
+  for (auto& c : cmds->cmds_) {
+    if (!tx_sched_->CheckCommitted(*c))
+      return false;
+  }
+  return true;
+}
+
 bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
   verify(ins);
   auto& cmd = ins->cmd;
@@ -89,9 +98,9 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     return true;
   }
-  if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT)) {
+  if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_BATCH)) { // TODO
     // check if cmd committed in tx scheduler, which virtually means cmd is executed
-    if (tx_sched_->CheckCommitted(*cmd)) {
+    if (allCmdComitted(cmd)) { // todo
       Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
       ins->status = Status::EXECUTED;
       if (ins->cmit_evt.value_ < 1)
@@ -137,15 +146,26 @@ void CopilotServer::WaitForPingPong() {
    * and re-enter the waiting, unless they have timeout, in which case they will
    * proceed to FastAccept and there will be multiple on-going FastAceept.
    */
-  while (!pingpong_ok_) {
+  while (WillWait()) {
     // Log_info("server %d blocked", id_);
     if (pingpong_event_.WaitUntilGreaterOrEqualThan(1, PINGPONG_TIMEOUT_US)) {
-      Log_info("server %d ping pong timeout", id_);
+      n_timeout++;
+      Log_info("server %d ping pong timeout %lld", id_, n_timeout);
       break;
     }
   }
   pingpong_ok_ = false;
   pingpong_event_.Set(0);  // must set it to 0 to make event into unready state, otherwise WaitUntil.. won't wait.
+}
+
+bool CopilotServer::WillWait() const {
+  /**
+   * Lemma: if pingpong_ok_ is false right before WaitForPingPong(), then it must wait
+   * Proof: if pingpong_ok_ is false, pingpong_event must be 0 (the inverse doesn't always hold),
+   * since they are always set together. Thus, WaitForPingPong must enter the while loop,
+   * after which pingpong_event_ must wait and yield.
+   */
+  return !pingpong_ok_;
 }
 
 void CopilotServer::OnForward(shared_ptr<Marshallable>& cmd,
@@ -471,6 +491,10 @@ void CopilotServer::removeCmd(CopilotLogInfo& log_info, slotid_t slot) {
   if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT) {
     auto tpc_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
     tx_sched_->DestroyTx(tpc_cmd->tx_id_);
+  } else if (cmd->kind_ == MarshallDeputy::CMD_TPC_BATCH) {
+    auto batch_cmd = dynamic_pointer_cast<TpcBatchCommand>(cmd);
+    for (auto& c : batch_cmd->cmds_)
+      tx_sched_->DestroyTx(c->tx_id_);
   }
   log_info.logs.erase(slot);
 }

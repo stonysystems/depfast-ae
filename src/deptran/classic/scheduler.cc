@@ -307,7 +307,7 @@ int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   return 0;
 }
 
-bool SchedulerClassic::CheckCommitted(Marshallable& tpc_commit_cmd) {
+bool SchedulerClassic::CheckCommitted(Marshallable& tpc_commit_cmd) { //todo
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto &c = dynamic_cast<TpcCommitCommand&>(tpc_commit_cmd);
   auto tx_id = c.tx_id_;
@@ -328,6 +328,10 @@ void SchedulerClassic::Next(Marshallable& cmd) {
     // do nothing
     auto& c = dynamic_cast<TpcEmptyCommand&>(cmd);
     c.Done();
+  } else if (cmd.kind_ == MarshallDeputy::CMD_TPC_BATCH) {
+    auto& c = dynamic_cast<TpcBatchCommand&>(cmd);
+    for (auto& cc : c.cmds_)
+      CommitReplicated(*cc);
   } else {
     verify(0);
   }
