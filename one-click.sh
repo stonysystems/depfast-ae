@@ -33,18 +33,19 @@ FIGURE5b_TARIALS=3
 FIGURE6a_TARIALS=3
 FIGURE6b_TARIALS=3
 ulimit -n 10000
+LOG_FILE="./log.txt"
 
 setup () {
     if [ $ONLY_CMD -eq 0 ]
     then
       bash ./batch_op.sh kill
+      bash ./batch_op.sh init
       sleep 1
     fi
 }
 
 build_scp() {
   python3 waf configure -J build
-  bash ./batch_op.sh init
   bash ./batch_op.sh scp
 }
 
@@ -53,6 +54,7 @@ timeout_process() {
   waitTime=$2
   rerun=$3
   myPid=$!
+  echo "START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
 
   sleep $waitTime
   if kill -0 "$myPid"; then
