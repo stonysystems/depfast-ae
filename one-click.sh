@@ -7,6 +7,7 @@ s3=$( cat ./ips/ip_s3 )
 s4=$( cat ./ips/ip_s4 )
 s5=$( cat ./ips/ip_s5 )
 c1=$( cat ./ips/ip_c1 )
+TPS="tps: "
 servers=(
   $s1
   $s2
@@ -95,7 +96,7 @@ experiment5a() {
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5a$suffix/log_3_$i; then
+        if ! ag $TPS ./figure5a$suffix/log_3_$i; then
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
@@ -116,7 +117,7 @@ experiment5a() {
         eval $cmd 
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5a$suffix/log_5_$i; then
+        if ! ag $TPS ./figure5a$suffix/log_5_$i; then
           eval $cmd
           timeout_process "$cmd" $TUPT_DUR_EXP 0
 	fi
@@ -150,10 +151,11 @@ experiment5b() {
       then
         echo $cmd
       else
+	setup
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5b$suffix/log_3_$i; then
+        if ! ag $TPS ./figure5b$suffix/log_3_$i; then
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
@@ -174,7 +176,7 @@ experiment5b() {
         eval $cmd 
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
 	# if error detected, re-run it
-        if ag 'raise ' ./figure5b$suffix/log_5_$i; then
+        if ! ag $TPS ./figure5b$suffix/log_5_$i; then
           eval $cmd
           timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
 	fi
@@ -210,7 +212,7 @@ experiment6a() {
       eval $cmd 
       timeout_process "$cmd" $TUPT_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6a$suffix/log_$i; then
+      if ! ag $TPS ./figure6a$suffix/log_$i; then
         eval $cmd
         timeout_process "$cmd" $TUPT_DUR_EXP 0
       fi
@@ -247,7 +249,7 @@ experiment6b() {
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6b$suffix/log_leader_$i; then
+      if ! ag $TPS ./figure6b$suffix/log_leader_$i; then
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
@@ -265,10 +267,11 @@ experiment6b() {
     then
       echo $cmd
     else
+      setup
       eval $cmd 
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
-      if ag 'raise ' ./figure6b$suffix/log_follower_$i; then
+      if ! ag $TPS ./figure6b$suffix/log_follower_$i; then
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
