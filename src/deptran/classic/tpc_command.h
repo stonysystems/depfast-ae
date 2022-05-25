@@ -50,4 +50,19 @@ class TpcNoopCommand : public Marshallable {
   Marshal& FromMarshal(Marshal&) override;
 };
 
+class TpcBatchCommand : public Marshallable {
+  uint32_t size_ = 0;
+public:
+  TpcBatchCommand() : Marshallable(MarshallDeputy::CMD_TPC_BATCH) {}
+  vector<shared_ptr<TpcCommitCommand> > cmds_;
+
+  void AddCmd(shared_ptr<TpcCommitCommand> cmd);
+  void AddCmds(vector<shared_ptr<TpcCommitCommand> >& cmds);
+  void ClearCmd();
+  inline size_t Size() const { return cmds_.size(); }
+  
+  Marshal& ToMarshal(Marshal&) const override;
+  Marshal& FromMarshal(Marshal&) override;
+};
+
 } // namespace janus

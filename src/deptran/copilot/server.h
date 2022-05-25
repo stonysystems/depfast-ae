@@ -62,6 +62,7 @@ class CopilotServer : public TxLogServer {
 
   SharedIntEvent pingpong_event_{};
   bool pingpong_ok_;
+  uint64_t n_timeout = 0;
 
  public:
   CopilotServer(Frame *frame);
@@ -85,6 +86,7 @@ class CopilotServer : public TxLogServer {
 
   // Wait for Ping-Pong signal from another pilot, or timeout and proceed to FastAccept
   void WaitForPingPong();
+  bool WillWait() const;
 
   void OnForward(shared_ptr<Marshallable>& cmd,
                  const function<void()> &cb);
@@ -138,6 +140,7 @@ class CopilotServer : public TxLogServer {
   copilot_stack_t stack_;
 
   bool isExecuted(shared_ptr<CopilotData>& ins);
+  bool allCmdComitted(shared_ptr<Marshallable> batch_cmd);
 };
 
 } //namespace janus

@@ -28,6 +28,12 @@ static int volatile x4 =
                                        return new TpcNoopCommand;
                                      });
 
+static int volatile x5 =
+    MarshallDeputy::RegInitializer(MarshallDeputy::CMD_TPC_BATCH,
+                                      [] () -> Marshallable* {
+                                       return new TpcBatchCommand;
+                                     });
+
 
 Marshal& TpcPrepareCommand::ToMarshal(Marshal& m) const {
   m << tx_id_;
@@ -96,4 +102,37 @@ Marshal& TpcNoopCommand::ToMarshal(Marshal& m) const {
 
 Marshal& TpcNoopCommand::FromMarshal(Marshal& m) {
   return m;
+}
+
+Marshal& TpcBatchCommand::ToMarshal(Marshal& m) const {
+  verify(size_ == cmds_.size());
+  m << size_;
+  for (auto it = cmds_.begin(); it != cmds_.end(); ++it) {
+    (*it)->ToMarshal(m);
+  }
+  return m;
+}
+
+Marshal& TpcBatchCommand::FromMarshal(Marshal& m) {
+  m >> size_;
+  for (uint32_t i = 0; i < size_; i++) {
+    cmds_.emplace_back(std::make_shared<TpcCommitCommand>());
+    cmds_[i]->FromMarshal(m);
+  }
+  return m;
+}
+
+void TpcBatchCommand::AddCmd(shared_ptr<TpcCommitCommand> cmd) {
+  size_++;
+  cmds_.push_back(cmd);
+}
+
+void TpcBatchCommand::AddCmds(vector<shared_ptr<TpcCommitCommand> >& cmds) {
+  cmds_ = cmds;
+  size_ = cmds_.size();
+}
+
+void TpcBatchCommand::ClearCmd() {
+  cmds_.clear();
+  size_ = 0;
 }

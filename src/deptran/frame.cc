@@ -16,6 +16,7 @@
 #include "occ/tx.h"
 #include "occ/coordinator.h"
 #include "none_copilot/commo.h"
+#include "none_copilot/scheduler.h"
 
 #include "bench/tpcc_real_dist/sharding.h"
 #include "bench/tpcc/workload.h"
@@ -371,8 +372,10 @@ TxLogServer* Frame::CreateScheduler() {
       break;
     case MODE_NOTX:
     case MODE_NONE:
-    case MODE_NONE_COPILOT:
       sch = new SchedulerNone();
+      break;
+    case MODE_NONE_COPILOT:
+      sch = new SchedulerNoneCopilot();
       break;
     case MODE_RPC_NULL:
     case MODE_RCC:

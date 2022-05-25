@@ -513,7 +513,7 @@ void PollMgr::PollThread::poll_loop() {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
 
-    if (false) {
+    if (!need_disk_) {
 		poll_.Wait();
     } else {
 		begins = poll_.Wait_One(num_events, slow);
