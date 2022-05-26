@@ -7,7 +7,9 @@ import lattput
 import processing
 
 CK=200 # for tpca
+D_T=12
 # CK=220 # for rw
+#D_T=40 # for rw
 num2exp = {
     0: 'No Slowness',
     1: 'CPU Slowness',
@@ -65,11 +67,11 @@ def load_process_data(protocol, ty, exp, rep):
             data_r = processing.figure6a()
             if ty == "follower":
                 for e in data_r:
-                    if e[0] == 12:
+                    if e[0] == D_T:
                         return e[2], e[1], e[3]
             else:
                 for e in data_r:
-                    if e[0] == 12:
+                    if e[0] == D_T:
                         return e[2], e[1], e[3]
         else:
             data_l, data_f = processing.figure6b()
@@ -113,25 +115,48 @@ def plot_figure(all_data, metric, ax, plt_id):
 def get_cdf_data(protocol, ty, exp, rep):
     latency = []
     if protocol == "raft":  
-        data_3, data_5 = processing.figure5b()
+        if exp==0: # no slowness 
+            data_3, data_5 = processing.figure5a()
+        else:
+            data_3, data_5 = processing.figure5b()
+
         if rep == 3:
             for e in data_3:
-                if e[0] == exp:
-                    latency = e[3]
+                if exp==0:
+                    if e[0] == CK:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
         else:
             for e in data_5:
-                if e[0] == exp:
-                    latency = e[3]
+                if exp==0:
+                    if e[0] == CK:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
     else: # copilot
-        data_l, data_f = processing.figure6b()
+        if exp==0:
+            data_l, data_f = processing.figure6b()
+        else:
+            data_l, data_f = processing.figure6b()
         if ty == "follower":
             for e in data_f:
-                if e[0] == exp:
-                    latency = e[3]
+                if exp==0:
+                    if e[0] == D_T:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
         else:
             for e in data_l:
-                if e[0] == exp:
-                    latency = e[3]
+                if exp==0:
+                    if e[0] == D_T:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
     
     pct_lat = {}
     if not latency:
@@ -192,6 +217,7 @@ if __name__ == '__main__':
         'width_ratios': [1,1,1,1]
     })
     
+    print("(b) ---> ",all_data)
     lines = plot_figure(all_data, 0, axes[1], '(b)')
     plot_cdf(all_cdf, 'follower', 3, axes[2], '(c)')
     plot_cdf(all_cdf, 'follower', 5, axes[3], '(d)')

@@ -40,7 +40,7 @@ setup () {
     then
       bash ./batch_op.sh kill
       bash ./batch_op.sh init
-      sleep 1
+      sleep 5
     fi
 }
 
@@ -60,6 +60,7 @@ timeout_process() {
   if kill -0 "$myPid"; then
     # still alive, kill it then re-run it
     kill -9 "$myPid"
+    bash ./batch_op.sh kill
     if [ $rerun -eq 1 ]
     then
        setup
@@ -99,7 +100,6 @@ experiment5a() {
       else
 	setup
         eval $cmd
-	setup
         timeout_process "$cmd" $TUPT_DUR_EXP 1
 	# if error detected, re-run it
         if ! ag $TPS ./log; then

@@ -9,18 +9,24 @@ SK="PAYMENT" # for tpca
 
 # trials, by default: 1
 # for rw: for trails
-FIGURE5a_TARIALS=3
-FIGURE5b_TARIALS=3
-FIGURE6a_TARIALS=3
-FIGURE6b_TARIALS=3
+FIGURE5a_TARIALS=1
+FIGURE5b_TARIALS=1
+FIGURE6a_TARIALS=1
+FIGURE6b_TARIALS=1
 
 def median(a):
     m=max(a)
-    if m==0: return 0
+    if m==0: return 0,0
+    copy=[e for e in a] 
     for i in range(len(a)):
         if a[i]==0:
             a[i]=m
-    return sorted(a)[len(a)//2]
+    v_i=0
+    v=sorted(a)[len(a)//2]
+    for i in range(len(copy)):
+        if copy[i]==v:
+            v_i=i
+    return v,v_i
 
 def convert_yml_json(name):
   with open(name, 'r') as file:
@@ -57,26 +63,32 @@ def figure5a():
         tmp_50th=[]
         tmp_tps=[]
         tmp_99th=[]
+        tmp_all=[]
         for j in range(FIGURE5a_TARIALS):
             tmp_50th.append(float(data_3_all[j][i][1]))
             tmp_tps.append(float(data_3_all[j][i][2]))
             tmp_99th.append(float(data_3_all[j][i][3]))
-        data_3[i][1] = median(tmp_50th)
-        data_3[i][2] = median(tmp_tps)
-        data_3[i][3] = median(tmp_99th)
+            tmp_all.append(data_3_all[j][i][4])
+        data_3[i][2],v_i = median(tmp_tps)
+        data_3[i][1] = tmp_50th[v_i]
+        data_3[i][3] = tmp_99th[v_i]
+        data_3[i][4] = tmp_all[v_i]
 
     H=len(data_5)
     for i in range(H):
         tmp_50th=[]
         tmp_tps=[]
         tmp_99th=[]
+        tmp_all=[]
         for j in range(FIGURE5a_TARIALS):
             tmp_50th.append(float(data_5_all[j][i][1]))
             tmp_tps.append(float(data_5_all[j][i][2]))
             tmp_99th.append(float(data_5_all[j][i][3]))
-        data_5[i][1] = median(tmp_50th)
-        data_5[i][2] = median(tmp_tps)
-        data_5[i][3] = median(tmp_99th)
+            tmp_all.append(data_5_all[j][i][4])
+        data_5[i][2],v_i = median(tmp_tps)
+        data_5[i][1] = tmp_50th[v_i]
+        data_5[i][3] = tmp_99th[v_i]
+        data_5[i][4] = tmp_all[v_i]
     return data_3, data_5
 
 
@@ -84,14 +96,14 @@ def figure5aTrail(t):
     # 3 replicas
     conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
     #conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580] # for rw
-    data_3=[] # (currency, 50th, tps, 99th)
+    data_3=[] # (currency, 50th, tps, 99th, all_latency)
     for i in conc:
         folder=BASE+"figure5a_"+str(t)+"/results_3_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
+            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
         else:
-            data_3.append([i, 0, 0, 0])
+            data_3.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
     
     # 5 replicas
@@ -100,9 +112,9 @@ def figure5aTrail(t):
         folder=BASE+"figure5a_"+str(t)+"/results_5_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
+            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
         else:
-            data_5.append([i, 0, 0, 0])
+            data_5.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
     return data_3, data_5
 
@@ -121,21 +133,27 @@ def figure5b():
     for i in range(H):
         tmp_50th=[]
         tmp_tps=[]
+        tmp_all=[]
         for j in range(FIGURE5b_TARIALS):
             tmp_50th.append(float(data_3_all[j][i][1]))
             tmp_tps.append(float(data_3_all[j][i][2]))
-        data_3[i][1] = median(tmp_50th)
-        data_3[i][2] = median(tmp_tps)
+            tmp_all.append(data_3_all[j][i][3])
+        data_3[i][2],v_i = median(tmp_tps)
+        data_3[i][1] = tmp_50th[v_i]
+        data_3[i][3] = tmp_all[v_i] 
 
     H=len(data_5)
     for i in range(H):
         tmp_50th=[]
         tmp_tps=[]
+        tmp_all=[]
         for j in range(FIGURE5b_TARIALS):
             tmp_50th.append(float(data_5_all[j][i][1]))
             tmp_tps.append(float(data_5_all[j][i][2]))
-        data_5[i][1] = median(tmp_50th)
-        data_5[i][2] = median(tmp_tps)
+            tmp_all.append(data_5_all[j][i][3])
+        data_5[i][2],v_i = median(tmp_tps)
+        data_5[i][1] = tmp_50th[v_i]
+        data_5[i][3] = tmp_all[v_i]
     return data_3, data_5
 
 
@@ -178,26 +196,30 @@ def figure6a():
         tmp_50th=[]
         tmp_tps=[]
         tmp_99th=[]
+        tmp_all=[]
         for j in range(FIGURE6a_TARIALS):
             tmp_50th.append(float(data_r_all[j][i][1]))
             tmp_tps.append(float(data_r_all[j][i][2]))
             tmp_99th.append(float(data_r_all[j][i][3]))
-        data_r[i][1] = median(tmp_50th)
-        data_r[i][2] = median(tmp_tps)
-        data_r[i][3] = median(tmp_99th)
+            tmp_all.append(data_r_all[j][i][4])
+        data_r[i][2],v_i = median(tmp_tps)
+        data_r[i][1] = tmp_50th[v_i]
+        data_r[i][3] = tmp_99th[v_i]
+        data_r[i][4] = tmp_all[v_i]
 
     return data_r
 
 def figure6aTrail(t):
     conc=[1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-    data_r=[] # (currency, 50th, tps, 99th)
+    #conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100] # for rw
+    data_r=[] # (currency, 50th, tps, 99th, all_latency)
     for i in conc:
         folder=BASE+"/figure6a_"+str(t)+"/results_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_r.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"]])
+            data_r.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
         else:
-            data_r.append([i, 0, 0, 0])
+            data_r.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
             print("No yml found in " + folder)
     
     return data_r
@@ -216,21 +238,27 @@ def figure6b():
     for i in range(H):
         tmp_50th=[]
         tmp_tps=[]
+        tmp_all=[]
         for j in range(FIGURE6b_TARIALS):
             tmp_50th.append(float(data_l_all[j][i][1]))
             tmp_tps.append(float(data_l_all[j][i][2]))
-        data_l[i][1] = median(tmp_50th)
-        data_l[i][2] = median(tmp_tps)
+            tmp_all.append(data_l_all[j][i][3])
+        data_l[i][2],v_i = median(tmp_tps)
+        data_l[i][1] = tmp_50th[v_i]
+        data_l[i][3] = tmp_all[v_i]
 
     H=len(data_f)
     for i in range(H):
         tmp_50th=[]
         tmp_tps=[]
+        tmp_all=[]
         for j in range(FIGURE6b_TARIALS):
             tmp_50th.append(float(data_f_all[j][i][1]))
             tmp_tps.append(float(data_f_all[j][i][2]))
-        data_f[i][1] = median(tmp_50th)
-        data_f[i][2] = median(tmp_tps)
+            tmp_all.append(data_f_all[j][i][3])
+        data_f[i][2],v_i = median(tmp_tps)
+        data_f[i][1] = tmp_50th[v_i]
+        data_f[i][3] = tmp_all[v_i]
 
     return data_l, data_f
 
