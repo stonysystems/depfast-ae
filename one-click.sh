@@ -24,6 +24,8 @@ TUPT_DUR_EXP=100
 
 SLOW_CONCURRENT_RAFT=200 # for tpca
 #SLOW_CONCURRENT_RAFT=220 # for rw
+SLOW_CONCURRENT_COPILOT=12 # for tpca
+#SLOW_CONCURRENT_COPILOT=40 # for rw 
 
 # trials, by default: 1
 # please keep same as the variable in ./data_processing/processing.py
@@ -221,6 +223,7 @@ experiment6a() {
 
   rm -rf ./results
   conc=( 1 2 4 6 8 10 12 14 16 18 20 )
+  #conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
   for i in "${conc[@]}"
   do
     mkdir results
@@ -265,7 +268,7 @@ experiment6b() {
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 1 12 copilot nonlocal &"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 1 $SLOW_CONCURRENT_COPILOT copilot nonlocal &"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
@@ -290,7 +293,7 @@ experiment6b() {
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 12 copilot nonlocal &"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 $SLOW_CONCURRENT_COPILOT copilot nonlocal &"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
