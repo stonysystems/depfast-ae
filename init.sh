@@ -8,6 +8,6 @@ sudo chmod o+w /db
 touch /db/data.txt
 sudo chmod o+w /db/data.txt # data file for raft
 
-sudo dd if=/dev/zero of=/db/swapfile bs=1024 count=1048576
+sudo dd if=/dev/zero of=/db/swapfile bs=1024 count=2097152
 sudo chmod 600 /db/swapfile
 sudo mkswap /db/swapfile 
