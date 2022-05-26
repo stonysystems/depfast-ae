@@ -43,8 +43,8 @@ inline void CopilotPrepareQuorumEvent::FeedRetCmd(ballot_t ballot,
                                                   uint8_t is_pilot, slotid_t slot,
                                                   shared_ptr<Marshallable> cmd,
                                                   enum Status status) {
-  uint32_t int_status = static_cast<uint32_t>(status);
-  int_status &= CLR_FLAG_TAKEOVER;
+  uint32_t int_status = GET_STATUS(static_cast<uint32_t>(status));
+  // int_status &= CLR_FLAG_TAKEOVER;
   verify(int_status <= n_status);
   if (int_status >= Status::COMMITED) { // committed or executed
     committed_seen_ = true;
