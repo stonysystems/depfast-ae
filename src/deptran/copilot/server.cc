@@ -98,15 +98,15 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
     return true;
   }
-  if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_BATCH)) { // TODO
+  if (likely(cmd->kind_ == MarshallDeputy::CMD_TPC_BATCH)) {
     // check if cmd committed in tx scheduler, which virtually means cmd is executed
-    if (allCmdComitted(cmd)) { // todo
+    if (allCmdComitted(cmd)) {
       Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
-      ins->status = Status::EXECUTED;
-      if (ins->cmit_evt.value_ < 1)
-        ins->cmit_evt.Set(1);
-      updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
-      updateMaxExecSlot(ins);
+      // ins->status = Status::EXECUTED;
+      // if (ins->cmit_evt.value_ < 1)
+      //   ins->cmit_evt.Set(1);
+      // updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+      // updateMaxExecSlot(ins);
       return true;
     } else {
       return false;
@@ -114,16 +114,25 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
   } else if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     // I don't think this case is possible
     Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
-    ins->status = Status::EXECUTED;
-    if (ins->cmit_evt.value_ < 1)
-        ins->cmit_evt.Set(1);
-    updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
-    updateMaxExecSlot(ins);
+    // ins->status = Status::EXECUTED;
+    // if (ins->cmit_evt.value_ < 1)
+    //     ins->cmit_evt.Set(1);
+    // updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+    // updateMaxExecSlot(ins);
     return true;
   } else {
     verify(0);
     return false;
   }
+}
+
+bool CopilotServer::AllDepsEliminated(uint8_t is_pilot, slotid_t dep_id) {
+  for (auto i = log_infos_[is_pilot].max_executed_slot + 1; i <= dep_id; i++) {
+    auto d = GetInstance(i, is_pilot);
+    if (!EliminateNullDep(d))
+      return false;
+  }
+  return true;
 }
 
 void CopilotServer::Setup() {
@@ -303,8 +312,9 @@ void CopilotServer::OnFastAccept(const uint8_t& is_pilot,
     ins->dep_id = dep;
     ins->cmd = cmd;
     // still set the cmd here, to prevent PREPARE from getting an empty cmd
+    ins->status = Status::FAST_ACCEPTED;
     if (suggest_dep == dep) {
-      ins->status = Status::FAST_ACCEPTED;
+      ins->status = Status::FAST_ACCEPTED_EQ;
       updateMaxAcptSlot(log_infos_[is_pilot], slot);
     }
   } else {
@@ -423,7 +433,6 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
 #ifdef DEBUG
     executeCmd(ins);
 #else
-  if (!EliminateNullDep(ins))
     executeCmds(ins); // log entry must be executed when return, otherwise deadlock may happen
 #endif
 #endif
@@ -436,6 +445,7 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
     removeCmd(log_info, i++);
   }
   log_info.min_active_slot = i;
+  // Log_info("server %d [COMMIT     ] %s : %ld -> %ld finish", id_, toString(is_pilot), slot, dep);
 }
 
 void CopilotServer::setIsPilot(bool isPilot) {
@@ -458,7 +468,7 @@ inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {
   slotid_t i;
   for (i = log_info.max_executed_slot + 1; i <= ins->slot_id; i++) {
     auto& log_entry = log_info.logs[i];
-    if (log_entry && log_entry->status < Status::EXECUTED)
+    if (log_entry && GET_STATUS(log_entry->status) < Status::EXECUTED)
       break;
   }
   log_info.max_executed_slot = i - 1;
@@ -469,7 +479,7 @@ void CopilotServer::updateMaxAcptSlot(CopilotLogInfo& log_info, slotid_t slot) {
   slotid_t i;
   for (i = log_info.max_accepted_slot + 1; i <= slot; i++) {
     auto& log_entry = log_info.logs[i];
-    if (log_entry && log_entry->status < Status::FAST_ACCEPTED)
+    if (log_entry && GET_STATUS(log_entry->status) < Status::FAST_ACCEPTED_EQ)
       break;
   }
   log_info.max_accepted_slot = i - 1;
@@ -479,7 +489,7 @@ void CopilotServer::updateMaxCmtdSlot(CopilotLogInfo& log_info, slotid_t slot) {
   slotid_t i;
   for (i = log_info.max_committed_slot + 1; i <= slot; i++) {
     auto& log_entry = log_info.logs[i];
-    if (log_entry && log_entry->status < Status::COMMITED)
+    if (log_entry && GET_STATUS(log_entry->status) < Status::COMMITED)
       break;
   }
   log_info.max_committed_slot = i - 1;
@@ -503,8 +513,8 @@ bool CopilotServer::executeCmd(shared_ptr<CopilotData>& ins) {
   if (likely((bool)(ins->cmd))) {
     if (likely(ins->cmd->kind_ != MarshallDeputy::CMD_NOOP))
       app_next_(*ins->cmd);
-    updateMaxExecSlot(ins);
     ins->status = Status::EXECUTED;
+    updateMaxExecSlot(ins);
     return true;
   } else {
     Log_warn("server %d execute %s empty cmd %ld, status %x",

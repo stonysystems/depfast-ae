@@ -11,12 +11,13 @@ namespace janus {
 
 const status_t FLAG_TAKEOVER = 0x80000000;
 const status_t CLR_FLAG_TAKEOVER = (~FLAG_TAKEOVER);
-const uint64_t PINGPONG_TIMEOUT_US = 5000;
+const uint64_t PINGPONG_TIMEOUT_US = 1000;
 #define GET_STATUS(s) ((s) & CLR_FLAG_TAKEOVER)
 #define GET_TAKEOVER(s) ((s) & FLAG_TAKEOVER)
+#define SET_STATUS(s_old, s_new) ((s_old) = (s_new) | GET_TAKEOVER(s_old))
 
-enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, ACCEPTED, COMMITED, EXECUTED };
-const size_t n_status = 4;
+enum Status : status_t { NOT_ACCEPTED = 0, FAST_ACCEPTED, FAST_ACCEPTED_EQ, ACCEPTED, COMMITED, EXECUTED };
+const size_t n_status = 5;
 
 struct CopilotData {
   shared_ptr<Marshallable>  cmd{nullptr};  // command
@@ -81,6 +82,7 @@ class CopilotServer : public TxLogServer {
    * @return true if executed, false otherwise
    */
   bool EliminateNullDep(shared_ptr<CopilotData>& ins);
+  bool AllDepsEliminated(uint8_t is_pilot, slotid_t dep_id);
 
   void Setup();
 

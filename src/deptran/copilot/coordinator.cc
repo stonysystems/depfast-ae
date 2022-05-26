@@ -113,7 +113,7 @@ start_prepare:
     auto& slct_cmd = sq_quorum->GetCmds(Status::ACCEPTED)[0];
     cmd_now_ = slct_cmd.cmd;
     dep_ = slct_cmd.dep_id;
-  } else if ((n_fastac = sq_quorum->GetCmds(Status::FAST_ACCEPTED).size()) > 0) {
+  } else if ((n_fastac = sq_quorum->GetCmds(Status::FAST_ACCEPTED_EQ).size()) > 0) {
     if (n_fastac < (maxFail() + 1) / 2) {
       /**
        * There are < [f+1]/2 replies r 2 S with fast-accepted as their
@@ -126,7 +126,7 @@ start_prepare:
        * There are >= f replies r 2 S with fast-accepted as their progress.
        * Then pick r's comand and dependency
        */
-      auto& slct_cmd = sq_quorum->GetCmds(Status::FAST_ACCEPTED)[0];
+      auto& slct_cmd = sq_quorum->GetCmds(Status::FAST_ACCEPTED_EQ)[0];
       cmd_now_ = slct_cmd.cmd;
       dep_ = slct_cmd.dep_id;
     } else {
@@ -169,7 +169,7 @@ void CoordinatorCopilot::FastAccept() {
       "Copilot coordinator %u broadcast FAST_ACCEPT, "
       "partition: %u, %s : %lu -> %lu",
       coo_id_, par_id_, indicator[is_pilot_], slot_id_, dep_);
-      // dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_); // todo
+      // dynamic_pointer_cast<TpcCommitCommand>(cmd_now_)->tx_id_);
   begin = Time::now(true);
   auto sq_quorum = commo()->BroadcastFastAccept(par_id_,
                                                 is_pilot_, slot_id_,
@@ -272,13 +272,12 @@ void CoordinatorCopilot::Commit() {
   commit_callback_();
   Log_debug("Copilot coordinator %u broadcast COMMIT for partition: %d, %s : %lu -> %lu",
             coo_id_, (int)par_id_, indicator[is_pilot_], slot_id_, dep_);
-  begin = Time::now(true);
+
   auto sp_quorum = commo()->BroadcastCommit(par_id_,
                                             is_pilot_, slot_id_,
                                             dep_,
                                             cmd_now_);
   sp_quorum->Wait();  // in fact this doesn't wait since it's a fake quorum event
-  cmt = Time::now(true) - begin;
 #ifdef DO_FINALIZE
   sp_quorum->Finalize(finalize_timeout_us,
                       std::bind(FreeDangling, commo(), std::placeholders::_1));
@@ -292,11 +291,13 @@ void CoordinatorCopilot::Commit() {
   auto dep_ins = sch_->GetInstance(dep_, REVERSE(is_pilot_));
   int take = 0;
   if (dep_ins && !in_fast_takeover_ && dep_ != 0) {
+      begin = Time::now(true);
   // if (false) {
     // auto dep_ins = sch_->GetInstance(dep_, REVERSE(is_pilot_));
     /* It must proceed after all entries before its dependency have committed
      */
-    if (!sch_->WaitMaxCommittedGT(REVERSE(is_pilot_), dep_, takeover_timeout_us)) {
+    if (!sch_->AllDepsEliminated(REVERSE(is_pilot_), dep_) &&
+        !sch_->WaitMaxCommittedGT(REVERSE(is_pilot_), dep_, takeover_timeout_us)) {
       /*
        if timeout but the final dependency is still not committed,
        start takeover for all uncommitted entries
@@ -325,7 +326,7 @@ void CoordinatorCopilot::Commit() {
       }
     }
     uint64_t finish = Time::now(true) - begin;
-    // cout << fac << " " << cmt << " " << finish << " tkov: " << take << endl;
+    // Log_info("takeover %lldus", finish);
   }
   clearStatus();
 }
