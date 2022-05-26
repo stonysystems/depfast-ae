@@ -138,7 +138,8 @@ def get_cdf_data(protocol, ty, exp, rep):
                         latency = e[3]
     else: # copilot
         if exp==0:
-            data_l, data_f = processing.figure6b()
+            data_r = processing.figure6a()
+            data_l, data_f = data_r, data_r
         else:
             data_l, data_f = processing.figure6b()
         if ty == "follower":
