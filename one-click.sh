@@ -40,6 +40,7 @@ LOG_FILE="./log.txt"
 setup () {
     if [ $ONLY_CMD -eq 0 ]
     then
+      echo "TRY to kill"
       bash ./batch_op.sh kill
       bash ./batch_op.sh init
       sleep 5
@@ -81,10 +82,6 @@ timeout_process() {
 #  4. fix # of client and then vary # of concurrent
 experiment5a() {
     suffix=_$1
-    if [ $ONLY_CMD -eq 0 ]
-    then
-      build_scp
-    fi
     mkdir -p ./figure5a$suffix
     rm -rf ./figure5a$suffix/*
 
@@ -148,10 +145,6 @@ experiment5a() {
 #  3. replicas: 3, 5
 experiment5b() {
     suffix=_$1
-    if [ $ONLY_CMD -eq 0 ]
-    then
-      build_scp
-    fi
     mkdir -p ./figure5b$suffix
     rm -rf ./figure5b$suffix/*
 
@@ -214,10 +207,6 @@ experiment5b() {
 #  3. fix # of client and then vary # of concurrent
 experiment6a() {
   suffix=_$1
-  if [ $ONLY_CMD -eq 0 ]
-  then
-    build_scp
-  fi
   mkdir -p ./figure6a$suffix
   rm -rf ./figure6a$suffix/*
 
@@ -255,10 +244,6 @@ experiment6a() {
 #  3. on follower and leader
 experiment6b() {
   suffix=_$1
-  if [ $ONLY_CMD -eq 0 ]
-  then
-    build_scp
-  fi
   mkdir -p ./figure6b$suffix
   rm -rf ./figure6b$suffix/*
 
@@ -316,6 +301,10 @@ experiment6b() {
 }
 
 setup
+if [ $ONLY_CMD -eq 0 ]
+then
+  build_scp
+fi
 
 for (( c=1; c<=$FIGURE5a_TARIALS; c++ )); do
   experiment5a $c
