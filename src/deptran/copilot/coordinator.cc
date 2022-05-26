@@ -150,7 +150,7 @@ start_prepare:
     goto start_prepare;
   }
 
-  if (curr_ins->status >= Status::COMMITED) {
+  if (GET_STATUS(curr_ins->status) >= Status::COMMITED) {
     // instance already committed, end fast-takeover in advance
     current_phase_ = Phase::COMMIT;
   } else {
