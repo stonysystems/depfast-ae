@@ -159,7 +159,7 @@ void CopilotServer::WaitForPingPong() {
     // Log_info("server %d blocked", id_);
     if (pingpong_event_.WaitUntilGreaterOrEqualThan(1, PINGPONG_TIMEOUT_US)) {
       n_timeout++;
-      Log_info("server %d ping pong timeout %lld", id_, n_timeout);
+      // Log_info("server %d ping pong timeout %lld", id_, n_timeout);
       break;
     }
   }

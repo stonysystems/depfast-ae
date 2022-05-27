@@ -49,6 +49,8 @@ inline void CopilotPrepareQuorumEvent::FeedRetCmd(ballot_t ballot,
   if (int_status >= Status::COMMITED) { // committed or executed
     committed_seen_ = true;
     int_status = Status::COMMITED;  // reduce all status greater than COMMIT to COMMIT
+  } else if (int_status == Status::FAST_ACCEPTED) {
+    int_status = Status::FAST_ACCEPTED_EQ; // reduce FAST_ACCEPTED to FAST_ACCEPTED_EQ
   }
   ret_cmds_by_status_[int_status].emplace_back(CopilotData{cmd, dep, is_pilot, slot, ballot, int_status, 0, 0});
 }
@@ -115,14 +117,16 @@ CopilotCommo::BroadcastPrepare(parid_t par_id,
 
       fu->get_reply() >> md >> b >> dep >> status;
       bool ok = (ballot == b);
-      e->FeedResponse(ok);
+      
       if (ok) {
         e->FeedRetCmd(ballot,
                       dep,
                       is_pilot, slot_id,
                       const_cast<MarshallDeputy&>(md).sp_data_,
                       static_cast<enum Status>(status));
-      }
+      } // Feed command before feeding response, since if there is a committed command,
+        // the prepare event will be ready in advance without waiting for a quorum.
+      e->FeedResponse(ok);
 
       e->RemoveXid(site);
     };
