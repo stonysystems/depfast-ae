@@ -41,8 +41,8 @@ void RwWorkload::RegisterPrecedures() {
          buf[0] = cmd.input[0].get_blob();
          auto tbl = tx.GetTable(RW_BENCHMARK_TABLE);
          auto row = tx.Query(tbl, buf);
-         tx.ReadColumn(row, 1, &result, TXN_BYPASS);
-         result.set_i32(result.get_i32() + 1);
+         //tx.ReadColumn(row, 1, &result, TXN_BYPASS);
+         //result.set_i32(result.get_i32() + 1);
          tx.WriteColumn(row, 1, result, TXN_DEFERRED);
          *res = SUCCESS;
          return;

@@ -42,7 +42,7 @@ setup () {
     then
       echo "TRY to kill"
       bash ./batch_op.sh kill
-      bash ./batch_op.sh init
+      #bash ./batch_op.sh init
       sleep 5
     fi
 }
