@@ -20,7 +20,7 @@ conc=$7
 ab=$8
 env=$9
 cc=none
-workload=tpca
+workload=rw
 #workload=rw # for rw
 
 rm log/*

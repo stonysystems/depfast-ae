@@ -11,7 +11,6 @@ namespace janus {
 
 const status_t FLAG_TAKEOVER = 0x80000000;
 const status_t CLR_FLAG_TAKEOVER = (~FLAG_TAKEOVER);
-const uint64_t PINGPONG_TIMEOUT_US = 1000;
 #define GET_STATUS(s) ((s) & CLR_FLAG_TAKEOVER)
 #define GET_TAKEOVER(s) ((s) & FLAG_TAKEOVER)
 #define SET_STATUS(s_old, s_new) ((s_old) = (s_new) | GET_TAKEOVER(s_old))
@@ -28,6 +27,7 @@ struct CopilotData {
   status_t                  status;  // status
   int                       low, dfn;  //tarjan
   SharedIntEvent            cmit_evt{};
+  bool                      nullable;
 };
 
 struct CopilotLogInfo {
