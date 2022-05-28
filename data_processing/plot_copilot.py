@@ -11,7 +11,7 @@ CK=200 # for tpca
 D_X=10 # for tpca
 D_T=12
 #CK=220 # for rw
-#D_X=4 # for rw
+#D_X=10 # for rw
 #D_T=40 # for rw
 
 num2exp = {

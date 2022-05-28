@@ -1,9 +1,13 @@
 import yaml
 import json
 import os
+import os.path
+import csv
+
 
 # the library for the data-processing
 BASE="../"
+BASE_CO="/home/xuhao/copilot/"
 SK="PAYMENT" # for tpca
 #SK="WRITE" # for rw
 
@@ -27,6 +31,13 @@ def median(a):
         if copy[i]==v:
             v_i=i
     return v,v_i
+
+def readtxt(name):
+    if os.path.exists(name):
+        with open(name, 'r') as file:
+            return [e.replace("\n", "") for e in file.readlines()]
+    else:
+        return []
 
 def convert_yml_json(name):
   with open(name, 'r') as file:
@@ -183,6 +194,34 @@ def figure5bTrail(t):
 
     return data_3, data_5
 
+
+def figure6a_copilot():
+    clients=[int(e) for e in "4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64".split(" ")]
+    data=[] # (# of clients, tps, all_latency)
+    for c in clients:
+        # # of clients
+        items = [c]
+        
+        # tps
+        filename=BASE_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tput.txt"
+        if os.path.exists(filename):
+            items.append(float(readtxt(filename)[0]))
+        else:
+            items.append(0)
+
+        # all_latency
+        filename=BASE_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tputlat.txt"
+        all_latency = []
+        if os.path.exists(filename):
+            values = readtxt(filename)[0].split("\t")
+            items.append([float(values[i+1]) for i in range(99)])
+        else:
+            items.append([0 for i in range(99)])
+
+        data.append(items)    
+    return data
+
+
 def figure6a():
     data_r_all = []
     for i in range(FIGURE6a_TARIALS):
@@ -294,4 +333,5 @@ if __name__ == "__main__":
     #print(figure5b())
     #print(figure6a())
     #print(figure6b())
+    #print(figure6a_copilot())
     pass

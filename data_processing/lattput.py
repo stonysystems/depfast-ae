@@ -17,18 +17,23 @@ def getdata(proto, r):
             for e in data_5:
                 lat.append(float(e[1]))
                 tput.append(float(e[2]))
-    else:  # copilot
+    elif proto == "copilot":  # copilot
         data_r = processing.figure6a()
         for e in data_r:
             lat.append(float(e[1]))
             tput.append(float(e[2]))
-    
+    else proto == "copilot.ref":
+        data = processing.figure6a_copilot()
+        for e in data:
+            lat.append(float(e[2][50])/1000.0)
+            tput.append(float(e[1]))
+
     return lat, tput
 
 def plot_lattput(proto, rep, ax, plt_id):
     proto_set = {
         'raft': ['raft'],
-        'copilot': ['copilot']
+        'copilot': ['copilot', 'copilot.ref']
     }
 
     real_name = {
