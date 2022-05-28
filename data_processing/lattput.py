@@ -22,7 +22,7 @@ def getdata(proto, r):
         for e in data_r:
             lat.append(float(e[1]))
             tput.append(float(e[2]))
-    else proto == "copilot.ref":
+    else: # proto == "copilot.ref":
         data = processing.figure6a_copilot()
         for e in data:
             lat.append(float(e[2][50])/1000.0)
