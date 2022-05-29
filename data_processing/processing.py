@@ -2,21 +2,32 @@ import yaml
 import json
 import os
 import os.path
+from functools import lru_cache
 import csv
 
+def readtxt(name):
+    if os.path.exists(name):
+        with open(name, 'r') as file:
+            return [e.replace("\n", "") for e in file.readlines()]
+    else:
+        return []
+
+def is_rw():
+    return int(readtxt("../ips/is_rw")[0])
 
 # the library for the data-processing
 BASE="../"
-BASE_CO="/home/xuhao/copilot/"
-SK="PAYMENT" # for tpca
-#SK="WRITE" # for rw
+BASE_REF_CO="/home/xuhao/copilot/"  # for ref.copilot
+if is_rw(): # for rw
+    SK="WRITE"
+else:
+    SK="PAYMENT"
 
 # trials, by default: 1
-# for rw: for trails
-FIGURE5a_TARIALS=1
-FIGURE5b_TARIALS=1
-FIGURE6a_TARIALS=1
-FIGURE6b_TARIALS=1
+FIGURE5a_TARIALS=3
+FIGURE5b_TARIALS=3
+FIGURE6a_TARIALS=3
+FIGURE6b_TARIALS=3
 
 def median(a):
     m=max(a)
@@ -31,13 +42,6 @@ def median(a):
         if copy[i]==v:
             v_i=i
     return v,v_i
-
-def readtxt(name):
-    if os.path.exists(name):
-        with open(name, 'r') as file:
-            return [e.replace("\n", "") for e in file.readlines()]
-    else:
-        return []
 
 def convert_yml_json(name):
   with open(name, 'r') as file:
@@ -59,6 +63,7 @@ def find_the_yml(folder_name):
                 return folder_name + "/" + filename
     return ""
 
+@lru_cache(maxsize=None)
 def figure5a():
     data_3_all, data_5_all=[],[]
     for i in range(FIGURE5a_TARIALS):
@@ -102,11 +107,13 @@ def figure5a():
         data_5[i][4] = tmp_all[v_i]
     return data_3, data_5
 
-
+@lru_cache(maxsize=None)
 def figure5aTrail(t):
     # 3 replicas
-    conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
-    #conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580] # for rw
+    if is_rw(): # rw
+        conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580]
+    else:  # tpca
+        conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
     data_3=[] # (currency, 50th, tps, 99th, all_latency)
     for i in conc:
         folder=BASE+"figure5a_"+str(t)+"/results_3_"+str(i)
@@ -129,7 +136,7 @@ def figure5aTrail(t):
             print("No yml found in " + folder)
     return data_3, data_5
 
-
+@lru_cache(maxsize=None)
 def figure5b():
     data_3_all, data_5_all=[],[]
     for i in range(FIGURE5b_TARIALS):
@@ -167,7 +174,7 @@ def figure5b():
         data_5[i][3] = tmp_all[v_i]
     return data_3, data_5
 
-
+@lru_cache(maxsize=None)
 def figure5bTrail(t):
     # 3 replicas
     exp=[1, 2, 3, 4, 5, 6]
@@ -194,8 +201,8 @@ def figure5bTrail(t):
 
     return data_3, data_5
 
-
-def figure6a_copilot():
+@lru_cache(maxsize=None)
+def figure6a_copilot():  # 1 trail is enough
     clients=[int(e) for e in "4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64".split(" ")]
     data=[] # (# of clients, tps, all_latency)
     for c in clients:
@@ -203,14 +210,14 @@ def figure6a_copilot():
         items = [c]
         
         # tps
-        filename=BASE_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tput.txt"
+        filename=BASE_REF_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tput.txt"
         if os.path.exists(filename):
             items.append(float(readtxt(filename)[0]))
         else:
             items.append(0)
 
         # all_latency
-        filename=BASE_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tputlat.txt"
+        filename=BASE_REF_CO+"figure6a_copilot_1/experiments-"+str(c)+"/latest/tputlat.txt"
         all_latency = []
         if os.path.exists(filename):
             values = readtxt(filename)[0].split("\t")
@@ -221,7 +228,7 @@ def figure6a_copilot():
         data.append(items)    
     return data
 
-
+@lru_cache(maxsize=None)
 def figure6a():
     data_r_all = []
     for i in range(FIGURE6a_TARIALS):
@@ -248,9 +255,12 @@ def figure6a():
 
     return data_r
 
+@lru_cache(maxsize=None)
 def figure6aTrail(t):
-    conc=[1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-    #conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100] # for rw
+    if is_rw():
+        conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100]
+    else:
+        conc=[1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
     data_r=[] # (currency, 50th, tps, 99th, all_latency)
     for i in conc:
         folder=BASE+"/figure6a_"+str(t)+"/results_"+str(i)
@@ -263,6 +273,7 @@ def figure6aTrail(t):
     
     return data_r
 
+@lru_cache(maxsize=None)
 def figure6b():
     data_l_all, data_f_all = [],[]
     for i in range(FIGURE6b_TARIALS):
@@ -301,6 +312,7 @@ def figure6b():
 
     return data_l, data_f
 
+@lru_cache(maxsize=None)
 def figure6bTrail(t):
     # leader
     exp=[1, 2, 5, 6]

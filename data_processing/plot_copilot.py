@@ -7,12 +7,14 @@ import lattput
 import processing
 
 typ = 'leader'
-CK=200 # for tpca
-D_X=10 # for tpca
-D_T=12
-#CK=220 # for rw
-#D_X=10 # for rw
-#D_T=40 # for rw
+if processing.is_rw(): # for rw
+    CK=220
+    D_X=10
+    D_T=40
+else:
+    CK=200
+    D_X=10
+    D_T=12
 
 num2exp = {
     0: 'No Slowness',

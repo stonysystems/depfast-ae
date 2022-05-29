@@ -7,6 +7,7 @@ s3=$( cat ./ips/ip_s3 )
 s4=$( cat ./ips/ip_s4 )
 s5=$( cat ./ips/ip_s5 )
 c1=$( cat ./ips/ip_c1 )
+is_rw=$( cat ./ips/is_rw )
 TPS="tps: "
 servers=(
   $s1
@@ -22,20 +23,27 @@ SLOWDOWN_DUR_EXP=230
 TUPT_DUR=60
 TUPT_DUR_EXP=100
 
-SLOW_CONCURRENT_RAFT=200 # for tpca
-#SLOW_CONCURRENT_RAFT=220 # for rw
-SLOW_CONCURRENT_COPILOT=12 # for tpca
-#SLOW_CONCURRENT_COPILOT=40 # for rw 
+if [ $is_rw -eq 1 ]
+then  # for rw
+  echo "using rw..."
+  SLOW_CONCURRENT_RAFT=220
+  SLOW_CONCURRENT_COPILOT=40
+else
+  echo "using tpca"
+  SLOW_CONCURRENT_RAFT=200
+  SLOW_CONCURRENT_COPILOT=12
+fi
+
 
 # trials, by default: 1
 # please keep same as the variable in ./data_processing/processing.py
-# for rw:trails
 FIGURE5a_TARIALS=3
 FIGURE5b_TARIALS=3
 FIGURE6a_TARIALS=3
 FIGURE6b_TARIALS=3
 ulimit -n 10000
 LOG_FILE="./log.txt"
+echo "" > $LOG_FILE
 
 setup () {
     if [ $ONLY_CMD -eq 0 ]
@@ -87,8 +95,13 @@ experiment5a() {
 
     rm -rf ./results
     # 3 replicas
-    conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
-    # conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580) # for rw
+    if [ $is_rw -eq 1 ]
+    then  # for rw
+      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580)
+    else
+      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
+    fi
+
     for i in "${conc[@]}"
     do
       mkdir results
@@ -211,8 +224,13 @@ experiment6a() {
   rm -rf ./figure6a$suffix/*
 
   rm -rf ./results
-  conc=( 1 2 4 6 8 10 12 14 16 18 20 )
-  #conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
+  if [ $is_rw -eq 1 ]
+  then
+    conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
+  else
+    conc=( 1 2 4 6 8 10 12 14 16 18 20 )
+  fi
+
   for i in "${conc[@]}"
   do
     mkdir results

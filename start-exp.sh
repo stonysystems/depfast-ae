@@ -20,8 +20,17 @@ conc=$7
 ab=$8
 env=$9
 cc=none
-workload=tpca
-#workload=rw # for rw
+
+# for workload: echo "1" > ./ips/is_rw for rw, echo "0" > ./ips/is_rw for tpca
+is_rw=$( cat ./ips/is_rw )
+if [ $is_rw -eq 1 ]
+then
+  echo "using rw..."
+  workload=rw
+else
+  echo "using tpca"
+  workload=tpca
+fi
 
 rm log/*
 rm archive/*

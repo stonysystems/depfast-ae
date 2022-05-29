@@ -6,10 +6,13 @@ import yaml
 import lattput
 import processing
 
-CK=200 # for tpca
-D_T=12
-# CK=220 # for rw
-#D_T=40 # for rw
+if processing.is_rw(): # for rw
+    CK=220
+    D_T=40
+else:
+    CK=200
+    D_T=12
+
 num2exp = {
     0: 'No Slowness',
     1: 'CPU Slowness',
