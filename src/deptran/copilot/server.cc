@@ -6,6 +6,7 @@
 #define WAIT_AT_UNCOMMIT
 #define N_CMD_KEEP (15000)
 // #define USE_TARJAN
+const uint64_t PINGPONG_TIMEOUT_US = 1000;
 
 namespace janus {
 
@@ -155,26 +156,36 @@ void CopilotServer::WaitForPingPong() {
    * and re-enter the waiting, unless they have timeout, in which case they will
    * proceed to FastAccept and there will be multiple on-going FastAceept.
    */
-  while (WillWait()) {
+  int time_to_wait = PINGPONG_TIMEOUT_US;
+  while (WillWait(time_to_wait)) {
     // Log_info("server %d blocked", id_);
-    if (pingpong_event_.WaitUntilGreaterOrEqualThan(1, PINGPONG_TIMEOUT_US)) {
+    // Log_info("%dus to wait", time_to_wait);
+    if (pingpong_event_.WaitUntilGreaterOrEqualThan(1, time_to_wait)) {
       n_timeout++;
       // Log_info("server %d ping pong timeout %lld", id_, n_timeout);
       break;
     }
   }
+  last_ready_time_ = Time::now(true);
   pingpong_ok_ = false;
   pingpong_event_.Set(0);  // must set it to 0 to make event into unready state, otherwise WaitUntil.. won't wait.
 }
 
-bool CopilotServer::WillWait() const {
+bool CopilotServer::WillWait(int &time_to_wait) const {
   /**
    * Lemma: if pingpong_ok_ is false right before WaitForPingPong(), then it must wait
    * Proof: if pingpong_ok_ is false, pingpong_event must be 0 (the inverse doesn't always hold),
    * since they are always set together. Thus, WaitForPingPong must enter the while loop,
    * after which pingpong_event_ must wait and yield.
    */
-  return !pingpong_ok_;
+  auto now = Time::now(true);
+  // Log_info("last %lld, now %lld", last_ready_time_, now);
+  if (now >= last_ready_time_ + PINGPONG_TIMEOUT_US) {
+    return false;
+  } else {
+    time_to_wait = last_ready_time_ + PINGPONG_TIMEOUT_US - now;
+    return !pingpong_ok_;
+  }
 }
 
 void CopilotServer::OnForward(shared_ptr<Marshallable>& cmd,
@@ -451,15 +462,19 @@ void CopilotServer::OnCommit(const uint8_t& is_pilot,
 void CopilotServer::setIsPilot(bool isPilot) {
   verify(!isPilot || !isCopilot_);
   isPilot_ = isPilot;
-  if (isPilot)
+  if (isPilot) {
     pingpong_ok_ = true;  // hand the ball to Pilot first
+    last_ready_time_ = Time::now(true);
+  }
 }
 
 void CopilotServer::setIsCopilot(bool isCopilot) {
   verify(!isCopilot || !isPilot_);
   isCopilot_ = isCopilot;
-  if (isCopilot)
+  if (isCopilot) {
     pingpong_ok_ = false;  // hand the ball to Pilot first
+    last_ready_time_ = Time::now(true) + 2 * PINGPONG_TIMEOUT_US;
+  }
 }
 
 inline void CopilotServer::updateMaxExecSlot(shared_ptr<CopilotData>& ins) {

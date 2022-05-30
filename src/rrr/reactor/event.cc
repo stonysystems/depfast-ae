@@ -58,8 +58,10 @@ void Event::Wait(uint64_t timeout) {
     }
 #endif
     if (timeout > 0) {
-      wakeup_time_ = Time::now() + timeout;
+      auto now = Time::now(true);
+      wakeup_time_ = now + timeout;
       //Log_info("WAITING: %p", shared_from_this());
+      // Log_info("wake up %lld, now %lld", wakeup_time_, now);
       auto& timeout_events = Reactor::GetReactor()->timeout_events_;
       timeout_events.push_back(shared_from_this());
     }

@@ -11,7 +11,6 @@ namespace janus {
 
 const status_t FLAG_TAKEOVER = 0x80000000;
 const status_t CLR_FLAG_TAKEOVER = (~FLAG_TAKEOVER);
-const uint64_t PINGPONG_TIMEOUT_US = 1000;
 #define GET_STATUS(s) ((s) & CLR_FLAG_TAKEOVER)
 #define GET_TAKEOVER(s) ((s) & FLAG_TAKEOVER)
 #define SET_STATUS(s_old, s_new) ((s_old) = (s_new) | GET_TAKEOVER(s_old))
@@ -63,6 +62,7 @@ class CopilotServer : public TxLogServer {
 
   SharedIntEvent pingpong_event_{};
   bool pingpong_ok_;
+  uint64_t last_ready_time_ = 0;
   uint64_t n_timeout = 0;
 
  public:
@@ -88,7 +88,7 @@ class CopilotServer : public TxLogServer {
 
   // Wait for Ping-Pong signal from another pilot, or timeout and proceed to FastAccept
   void WaitForPingPong();
-  bool WillWait() const;
+  bool WillWait(int& time_to_wait) const;
 
   void OnForward(shared_ptr<Marshallable>& cmd,
                  const function<void()> &cb);

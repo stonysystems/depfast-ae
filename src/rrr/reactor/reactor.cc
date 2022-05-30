@@ -106,7 +106,7 @@ Reactor::CreateRunCoroutine(const std::function<void()> func, const char *file, 
 }
 
 void Reactor::CheckTimeout(std::vector<std::shared_ptr<Event>>& ready_events ) {
-  auto time_now = Time::now();
+  auto time_now = Time::now(true);
   for (auto it = timeout_events_.begin(); it != timeout_events_.end();) {
     Event& event = **it;
     auto status = event.status_;

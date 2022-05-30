@@ -157,7 +157,7 @@ CopilotCommo::BroadcastFastAccept(parid_t par_id,
     auto site = p.first;
 
 #ifdef SKIP
-    if (site == 2) continue;
+    if (site == 1) continue;
 #endif
     if (site == loc_id_) {
       ballot_t b;
@@ -211,7 +211,7 @@ CopilotCommo::BroadcastAccept(parid_t par_id,
     auto site = p.first;
 
 #ifdef SKIP
-    if (site == 2) continue;
+    if (site == 1) continue;
 #endif
     if (site == loc_id_) {
       ballot_t b;
@@ -253,7 +253,7 @@ CopilotCommo::BroadcastCommit(parid_t par_id,
     auto site = p.first;
 
 #ifdef SKIP
-    if (site == 2) continue;
+    if (site == 1) continue;
 #endif
     FutureAttr fuattr;
     fuattr.callback = [e, site](Future* fu) {

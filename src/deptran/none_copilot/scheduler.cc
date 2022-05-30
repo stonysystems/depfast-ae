@@ -31,12 +31,18 @@ int SchedulerNoneCopilot::OnCommit(cmdid_t tx_id,
 
 		auto copilot_server = static_cast<CopilotServer*>(rep_sched_);
 		batch_buffer_.push_back(cmd);
+		// uint64_t before, after;
+		// before = Time::now(true);
 		if (!in_waiting_) {
 			
-			if (copilot_server->WillWait())
+			int _no_use;
+			if (copilot_server->WillWait(_no_use))
 				in_waiting_ = true;
 			copilot_server->WaitForPingPong();
 			in_waiting_ = false;
+
+			// after = Time::now(true);
+			// Log_info("wait %lld", after - before);
 			
 			auto batch_cmd = std::make_shared<TpcBatchCommand>();
 			batch_cmd->AddCmds(batch_buffer_);
