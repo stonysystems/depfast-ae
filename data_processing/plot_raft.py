@@ -6,13 +6,6 @@ import yaml
 import lattput
 import processing
 
-if processing.is_rw(): # for rw
-    CK=220
-    D_T=40
-else:
-    CK=200
-    D_T=12
-
 num2exp = {
     0: 'No Slowness',
     1: 'CPU Slowness',
@@ -42,52 +35,6 @@ metrics = [
 reps = [3, 5]
 typs = ['follower']
 
-def load_process_data(protocol, ty, exp, rep):
-    if protocol == "raft":
-        if exp == 0:
-            data_3, data_5 = processing.figure5a()
-            if rep == 3:
-                for e in data_3:
-                    if e[0] == CK:
-                        return e[2], e[1], e[3]
-            else:
-                for e in data_5:
-                    if e[0] == CK:
-                        return e[2], e[1], e[3]
-        else:
-            data_3, data_5 = processing.figure5b()
-            if rep == 3:
-                for e in data_3:
-                    if e[0] == exp:
-                        return e[2], e[1], e[3]["99"]
-            else:
-                for e in data_5:
-                    if e[0] == exp:
-                        return e[2], e[1], e[3]["99"]
-    else:
-        data_l, data_f = processing.figure6a()
-        if exp == 0:
-            data_r = processing.figure6a()
-            if ty == "follower":
-                for e in data_r:
-                    if e[0] == D_T:
-                        return e[2], e[1], e[3]
-            else:
-                for e in data_r:
-                    if e[0] == D_T:
-                        return e[2], e[1], e[3]
-        else:
-            data_l, data_f = processing.figure6b()
-            if ty == "follower":
-                for e in data_f:
-                    if e[0] == exp:
-                        return e[2], e[1], e[3]["99"]
-            else:
-                for e in data_l:
-                    if e[0] == exp:
-                        return e[2], e[1], e[3]["99"]
-    return 0, 0, 0
-
 
 def plot_figure(all_data, metric, ax, plt_id):
     labels = ['{} Nodes'.format(r) for r in reps]
@@ -101,8 +48,13 @@ def plot_figure(all_data, metric, ax, plt_id):
     for n, e in num2exp.items():
         try:
             slow_res = [all_data['follower'][r][e][metric] for r in reps]
+            # ONLY for slowness error bar
+            err_res = [all_data['follower'][r][e][3] for r in reps]
             # slow_res = [all_data[t][3][e][metric] for t in typs]
-            lines.append(ax.bar(x + i*width, slow_res, width, label=e))
+            lines.append(ax.bar(x + i*width, slow_res, width, label=e, yerr=err_res,
+                                                                       align='center',
+                                                                       ecolor='black',
+                                                                       capsize=2))
             i += 1
         except:
             continue
@@ -114,68 +66,6 @@ def plot_figure(all_data, metric, ax, plt_id):
     ax.set_title('{} Throughput with slowness'.format(plt_id), y=-0.45, fontsize=18, fontweight='bold')
 
     return lines
-
-def get_cdf_data(protocol, ty, exp, rep):
-    latency = []
-    if protocol == "raft":  
-        if exp==0: # no slowness 
-            data_3, data_5 = processing.figure5a()
-        else:
-            data_3, data_5 = processing.figure5b()
-
-        if rep == 3:
-            for e in data_3:
-                if exp==0:
-                    if e[0] == CK:
-                        latency = e[4]
-                else:
-                    if e[0] == exp:
-                        latency = e[3]
-        else:
-            for e in data_5:
-                if exp==0:
-                    if e[0] == CK:
-                        latency = e[4]
-                else:
-                    if e[0] == exp:
-                        latency = e[3]
-    else: # copilot
-        if exp==0:
-            data_r = processing.figure6a()
-            data_l, data_f = data_r, data_r
-        else:
-            data_l, data_f = processing.figure6b()
-        if ty == "follower":
-            for e in data_f:
-                if exp==0:
-                    if e[0] == D_T:
-                        latency = e[4]
-                else:
-                    if e[0] == exp:
-                        latency = e[3]
-        else:
-            for e in data_l:
-                if exp==0:
-                    if e[0] == D_T:
-                        latency = e[4]
-                else:
-                    if e[0] == exp:
-                        latency = e[3]
-    
-    pct_lat = {}
-    if not latency:
-        return pct_lat
-
-    for k, v in latency.items():
-        try:
-            pct = round(float(k))
-            if pct > 0:
-                pct_lat[pct/100] = v
-        except:
-            continue
-    
-    return pct_lat
-
 
 def plot_cdf(all_cdf, ty, rep, ax, plt_id):
     for e in num2exp.values():
@@ -207,12 +97,12 @@ if __name__ == '__main__':
             all_cdf[t][r] = {}
             for n, e in num2exp.items():
                 try:
-                    one_result = load_process_data(protocol, t, n, r)
+                    one_result = processing.load_process_data(protocol, t, n, r)
                     all_data[t][r][e] = one_result
                 except:
-                    all_data[t][r][e] = (0, 0, 0)
+                    all_data[t][r][e] = (0, 0, 0, 0)
                     raise
-                cdf = get_cdf_data(protocol, t, exp2num[e], r)
+                cdf = processing.get_cdf_data(protocol, t, exp2num[e], r)
                 all_cdf[t][r][e] = cdf
 
     plt.rcParams['font.size'] = 18

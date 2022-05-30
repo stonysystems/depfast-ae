@@ -29,6 +29,122 @@ FIGURE5b_TARIALS=3
 FIGURE6a_TARIALS=3
 FIGURE6b_TARIALS=3
 
+if is_rw(): # for rw
+    CK=220
+    D_T=40
+else:
+    CK=200
+    D_T=12
+
+@lru_cache(maxsize=None)
+def load_process_data(protocol, ty, exp, rep):  # (tps, 50th, 99th, tps-var)
+    if protocol == "raft":
+        if exp == 0:
+            data_3, data_5 = figure5a()
+            if rep == 3:
+                for e in data_3:
+                    if e[0] == CK:
+                        return e[2], e[1], e[3], e[5]
+            else:
+                for e in data_5:
+                    if e[0] == CK:
+                        return e[2], e[1], e[3], e[5]
+        else:
+            data_3, data_5 = figure5b()
+            if rep == 3:
+                for e in data_3:
+                    if e[0] == exp:
+                        return e[2], e[1], e[3]["99"], e[4]
+            else:
+                for e in data_5:
+                    if e[0] == exp:
+                        return e[2], e[1], e[3]["99"], e[4]
+    else:  # copilot
+        if exp == 0:
+            data_r = figure6a()
+            if ty == "follower":
+                for e in data_r:
+                    if e[0] == D_T:
+                        return e[2], e[1], e[3], e[5]
+            else:
+                for e in data_r:
+                    if e[0] == D_T:
+                        return e[2], e[1], e[3], e[5]
+        else:
+            data_l, data_f = figure6b()
+            if ty == "follower":
+                for e in data_f:
+                    if e[0] == exp:
+                        return e[2], e[1], e[3]["99"], e[4]
+            else:
+                for e in data_l:
+                    if e[0] == exp:
+                        return e[2], e[1], e[3]["99"], e[4]
+    return 0, 0, 0
+
+@lru_cache(maxsize=None)
+def get_cdf_data(protocol, ty, exp, rep):
+    latency = []
+    if protocol == "raft":
+        if exp==0: # no slowness
+            data_3, data_5 = figure5a()
+        else:
+            data_3, data_5 = figure5b()
+
+        if rep == 3:
+            for e in data_3:
+                if exp==0:
+                    if e[0] == CK:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
+        else:
+            for e in data_5:
+                if exp==0:
+                    if e[0] == CK:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
+    else: # copilot
+        if exp==0:
+            data_r = figure6a()
+            data_l, data_f = data_r, data_r
+        else:
+            data_l, data_f = figure6b()
+        if ty == "follower":
+            for e in data_f:
+                if exp==0:
+                    if e[0] == D_T:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
+        else:
+            for e in data_l:
+                if exp==0:
+                    if e[0] == D_T:
+                        latency = e[4]
+                else:
+                    if e[0] == exp:
+                        latency = e[3]
+
+    pct_lat = {}
+    if not latency:
+        return pct_lat
+
+    for k, v in latency.items():
+        try:
+            pct = round(float(k))
+            if pct > 0:
+                pct_lat[pct/100] = v
+        except:
+            continue
+
+    return pct_lat
+
+
 def median(a):
     m=max(a)
     if m==0: return 0,0
@@ -41,7 +157,25 @@ def median(a):
     for i in range(len(copy)):
         if copy[i]==v:
             v_i=i
+    # revert back to a
+    for i in range(len(a)):
+        a[i] = copy[i]
     return v,v_i
+
+def var(a):
+    if max(a) == 0: return 0
+    # standard deviation
+    # we don't count 0, and it should not be 0
+    is_exist=False
+    for e in a:
+        if e == 0:
+            is_exist=True
+    if is_exist:
+        print("Please note, there is 0 in ", a)
+    mean=sum(a)/len(a)
+    dev=[(x - mean) ** 2 for x in a]
+    ret = sum(dev) / len(a)
+    return ret ** 0.5
 
 def convert_yml_json(name):
   with open(name, 'r') as file:
@@ -62,6 +196,12 @@ def find_the_yml(folder_name):
             if ".yml" in filename and ".json" not in filename:
                 return folder_name + "/" + filename
     return ""
+
+@lru_cache(maxsize=None)
+def figure5a_etcd():
+    data_3, data_5=[],[]
+    # (client, 50th, tps)
+    return data_3, data_5
 
 @lru_cache(maxsize=None)
 def figure5a():
@@ -89,6 +229,7 @@ def figure5a():
         data_3[i][1] = tmp_50th[v_i]
         data_3[i][3] = tmp_99th[v_i]
         data_3[i][4] = tmp_all[v_i]
+        data_3[i][5] = var(tmp_tps)
 
     H=len(data_5)
     for i in range(H):
@@ -105,6 +246,7 @@ def figure5a():
         data_5[i][1] = tmp_50th[v_i]
         data_5[i][3] = tmp_99th[v_i]
         data_5[i][4] = tmp_all[v_i]
+        data_5[i][5] = var(tmp_tps)
     return data_3, data_5
 
 @lru_cache(maxsize=None)
@@ -114,14 +256,14 @@ def figure5aTrail(t):
         conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580]
     else:  # tpca
         conc=[20, 40, 60, 80, 100, 130, 160, 190, 200, 220, 260, 300, 340, 380, 420]
-    data_3=[] # (currency, 50th, tps, 99th, all_latency)
+    data_3=[] # (currency, 50th, tps, 99th, all_latency, tps-var)
     for i in conc:
         folder=BASE+"figure5a_"+str(t)+"/results_3_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
+            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"], 0])
         else:
-            data_3.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
+            data_3.append([i, 0, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
     
     # 5 replicas
@@ -130,9 +272,9 @@ def figure5aTrail(t):
         folder=BASE+"figure5a_"+str(t)+"/results_5_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
+            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"], 0])
         else:
-            data_5.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
+            data_5.append([i, 0, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
     return data_3, data_5
 
@@ -159,6 +301,7 @@ def figure5b():
         data_3[i][2],v_i = median(tmp_tps)
         data_3[i][1] = tmp_50th[v_i]
         data_3[i][3] = tmp_all[v_i] 
+        data_3[i][4] = var(tmp_tps)
 
     H=len(data_5)
     for i in range(H):
@@ -172,20 +315,21 @@ def figure5b():
         data_5[i][2],v_i = median(tmp_tps)
         data_5[i][1] = tmp_50th[v_i]
         data_5[i][3] = tmp_all[v_i]
+        data_5[i][4] = var(tmp_tps)
     return data_3, data_5
 
 @lru_cache(maxsize=None)
 def figure5bTrail(t):
     # 3 replicas
     exp=[1, 2, 3, 4, 5, 6]
-    data_3=[] # (exp, 50th, tps, all_latency)
+    data_3=[] # (exp, 50th, tps, all_latency, tps-var)
     for i in exp:
         folder=BASE+"/figure5b_"+str(t)+"/results_3_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
+            data_3.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"], 0])
         else:
-            data_3.append([i, 0, 0, {str(i):0 for i in range(100)}])
+            data_3.append([i, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
     
     # 5 replicas
@@ -194,9 +338,9 @@ def figure5bTrail(t):
         folder=BASE+"/figure5b_"+str(t)+"/results_5_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
+            data_5.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"], 0])
         else:
-            data_5.append([i, 0, 0, {str(i):0 for i in range(100)}])
+            data_5.append([i, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
 
     return data_3, data_5
@@ -252,6 +396,7 @@ def figure6a():
         data_r[i][1] = tmp_50th[v_i]
         data_r[i][3] = tmp_99th[v_i]
         data_r[i][4] = tmp_all[v_i]
+        data_r[i][5] = var(tmp_tps)
 
     return data_r
 
@@ -261,14 +406,14 @@ def figure6aTrail(t):
         conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100]
     else:
         conc=[1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-    data_r=[] # (currency, 50th, tps, 99th, all_latency)
+    data_r=[] # (currency, 50th, tps, 99th, all_latency, tps-var)
     for i in conc:
         folder=BASE+"/figure6a_"+str(t)+"/results_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_r.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"]])
+            data_r.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]["99"], data[SK]["all_latency"], 0])
         else:
-            data_r.append([i, 0, 0, 0, {str(i):0 for i in range(100)}])
+            data_r.append([i, 0, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
     
     return data_r
@@ -296,6 +441,7 @@ def figure6b():
         data_l[i][2],v_i = median(tmp_tps)
         data_l[i][1] = tmp_50th[v_i]
         data_l[i][3] = tmp_all[v_i]
+        data_l[i][4] = var(tmp_tps)
 
     H=len(data_f)
     for i in range(H):
@@ -309,6 +455,7 @@ def figure6b():
         data_f[i][2],v_i = median(tmp_tps)
         data_f[i][1] = tmp_50th[v_i]
         data_f[i][3] = tmp_all[v_i]
+        data_f[i][4] = var(tmp_tps)
 
     return data_l, data_f
 
@@ -316,14 +463,14 @@ def figure6b():
 def figure6bTrail(t):
     # leader
     exp=[1, 2, 5, 6]
-    data_l=[] # (exp, 50th, tps, all_latency)
+    data_l=[] # (exp, 50th, tps, all_latency, tps-var)
     for i in exp:
         folder=BASE+"/figure6b_"+str(t)+"/results_leader_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_l.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
+            data_l.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"], 0])
         else:
-            data_l.append([i, 0, 0, {str(i):0 for i in range(100)}])
+            data_l.append([i, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
     
     # follower
@@ -332,9 +479,9 @@ def figure6bTrail(t):
         folder=BASE+"/figure6b_"+str(t)+"/results_follower_"+str(i)
         if find_the_yml(folder):
             data=convert_yml_json(find_the_yml(folder))
-            data_f.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"]])
+            data_f.append([i, data[SK]["all_latency"]["50"], data[SK]["tps"], data[SK]["all_latency"], 0])
         else:
-            data_f.append([i, 0, 0, {str(i):0 for i in range(100)}])
+            data_f.append([i, 0, 0, {str(i):0 for i in range(100)}, 0])
             print("No yml found in " + folder)
 
     return data_l, data_f
