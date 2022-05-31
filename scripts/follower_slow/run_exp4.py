@@ -580,6 +580,7 @@ class ClientController(object):
                             echo $pid; echo $pid2; \
                            sudo kill -9 $pid; \
                            sudo kill -9 $pid2; \
+                           sudo pkill dd; \
                            sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'; \
                            sudo rm /db/tmp.txt"
                     
