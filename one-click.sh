@@ -18,8 +18,8 @@ servers=(
 )
 
 ONLY_CMD=0
-SLOWDOWN_DUR=180
-SLOWDOWN_DUR_EXP=230
+SLOWDOWN_DUR=60
+SLOWDOWN_DUR_EXP=100
 TUPT_DUR=60
 TUPT_DUR_EXP=100
 
@@ -226,7 +226,8 @@ experiment6a() {
   rm -rf ./results
   if [ $is_rw -eq 1 ]
   then
-    conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
+    #conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
+    conc=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 ) # for rw
   else
     conc=( 1 2 4 6 8 10 12 14 16 18 20 )
   fi
@@ -267,6 +268,7 @@ experiment6b() {
 
   rm -rf ./results
   exp=( 1 2 5 6 )
+
   # on the leader
   for i in "${exp[@]}"
   do
