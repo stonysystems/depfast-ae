@@ -27,7 +27,7 @@ if [ $is_rw -eq 1 ]
 then  # for rw
   echo "using rw..."
   SLOW_CONCURRENT_RAFT=220
-  SLOW_CONCURRENT_COPILOT=40
+  SLOW_CONCURRENT_COPILOT=4
 else
   echo "using tpca"
   SLOW_CONCURRENT_RAFT=200
@@ -64,8 +64,7 @@ timeout_process() {
   cmd=$1
   waitTime=$2
   rerun=$3
-  myPid=$!
-  echo "[$(date)]START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
+  myPid=$!  echo "[$(date)]START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
 
   sleep $waitTime
   if kill -0 "$myPid"; then
@@ -97,7 +96,7 @@ experiment5a() {
     # 3 replicas
     if [ $is_rw -eq 1 ]
     then  # for rw
-      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580)
+      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580 )
     else
       conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
     fi
@@ -226,8 +225,7 @@ experiment6a() {
   rm -rf ./results
   if [ $is_rw -eq 1 ]
   then
-    #conc=( 5 10 15 20 30 40 50 60 80 100 ) # for rw
-    conc=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 ) # for rw
+    conc=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 )
   else
     conc=( 1 2 4 6 8 10 12 14 16 18 20 )
   fi
@@ -235,7 +233,7 @@ experiment6a() {
   for i in "${conc[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 1 $i copilot nonlocal &"
+    cmd="./start-exp.sh testname $TUPT_DUR 0 3 follower 10 $i copilot nonlocal &"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
@@ -268,12 +266,11 @@ experiment6b() {
 
   rm -rf ./results
   exp=( 1 2 5 6 )
-
   # on the leader
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 1 $SLOW_CONCURRENT_COPILOT copilot nonlocal &"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 leader 10 4 copilot nonlocal &"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd
@@ -283,8 +280,8 @@ experiment6b() {
       timeout_process "$cmd" $SLOWDOWN_DUR_EXP 1
       # if error detected, re-run it
       if ! ag $TPS ./log; then
-	echo "[$(date)]not TPS\n " >> $LOG_FILE
-	setup
+        echo "[$(date)]not TPS\n " >> $LOG_FILE
+        setup
         eval $cmd
         timeout_process "$cmd" $SLOWDOWN_DUR_EXP 0
       fi
@@ -298,7 +295,7 @@ experiment6b() {
   for i in "${exp[@]}"
   do
     mkdir results
-    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 1 $SLOW_CONCURRENT_COPILOT copilot nonlocal &"
+    cmd="./start-exp.sh testname $SLOWDOWN_DUR $i 3 follower 10 4 copilot nonlocal &"
     if [ $ONLY_CMD -eq 1 ]
     then
       echo $cmd

@@ -31,7 +31,7 @@ FIGURE6b_TARIALS=3
 
 if is_rw(): # for rw
     CK=220
-    D_T=40
+    D_T=4
 else:
     CK=200
     D_T=12
@@ -403,7 +403,8 @@ def figure6a():
 @lru_cache(maxsize=None)
 def figure6aTrail(t):
     if is_rw():
-        conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100]
+        #conc=[5, 10, 15, 20, 30, 40, 50, 60, 80, 100]
+        conc=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     else:
         conc=[1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
     data_r=[] # (currency, 50th, tps, 99th, all_latency, tps-var)
