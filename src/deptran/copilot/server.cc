@@ -6,7 +6,7 @@
 #define WAIT_AT_UNCOMMIT
 #define N_CMD_KEEP (15000)
 // #define USE_TARJAN
-const uint64_t PINGPONG_TIMEOUT_US = 1000;
+const uint64_t PINGPONG_TIMEOUT_US = 500;
 
 namespace janus {
 
@@ -103,11 +103,11 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
     // check if cmd committed in tx scheduler, which virtually means cmd is executed
     if (allCmdComitted(cmd)) {
       Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
-      // ins->status = Status::EXECUTED;
-      // if (ins->cmit_evt.value_ < 1)
-      //   ins->cmit_evt.Set(1);
-      // updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
-      // updateMaxExecSlot(ins);
+       ins->status = Status::EXECUTED;
+       if (ins->cmit_evt.value_ < 1)
+         ins->cmit_evt.Set(1);
+       updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+       updateMaxExecSlot(ins);
       return true;
     } else {
       return false;
@@ -115,11 +115,11 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
   } else if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     // I don't think this case is possible
     Log_debug("server %d: eliminate %s entry %ld status %x", id_, toString(ins->is_pilot), ins->slot_id, ins->status);
-    // ins->status = Status::EXECUTED;
-    // if (ins->cmit_evt.value_ < 1)
-    //     ins->cmit_evt.Set(1);
-    // updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
-    // updateMaxExecSlot(ins);
+     ins->status = Status::EXECUTED;
+     if (ins->cmit_evt.value_ < 1)
+         ins->cmit_evt.Set(1);
+     updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
+     updateMaxExecSlot(ins);
     return true;
   } else {
     verify(0);
