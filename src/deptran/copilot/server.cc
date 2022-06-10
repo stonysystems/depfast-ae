@@ -107,7 +107,7 @@ bool CopilotServer::EliminateNullDep(shared_ptr<CopilotData> &ins) {
        if (ins->cmit_evt.value_ < 1)
          ins->cmit_evt.Set(1);
        updateMaxCmtdSlot(log_infos_[ins->is_pilot], ins->slot_id);
-      updateMaxExecSlot(ins);
+       updateMaxExecSlot(ins);
       return true;
     } else {
       return false;

@@ -43,6 +43,7 @@ cmd2="cd $workdir/$repos ; sudo bash dep.sh; sudo pip3 install -r requirements.t
 cmd3="cd $workdir/$repos ; sudo bash init.sh "
 cmd4="cd $workdir/$repos ; sudo bash batch_kill.sh"
 cmd5="cd $workdir/$repos/tmp; scp -r $USER@$c1:$workdir/$repos/tmp/* ."
+cmd6=""
 
 for host in ${servers[@]}
 do
@@ -61,6 +62,10 @@ elif [ $1 == 'kill' ]; then
 elif [ $1 == 'sync_tmp' ]; then
     echo "sync tmp $host cmd: $cmd5"
     ssh $host "$cmd5" &
+elif [ $1 == 'random' ]; then
+    echo "random $host, cmd: $2"
+    ssh $host "$2" 
+    echo -e "\n"
 else
 	  :
   fi

@@ -64,8 +64,7 @@ timeout_process() {
   cmd=$1
   waitTime=$2
   rerun=$3
-  myPid=$!
-  echo "[$(date)]START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
+  myPid=$!  echo "[$(date)]START timeout_process $cmd, rerun: $rerun\n" >> $LOG_FILE
 
   sleep $waitTime
   if kill -0 "$myPid"; then
@@ -97,7 +96,7 @@ experiment5a() {
     # 3 replicas
     if [ $is_rw -eq 1 ]
     then  # for rw
-      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580)
+      conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 460 500 540 580 )
     else
       conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
     fi
