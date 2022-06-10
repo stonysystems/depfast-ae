@@ -1,10 +1,14 @@
 import csv
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import yaml
 import lattput
 import processing
+
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 num2exp = {
     0: 'No Slowness',
@@ -111,7 +115,11 @@ if __name__ == '__main__':
         'width_ratios': [1,1,1,1]
     })
     
-    print("(b) ---> ",all_data)
+    import json, pprint
+    pp = pprint.PrettyPrinter(indent=4)
+    print("(b) ---> ")
+    pp.pprint(all_data)
+    
     lines = plot_figure(all_data, 0, axes[1], '(b)')
     plot_cdf(all_cdf, 'follower', 3, axes[2], '(c)')
     plot_cdf(all_cdf, 'follower', 5, axes[3], '(d)')

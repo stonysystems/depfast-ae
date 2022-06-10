@@ -72,6 +72,8 @@ def plot_figure(all_data, metric, ax, plt_id):
 
 def plot_cdf(all_cdf, ty, rep, ax, plt_id):
     for e in num2exp.values():
+        if plt_id == "(c)" and e == "CPU Slowness":
+             continue
         pct_lat = all_cdf[ty][rep][e]
         pct = list(pct_lat.keys())
         lat = list(pct_lat.values())
@@ -89,9 +91,7 @@ def plot_cdf(all_cdf, ty, rep, ax, plt_id):
 
 
 if __name__ == '__main__':
-    # for 5-rep
-    IS_5_REP=True
-    protocol = 'copilot'
+    protocol = 'ref-copilot' 
     all_data = {}
     all_cdf = {}
     for t in typs:
@@ -120,13 +120,13 @@ if __name__ == '__main__':
     
     lines = plot_figure(all_data, 0, axes[1], '(b)')
     plot_cdf(all_cdf, 'follower', 3, axes[2], '(c)')
-    plot_cdf(all_cdf, 'leader', 3, axes[3], '(d)')
+    plot_cdf(all_cdf, 'leader', 5, axes[3], '(d)')
 
     fig.legend(lines, labels=num2exp.values(), loc='upper center', ncol=len(num2exp), frameon=False)
-    lattput.plot_lattput(protocol, [5 if IS_5_REP else 3], axes[0], '(a)')
+    lattput.plot_lattput(protocol, [5], axes[0], '(a)')
 
     plt.subplots_adjust(wspace=0.32)
     
     
     # plt.show()
-    fig.savefig(os.path.join(".", 'imgs', 'depfast_5_{}.pdf'.format(protocol) if IS_5_REP else 'depfast_{}.pdf'.format(protocol)), bbox_inches='tight')
+    fig.savefig(os.path.join(".", 'imgs', 'depfast_{}.pdf'.format(protocol)), bbox_inches='tight') # for 5-rep
