@@ -47,9 +47,10 @@ In this section, we will build a actual distributed environment to reproduce our
 
 ### 1. setup machines
 To reproduce results in the paper, we need 
- - **obtain 6 machines**: 5 servers + 1 client running on Ubuntu `20.04`
- - obtain the IP of 6 machines: `[server-1-ip]`, `[server-2-ip]`, `[server-3-ip]`, `[server-4-ip]`, `[server-5-ip]`, `[client-1-ip]`. (*each machine should have at least 4 cpu cores*)
+ - **obtain 6 machines**: 5 servers + 1 client running on Ubuntu `20.04` or `Debain-10`
+ - obtain the IP of 6 machines: `[server-1-ip]`, `[server-2-ip]`, `[server-3-ip]`, `[server-4-ip]`, `[server-5-ip]`, `[client-1-ip]`. (*each sever should have at least 4 cpu cores and client should have 16 cpu cores*)
  - ensure that 6 machines can connect to each other via `ssh` and **share the same username** which means you can connect to any other machines on any machine through `ssh ip` directly without username required
+ - we also required each server has an extra mounted disk called  `/dev/sdc` for slowness experiments
 
 ### 2. setup environment on all machines
 Let's assume we have 6 machines, 
