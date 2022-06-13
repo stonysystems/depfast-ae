@@ -3,7 +3,7 @@
 
 Welcome to the DepFast artifact for our ATC'22 submission.
 
-*Building Fault-Tolerant Distributed Systems with DepFast*
+*DepFast: Orchestrating Code of Quorum Systems*
 
 ## Run the experiment locally
 <!-- https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md -->
