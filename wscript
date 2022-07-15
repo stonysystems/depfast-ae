@@ -123,7 +123,10 @@ def build(bld):
     _depend("src/deptran/rcc_rpc.h src/deptran/rcc_rpc.py",
             "src/deptran/rcc_rpc.rpc",
             "bin/rpcgen --python --cpp src/deptran/rcc_rpc.rpc")
-
+            
+    _depend("src/deptran/example.h src/deptran/example.py",
+            "src/deptran/example.rpc",
+            "bin/rpcgen --python --cpp src/deptran/example.rpc")
     _gen_srpc_headers()
 
 #     _depend("old-test/benchmark_service.h", "old-test/benchmark_service.rpc",

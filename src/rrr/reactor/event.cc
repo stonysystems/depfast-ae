@@ -245,6 +245,7 @@ void SharedIntEvent::Wait(function<bool(int v)> f) {
   if (f(value_)) {
     return;
   }
+  
   auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
   sp_ev->value_ = value_;
   sp_ev->test_ = f;
