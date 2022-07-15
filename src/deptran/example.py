@@ -3,7 +3,7 @@ from simplerpc.marshal import Marshal
 from simplerpc.future import Future
 
 class ExampleClientService(object):
-    HELLO = 0x177f6de2
+    HELLO = 0x2781828e
 
     __input_type_info__ = {
         'hello': ['std::vector<int32_t>'],

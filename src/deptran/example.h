@@ -5,12 +5,12 @@
 #include <errno.h>
 
 
-namespace janus {
+namespace example_client {
 
 class ExampleClientService: public rrr::Service {
 public:
     enum {
-        HELLO = 0x177f6de2,
+        HELLO = 0x2781828e,
     };
     int __reg_to__(rrr::Server* svr) {
         int ret = 0;
@@ -63,7 +63,7 @@ public:
     }
 };
 
-} // namespace janus
+} // namespace example_client
 
 
 
