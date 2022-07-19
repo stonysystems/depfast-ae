@@ -13,14 +13,13 @@ using namespace example_client;
 using namespace janus;
 
 int run_client(){
-        
     rrr::PollMgr *pm = new rrr::PollMgr();
-    rrr::Client *client = new rrr::Client(pm);
+    auto client = std::make_shared<Client>(pm);
 
     while (client->connect(std::string("127.0.0.1:8090").c_str())!=0) {
         usleep(100 * 1000); // retry to connect
     }
-    ExampleClientProxy *client_proxy = new ExampleClientProxy(client);
+    ExampleClientProxy *client_proxy = new ExampleClientProxy(client.get());
     vector<int> _req;
     std::atomic<int64_t> done(0);
     FutureAttr fuattr;  // fuattr

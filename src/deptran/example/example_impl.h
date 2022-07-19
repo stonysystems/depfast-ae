@@ -10,7 +10,7 @@
 namespace example_client {
     class ExampleClientServiceImpl : public ExampleClientService {
     public: 
-            ExampleClientServiceImpl() ;
+        ExampleClientServiceImpl() ;
 	    void hello(const std::vector<int32_t>& _req, rrr::DeferredReply* defer) override;
     };
 }
