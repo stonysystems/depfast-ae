@@ -29,7 +29,9 @@ int run_client(){
     for (int i = 1; i <= 5; i++)
         _req.push_back(i);
     client_proxy->hello(_req);
-
+    int32_t a = 5;
+    int32_t b = 16;
+    client_proxy->add(a,b);
     return 0;
 }
 

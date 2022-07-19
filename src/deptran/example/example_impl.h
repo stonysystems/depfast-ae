@@ -12,5 +12,6 @@ namespace example_client {
     public: 
         ExampleClientServiceImpl() ;
 	    void hello(const std::vector<int32_t>& _req, rrr::DeferredReply* defer) override;
+        void add(const int32_t& x, const int32_t& y, rrr::DeferredReply* defer) override;
     };
 }
