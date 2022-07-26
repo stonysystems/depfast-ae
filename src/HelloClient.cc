@@ -8,9 +8,13 @@
 #include <unistd.h>
 #include "example/example_impl.h"
 #include <pthread.h>
-
+// #include<rpc.h>
 using namespace example_client;
 using namespace janus;
+
+// erpc::Rpc<erpc::CTransport> *rpc;
+// erpc::MsgBuffer req;
+// erpc::MsgBuffer resp;
 
 int run_client(){
     rrr::PollMgr *pm = new rrr::PollMgr();
