@@ -11,7 +11,7 @@ run_app_     = "build/deptran_server"
 config_path_ = "config/"
 
 modes_ = [
-    "none_copilot",
+    #"none_copilot",
     "none_fpga_raft"
 ]
 sites_ = [
@@ -21,7 +21,7 @@ benchmarks_ =  [
    "rw",
 ]
 concurrent_ = [
-   "concurrent_1",
+   #"concurrent_1",
    "concurrent_10"
 ]
 
@@ -37,7 +37,7 @@ def run(m, s, b, c):
     try:
         f = open(output_path, "w")
         cmd = [run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "10"]
-        # print(' '.join(cmd))
+        print(' '.join(cmd))
         r = call(cmd, stdout=f, stderr=f, timeout=5*60)
         res = "OK" if r == 0 else "Failed"
     except subprocess.TimeoutExpired:

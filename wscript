@@ -100,6 +100,14 @@ def configure(conf):
     conf.env.LIB_PTHREAD = 'pthread'
     conf.check_cfg(package='yaml-cpp', uselib_store='YAML-CPP', args=pargs)
 
+    # ERPC_CFLAGS_IB
+    #conf.env.append_value("CFLAGS", '-I /home/users/vyip/eRPC/src -DERPC_INFINIBAND=true -march=native -I /usr/include/dpdk -DERPC_LOG_LEVEL=6 -DERPC_TESTING=false -DGFLAGS_IS_A_DLL=0')
+    #conf.env.append_value("CXXFLAGS", '-I /home/users/vyip/eRPC/src -DERPC_INFINIBAND=true -march=native -I /usr/include/dpdk -DERPC_LOG_LEVEL=6 -DERPC_TESTING=false -DGFLAGS_IS_A_DLL=0')
+    # ERPC_LDFLAGS_IB
+    #conf.env.append_value("LDFLAGS", '-L /home/users/vyip/eRPC/build -Wl,--whole-archive -ldpdk -Wl,--no-whole-archive -lpthread -lerpc -lnuma -ldl -lgflags -ldl -libverbs -lmlx4 -lmlx5')
+    # CXX_INCLUDES
+    #conf.env.append_value("CXX_INCLUDES", 'I /home/users/vyip/eRPC/third_party/googletest/googletest/include -I /home/users/vyip/eRPC/third_party/googletest/googletest -isystem /home/users/vyip/eRPC/third_party/asio/include -I /home/users/vyip/eRPC/src -isystem /home/users/vyip/eRPC/third_party -isystem /usr/include/dpdk -I/home/users/vyip/eRPC/third_party/gflags/include -I/home/users/vyip/eRPC/third_party/HdrHistogram_c/src')
+
     if sys.platform != 'darwin':
         conf.env.LIB_RT = 'rt'
 
