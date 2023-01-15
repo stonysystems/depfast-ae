@@ -1,0 +1,61 @@
+namespace janus;
+
+abstract service Epaxos {
+
+  defer PreAccept(epoch_t epoch,
+                  ballot_t ballot_no,
+                  uint64_t ballot_replica_id,
+                  uint64_t leader_replica_id,
+                  uint64_t instance_no,
+                  MarshallDeputy md_cmd,
+                  string dkey,
+                  uint64_t seq,
+                  unordered_map<uint64_t,uint64_t> deps |
+                  status_t status,
+                  epoch_t highest_seen_epoch,
+                  ballot_t highest_seen_ballot_no,
+                  uint64_t highest_seen_replica_id,
+                  uint64_t updated_seq,
+                  unordered_map<uint64_t,uint64_t> updated_deps);
+                       
+  defer Accept(epoch_t epoch,
+               ballot_t ballot_no,
+               uint64_t ballot_replica_id,
+               uint64_t leader_replica_id,
+               uint64_t instance_no,
+               MarshallDeputy md_cmd,
+               string dkey,
+               uint64_t seq,
+               unordered_map<uint64_t,uint64_t> deps |
+               bool_t status,
+               epoch_t highest_seen_epoch,
+               ballot_t highest_seen_ballot_no,
+               uint64_t highest_seen_replica_id);
+
+  defer Commit(epoch_t epoch,
+               ballot_t ballot_no,
+               uint64_t replica_id,
+               uint64_t instance_no,
+               MarshallDeputy md_cmd,
+               string dkey,
+               uint64_t seq,
+               unordered_map<uint64_t,uint64_t> deps |
+               bool_t status);
+         
+  defer Prepare(epoch_t epoch,
+                ballot_t ballot_no,
+                uint64_t ballot_replica_id,
+                uint64_t instance_replica_id,
+                uint64_t instance_no |
+                bool_t status,
+                MarshallDeputy md_cmd,
+                string dkey,
+                uint64_t seq,
+                unordered_map<uint64_t, uint64_t> deps,
+                status_t cmd_state,
+                uint64_t acceptor_replica_id,
+                epoch_t highest_seen_epoch,
+                ballot_t highest_seen_ballot_no,
+                uint64_t highest_seen_replica_id);      
+
+}
