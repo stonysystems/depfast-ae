@@ -4,6 +4,7 @@
 #include "../constants.h"
 #include "../communicator.h"
 #include "server.h"
+#include <stack>
 
 namespace janus {
 

@@ -39,6 +39,7 @@ class Coroutine {
   static std::shared_ptr<Coroutine> CurrentCoroutine();
   // the argument cannot be a reference because it could be declared on stack.
   static std::shared_ptr<Coroutine> CreateRun(std::function<void()> func, const char *file="", int64_t line=0);
+  static void Sleep(uint64_t microseconds);
   static uint64_t global_id;
 	uint64_t dep_id_;
 	bool need_finalize_;

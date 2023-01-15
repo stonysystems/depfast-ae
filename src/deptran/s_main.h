@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <stdint.h>
 
 int setup(int argc, char* argv[]);
 int shutdown_paxos();

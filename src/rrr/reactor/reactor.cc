@@ -44,6 +44,11 @@ Coroutine::CreateRun(std::function<void()> func, const char* file, int64_t line)
   return coro;
 }
 
+void Coroutine::Sleep(uint64_t microseconds) {
+  auto x = Reactor::CreateSpEvent<TimeoutEvent>(microseconds);
+  x->Wait();
+}
+
 std::shared_ptr<Reactor>
 Reactor::GetReactor() {
   if (!sp_reactor_th_) {
