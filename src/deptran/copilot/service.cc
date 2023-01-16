@@ -1,6 +1,5 @@
 #include "service.h"
 #include "server.h"
-#include <stack>
 
 namespace janus {
 

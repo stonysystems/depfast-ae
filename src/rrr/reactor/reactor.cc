@@ -370,6 +370,7 @@ class PollMgr::PollThread {
   bool stop_flag_;
   bool pause_flag_;
   bool need_disk_ = false;
+  uint32_t sleep_usec_ = 0; // emulate slow
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
@@ -517,7 +518,13 @@ void PollMgr::PollThread::poll_loop() {
 	while (!stop_flag_) {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
-
+    if (pause_flag_) {
+      usleep(100000);
+      continue;
+    }
+    if (sleep_usec_ > 0) {
+      usleep(sleep_usec_);
+    }
     if (!need_disk_) {
 		poll_.Wait();
     } else {
@@ -689,7 +696,14 @@ void PollMgr::pause() {
 
 void PollMgr::resume() {
   for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].sleep_usec_ = 0;
     poll_threads_[idx].resume();
+  }
+}
+
+void PollMgr::slow(uint32_t sleep_usec) {
+  for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].sleep_usec_ = sleep_usec;
   }
 }
 

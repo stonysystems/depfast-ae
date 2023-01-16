@@ -4,7 +4,6 @@
 #include "../constants.h"
 #include "../scheduler.h"
 #include "../classic/tpc_command.h"
-#include <stack>
 
 #define REVERSE(p) (1 - (p))
 

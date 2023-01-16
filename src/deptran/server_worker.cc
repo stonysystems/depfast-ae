@@ -74,6 +74,10 @@ void ServerWorker::SetupBase() {
 }
 
 void ServerWorker::PopTable() {
+  if (sharding_->tb_infos_.size() == 0) {
+    verify(!Config::GetConfig()->benchmark());
+    return;
+  }
   // populate table
   int ret = 0;
   // get all tables
@@ -237,6 +241,10 @@ void ServerWorker::Pause() {
 void ServerWorker::Resume() {
   svr_poll_mgr_->resume();
   rep_sched_->Resume();
+}
+
+void ServerWorker::Slow(uint32_t sleep_usec) {
+  svr_poll_mgr_->slow(sleep_usec);
 }
 
 void ServerWorker::ShutDown() {

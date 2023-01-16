@@ -17,6 +17,7 @@
 #include <set>
 #include <iostream>
 #include <fstream>
+#include <stack>
 
 using namespace std;
 // using the following will trigger errors in CLion (<= 2017.3)
