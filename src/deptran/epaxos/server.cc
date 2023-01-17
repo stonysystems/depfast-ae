@@ -9,7 +9,8 @@ EpaxosServer::EpaxosServer(Frame * frame) {
   /* Your code here for server initialization. Note that this function is 
      called in a different OS thread. Be careful about thread safety if 
      you want to initialize variables here. */
-
+  // TODO: REMOVE
+  Log::set_level(Log::DEBUG);
   // Future Work: Give unique replica id on restarts (by storing old replica_id persistently and new_replica_id = old_replica_id + N)
   replica_id_ = site_id_;
   // Future Work: Update epoch on replica_set change
@@ -37,21 +38,23 @@ void EpaxosServer::Setup() {
         mtx_.unlock();
         Coroutine::Sleep(1000);
         mtx_.lock();
+      } else {
+        EpaxosRequest *req = &reqs.front();
+        reqs.pop_front();
+        mtx_.unlock();
+        Coroutine::CreateRun([this,req](){
+          StartPreAccept(req->cmd, req->dkey);
+        });
       }
-      EpaxosRequest *req = &reqs.front();
-      reqs.pop_front();
-      mtx_.unlock();
-      Coroutine::CreateRun([this,req](){
-        StartPreAccept(req->cmd, req->dkey);
-      });
     }
   });
 }
 
-void EpaxosServer::Request(shared_ptr<Marshallable>& cmd, string dkey) {
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   /* Your code here. This function can be called from another OS thread. */
   EpaxosRequest req = EpaxosRequest(cmd, dkey);
   mtx_.lock();
+  Log_debug("Received request in server: %d for dep_key: %s", site_id_, dkey.c_str());
   reqs.push_back(req);
   mtx_.unlock();
 }
@@ -64,6 +67,8 @@ void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd, string dkey) {
   if (dkey_deps[dkey].count(replica_id_)) {
     leader_dep_instance = dkey_deps[dkey][replica_id_];
   }
+  Log_debug("Started processing request in server: %d for replica: %d instance: %d dep_key: %s", 
+            site_id_, replica_id_, instance_no, dkey.c_str());
   dkey_deps[dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   uint64_t replica_id = replica_id_;
@@ -80,6 +85,8 @@ void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
                                   uint64_t leader_dep_instance,
                                   bool recovery) {
   mtx_.lock();
+  Log_debug("Started pre-accept for request for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d", 
+            replica_id_, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id);
   // Initialise attributes
   uint64_t seq = dkey_seq.count(dkey) ? (dkey_seq[dkey]+1) : 0;
   unordered_map<uint64_t, uint64_t> deps = dkey_deps[dkey];
@@ -136,6 +143,8 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
                                                       uint64_t replica_id, 
                                                       uint64_t instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("Received pre-accept request for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d", 
+            replica_id_, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id);
   EpaxosPreAcceptStatus status = EpaxosPreAcceptStatus::IDENTICAL;
   // Reject older ballots
   if (cmds[replica_id].count(instance_no) && !ballot.isGreater(cmds[replica_id][instance_no].highest_seen)) {

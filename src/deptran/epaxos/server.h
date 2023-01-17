@@ -172,7 +172,7 @@ class EpaxosServer : public TxLogServer {
   EpaxosServer(Frame *frame) ;
   ~EpaxosServer() ;
 
-  void Request(shared_ptr<Marshallable>& cmd, string dkey);
+  void Start(shared_ptr<Marshallable>& cmd, string dkey);
 
  private:
   bool disconnected_ = false;
