@@ -11,6 +11,8 @@ int EpaxosLabTest::Run(void) {
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   if (testBasicAgree()
+      || TEST_EXPAND(testFastQuorumAgree())
+      || TEST_EXPAND(testSlowQuorumAgree())
 //       || TEST_EXPAND(testFailAgree())
 //       || TEST_EXPAND(testFailNoAgree())
 //       || TEST_EXPAND(testRejoin())
@@ -69,7 +71,6 @@ void EpaxosLabTest::Cleanup(void) {
 
 #define DoAgreeAndAssertIndex(cmd, dkey, n, index) { \
         auto r = config_->DoAgreement(cmd, dkey, n, false); \
-        auto ind = index; \
         Assert2(r, "failed to reach agreement for command %d among %d servers" PRId64, cmd, n); \
       }
       /* Assert2(r > 0, "failed to reach agreement for command %d among %d servers, expected commit index>0, got %" PRId64, cmd, n, r); \
@@ -84,12 +85,42 @@ void EpaxosLabTest::Cleanup(void) {
 int EpaxosLabTest::testBasicAgree(void) {
   Init2(1, "Basic agreement");
   for (int i = 1; i <= 3; i++) {
-    // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(index_);
     // complete 1 agreement and make sure its index is as expected
     int cmd = index_ + 100;
+    // make sure no commits exist before any agreements are started
+    AssertNoneCommitted(cmd);
     DoAgreeAndAssertIndex(cmd, to_string(cmd), NSERVERS, index_++);
   }
+  Passed2();
+}
+
+int EpaxosLabTest::testFastQuorumAgree(void) {
+  Init2(2, "Fast quorum agreement");
+  config_->Disconnect(0);
+  for (int i = 1; i <= 3; i++) {
+    // complete 1 agreement and make sure its index is as expected
+    int cmd = index_ + 200;
+    // make sure no commits exist before any agreements are started
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertIndex(cmd, "200", NSERVERS-1, index_++);
+  }
+  config_->Reconnect(0);
+  Passed2();
+}
+
+int EpaxosLabTest::testSlowQuorumAgree(void) {
+  Init2(3, "Slow quorum agreement");
+  config_->Disconnect(0);
+  config_->Disconnect(1);
+  for (int i = 1; i <= 3; i++) {
+    // complete 1 agreement and make sure its index is as expected
+    int cmd = index_ + 300;
+    // make sure no commits exist before any agreements are started
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertIndex(cmd, "300", (NSERVERS/2) + 1, index_++);
+  }
+  config_->Reconnect(0);
+  config_->Reconnect(1);
   Passed2();
 }
 

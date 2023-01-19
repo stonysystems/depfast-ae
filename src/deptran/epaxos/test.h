@@ -21,6 +21,8 @@ class EpaxosLabTest {
  private:
 
   int testBasicAgree(void);
+  int testFastQuorumAgree(void);
+  int testSlowQuorumAgree(void);
 //   int testFailAgree(void);
 //   int testFailNoAgree(void);
 //   int testRejoin(void);

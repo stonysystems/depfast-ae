@@ -126,7 +126,7 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
         continue;
       Start(i, cmd, dkey);
       Log_debug("starting cmd ldr=%d cmd=%d", EpaxosTestConfig::replicas[i]->server()->loc_id_, cmd); // TODO: Print instance and ballot
-      usleep(20000);
+      usleep(50000);
       break;
     }
     // If Start() successfully called, wait for agreement
