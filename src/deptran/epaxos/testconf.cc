@@ -83,7 +83,7 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  return EpaxosTestConfig::replicas[svr]->server()->Start(cmdptr_m, dkey);
+  EpaxosTestConfig::replicas[svr]->server()->Start(cmdptr_m, dkey);
 }
 
 // int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
@@ -119,7 +119,6 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
-    usleep(50000);
     // Call Start() to all servers until alive command leader is found
     for (int i = 0; i < NSERVERS; i++) {
       // skip disconnected servers
@@ -127,6 +126,7 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
         continue;
       Start(i, cmd, dkey);
       Log_debug("starting cmd ldr=%d cmd=%d", EpaxosTestConfig::replicas[i]->server()->loc_id_, cmd); // TODO: Print instance and ballot
+      usleep(20000);
       break;
     }
     // If Start() successfully called, wait for agreement
@@ -141,7 +141,6 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
           if (cmd2 != EpaxosTestConfig::committed_cmds[i].end()) {
             Log_debug("found commit log");
             return true;
-            break;
           }
         }
         break;
@@ -153,6 +152,7 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
       Log_debug("failed to reach agreement");
       return false;
     }
+    usleep(50000);
   }
   Log_debug("Failed to reach agreement end");
   return false;

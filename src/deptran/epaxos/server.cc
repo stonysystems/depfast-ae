@@ -9,6 +9,8 @@ EpaxosServer::EpaxosServer(Frame * frame) {
   /* Your code here for server initialization. Note that this function is 
      called in a different OS thread. Be careful about thread safety if 
      you want to initialize variables here. */
+  // TODO: REMOVE
+  Log::set_level(Log::DEBUG);
   // Future Work: Update epoch on replica_set change
   curr_epoch = 0;
   cmds[replica_id_] = unordered_map<uint64_t, EpaxosCommand>();
@@ -27,17 +29,18 @@ void EpaxosServer::Setup() {
 
   // Future Work: Give unique replica id on restarts (by storing old replica_id persistently and new_replica_id = old_replica_id + N)
   replica_id_ = site_id_;
-  
+
   // Process requests
   Coroutine::CreateRun([this](){
     while(true) {
       mtx_.lock();
+      int size = reqs.size();
+      mtx_.unlock();
       // Future Work: Can make more efficient by having a pub-sub kind of thing
-      if (reqs.size() == 0) {
-        mtx_.unlock();
+      if (size == 0) {
         Coroutine::Sleep(1000);
-        mtx_.lock();
       } else {
+        mtx_.lock();
         EpaxosRequest req = reqs.front();
         reqs.pop_front();
         mtx_.unlock();
@@ -51,11 +54,10 @@ void EpaxosServer::Setup() {
 
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   /* Your code here. This function can be called from another OS thread. */
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosRequest req = EpaxosRequest(cmd, dkey);
-  mtx_.lock();
   Log_debug("Received request in server: %d for dep_key: %s", site_id_, dkey.c_str());
   reqs.push_back(req);
-  mtx_.unlock();
 }
 
 void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd, string dkey) {
@@ -197,6 +199,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
 void EpaxosServer::StartAccept(uint64_t replica_id, uint64_t instance_no) {
   mtx_.lock();
   // Accept command
+  Log_debug("Started accept request for replica: %d instance: %d", replica_id_, instance_no);
   cmds[replica_id][instance_no].state = EpaxosCommandState::ACCEPTED;
   EpaxosCommand cmd = cmds[replica_id][instance_no];
   mtx_.unlock();
@@ -213,6 +216,7 @@ void EpaxosServer::StartAccept(uint64_t replica_id, uint64_t instance_no) {
                                 cmd.seq, 
                                 cmd.deps);
   ev->Wait(100000);
+  Log_debug("Started accept reply processing for replica: %d instance: %d", replica_id_, instance_no);
 
   if (ev->Yes()) {
     StartCommit(replica_id, instance_no);
@@ -229,6 +233,7 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd_,
                                                 uint64_t replica_id, 
                                                 uint64_t instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("Received accept request for replica: %d instance: %d", replica_id_, instance_no);
   // Reject older ballots
   if (cmds[replica_id].count(instance_no) && !ballot.isGreater(cmds[replica_id][instance_no].highest_seen)) {
     EpaxosBallot &highest_seen = cmds[replica_id][instance_no].highest_seen;
@@ -257,11 +262,14 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd_,
 
 void EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no) {
   mtx_.lock();
+  Log_debug("Started commit request for replica: %d instance: %d", replica_id_, instance_no);
   // Commit command
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   EpaxosCommand cmd = cmds[replica_id][instance_no];
   mtx_.unlock();
   
+  // TODO: REMOVE
+  app_next_(*cmd.cmd);
   // TODO: reply to client
   
   auto ev = commo()->SendCommit(site_id_, 
@@ -286,6 +294,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
                                    uint64_t replica_id, 
                                    uint64_t instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("Received commit request for replica: %d instance: %d", replica_id_, instance_no);
   // Use the latest ballot
   if (cmds[replica_id].count(instance_no) && !ballot.isGreater(cmds[replica_id][instance_no].highest_seen)) {
     ballot = cmds[replica_id][instance_no].highest_seen;
@@ -295,6 +304,8 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
     return;
   }
   cmds[replica_id][instance_no] = EpaxosCommand(cmd_, dkey, seq, deps, ballot, EpaxosCommandState::COMMITTED);
+  // TODO: REMOVE
+  app_next_(*cmd_);
   // Update internal attributes
   if (cmd_.get()->kind_ != NO_OP_KIND) {
     UpdateInternalAttributes(dkey, seq, deps);
@@ -477,7 +488,7 @@ bool EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
 
 template<class ClassT>
 void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no) {
-  mtx_.lock();
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosBallot highest_seen_ballot = cmds[replica_id][instance_no].highest_seen;
   for (auto reply : replies) {
     EpaxosBallot ballot(reply.epoch, reply.ballot_no, reply.replica_id);
@@ -486,11 +497,10 @@ void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t rep
     }
   }
   cmds[replica_id][instance_no].highest_seen = highest_seen_ballot;
-  mtx_.unlock();
 }
 
 void EpaxosServer::UpdateAttributes(vector<EpaxosPreAcceptReply>& replies, uint64_t replica_id, uint64_t instance_no) {
-  mtx_.lock();
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosCommand &cmd = cmds[replica_id][instance_no];
   for (auto reply : replies) {
     cmd.seq = max(cmd.seq, reply.seq);
@@ -502,10 +512,10 @@ void EpaxosServer::UpdateAttributes(vector<EpaxosPreAcceptReply>& replies, uint6
       dkey_deps[cmd.dkey][dreplica_id] = max(dkey_deps[cmd.dkey][dreplica_id], dinstance_no);
     }
   }
-  mtx_.unlock();
 }
 
 void EpaxosServer::UpdateInternalAttributes(string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t> deps) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   dkey_seq[dkey] = max(dkey_seq[dkey], seq);
   for (auto itr : deps) {
     uint64_t dreplica_id = itr.first;

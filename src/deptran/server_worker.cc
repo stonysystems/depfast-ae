@@ -227,9 +227,16 @@ void ServerWorker::SetupCommo() {
       rep_commo_->loc_id_ = site_info_->locale_id;
     }
     rep_sched_->commo_ = rep_commo_;
-    rep_sched_->Setup();
     rep_commo_->rep_sched_ = rep_sched_;
   }
+
+  std::shared_ptr<OneTimeJob> sp_j  = std::make_shared<OneTimeJob>([this]() { 
+    if (rep_sched_) {
+      rep_sched_->Setup();
+    }
+  });
+  auto sp_job = std::dynamic_pointer_cast<Job>(sp_j);
+  svr_poll_mgr_->add(sp_j);
 }
 
 void ServerWorker::Pause() {
