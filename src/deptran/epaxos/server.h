@@ -132,7 +132,7 @@ class EpaxosServer : public TxLogServer {
                       EpaxosBallot ballot, 
                       uint64_t replica_id, 
                       uint64_t instance_no,
-                      uint64_t leader_dep_instance,
+                      int64_t leader_dep_instance,
                       bool recovery);
   EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                           string dkey, 

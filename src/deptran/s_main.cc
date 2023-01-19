@@ -74,14 +74,14 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
   auto config = Config::GetConfig();
   Log_info("server enabled, number of sites: %d", server_sites.size());
   svr_workers_g.resize(server_sites.size(), ServerWorker());
-  int i=0;
   vector<std::thread> setup_ths;
-  for (auto& site_info : server_sites) {
-    setup_ths.push_back(std::thread([&site_info, &i, &config] () {
+  for (auto i = 0; i <server_sites.size(); i++) {
+    auto& site_info = server_sites[i]; 
+    setup_ths.push_back(std::thread([&site_info, i, &config] () {
       Log_info("launching site: %x, bind address %s",
                site_info.id,
                site_info.GetBindAddress().c_str());
-      auto& worker = svr_workers_g[i++];
+      auto& worker = svr_workers_g[i];
       worker.site_info_ = const_cast<Config::SiteInfo*>(&config->SiteById(site_info.id));
       worker.SetupBase();
       // register txn piece logic
@@ -361,8 +361,8 @@ int main(int argc, char *argv[]) {
 #endif // ifdef CPU_PROFILE
   fflush(stderr);
   fflush(stdout);
-  exit(0);
-  return 0;
+  // exit(0);
+  // return 0;
   // TODO, FIXME pending_future in rpc cause error.
   client_shutdown();
   server_shutdown();

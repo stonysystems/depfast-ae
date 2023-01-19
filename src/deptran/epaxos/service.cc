@@ -36,6 +36,8 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
   *highest_seen_replica_id = reply.replica_id;
   *updated_seq = reply.seq;
   *updated_deps = reply.deps;
+  Log_debug("Return pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d", 
+            leader_replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id);
   defer->reply();
 }
 

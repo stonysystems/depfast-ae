@@ -79,7 +79,6 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   auto vpd_p = std::make_shared<VecPieceData>();
   vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
   cmdptr->tx_id_ = cmd;
-  cmdptr->kind_ = MarshallDeputy::CMD_TPC_EMPTY;
   cmdptr->cmd_ = vpd_p;
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
