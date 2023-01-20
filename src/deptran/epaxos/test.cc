@@ -69,7 +69,7 @@ void EpaxosLabTest::Cleanup(void) {
 //         Assert2(ret != -1, "waited too long for %d server(s) to commit index %ld", n, index); \
 //         Assert2(ret != -2, "term moved on before index %ld committed by %d server(s)", index, n)
 
-#define DoAgreeAndAssertIndex(cmd, dkey, n, index) { \
+#define DoAgreeAndAssertIndex(cmd, dkey, n) { \
         auto r = config_->DoAgreement(cmd, dkey, n, false); \
         Assert2(r, "failed to reach agreement for command %d among %d servers" PRId64, cmd, n); \
       }
@@ -86,10 +86,10 @@ int EpaxosLabTest::testBasicAgree(void) {
   Init2(1, "Basic agreement");
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
-    int cmd = index_ + 100;
+    int cmd = 100 + i;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(index_);
-    DoAgreeAndAssertIndex(cmd, to_string(cmd), NSERVERS, index_++);
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertIndex(cmd, to_string(cmd), NSERVERS);
   }
   Passed2();
 }
@@ -99,10 +99,10 @@ int EpaxosLabTest::testFastQuorumAgree(void) {
   config_->Disconnect(0);
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
-    int cmd = index_ + 200;
+    int cmd = 200 + i;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(index_);
-    DoAgreeAndAssertIndex(cmd, "200", NSERVERS-1, index_++);
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertIndex(cmd, "200", FAST_PATH_QUORUM);
   }
   config_->Reconnect(0);
   Passed2();
@@ -114,10 +114,10 @@ int EpaxosLabTest::testSlowQuorumAgree(void) {
   config_->Disconnect(1);
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
-    int cmd = index_ + 300;
+    int cmd = 300 + i;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(index_);
-    DoAgreeAndAssertIndex(cmd, "300", (NSERVERS/2) + 1, index_++);
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertIndex(cmd, "300", SLOW_PATH_QUORUM);
   }
   config_->Reconnect(0);
   config_->Reconnect(1);

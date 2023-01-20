@@ -9,16 +9,13 @@ namespace janus {
 
 // 5 servers in test configuration
 #define NSERVERS 5
+#define FAST_PATH_QUORUM 4
+#define SLOW_PATH_QUORUM 3
 // slow network connections have latency up to 26 milliseconds
 #define MAXSLOW 27
 // servers have 1/10 chance of being disconnected to the network
 #define DOWNRATE_N 1
 #define DOWNRATE_D 10
-// Give a generous 5 seconds for elections
-#define ELECTIONTIMEOUT 5000000
-
-// elections are expected to take at most 3 RPCs per server
-#define ELECTIONRPCS (3 * NSERVERS)
 // expected # of RPCs taken to commit n agreements
 #define COMMITRPCS(n) ((n + 1) * NSERVERS)
 
