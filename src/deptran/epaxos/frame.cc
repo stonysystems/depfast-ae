@@ -48,13 +48,7 @@ Communicator *EpaxosFrame::CreateCommo(PollMgr *poll) {
   #ifdef EPAXOS_TEST_CORO
   epaxos_test_mutex_.lock();
   verify(n_replicas_ == 5);
-  for (int i = 0; i < 5; i++) {
-    if (replicas_[i] == this) {
-      verify(n_commo_ < 5);
-      n_commo_++;
-      break;
-    }
-  }
+  n_commo_++;
   epaxos_test_mutex_.unlock();
   if (site_info_->locale_id == 0) {
     verify(epaxos_test_coro_.get() == nullptr);
