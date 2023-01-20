@@ -45,7 +45,7 @@ void EpaxosServer::Setup() {
         reqs.pop_front();
         mtx_.unlock();
         Coroutine::CreateRun([this,&req](){
-          StartPreAccept(req.cmd, req.dkey);
+          StartPreAccept(req.cmd, req.dkey, req.ballot, req.replica_id, req.instance_no, req.leader_dep_instance, false);
         });
       }
     }
@@ -55,27 +55,22 @@ void EpaxosServer::Setup() {
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   /* Your code here. This function can be called from another OS thread. */
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  EpaxosRequest req = EpaxosRequest(cmd, dkey);
   Log_debug("Received request in server: %d for dep_key: %s", site_id_, dkey.c_str());
+  EpaxosRequest req = CreateEpaxosRequest(cmd, dkey);
   reqs.push_back(req);
 }
 
-void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd, string dkey) {
-  mtx_.lock();
+EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   uint64_t instance_no = next_instance_no;
   next_instance_no = next_instance_no + 1;
   int64_t leader_dep_instance = -1;
   if (dkey_deps[dkey].count(replica_id_)) {
     leader_dep_instance = dkey_deps[dkey][replica_id_];
   }
-  Log_debug("Started processing request in server: %d for replica: %d instance: %d dep_key: %s", 
-            site_id_, replica_id_, instance_no, dkey.c_str());
   dkey_deps[dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
-  uint64_t replica_id = replica_id_;
-  mtx_.unlock();
-
-  StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+  return EpaxosRequest(cmd, dkey, ballot, replica_id_, instance_no, leader_dep_instance);
 }
 
 void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_, 
@@ -238,7 +233,6 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd_,
   if (cmds[replica_id].count(instance_no) && !ballot.isGreater(cmds[replica_id][instance_no].highest_seen)) {
     EpaxosBallot &highest_seen = cmds[replica_id][instance_no].highest_seen;
     EpaxosAcceptReply reply(false, highest_seen.epoch, highest_seen.ballot_no, highest_seen.replica_id);
-    mtx_.unlock();
     return reply;
   }
   // Accept command

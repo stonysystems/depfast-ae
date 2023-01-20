@@ -84,10 +84,23 @@ class EpaxosRequest {
  public:
   shared_ptr<Marshallable> cmd;
   string dkey;
+  EpaxosBallot ballot;
+  uint64_t replica_id;
+  uint64_t instance_no;
+  int64_t leader_dep_instance;
 
-  EpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey) {
+  EpaxosRequest(shared_ptr<Marshallable>& cmd, 
+                string dkey, 
+                EpaxosBallot& ballot, 
+                uint64_t replica_id, 
+                uint64_t instance_no, 
+                int64_t leader_dep_instance) {
     this->cmd = cmd;
     this->dkey = dkey;
+    this->ballot = ballot;
+    this->replica_id = replica_id;
+    this->instance_no = instance_no;
+    this->leader_dep_instance = leader_dep_instance;
   }
 };
 
@@ -126,7 +139,7 @@ class EpaxosServer : public TxLogServer {
   string NO_OP_DKEY = "";
   list<EpaxosRequest> reqs;
 
-  void StartPreAccept(shared_ptr<Marshallable>& cmd, string dkey);
+  EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);
   void StartPreAccept(shared_ptr<Marshallable>& cmd, 
                       string dkey, 
                       EpaxosBallot ballot, 

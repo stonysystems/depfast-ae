@@ -88,7 +88,7 @@ int EpaxosLabTest::testBasicAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = index_ + 100;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneCommitted(index_);
     DoAgreeAndAssertIndex(cmd, to_string(cmd), NSERVERS, index_++);
   }
   Passed2();
@@ -101,7 +101,7 @@ int EpaxosLabTest::testFastQuorumAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = index_ + 200;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneCommitted(index_);
     DoAgreeAndAssertIndex(cmd, "200", NSERVERS-1, index_++);
   }
   config_->Reconnect(0);
@@ -116,7 +116,7 @@ int EpaxosLabTest::testSlowQuorumAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = index_ + 300;
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneCommitted(index_);
     DoAgreeAndAssertIndex(cmd, "300", (NSERVERS/2) + 1, index_++);
   }
   config_->Reconnect(0);
