@@ -40,6 +40,15 @@ class EpaxosBallot {
     }
     return false;
   }
+
+  int isGreaterOrEqual(EpaxosBallot& ballot) {
+    if (epoch > ballot.epoch 
+        || (epoch == ballot.epoch && ballot_no > ballot.ballot_no) 
+        || (epoch == ballot.epoch && ballot_no == ballot.ballot_no && replica_id == ballot.replica_id)) {
+      return true;
+    }
+    return false;
+  }
 };
 
 class EpaxosCommand {

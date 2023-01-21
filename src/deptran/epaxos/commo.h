@@ -86,7 +86,7 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
       status = EpaxosPreAcceptQuorumEventStatus::FAST_PATH_QUORUM;
       return true;
     }
-    if ((n_voted_yes_ >= slow_path_quorum_) && (n_voted_nonidentical_ > (n_total_-fast_path_quorum_))) {
+    if ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_))) {
       status = EpaxosPreAcceptQuorumEventStatus::SLOW_PATH_QUORUM;
       return true;
     }
