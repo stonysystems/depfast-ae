@@ -119,6 +119,7 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
+    Coroutine::Sleep(50000);
     // Call Start() to all servers until alive command leader is found
     for (int i = 0; i < NSERVERS; i++) {
       // skip disconnected servers
@@ -126,7 +127,6 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
         continue;
       Start(i, cmd, dkey);
       Log_debug("starting cmd ldr=%d cmd=%d", EpaxosTestConfig::replicas[i]->server()->loc_id_, cmd); // TODO: Print instance and ballot
-      usleep(50000);
       break;
     }
     // If Start() successfully called, wait for agreement
@@ -134,25 +134,18 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
     int nc;
     while ((chrono::steady_clock::now() - start2) < chrono::seconds{10}) {
       nc = NCommitted(cmd);
-      verify(nc >= 0);
-      if (nc >= n) {
-        for (int i = 0; i < NSERVERS; i++) {
-          auto cmd2 = std::find(EpaxosTestConfig::committed_cmds[i].begin(), EpaxosTestConfig::committed_cmds[i].end(), cmd);
-          if (cmd2 != EpaxosTestConfig::committed_cmds[i].end()) {
-            Log_debug("found commit log");
-            return true;
-          }
-        }
+      if (nc < 0) {
         break;
+      } else if (nc >= n) {
+        return true;
       }
-      usleep(20000);
+      Coroutine::Sleep(20000);
     }
     Log_debug("%d committed server", nc);
     if (!retry) {
       Log_debug("failed to reach agreement");
       return false;
     }
-    usleep(50000);
   }
   Log_debug("Failed to reach agreement end");
   return false;

@@ -229,7 +229,6 @@ void ServerWorker::SetupCommo() {
     rep_sched_->commo_ = rep_commo_;
     rep_commo_->rep_sched_ = rep_sched_;
   }
-
   std::shared_ptr<OneTimeJob> sp_j  = std::make_shared<OneTimeJob>([this]() { 
     if (rep_sched_) {
       rep_sched_->Setup();
@@ -237,6 +236,12 @@ void ServerWorker::SetupCommo() {
   });
   auto sp_job = std::dynamic_pointer_cast<Job>(sp_j);
   svr_poll_mgr_->add(sp_j);
+
+  #ifdef EPAXOS_TEST_CORO
+  if (rep_sched_->site_id_ == 0) {
+    Reactor::GetReactor()->Loop(true, true);
+  }
+  #endif
 }
 
 void ServerWorker::Pause() {
