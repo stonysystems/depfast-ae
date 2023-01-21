@@ -106,7 +106,7 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
     uint64_t replica_id, instance_no;
-    Coroutine::Sleep(50000);
+    Coroutine::Sleep(20000);
     // Call Start() to all servers until alive command leader is found
     for (int i = 0; i < NSERVERS; i++) {
       // skip disconnected servers
@@ -119,25 +119,52 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
     // If Start() successfully called, wait for agreement
     auto start2 = chrono::steady_clock::now();
     int nc;
-    while ((chrono::steady_clock::now() - start2) < chrono::seconds{10}) {
+    while ((chrono::steady_clock::now() - start2) < chrono::seconds{2}) {
       nc = NCommitted(cmd);
-      if (nc < 0) {
-        break;
-      } else if (nc >= n) {
-        shared_ptr<Marshallable> cmd_;
-        string dkey_;
-        uint64_t seq;
-        unordered_map<uint64_t, uint64_t> deps;
-        bool committed;
+      verify(nc >= 0);
+      if (nc >= n) {
+        bool init = true;
+        shared_ptr<Marshallable> committed_cmd;
+        string committed_dkey;
+        uint64_t committed_seq;
+        unordered_map<uint64_t, uint64_t> committed_deps;
         for (int j=0; j< NSERVERS; j++) {
-          GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq, &deps, &committed);
-          if (committed) {
-
+          shared_ptr<Marshallable> cmd_;
+          string dkey_;
+          uint64_t seq_;
+          unordered_map<uint64_t, uint64_t> deps_;
+          bool committed_;
+          GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &committed_);
+          if (committed_) {
+            if(init) {
+              init = false;
+              committed_cmd = cmd_;
+              committed_dkey = dkey_;
+              committed_seq = seq_;
+              committed_deps = deps_;
+              continue;
+            }
+            if (committed_cmd->kind_ != cmd_->kind_) {
+              Log_debug("committed different commands");
+              return false;
+            }
+            if (committed_dkey != dkey_) {
+              Log_debug("committed different dependency keys");
+              return false;
+            }
+            if (committed_seq != seq_ ) {
+              Log_debug("committed different sequence numbers");
+              return false;
+            }
+            if (committed_deps != deps_) {
+              Log_debug("committed different dependencies");
+              return false;
+            }
           }
         }
         return true;
       }
-      Coroutine::Sleep(20000);
+      Coroutine::Sleep(10000);
     }
     Log_debug("%d committed server", nc);
     if (!retry) {

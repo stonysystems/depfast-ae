@@ -61,7 +61,7 @@ void EpaxosServer::GetState(uint64_t replica_id,
                 bool *committed) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   if (cmds.count(replica_id) == 0 || cmds[replica_id].count(instance_no) == 0) {
-    cmd = NULL;
+    *committed = false;
     return;
   }
   *cmd = cmds[replica_id][instance_no].cmd;
