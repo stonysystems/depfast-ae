@@ -69,7 +69,7 @@ void EpaxosLabTest::Cleanup(void) {
 //         Assert2(ret != -1, "waited too long for %d server(s) to commit index %ld", n, index); \
 //         Assert2(ret != -2, "term moved on before index %ld committed by %d server(s)", index, n)
 
-#define DoAgreeAndAssertIndex(cmd, dkey, n) { \
+#define DoAgreeAndAssertNCommitted(cmd, dkey, n) { \
         auto r = config_->DoAgreement(cmd, dkey, n, false); \
         Assert2(r, "failed to reach agreement for command %d among %d servers" PRId64, cmd, n); \
       }
@@ -89,38 +89,50 @@ int EpaxosLabTest::testBasicAgree(void) {
     int cmd = 100 + i;
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertIndex(cmd, to_string(cmd), NSERVERS);
+    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), NSERVERS);
   }
   Passed2();
 }
 
 int EpaxosLabTest::testFastQuorumAgree(void) {
-  Init2(2, "Fast quorum agreement");
-  config_->Disconnect(0);
+  Init2(2, "Fast quorum agreement of independent commands");
+  for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
+    config_->Disconnect(i);
+  }
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 200 + i;
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertIndex(cmd, "200", FAST_PATH_QUORUM);
+    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), FAST_PATH_QUORUM);
   }
-  config_->Reconnect(0);
+  // Reconnect all
+  for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
+    if (config_->IsDisconnected(i)) {
+      config_->Reconnect(i);
+    }
+  }
   Passed2();
 }
 
 int EpaxosLabTest::testSlowQuorumAgree(void) {
-  Init2(3, "Slow quorum agreement");
-  config_->Disconnect(0);
-  config_->Disconnect(1);
+  Init2(3, "Slow quorum agreement of independent commands");
+  for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
+    config_->Disconnect(i);
+  }
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 300 + i;
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertIndex(cmd, "300", SLOW_PATH_QUORUM);
+    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), SLOW_PATH_QUORUM);
   }
-  config_->Reconnect(0);
-  config_->Reconnect(1);
+  // Reconnect all
+  for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
+    if (config_->IsDisconnected(i)) {
+      config_->Reconnect(i);
+    }
+  }
   Passed2();
 }
 

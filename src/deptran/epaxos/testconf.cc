@@ -13,13 +13,13 @@ std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS]
 std::vector<int> EpaxosTestConfig::committed_cmds[NSERVERS];
 uint64_t EpaxosTestConfig::rpc_count_last[NSERVERS];
 
-EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas) {
-  verify(EpaxosTestConfig::replicas == nullptr);
-  EpaxosTestConfig::replicas = replicas;
+EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
+  verify(replicas == nullptr);
+  replicas = replicas_;
   for (int i = 0; i < NSERVERS; i++) {
-    EpaxosTestConfig::replicas[i]->server()->rep_frame_ = EpaxosTestConfig::replicas[i]->server()->frame_;
-    EpaxosTestConfig::committed_cmds[i].push_back(-1);
-    EpaxosTestConfig::rpc_count_last[i] = 0;
+    replicas[i]->svr_->rep_frame_ = replicas[i]->svr_->frame_;
+    committed_cmds[i].push_back(-1);
+    rpc_count_last[i] = 0;
     disconnected_[i] = false;
   }
   th_ = std::thread([this](){ netctlLoop(); });
@@ -27,13 +27,13 @@ EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas) {
 
 void EpaxosTestConfig::SetLearnerAction(void) {
   for (int i = 0; i < NSERVERS; i++) {
-    EpaxosTestConfig::commit_callbacks[i] = [i](Marshallable& cmd) {
+    commit_callbacks[i] = [i](Marshallable& cmd) {
       verify(cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT);
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       Log_debug("server %d committed value %d", i, command.tx_id_);
-      EpaxosTestConfig::committed_cmds[i].push_back(command.tx_id_);
+      committed_cmds[i].push_back(command.tx_id_);
     };
-    EpaxosTestConfig::replicas[i]->server()->RegLearnerAction(EpaxosTestConfig::commit_callbacks[i]);
+    replicas[i]->svr_->RegLearnerAction(commit_callbacks[i]);
   }
 }
 
@@ -41,7 +41,7 @@ void EpaxosTestConfig::SetLearnerAction(void) {
 //   for (int i = 0; i < NSERVERS; i++) {
 //     uint64_t curTerm;
 //     bool isLeader;
-//     EpaxosTestConfig::replicas[i]->server()->GetState(&isLeader, &curTerm);
+//     EpaxosTestConfig::replicas[i]->svr_->GetState(&isLeader, &curTerm);
 //     if (curTerm > term) {
 //       return true;
 //     }
@@ -52,9 +52,9 @@ void EpaxosTestConfig::SetLearnerAction(void) {
 // uint64_t EpaxosTestConfig::OneTerm(void) {
 //   uint64_t term, curTerm;
 //   bool isLeader;
-//   EpaxosTestConfig::replicas[0]->server()->GetState(&isLeader, &term);
+//   EpaxosTestConfig::replicas[0]->svr_->GetState(&isLeader, &term);
 //   for (int i = 1; i < NSERVERS; i++) {
-//     EpaxosTestConfig::replicas[i]->server()->GetState(&isLeader, &curTerm);
+//     EpaxosTestConfig::replicas[i]->svr_->GetState(&isLeader, &curTerm);
 //     if (curTerm != term) {
 //       return -1;
 //     }
@@ -65,8 +65,8 @@ void EpaxosTestConfig::SetLearnerAction(void) {
 int EpaxosTestConfig::NCommitted(uint64_t tx_id) {
   int cmd, n = 0;
   for (int i = 0; i < NSERVERS; i++) {
-    auto cmd = std::find(EpaxosTestConfig::committed_cmds[i].begin(), EpaxosTestConfig::committed_cmds[i].end(), tx_id);
-    if (cmd != EpaxosTestConfig::committed_cmds[i].end()) {
+    auto cmd = std::find(committed_cmds[i].begin(), committed_cmds[i].end(), tx_id);
+    if (cmd != committed_cmds[i].end()) {
       n++;
     }
   }
@@ -83,7 +83,7 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  EpaxosTestConfig::replicas[svr]->server()->Start(cmdptr_m, dkey);
+  replicas[svr]->svr_->Start(cmdptr_m, dkey);
 }
 
 // int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
@@ -123,10 +123,10 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
     // Call Start() to all servers until alive command leader is found
     for (int i = 0; i < NSERVERS; i++) {
       // skip disconnected servers
-      if (EpaxosTestConfig::replicas[i]->server()->IsDisconnected())
+      if (replicas[i]->svr_->IsDisconnected())
         continue;
       Start(i, cmd, dkey);
-      Log_debug("starting cmd ldr=%d cmd=%d", EpaxosTestConfig::replicas[i]->server()->loc_id_, cmd); // TODO: Print instance and ballot
+      Log_debug("starting cmd ldr=%d cmd=%d", replicas[i]->svr_->loc_id_, cmd); // TODO: Print instance and ballot
       break;
     }
     // If Start() successfully called, wait for agreement
@@ -223,12 +223,11 @@ void EpaxosTestConfig::Shutdown(void) {
 }
 
 uint64_t EpaxosTestConfig::RpcCount(int svr, bool reset) {
-  std::lock_guard<std::recursive_mutex> lk(
-    EpaxosTestConfig::replicas[svr]->commo()->rpc_mtx_);
-  uint64_t count = EpaxosTestConfig::replicas[svr]->commo()->rpc_count_;
-  uint64_t count_last = EpaxosTestConfig::rpc_count_last[svr];
+  std::lock_guard<std::recursive_mutex> lk(replicas[svr]->commo_->rpc_mtx_);
+  uint64_t count = replicas[svr]->commo_->rpc_count_;
+  uint64_t count_last = rpc_count_last[svr];
   if (reset) {
-    EpaxosTestConfig::rpc_count_last[svr] = count;
+    rpc_count_last[svr] = count;
   }
   verify(count >= count_last);
   return count - count_last;
@@ -237,15 +236,15 @@ uint64_t EpaxosTestConfig::RpcCount(int svr, bool reset) {
 uint64_t EpaxosTestConfig::RpcTotal(void) {
   uint64_t total = 0;
   for (int i = 0; i < NSERVERS; i++) {
-    total += EpaxosTestConfig::replicas[i]->commo()->rpc_count_;
+    total += replicas[i]->commo_->rpc_count_;
   }
   return total;
 }
 
 bool EpaxosTestConfig::ServerCommitted(int svr, uint64_t index, int cmd) {
-  if (EpaxosTestConfig::committed_cmds[svr].size() <= index)
+  if (committed_cmds[svr].size() <= index)
     return false;
-  return EpaxosTestConfig::committed_cmds[svr][index] == cmd;
+  return committed_cmds[svr][index] == cmd;
 }
 
 void EpaxosTestConfig::netctlLoop(void) {
@@ -316,14 +315,14 @@ void EpaxosTestConfig::netctlLoop(void) {
 
 bool EpaxosTestConfig::isDisconnected(int svr) {
   std::lock_guard<std::recursive_mutex> lk(connection_m_);
-  return EpaxosTestConfig::replicas[svr]->server()->IsDisconnected();
+  return replicas[svr]->svr_->IsDisconnected();
 }
 
 void EpaxosTestConfig::disconnect(int svr, bool ignore) {
   std::lock_guard<std::recursive_mutex> lk(connection_m_);
   if (!isDisconnected(svr)) {
     // simulate disconnected server
-    EpaxosTestConfig::replicas[svr]->server()->Disconnect();
+    replicas[svr]->svr_->Disconnect();
   } else if (!ignore) {
     verify(0);
   }
@@ -333,7 +332,7 @@ void EpaxosTestConfig::reconnect(int svr, bool ignore) {
   std::lock_guard<std::recursive_mutex> lk(connection_m_);
   if (isDisconnected(svr)) {
     // simulate reconnected server
-    EpaxosTestConfig::replicas[svr]->server()->Reconnect();
+    replicas[svr]->svr_->Reconnect();
   } else if (!ignore) {
     verify(0);
   }
@@ -342,11 +341,11 @@ void EpaxosTestConfig::reconnect(int svr, bool ignore) {
 void EpaxosTestConfig::slow(int svr, uint32_t msec) {
   std::lock_guard<std::recursive_mutex> lk(connection_m_);
   verify(!isDisconnected(svr));
-  EpaxosTestConfig::replicas[svr]->commo()->rpc_poll_->slow(msec * 1000);
+  replicas[svr]->commo_->rpc_poll_->slow(msec * 1000);
 }
 
-EpaxosServer *EpaxosTestConfig::GetServer(int svr) {
-  return EpaxosTestConfig::replicas[svr]->server();
+bool EpaxosTestConfig::IsDisconnected(int svr) {
+  return isDisconnected(svr);
 }
 
 #endif

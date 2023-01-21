@@ -23,8 +23,8 @@ EpaxosFrame::EpaxosFrame(int mode) : Frame(mode) {}
 EpaxosFrame::~EpaxosFrame() {}
 
 TxLogServer *EpaxosFrame::CreateScheduler() {
-  if (sch_ == nullptr) {
-    sch_ = new EpaxosServer(this);
+  if (svr_ == nullptr) {
+    svr_ = new EpaxosServer(this);
   } else {
     verify(0);
   }
@@ -37,7 +37,7 @@ TxLogServer *EpaxosFrame::CreateScheduler() {
   epaxos_test_mutex_.unlock();
   #endif
 
-  return sch_;
+  return svr_;
 }
 
 Communicator *EpaxosFrame::CreateCommo(PollMgr *poll) {

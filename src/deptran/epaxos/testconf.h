@@ -95,6 +95,9 @@ class EpaxosTestConfig {
   // Disconnects server from rest of servers
   void Disconnect(int svr);
 
+  // Checks if server was disconnected from rest of servers
+  bool IsDisconnected(int svr);
+
   // Reconnects disconnected server
   void Reconnect(int svr);
 
@@ -146,9 +149,6 @@ class EpaxosTestConfig {
 
   // other internal helpers
   int waitOneLeader(bool want_leader, int expected);
-
- public:
-  EpaxosServer *GetServer(int svr);
 
 };
 

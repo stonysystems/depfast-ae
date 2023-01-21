@@ -10,9 +10,6 @@ namespace janus {
 
 class EpaxosFrame : public Frame {
  private:
-  EpaxosCommo *commo_ = nullptr;
-  EpaxosServer *sch_ = nullptr;
-  
   #ifdef EPAXOS_TEST_CORO
   static std::mutex epaxos_test_mutex_;
   static std::shared_ptr<Coroutine> epaxos_test_coro_;
@@ -23,6 +20,9 @@ class EpaxosFrame : public Frame {
   #endif
 
  public:
+  EpaxosCommo *commo_ = nullptr;
+  EpaxosServer *svr_ = nullptr;
+
   EpaxosFrame(int mode);
   virtual ~EpaxosFrame();
 
@@ -34,13 +34,6 @@ class EpaxosFrame : public Frame {
                                            TxLogServer *dtxn_sched,
                                            rrr::PollMgr *poll_mgr,
                                            ServerControlServiceImpl *scsi) override;
-  EpaxosServer *server() {
-    return sch_;
-  }
-
-  EpaxosCommo *commo() {
-    return commo_;
-  }
 };
 
 } // namespace janus
