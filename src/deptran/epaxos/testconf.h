@@ -59,21 +59,22 @@ class EpaxosTestConfig {
   // logged to this test's data structures.
   void SetLearnerAction(void);
 
-  // Returns true if at least 1 server has a currentTerm
-  // number higher than term.
-  // bool TermMovedOn(uint64_t term);
-
-  // Checks if all servers agree on a term
-  // Returns agreed upon term on success
-  // -1 if there's disagreement
-  // uint64_t OneTerm(void);
-
   // Returns number of servers that think log entry at index is committed.
   // Checks if the committed value for index is the same across servers.
   int NCommitted(uint64_t tx_id);
 
   // Calls Start() to specified server
-  void Start(int svr, int cmd, string dkey);
+  void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+
+  // Get state of the command at an instance replica_id.instance_no in a specified server
+  void GetState(int svr, 
+                uint64_t replica_id, 
+                uint64_t instance_no, 
+                shared_ptr<Marshallable> *cmd, 
+                string *string,
+                uint64_t *seq, 
+                unordered_map<uint64_t, uint64_t> *deps, 
+                bool *committed);
 
   // Waits for at least n servers to commit index
   // If commit takes too long, gives up after a while.

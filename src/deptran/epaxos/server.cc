@@ -52,11 +52,33 @@ void EpaxosServer::Setup() {
   });
 }
 
-void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
+void EpaxosServer::GetState(uint64_t replica_id, 
+                uint64_t instance_no, 
+                shared_ptr<Marshallable> *cmd, 
+                string *dkey,
+                uint64_t *seq, 
+                unordered_map<uint64_t, uint64_t> *deps, 
+                bool *committed) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  if (cmds.count(replica_id) == 0 || cmds[replica_id].count(instance_no) == 0) {
+    cmd = NULL;
+    return;
+  }
+  *cmd = cmds[replica_id][instance_no].cmd;
+  *dkey = cmds[replica_id][instance_no].dkey;
+  *deps = cmds[replica_id][instance_no].deps;
+  *seq = cmds[replica_id][instance_no].seq;
+  *committed = cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED 
+               || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED;
+}
+
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   /* Your code here. This function can be called from another OS thread. */
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received request in server: %d for dep_key: %s", site_id_, dkey.c_str());
   EpaxosRequest req = CreateEpaxosRequest(cmd, dkey);
+  *replica_id = req.replica_id;
+  *instance_no = req.instance_no;
   reqs.push_back(req);
 }
 

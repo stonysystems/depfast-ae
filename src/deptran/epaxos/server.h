@@ -194,8 +194,14 @@ class EpaxosServer : public TxLogServer {
   EpaxosServer(Frame *frame) ;
   ~EpaxosServer() ;
 
-  void Start(shared_ptr<Marshallable>& cmd, string dkey);
-
+  void Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+  void GetState(uint64_t replica_id, 
+                uint64_t instance_no, 
+                shared_ptr<Marshallable> *cmd, 
+                string *dkey,
+                uint64_t *seq, 
+                unordered_map<uint64_t, uint64_t> *deps, 
+                bool *committed);
  private:
   bool disconnected_ = false;
   void Setup();

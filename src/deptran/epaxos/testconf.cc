@@ -37,31 +37,6 @@ void EpaxosTestConfig::SetLearnerAction(void) {
   }
 }
 
-// bool EpaxosTestConfig::TermMovedOn(uint64_t term) {
-//   for (int i = 0; i < NSERVERS; i++) {
-//     uint64_t curTerm;
-//     bool isLeader;
-//     EpaxosTestConfig::replicas[i]->svr_->GetState(&isLeader, &curTerm);
-//     if (curTerm > term) {
-//       return true;
-//     }
-//   }
-//   return false;
-// }
-
-// uint64_t EpaxosTestConfig::OneTerm(void) {
-//   uint64_t term, curTerm;
-//   bool isLeader;
-//   EpaxosTestConfig::replicas[0]->svr_->GetState(&isLeader, &term);
-//   for (int i = 1; i < NSERVERS; i++) {
-//     EpaxosTestConfig::replicas[i]->svr_->GetState(&isLeader, &curTerm);
-//     if (curTerm != term) {
-//       return -1;
-//     }
-//   }
-//   return term;
-// }
-
 int EpaxosTestConfig::NCommitted(uint64_t tx_id) {
   int cmd, n = 0;
   for (int i = 0; i < NSERVERS; i++) {
@@ -73,7 +48,7 @@ int EpaxosTestConfig::NCommitted(uint64_t tx_id) {
   return n;
 }
 
-void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
+void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_
   auto cmdptr = std::make_shared<TpcCommitCommand>();
   auto vpd_p = std::make_shared<VecPieceData>();
@@ -83,7 +58,18 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  replicas[svr]->svr_->Start(cmdptr_m, dkey);
+  replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
+}
+
+void EpaxosTestConfig::GetState(int svr, 
+                                uint64_t replica_id, 
+                                uint64_t instance_no, 
+                                shared_ptr<Marshallable> *cmd, 
+                                string *dkey,
+                                uint64_t *seq, 
+                                unordered_map<uint64_t, uint64_t> *deps, 
+                                bool *committed) {
+  replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, committed);
 }
 
 // int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
@@ -119,13 +105,14 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
+    uint64_t replica_id, instance_no;
     Coroutine::Sleep(50000);
     // Call Start() to all servers until alive command leader is found
     for (int i = 0; i < NSERVERS; i++) {
       // skip disconnected servers
       if (replicas[i]->svr_->IsDisconnected())
         continue;
-      Start(i, cmd, dkey);
+      Start(i, cmd, dkey, &replica_id, &instance_no);
       Log_debug("starting cmd ldr=%d cmd=%d", replicas[i]->svr_->loc_id_, cmd); // TODO: Print instance and ballot
       break;
     }
@@ -137,6 +124,17 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
       if (nc < 0) {
         break;
       } else if (nc >= n) {
+        shared_ptr<Marshallable> cmd_;
+        string dkey_;
+        uint64_t seq;
+        unordered_map<uint64_t, uint64_t> deps;
+        bool committed;
+        for (int j=0; j< NSERVERS; j++) {
+          GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq, &deps, &committed);
+          if (committed) {
+
+          }
+        }
         return true;
       }
       Coroutine::Sleep(20000);
