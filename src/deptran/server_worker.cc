@@ -238,6 +238,8 @@ void ServerWorker::SetupCommo() {
   svr_poll_mgr_->add(sp_j);
 
   #ifdef EPAXOS_TEST_CORO
+  // To keep thread alive for coroutine scheduling
+  // TODO, figure out a better approach
   if (rep_sched_->site_id_ == 0) {
     Reactor::GetReactor()->Loop(true, true);
   }
