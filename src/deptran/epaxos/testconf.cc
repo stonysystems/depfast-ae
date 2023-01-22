@@ -37,17 +37,6 @@ void EpaxosTestConfig::SetLearnerAction(void) {
   }
 }
 
-int EpaxosTestConfig::NCommitted(uint64_t tx_id) {
-  int cmd, n = 0;
-  for (int i = 0; i < NSERVERS; i++) {
-    auto cmd = std::find(committed_cmds[i].begin(), committed_cmds[i].end(), tx_id);
-    if (cmd != committed_cmds[i].end()) {
-      n++;
-    }
-  }
-  return n;
-}
-
 void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_
   auto cmdptr = std::make_shared<TpcCommitCommand>();
@@ -72,34 +61,16 @@ void EpaxosTestConfig::GetState(int svr,
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, committed);
 }
 
-// int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
-//   int nc = 0, i;
-//   auto to = 10000; // 10 milliseconds
-//   for (i = 0; i < 30; i++) {
-//     nc = NCommitted(index);
-//     if (nc < 0) {
-//       return -3; // values differ
-//     } else if (nc >= n) {
-//       break;
-//     }
-//     Reactor::CreateSpEvent<TimeoutEvent>(to)->Wait();
-//     if (to < 1000000) {
-//       to *= 2;
-//     }
-//     if (TermMovedOn(term)) {
-//       return -2; // term changed
-//     }
-//   }
-//   if (i == 30) {
-//     return -1; // timeout
-//   }
-//   for (int i = 0; i < NSERVERS; i++) {
-//     if (EpaxosTestConfig::committed_cmds[i].size() > index) {
-//       return EpaxosTestConfig::committed_cmds[i][index];
-//     }
-//   }
-//   verify(0);
-// }
+int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
+  int cmd, n = 0;
+  for (int i = 0; i < NSERVERS; i++) {
+    auto cmd = std::find(committed_cmds[i].begin(), committed_cmds[i].end(), tx_id);
+    if (cmd != committed_cmds[i].end()) {
+      n++;
+    }
+  }
+  return n;
+}
 
 bool EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
   bool cno_op;
@@ -209,6 +180,35 @@ bool EpaxosTestConfig::DoAgreement(int cmd,
   return false;
 }
 
+// int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
+//   int nc = 0, i;
+//   auto to = 10000; // 10 milliseconds
+//   for (i = 0; i < 30; i++) {
+//     nc = NCommitted(index);
+//     if (nc < 0) {
+//       return -3; // values differ
+//     } else if (nc >= n) {
+//       break;
+//     }
+//     Reactor::CreateSpEvent<TimeoutEvent>(to)->Wait();
+//     if (to < 1000000) {
+//       to *= 2;
+//     }
+//     if (TermMovedOn(term)) {
+//       return -2; // term changed
+//     }
+//   }
+//   if (i == 30) {
+//     return -1; // timeout
+//   }
+//   for (int i = 0; i < NSERVERS; i++) {
+//     if (EpaxosTestConfig::committed_cmds[i].size() > index) {
+//       return EpaxosTestConfig::committed_cmds[i][index];
+//     }
+//   }
+//   verify(0);
+// }
+
 void EpaxosTestConfig::Disconnect(int svr) {
   verify(svr >= 0 && svr < NSERVERS);
   std::lock_guard<std::mutex> lk(disconnect_mtx_);
@@ -297,12 +297,6 @@ uint64_t EpaxosTestConfig::RpcTotal(void) {
     total += replicas[i]->commo_->rpc_count_;
   }
   return total;
-}
-
-bool EpaxosTestConfig::ServerCommitted(int svr, uint64_t index, int cmd) {
-  if (committed_cmds[svr].size() <= index)
-    return false;
-  return committed_cmds[svr][index] == cmd;
 }
 
 void EpaxosTestConfig::netctlLoop(void) {

@@ -282,8 +282,6 @@ void EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no) {
   EpaxosCommand cmd = cmds[replica_id][instance_no];
   mtx_.unlock();
   
-  // TODO: REMOVE
-  app_next_(*cmd.cmd);
   // TODO: reply to client
   
   auto ev = commo()->SendCommit(site_id_, 
@@ -318,8 +316,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
     return;
   }
   cmds[replica_id][instance_no] = EpaxosCommand(cmd_, dkey, seq, deps, ballot, EpaxosCommandState::COMMITTED);
-  // TODO: REMOVE
-  app_next_(*cmd_);
   // Update internal attributes
   if (cmd_.get()->kind_ != NO_OP_KIND) {
     UpdateInternalAttributes(dkey, seq, deps);

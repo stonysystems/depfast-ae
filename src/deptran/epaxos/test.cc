@@ -42,21 +42,16 @@ void EpaxosLabTest::Cleanup(void) {
   return 1; \
 }
 
-#define AssertNoneCommitted(index) { \
-        auto nc = config_->NCommitted(index); \
-        Assert2(nc == 0, \
-                "%d servers unexpectedly committed index %ld", \
-                nc, index) \
+#define AssertNoneExecuted(cmd) { \
+        auto nc = config_->NExecuted(cmd); \
+        Assert2(nc == 0, "%d servers unexpectedly executed command %d", nc, cmd) \
       }
 
-#define AssertNCommitted(index, expected) { \
-        auto nc = config_->NCommitted(index); \
-        Assert2(nc == expected, \
-                "%d servers committed index %ld (%d expected)", \
-                nc, index, expected) \
+#define AssertNExecuted(cmd, expected) { \
+        auto nc = config_->NExecuted(cmd); \
+        Assert2(nc == expected, "%d servers executed command %d (%d expected)", nc, cmd, expected) \
       }
 
-// #define AssertStartOk(ok) Assert2(ok, "unexpected leader change during Start()")
 // #define AssertWaitNoError(ret, index) \
 //         Assert2(ret != -3, "committed values differ for index %ld", index)
 // #define AssertWaitNoTimeout(ret, index, n) \
@@ -99,7 +94,7 @@ int EpaxosLabTest::testBasicAgree(void) {
     int cmd = 100 + i;
     string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommitted(cmd, dkey, NSERVERS, false, dkey, 0, deps);
   }
@@ -114,7 +109,7 @@ int EpaxosLabTest::testFastQuorumIndependentAgree(void) {
     int cmd = 200 + i;
     string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, 0, deps);
   }
@@ -133,21 +128,21 @@ int EpaxosLabTest::testFastQuorumDependentAgree(void) {
   uint64_t seq = 0;
   unordered_map<uint64_t, uint64_t> deps;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Round 2
   cmd++;
   seq++;
   deps[1] = 3;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Round 3
   cmd++;
   seq++;
   deps[1] = 4;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   config_->Reconnect(0);
@@ -164,7 +159,7 @@ int EpaxosLabTest::testSlowQuorumIndependentAgree(void) {
     int cmd = 400 + i;
     string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, 0, deps);
   }
@@ -185,21 +180,21 @@ int EpaxosLabTest::testSlowQuorumDependentAgree(void) {
   uint64_t seq = 0;
   unordered_map<uint64_t, uint64_t> deps;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Round 2
   cmd++;
   seq++;
   deps[2] = 3;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Round 3
   cmd++;
   seq++;
   deps[2] = 4;
   // make sure no commits exist before any agreements are started
-  AssertNoneCommitted(cmd);
+  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   config_->Reconnect(0);
@@ -218,7 +213,7 @@ int EpaxosLabTest::testFailNoQuorum(void) {
     int cmd = 600 + i;
     string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
-    AssertNoneCommitted(cmd);
+    AssertNoneExecuted(cmd);
     DoAgreeAndAssertNoneCommitted(cmd, dkey);
   }
   // Reconnect all

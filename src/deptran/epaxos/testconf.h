@@ -59,23 +59,6 @@ class EpaxosTestConfig {
   // logged to this test's data structures.
   void SetLearnerAction(void);
 
-  // Returns number of servers that think log entry at index is committed.
-  // Checks if the committed value for index is the same across servers.
-  int NCommitted(uint64_t tx_id);
-
-  // Returns true if n servers committed the command identically.
-  bool NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
-
-  // Returns true if n servers committed the command identically.
-  // Stores the committed command attributes in the args passed by pointer.
-  bool NCommitted(uint64_t replica_id, 
-                  uint64_t instance_no, 
-                  int n, 
-                  bool *cno_op, 
-                  string *cdkey, 
-                  uint64_t *cseq, 
-                  unordered_map<uint64_t, uint64_t> *cdeps);
-
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
 
@@ -89,19 +72,28 @@ class EpaxosTestConfig {
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
 
-  // Waits for at least n servers to commit index
-  // If commit takes too long, gives up after a while.
-  // If term has moved on since the given start term, also gives up.
-  // Returns the committed value on success.
-  // -1 if it took too long for enough servers to commit
-  // -2 if term changed
-  // -3 if committed values for index differ
-  // int Wait(uint64_t index, int n, uint64_t term);
+  // Returns number of servers that think log entry is committed.
+  int NExecuted(uint64_t tx_id);
+
+  // Returns true if n servers committed the command identically.
+  bool NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
+
+  // Returns true if n servers committed the command and 
+  // the committed cmd and attr are same across all commited servers.
+  // Stores the committed command attributes in the args passed by pointer.
+  bool NCommitted(uint64_t replica_id, 
+                  uint64_t instance_no, 
+                  int n, 
+                  bool *cno_op, 
+                  string *cdkey, 
+                  uint64_t *cseq, 
+                  unordered_map<uint64_t, uint64_t> *cdeps);
 
   // Does one agreement.
   // Submits a command with value cmd to the leader
   // Waits at most 2 seconds until n servers commit the command.
   // Makes sure the value of the commits is the same as what was given.
+  // Stores the committed command attributes in the args passed by pointer.
   // If retry == true, Retries the agreement until at most 10 seconds pass.
   // Returns true on success, false on error.
   bool DoAgreement(int cmd, 
@@ -112,6 +104,15 @@ class EpaxosTestConfig {
                    string *cdkey, 
                    uint64_t *cseq, 
                    unordered_map<uint64_t, uint64_t> *cdeps);
+
+  // Waits for at least n servers to commit index
+  // If commit takes too long, gives up after a while.
+  // If term has moved on since the given start term, also gives up.
+  // Returns the committed value on success.
+  // -1 if it took too long for enough servers to commit
+  // -2 if term changed
+  // -3 if committed values for index differ
+  // int Wait(uint64_t index, int n, uint64_t term);
 
   // Disconnects server from rest of servers
   void Disconnect(int svr);
@@ -148,9 +149,6 @@ class EpaxosTestConfig {
   // Returns total RPC count across all servers
   // since server setup.
   uint64_t RpcTotal(void);
-
-  // Returns true if svr committed a log entry at index with value cmd
-  bool ServerCommitted(int svr, uint64_t index, int cmd);
 
  private:
   // vars & subroutine for unreliable network setting
