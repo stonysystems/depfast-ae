@@ -1,26 +1,18 @@
 #include "test.h"
+#include "macros.h"
 
 namespace janus {
 
 #ifdef EPAXOS_TEST_CORO
 
-// #define TEST_EXPAND(x) x || x || x || x || x 
-#define TEST_EXPAND(x) x 
-
 int EpaxosLabTest::Run(void) {
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   if (testBasicAgree()
-      || TEST_EXPAND(testFastQuorumAgree())
-      || TEST_EXPAND(testSlowQuorumAgree())
-//       || TEST_EXPAND(testFailAgree())
-//       || TEST_EXPAND(testFailNoAgree())
-//       || TEST_EXPAND(testRejoin())
-//       || TEST_EXPAND(testConcurrentStarts())
-//       || TEST_EXPAND(testBackup())
-//       || TEST_EXPAND(testCount())
-//       || TEST_EXPAND(testUnreliableAgree())
-//       || TEST_EXPAND(testFigure8())
+      || testFastQuorumIndependentAgree()
+      || testFastQuorumDependentAgree()
+      || testSlowQuorumIndependentAgree()
+      || testSlowQuorumDependentAgree()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -56,12 +48,13 @@ void EpaxosLabTest::Cleanup(void) {
                 nc, index) \
       }
 
-// #define AssertNCommitted(index, expected) { \
-//         auto nc = config_->NCommitted(index); \
-//         Assert2(nc == expected, \
-//                 "%d servers committed index %ld (%d expected)", \
-//                 nc, index, expected) \
-//       }
+#define AssertNCommitted(index, expected) { \
+        auto nc = config_->NCommitted(index); \
+        Assert2(nc == expected, \
+                "%d servers committed index %ld (%d expected)", \
+                nc, index, expected) \
+      }
+
 // #define AssertStartOk(ok) Assert2(ok, "unexpected leader change during Start()")
 // #define AssertWaitNoError(ret, index) \
 //         Assert2(ret != -3, "committed values differ for index %ld", index)
@@ -69,9 +62,18 @@ void EpaxosLabTest::Cleanup(void) {
 //         Assert2(ret != -1, "waited too long for %d server(s) to commit index %ld", n, index); \
 //         Assert2(ret != -2, "term moved on before index %ld committed by %d server(s)", index, n)
 
-#define DoAgreeAndAssertNCommitted(cmd, dkey, n) { \
-        auto r = config_->DoAgreement(cmd, dkey, n, false); \
+#define DoAgreeAndAssertNCommitted(cmd, dkey, n, no_op, exp_dkey, exp_seq, exp_deps) { \
+        bool cno_op; \
+        string cdkey; \
+        uint64_t cseq; \
+        unordered_map<uint64_t, uint64_t> cdeps; \
+        auto r = config_->DoAgreement(cmd, dkey, n, false, &cno_op, &cdkey, &cseq, &cdeps); \
         Assert2(r, "failed to reach agreement for command %d among %d servers" PRId64, cmd, n); \
+        Assert2(cno_op == no_op || no_op, "failed to reach agreement for command %d among %d servers, expected no-op, got command", cmd, n); \
+        Assert2(cno_op == no_op || !no_op, "failed to reach agreement for command %d among %d servers, expected command, got co-op", cmd, n); \
+        Assert2(cdkey == exp_dkey, "failed to reach agreement for command %d among %d servers, expected dkey %s, got dkey %s", cmd, n, exp_dkey.c_str(), cdkey.c_str()); \
+        Assert2(cseq == exp_seq, "failed to reach agreement for command %d among %d servers, expected seq %d, got seq %d", cmd, n, exp_seq, cseq); \
+        Assert2(cdeps == exp_deps, "failed to reach agreement for command %d among %d servers, expected deps different from committed deps", cmd, n); \
       }
       /* Assert2(r > 0, "failed to reach agreement for command %d among %d servers, expected commit index>0, got %" PRId64, cmd, n, r); \
       Assert2(r == ind, "agreement index incorrect. got %ld, expected %ld", r, ind); \ */
@@ -87,14 +89,15 @@ int EpaxosLabTest::testBasicAgree(void) {
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 100 + i;
+    string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), NSERVERS);
+    DoAgreeAndAssertNCommitted(cmd, dkey, NSERVERS, false, dkey, 0, unordered_map_uint64_uint64_t());
   }
   Passed2();
 }
 
-int EpaxosLabTest::testFastQuorumAgree(void) {
+int EpaxosLabTest::testFastQuorumIndependentAgree(void) {
   Init2(2, "Fast quorum agreement of independent commands");
   for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
     config_->Disconnect(i);
@@ -102,9 +105,10 @@ int EpaxosLabTest::testFastQuorumAgree(void) {
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 200 + i;
+    string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), FAST_PATH_QUORUM);
+    DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, 0, unordered_map_uint64_uint64_t());
   }
   // Reconnect all
   for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
@@ -115,18 +119,91 @@ int EpaxosLabTest::testFastQuorumAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testSlowQuorumAgree(void) {
-  Init2(3, "Slow quorum agreement of independent commands");
+int EpaxosLabTest::testFastQuorumDependentAgree(void) {
+  Init2(3, "Fast quorum agreement of dependent commands");
+  for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
+    config_->Disconnect(i);
+  }
+  // Round 1
+  int cmd = 301;
+  string dkey = "300";
+  uint64_t seq = 0;
+  unordered_map<uint64_t, uint64_t> deps;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
+  // Round 2
+  cmd++;
+  seq++;
+  deps[1] = 3;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
+  // Round 3
+  cmd++;
+  seq++;
+  deps[1] = 4;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
+  // Reconnect all
+  for (int i = 0; i < (NSERVERS - FAST_PATH_QUORUM); i++) {
+    if (config_->IsDisconnected(i)) {
+      config_->Reconnect(i);
+    }
+  }
+  Passed2();
+}
+
+int EpaxosLabTest::testSlowQuorumIndependentAgree(void) {
+  Init2(4, "Slow quorum agreement of independent commands");
   for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
     config_->Disconnect(i);
   }
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
-    int cmd = 300 + i;
+    int cmd = 400 + i;
+    string dkey = to_string(cmd);
     // make sure no commits exist before any agreements are started
     AssertNoneCommitted(cmd);
-    DoAgreeAndAssertNCommitted(cmd, to_string(cmd), SLOW_PATH_QUORUM);
+    DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, 0, unordered_map_uint64_uint64_t());
   }
+  // Reconnect all
+  for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
+    if (config_->IsDisconnected(i)) {
+      config_->Reconnect(i);
+    }
+  }
+  Passed2();
+}
+
+int EpaxosLabTest::testSlowQuorumDependentAgree(void) {
+  Init2(5, "Slow quorum agreement of dependent commands");
+  for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
+    config_->Disconnect(i);
+  }
+  // Round 1
+  int cmd = 501;
+  string dkey = "500";
+  uint64_t seq = 0;
+  unordered_map<uint64_t, uint64_t> deps;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
+  // Round 2
+  cmd++;
+  seq++;
+  deps[2] = 3;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
+  // Round 3
+  cmd++;
+  seq++;
+  deps[2] = 4;
+  // make sure no commits exist before any agreements are started
+  AssertNoneCommitted(cmd);
+  DoAgreeAndAssertNCommitted(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   for (int i = 0; i < (NSERVERS - SLOW_PATH_QUORUM); i++) {
     if (config_->IsDisconnected(i)) {

@@ -91,7 +91,14 @@ class EpaxosTestConfig {
   // Makes sure the value of the commits is the same as what was given.
   // If retry == true, Retries the agreement until at most 10 seconds pass.
   // Returns true on success, false on error.
-  bool DoAgreement(int cmd, string dkey, int n, bool retry);
+  bool DoAgreement(int cmd, 
+                   string dkey, 
+                   int n, 
+                   bool retry, 
+                   bool *cno_op, 
+                   string *cdkey, 
+                   uint64_t *cseq, 
+                   unordered_map<uint64_t, uint64_t> *cdeps);
 
   // Disconnects server from rest of servers
   void Disconnect(int svr);

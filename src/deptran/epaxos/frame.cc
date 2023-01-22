@@ -33,7 +33,8 @@ TxLogServer *EpaxosFrame::CreateScheduler() {
   #ifdef EPAXOS_TEST_CORO
   epaxos_test_mutex_.lock();
   verify(n_replicas_ < 5);
-  replicas_[n_replicas_++] = this;
+  replicas_[this->site_info_->id] = this;
+  n_replicas_++;
   epaxos_test_mutex_.unlock();
   #endif
 

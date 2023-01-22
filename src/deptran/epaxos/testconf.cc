@@ -101,7 +101,14 @@ void EpaxosTestConfig::GetState(int svr,
 //   verify(0);
 // }
 
-bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
+bool EpaxosTestConfig::DoAgreement(int cmd, 
+                                   string dkey, 
+                                   int n, 
+                                   bool retry, 
+                                   bool *cno_op, 
+                                   string *cdkey, 
+                                   uint64_t *cseq, 
+                                   unordered_map<uint64_t, uint64_t> *cdeps) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
@@ -162,6 +169,10 @@ bool EpaxosTestConfig::DoAgreement(int cmd, string dkey, int n, bool retry) {
             }
           }
         }
+        *cno_op = committed_cmd->kind_ == MarshallDeputy::CMD_NOOP;
+        *cdkey = committed_dkey;
+        *cseq = committed_seq;
+        *cdeps = committed_deps;
         return true;
       }
       Coroutine::Sleep(10000);
