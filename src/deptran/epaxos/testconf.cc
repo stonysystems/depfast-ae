@@ -72,7 +72,7 @@ int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
   return n;
 }
 
-bool EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
+int EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
   bool cno_op;
   string cdkey;
   uint64_t cseq;
@@ -80,7 +80,7 @@ bool EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int
   return NCommitted(replica_id, instance_no, n, &cno_op, &cdkey, &cseq, &cdeps);
 }
 
-bool EpaxosTestConfig::NCommitted(uint64_t replica_id, 
+int EpaxosTestConfig::NCommitted(uint64_t replica_id, 
                                   uint64_t instance_no, 
                                   int n, 
                                   bool *cno_op, 
@@ -115,19 +115,19 @@ bool EpaxosTestConfig::NCommitted(uint64_t replica_id,
         }
         if (committed_cmd->kind_ != cmd_->kind_) {
           Log_debug("committed different commands");
-          return false;
+          return -1;
         }
         if (committed_dkey != dkey_) {
           Log_debug("committed different dependency keys");
-          return false;
+          return -2;
         }
         if (committed_seq != seq_ ) {
           Log_debug("committed different sequence numbers");
-          return false;
+          return -3;
         }
         if (committed_deps != deps_) {
           Log_debug("committed different dependencies");
-          return false;
+          return -4;
         }
       }
     }
@@ -136,22 +136,22 @@ bool EpaxosTestConfig::NCommitted(uint64_t replica_id,
       *cdkey = committed_dkey;
       *cseq = committed_seq;
       *cdeps = committed_deps;
-      return true;
+      return 1;
     }
     Coroutine::Sleep(10000);
   }
   Log_debug("%d committed server", nc);
-  return false;
+  return 0;
 }
 
-bool EpaxosTestConfig::DoAgreement(int cmd, 
-                                   string dkey, 
-                                   int n, 
-                                   bool retry, 
-                                   bool *cno_op, 
-                                   string *cdkey, 
-                                   uint64_t *cseq, 
-                                   unordered_map<uint64_t, uint64_t> *cdeps) {
+int EpaxosTestConfig::DoAgreement(int cmd, 
+                                  string dkey, 
+                                  int n, 
+                                  bool retry, 
+                                  bool *cno_op, 
+                                  string *cdkey, 
+                                  uint64_t *cseq, 
+                                  unordered_map<uint64_t, uint64_t> *cdeps) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {
@@ -167,17 +167,17 @@ bool EpaxosTestConfig::DoAgreement(int cmd,
       break;
     }
     // If Start() successfully called, wait for agreement
-    bool status = NCommitted(replica_id, instance_no, n, cno_op, cdkey, cseq, cdeps);
-    if (status) {
-      return true;
+    int status = NCommitted(replica_id, instance_no, n, cno_op, cdkey, cseq, cdeps);
+    if (status > 0) {
+      return status;
     }
     if (!retry) {
       Log_debug("failed to reach agreement");
-      return false;
+      return 0;
     }
   }
   Log_debug("failed to reach agreement end");
-  return false;
+  return 0;
 }
 
 // int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {

@@ -52,11 +52,14 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(nc == expected, "%d servers executed command %d (%d expected)", nc, cmd, expected) \
       }
 
-// #define AssertWaitNoError(ret, index) \
-//         Assert2(ret != -3, "committed values differ for index %ld", index)
-// #define AssertWaitNoTimeout(ret, index, n) \
-//         Assert2(ret != -1, "waited too long for %d server(s) to commit index %ld", n, index); \
-//         Assert2(ret != -2, "term moved on before index %ld committed by %d server(s)", index, n)
+#define AssertNCommitted(replica_id, instance_no, n) { \
+        auto r = config_->NCommitted(replica_id, instance_no, n); \
+        Assert2(r != 0, "failed to reach agreement for instance %d.%d among %d servers", replica_id, instance_no, n); \
+        Assert2(r != -1, "failed to reach agreement for instance %d.%d among %d servers, committed different commands", replica_id, instance_no, n); \
+        Assert2(r != -2, "failed to reach agreement for instance %d.%d among %d servers, committed different dkey", replica_id, instance_no, n); \
+        Assert2(r != -3, "failed to reach agreement for instance %d.%d among %d servers, committed different seq", replica_id, instance_no, n); \
+        Assert2(r != -4, "failed to reach agreement for instance %d.%d among %d servers, committed different deps", replica_id, instance_no, n); \
+      }
 
 #define DoAgreeAndAssertNCommitted(cmd, dkey, n, no_op, exp_dkey, exp_seq, exp_deps) { \
         bool cno_op; \
@@ -64,7 +67,11 @@ void EpaxosLabTest::Cleanup(void) {
         uint64_t cseq; \
         unordered_map<uint64_t, uint64_t> cdeps; \
         auto r = config_->DoAgreement(cmd, dkey, n, false, &cno_op, &cdkey, &cseq, &cdeps); \
-        Assert2(r, "failed to reach agreement for command %d among %d servers", cmd, n); \
+        Assert2(r != 0, "failed to reach agreement for command %d among %d servers", cmd, n); \
+        Assert2(r != -1, "failed to reach agreement for command %d among %d servers, committed different commands", cmd, n); \
+        Assert2(r != -2, "failed to reach agreement for command %d among %d servers, committed different dkey", cmd, n); \
+        Assert2(r != -3, "failed to reach agreement for command %d among %d servers, committed different seq", cmd, n); \
+        Assert2(r != -4, "failed to reach agreement for command %d among %d servers, committed different deps", cmd, n); \
         Assert2(cno_op == no_op || no_op, "failed to reach agreement for command %d among %d servers, expected no-op, got command", cmd, n); \
         Assert2(cno_op == no_op || !no_op, "failed to reach agreement for command %d among %d servers, expected command, got co-op", cmd, n); \
         Assert2(cdkey == exp_dkey, "failed to reach agreement for command %d among %d servers, expected dkey %s, got dkey %s", cmd, n, exp_dkey.c_str(), cdkey.c_str()); \
@@ -78,14 +85,8 @@ void EpaxosLabTest::Cleanup(void) {
         uint64_t cseq; \
         unordered_map<uint64_t, uint64_t> cdeps; \
         auto r = config_->DoAgreement(cmd, dkey, 1, false, &cno_op, &cdkey, &cseq, &cdeps); \
-        Assert2(!r, "committed command %d without majority", cmd); \
+        Assert2(r == 0, "committed command %d without majority", cmd); \
       }
-
-// #define DoAgreeAndAssertWaitSuccess(cmd, n) { \
-//         auto r = config_->DoAgreement(cmd, n, true); \
-//         Assert2(r > 0, "failed to reach agreement for command %d among %d servers", cmd, n); \
-//         index_ = r + 1; \
-//       }
 
 int EpaxosLabTest::testBasicAgree(void) {
   Init2(1, "Basic agreement");
@@ -271,8 +272,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   }
   Assert2(retvals.size() == 250, "Failed to reach agreement");
   for (auto retval : retvals) {
-    bool status = config_->NCommitted(retval.first, retval.second, NSERVERS);
-    Assert2(status, "failed to reach agreement for command among %d servers", NSERVERS);
+    AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
   Passed2();
 }

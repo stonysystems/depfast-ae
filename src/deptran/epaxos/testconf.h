@@ -72,38 +72,57 @@ class EpaxosTestConfig {
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
 
-  // Returns number of servers that think log entry is committed.
+  // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id);
 
-  // Returns true if n servers committed the command identically.
-  bool NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
-
-  // Returns true if n servers committed the command and 
+  // Returns 1 if n servers committed the command and 
   // the committed cmd and attr are same across all commited servers.
+  // Waits at most 2 seconds until n servers commit the command.
+  // 0 if it took too long for enough servers to commit
+  // -1 if committed values of command kind differ
+  // -2 if committed values of dependency key kind differ
+  // -3 if committed values of seq kind differ
+  // -3 if committed values of deps kind differ
+  int NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
+
+  // Returns 1 if n servers committed the command and 
+  // the committed cmd and attr are same across all commited servers.
+  // Waits at most 2 seconds until n servers commit the command.
+  // 0 if it took too long for enough servers to commit
+  // -1 if committed values of command kind differ
+  // -2 if committed values of dependency key kind differ
+  // -3 if committed values of seq kind differ
+  // -3 if committed values of deps kind differ
   // Stores the committed command attributes in the args passed by pointer.
-  bool NCommitted(uint64_t replica_id, 
-                  uint64_t instance_no, 
-                  int n, 
-                  bool *cno_op, 
-                  string *cdkey, 
-                  uint64_t *cseq, 
-                  unordered_map<uint64_t, uint64_t> *cdeps);
+  int NCommitted(uint64_t replica_id, 
+                 uint64_t instance_no, 
+                 int n, 
+                 bool *cno_op, 
+                 string *cdkey, 
+                 uint64_t *cseq, 
+                 unordered_map<uint64_t, uint64_t> *cdeps);
 
   // Does one agreement.
   // Submits a command with value cmd to the leader
   // Waits at most 2 seconds until n servers commit the command.
   // Makes sure the value of the commits is the same as what was given.
   // Stores the committed command attributes in the args passed by pointer.
-  // If retry == true, Retries the agreement until at most 10 seconds pass.
-  // Returns true on success, false on error.
-  bool DoAgreement(int cmd, 
-                   string dkey, 
-                   int n, 
-                   bool retry, 
-                   bool *cno_op, 
-                   string *cdkey, 
-                   uint64_t *cseq, 
-                   unordered_map<uint64_t, uint64_t> *cdeps);
+  // Retries the agreement until at most 10 seconds pass.
+  // Returns 1 if n servers committed the command and 
+  // the committed cmd and attr are same across all commited servers.
+  // 0 if it took too long for enough servers to commit
+  // -1 if committed values of command kind differ
+  // -2 if committed values of dependency key kind differ
+  // -3 if committed values of seq kind differ
+  // -3 if committed values of deps kind differ
+  int DoAgreement(int cmd, 
+                  string dkey, 
+                  int n, 
+                  bool retry, 
+                  bool *cno_op, 
+                  string *cdkey, 
+                  uint64_t *cseq, 
+                  unordered_map<uint64_t, uint64_t> *cdeps);
 
   // Waits for at least n servers to commit index
   // If commit takes too long, gives up after a while.
