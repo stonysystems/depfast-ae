@@ -12,6 +12,7 @@ int EpaxosLabTest::Run(void) {
       || testFastQuorumDependentAgree()
       || testSlowQuorumIndependentAgree()
       || testSlowQuorumDependentAgree()
+      || testFailNoQuorum()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -67,15 +68,22 @@ void EpaxosLabTest::Cleanup(void) {
         uint64_t cseq; \
         unordered_map<uint64_t, uint64_t> cdeps; \
         auto r = config_->DoAgreement(cmd, dkey, n, false, &cno_op, &cdkey, &cseq, &cdeps); \
-        Assert2(r, "failed to reach agreement for command %d among %d servers" PRId64, cmd, n); \
+        Assert2(r, "failed to reach agreement for command %d among %d servers", cmd, n); \
         Assert2(cno_op == no_op || no_op, "failed to reach agreement for command %d among %d servers, expected no-op, got command", cmd, n); \
         Assert2(cno_op == no_op || !no_op, "failed to reach agreement for command %d among %d servers, expected command, got co-op", cmd, n); \
         Assert2(cdkey == exp_dkey, "failed to reach agreement for command %d among %d servers, expected dkey %s, got dkey %s", cmd, n, exp_dkey.c_str(), cdkey.c_str()); \
         Assert2(cseq == exp_seq, "failed to reach agreement for command %d among %d servers, expected seq %d, got seq %d", cmd, n, exp_seq, cseq); \
         Assert2(cdeps == exp_deps, "failed to reach agreement for command %d among %d servers, expected deps different from committed deps", cmd, n); \
       }
-      /* Assert2(r > 0, "failed to reach agreement for command %d among %d servers, expected commit index>0, got %" PRId64, cmd, n, r); \
-      Assert2(r == ind, "agreement index incorrect. got %ld, expected %ld", r, ind); \ */
+      
+#define DoAgreeAndAssertNoneCommitted(cmd, dkey) { \
+        bool cno_op; \
+        string cdkey; \
+        uint64_t cseq; \
+        unordered_map<uint64_t, uint64_t> cdeps; \
+        auto r = config_->DoAgreement(cmd, dkey, 1, false, &cno_op, &cdkey, &cseq, &cdeps); \
+        Assert2(!r, "committed command %d without majority", cmd); \
+      }
 
 // #define DoAgreeAndAssertWaitSuccess(cmd, n) { \
 //         auto r = config_->DoAgreement(cmd, n, true); \
@@ -192,6 +200,26 @@ int EpaxosLabTest::testSlowQuorumDependentAgree(void) {
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
+  Passed2();
+}
+
+int EpaxosLabTest::testFailNoQuorum(void) {
+  Init2(6, "No agreement if too many servers disconnect");
+  config_->Disconnect(0);
+  config_->Disconnect(1);
+  config_->Disconnect(2);
+  for (int i = 1; i <= 3; i++) {
+    // complete 1 agreement and make sure its index is as expected
+    int cmd = 600 + i;
+    string dkey = to_string(cmd);
+    // make sure no commits exist before any agreements are started
+    AssertNoneCommitted(cmd);
+    DoAgreeAndAssertNoneCommitted(cmd, dkey);
+  }
+  // Reconnect all
+  config_->Reconnect(0);
+  config_->Reconnect(1);
+  config_->Reconnect(2);
   Passed2();
 }
 
