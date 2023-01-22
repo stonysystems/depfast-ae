@@ -101,6 +101,78 @@ void EpaxosTestConfig::GetState(int svr,
 //   verify(0);
 // }
 
+bool EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
+  bool cno_op;
+  string cdkey;
+  uint64_t cseq;
+  unordered_map<uint64_t, uint64_t> cdeps;
+  return NCommitted(replica_id, instance_no, n, &cno_op, &cdkey, &cseq, &cdeps);
+}
+
+bool EpaxosTestConfig::NCommitted(uint64_t replica_id, 
+                                  uint64_t instance_no, 
+                                  int n, 
+                                  bool *cno_op, 
+                                  string *cdkey, 
+                                  uint64_t *cseq, 
+                                  unordered_map<uint64_t, uint64_t> *cdeps) {
+  auto start = chrono::steady_clock::now();
+  int nc;
+  while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
+    bool init = true;
+    shared_ptr<Marshallable> committed_cmd;
+    string committed_dkey;
+    uint64_t committed_seq;
+    unordered_map<uint64_t, uint64_t> committed_deps;
+    int nc = 0;
+    for (int j=0; j< NSERVERS; j++) {
+      shared_ptr<Marshallable> cmd_;
+      string dkey_;
+      uint64_t seq_;
+      unordered_map<uint64_t, uint64_t> deps_;
+      bool committed_;
+      GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &committed_);
+      if (committed_) {
+        nc++;
+        if(init) {
+          init = false;
+          committed_cmd = cmd_;
+          committed_dkey = dkey_;
+          committed_seq = seq_;
+          committed_deps = deps_;
+          continue;
+        }
+        if (committed_cmd->kind_ != cmd_->kind_) {
+          Log_debug("committed different commands");
+          return false;
+        }
+        if (committed_dkey != dkey_) {
+          Log_debug("committed different dependency keys");
+          return false;
+        }
+        if (committed_seq != seq_ ) {
+          Log_debug("committed different sequence numbers");
+          return false;
+        }
+        if (committed_deps != deps_) {
+          Log_debug("committed different dependencies");
+          return false;
+        }
+      }
+    }
+    if (nc >= n) {
+      *cno_op = committed_cmd->kind_ == MarshallDeputy::CMD_NOOP;
+      *cdkey = committed_dkey;
+      *cseq = committed_seq;
+      *cdeps = committed_deps;
+      return true;
+    }
+    Coroutine::Sleep(10000);
+  }
+  Log_debug("%d committed server", nc);
+  return false;
+}
+
 bool EpaxosTestConfig::DoAgreement(int cmd, 
                                    string dkey, 
                                    int n, 
@@ -124,66 +196,16 @@ bool EpaxosTestConfig::DoAgreement(int cmd,
       break;
     }
     // If Start() successfully called, wait for agreement
-    auto start2 = chrono::steady_clock::now();
-    int nc;
-    while ((chrono::steady_clock::now() - start2) < chrono::seconds{2}) {
-      nc = NCommitted(cmd);
-      verify(nc >= 0);
-      if (nc >= n) {
-        bool init = true;
-        shared_ptr<Marshallable> committed_cmd;
-        string committed_dkey;
-        uint64_t committed_seq;
-        unordered_map<uint64_t, uint64_t> committed_deps;
-        for (int j=0; j< NSERVERS; j++) {
-          shared_ptr<Marshallable> cmd_;
-          string dkey_;
-          uint64_t seq_;
-          unordered_map<uint64_t, uint64_t> deps_;
-          bool committed_;
-          GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &committed_);
-          if (committed_) {
-            if(init) {
-              init = false;
-              committed_cmd = cmd_;
-              committed_dkey = dkey_;
-              committed_seq = seq_;
-              committed_deps = deps_;
-              continue;
-            }
-            if (committed_cmd->kind_ != cmd_->kind_) {
-              Log_debug("committed different commands");
-              return false;
-            }
-            if (committed_dkey != dkey_) {
-              Log_debug("committed different dependency keys");
-              return false;
-            }
-            if (committed_seq != seq_ ) {
-              Log_debug("committed different sequence numbers");
-              return false;
-            }
-            if (committed_deps != deps_) {
-              Log_debug("committed different dependencies");
-              return false;
-            }
-          }
-        }
-        *cno_op = committed_cmd->kind_ == MarshallDeputy::CMD_NOOP;
-        *cdkey = committed_dkey;
-        *cseq = committed_seq;
-        *cdeps = committed_deps;
-        return true;
-      }
-      Coroutine::Sleep(10000);
+    bool status = NCommitted(replica_id, instance_no, n, cno_op, cdkey, cseq, cdeps);
+    if (status) {
+      return true;
     }
-    Log_debug("%d committed server", nc);
     if (!retry) {
       Log_debug("failed to reach agreement");
       return false;
     }
   }
-  Log_debug("Failed to reach agreement end");
+  Log_debug("failed to reach agreement end");
   return false;
 }
 

@@ -13,6 +13,7 @@ int EpaxosLabTest::Run(void) {
       || testSlowQuorumIndependentAgree()
       || testSlowQuorumDependentAgree()
       || testFailNoQuorum()
+      || testConcurrentAgree()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -119,6 +120,7 @@ int EpaxosLabTest::testFastQuorumIndependentAgree(void) {
   }
   // Reconnect all
   config_->Reconnect(0);
+  // TODO: Check if committed through prepare
   Passed2();
 }
 
@@ -149,6 +151,7 @@ int EpaxosLabTest::testFastQuorumDependentAgree(void) {
   DoAgreeAndAssertNCommitted(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   config_->Reconnect(0);
+  // TODO: Check if committed through prepare
   Passed2();
 }
 
@@ -168,6 +171,7 @@ int EpaxosLabTest::testSlowQuorumIndependentAgree(void) {
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
+  // TODO: Check if committed through prepare
   Passed2();
 }
 
@@ -200,6 +204,7 @@ int EpaxosLabTest::testSlowQuorumDependentAgree(void) {
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
+  // TODO: Check if committed through prepare
   Passed2();
 }
 
@@ -220,97 +225,63 @@ int EpaxosLabTest::testFailNoQuorum(void) {
   config_->Reconnect(0);
   config_->Reconnect(1);
   config_->Reconnect(2);
+  // TODO: Check if committed through prepare
   Passed2();
 }
 
-// int EpaxosLabTest::testFailAgree(void) {
-//   Init2(4, "Agreement despite follower disconnection");
-//   // disconnect 2 followers
-//   auto leader = config_->OneLeader();
-//   AssertOneLeader(leader);
-//   Log_debug("disconnecting two followers leader");
-//   config_->Disconnect((leader + 1) % NSERVERS);
-//   config_->Disconnect((leader + 2) % NSERVERS);
-//   // Agreement despite 2 disconnected servers
-//   Log_debug("try commit a few commands after disconnect");
-//   DoAgreeAndAssertIndex(401, NSERVERS - 2, index_++);
-//   DoAgreeAndAssertIndex(402, NSERVERS - 2, index_++);
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   DoAgreeAndAssertIndex(403, NSERVERS - 2, index_++);
-//   DoAgreeAndAssertIndex(404, NSERVERS - 2, index_++);
-//   // reconnect followers
-//   Log_debug("reconnect servers");
-//   config_->Reconnect((leader + 1) % NSERVERS);
-//   config_->Reconnect((leader + 2) % NSERVERS);
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   Log_debug("try commit a few commands after reconnect");
-//   DoAgreeAndAssertWaitSuccess(405, NSERVERS);
-//   DoAgreeAndAssertWaitSuccess(406, NSERVERS);
-//   Passed2();
-// }
+class CAArgs {
+ public:
+  int cmd;
+  int svr;
+  string dkey;
+  std::mutex *mtx;
+  std::vector<std::pair<uint64_t, uint64_t>> *retvals;
+  EpaxosTestConfig *config;
+};
 
-// int EpaxosLabTest::testFailNoAgree(void) {
-//   Init2(5, "No agreement if too many followers disconnect");
-//   // disconnect 3 followers
-//   auto leader = config_->OneLeader();
-//   AssertOneLeader(leader);
-//   config_->Disconnect((leader + 1) % NSERVERS);
-//   config_->Disconnect((leader + 2) % NSERVERS);
-//   config_->Disconnect((leader + 3) % NSERVERS);
-//   // attempt to do an agreement
-//   uint64_t index, term;
-//   AssertStartOk(config_->Start(leader, 501, &index, &term));
-//   Assert2(index == index_++ && term > 0,
-//           "Start() returned unexpected index (%ld, expected %ld) and/or term (%ld, expected >0)",
-//           index, index_-1, term);
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   AssertNoneCommitted(index);
-//   // reconnect followers
-//   config_->Reconnect((leader + 1) % NSERVERS);
-//   config_->Reconnect((leader + 2) % NSERVERS);
-//   config_->Reconnect((leader + 3) % NSERVERS);
-//   // do agreement in restored quorum
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   DoAgreeAndAssertWaitSuccess(502, NSERVERS);
-//   Passed2();
-// }
+static void *doConcurrentAgreement(void *args) {
+  CAArgs *caargs = (CAArgs *)args;
+  uint64_t replica_id, instance_no;
+  caargs->config->Start(caargs->svr, caargs->cmd, caargs->dkey, &replica_id, &instance_no);
+  std::lock_guard<std::mutex> lock(*(caargs->mtx));
+  caargs->retvals->push_back(make_pair(replica_id, instance_no));
+  return nullptr;
+}
 
-// int EpaxosLabTest::testRejoin(void) {
-//   Init2(6, "Rejoin of disconnected leader");
-//   DoAgreeAndAssertIndex(601, NSERVERS, index_++);
-//   // disconnect leader
-//   auto leader1 = config_->OneLeader();
-//   AssertOneLeader(leader1);
-//   config_->Disconnect(leader1);
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   // Make old leader try to agree on some entries (these should not commit)
-//   uint64_t index, term;
-//   AssertStartOk(config_->Start(leader1, 602, &index, &term));
-//   AssertStartOk(config_->Start(leader1, 603, &index, &term));
-//   AssertStartOk(config_->Start(leader1, 604, &index, &term));
-//   // New leader commits, successfully
-//   DoAgreeAndAssertWaitSuccess(605, NSERVERS - 1);
-//   DoAgreeAndAssertWaitSuccess(606, NSERVERS - 1);
-//   // Disconnect new leader
-//   auto leader2 = config_->OneLeader();
-//   AssertOneLeader(leader2);
-//   AssertReElection(leader2, leader1);
-//   config_->Disconnect(leader2);
-//   // reconnect old leader
-//   config_->Reconnect(leader1);
-//   // wait for new election
-//   Coroutine::Sleep(ELECTIONTIMEOUT);
-//   auto leader3 = config_->OneLeader();
-//   AssertOneLeader(leader3);
-//   AssertReElection(leader3, leader2);
-//   // More commits
-//   DoAgreeAndAssertWaitSuccess(607, NSERVERS - 1);
-//   DoAgreeAndAssertWaitSuccess(608, NSERVERS - 1);
-//   // Reconnect all
-//   config_->Reconnect(leader2);
-//   DoAgreeAndAssertWaitSuccess(609, NSERVERS);
-//   Passed2();
-// }
+int EpaxosLabTest::testConcurrentAgree(void) {
+  Init2(7, "Concurrent agreement (takes a few minutes)");
+  std::vector<pthread_t> threads{};
+  std::vector<std::pair<uint64_t, uint64_t>> retvals{};
+  std::mutex mtx{};
+  for (int iter = 1; iter <= 50; iter++) {
+    for (int svr = 0; svr < NSERVERS; svr++) {
+      CAArgs *args = new CAArgs{};
+      args->cmd = svr * 1000 + iter;
+      args->svr = svr;
+      args->dkey = "1000";
+      args->mtx = &mtx;
+      args->retvals = &retvals;
+      args->config = config_;
+      pthread_t thread;
+      verify(pthread_create(&thread,
+                            nullptr,
+                            doConcurrentAgreement,
+                            (void*)args) == 0);
+      threads.push_back(thread);
+    }
+  }
+  // join all threads
+  for (auto thread : threads) {
+    verify(pthread_join(thread, nullptr) == 0);
+  }
+  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  for (auto retval : retvals) {
+    bool status = config_->NCommitted(retval.first, retval.second, NSERVERS);
+    Assert2(status, "failed to reach agreement for command among %d servers", NSERVERS);
+  }
+  Passed2();
+}
+
 
 // class CSArgs {
 //  public:
@@ -524,25 +495,6 @@ int EpaxosLabTest::testFailNoQuorum(void) {
 //           "too many RPCs (%ld) for 1 second of idleness",
 //           total);
 //   Passed2();
-// }
-
-// class CAArgs {
-//  public:
-//   int iter;
-//   int i;
-//   std::mutex *mtx;
-//   std::vector<uint64_t> *retvals;
-//   EpaxosTestConfig *config;
-// };
-
-// static void *doConcurrentAgreement(void *args) {
-//   CAArgs *caargs = (CAArgs *)args;
-//   uint64_t retval = caargs->config->DoAgreement(1000 + caargs->iter, 1, true);
-//   if (retval == 0) {
-//     std::lock_guard<std::mutex> lock(*(caargs->mtx));
-//     caargs->retvals->push_back(retval);
-//   }
-//   return nullptr;
 // }
 
 // int EpaxosLabTest::testUnreliableAgree(void) {

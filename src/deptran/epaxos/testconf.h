@@ -63,6 +63,19 @@ class EpaxosTestConfig {
   // Checks if the committed value for index is the same across servers.
   int NCommitted(uint64_t tx_id);
 
+  // Returns true if n servers committed the command identically.
+  bool NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
+
+  // Returns true if n servers committed the command identically.
+  // Stores the committed command attributes in the args passed by pointer.
+  bool NCommitted(uint64_t replica_id, 
+                  uint64_t instance_no, 
+                  int n, 
+                  bool *cno_op, 
+                  string *cdkey, 
+                  uint64_t *cseq, 
+                  unordered_map<uint64_t, uint64_t> *cdeps);
+
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
 

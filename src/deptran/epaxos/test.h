@@ -26,6 +26,7 @@ class EpaxosLabTest {
   int testSlowQuorumIndependentAgree(void);
   int testSlowQuorumDependentAgree(void);
   int testFailNoQuorum(void);
+  int testConcurrentAgree(void);
 //   int testFailAgree(void);
 //   int testFailNoAgree(void);
 //   int testRejoin(void);
