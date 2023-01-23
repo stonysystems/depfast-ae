@@ -12,7 +12,7 @@ EpaxosServer::EpaxosServer(Frame * frame) {
   // TODO: REMOVE
   Log::set_level(Log::DEBUG);
   // Future Work: Update epoch on replica_set change
-  curr_epoch = 0;
+  curr_epoch = 1;
   cmds[replica_id_] = unordered_map<uint64_t, EpaxosCommand>();
 }
 
@@ -44,12 +44,53 @@ void EpaxosServer::Setup() {
         EpaxosRequest req = reqs.front();
         reqs.pop_front();
         mtx_.unlock();
-        Coroutine::CreateRun([this,&req](){
+        Coroutine::CreateRun([this, &req](){
           StartPreAccept(req.cmd, req.dkey, req.ballot, req.replica_id, req.instance_no, req.leader_dep_instance, false);
         });
       }
     }
   });
+
+  // Execute committed commands
+  Coroutine::CreateRun([this](){
+    while(true) {
+      mtx_.lock();
+      int size = committed_cmds.size();
+      mtx_.unlock();
+      // Future Work: Can make more efficient by having a pub-sub kind of thing
+      if (size == 0) {
+        Coroutine::Sleep(1000);
+      } else {
+        mtx_.lock();
+        auto cmd = committed_cmds.begin();
+        uint64_t replica_id = cmd->first;
+        uint64_t instance_no = cmd->second;
+        committed_cmds.erase(cmd);
+        mtx_.unlock();
+        Coroutine::CreateRun([this, replica_id, instance_no](){
+          StartExecution(replica_id, instance_no);
+        });
+      }
+    }
+  });
+}
+
+void EpaxosServer::PrepareAllUncommitted() {
+  mtx_.lock();
+  for (auto repl : cmds) {
+    for (auto inst : repl.second) {
+      if (inst.second.state != EpaxosCommandState::COMMITTED) {
+        uint64_t replica_id = repl.first;
+        uint64_t instance_no = inst.first;
+        mtx_.unlock();
+        Coroutine::CreateRun([this, replica_id, instance_no](){
+          StartPrepare(replica_id, instance_no);
+        });
+        mtx_.lock();
+      }
+    }
+  }
+  mtx_.unlock();
 }
 
 void EpaxosServer::GetState(uint64_t replica_id, 
@@ -280,6 +321,7 @@ void EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no) {
   // Commit command
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   EpaxosCommand cmd = cmds[replica_id][instance_no];
+  committed_cmds.insert(make_pair(replica_id, instance_no));
   mtx_.unlock();
   
   // TODO: reply to client
@@ -316,6 +358,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
     return;
   }
   cmds[replica_id][instance_no] = EpaxosCommand(cmd_, dkey, seq, deps, ballot, EpaxosCommandState::COMMITTED);
+  committed_cmds.insert(make_pair(replica_id, instance_no));
   // Update internal attributes
   if (cmd_.get()->kind_ != NO_OP_KIND) {
     UpdateInternalAttributes(dkey, seq, deps);
@@ -468,8 +511,11 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
 }
 
 bool EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
+  Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (cmds[replica_id].count(instance_no) == 0) {
-    StartPrepare(replica_id, instance_no); // TODO: if failed then retry after a while
+    Coroutine::CreateRun([this, replica_id, instance_no](){
+      StartPrepare(replica_id, instance_no); // TODO: if failed then retry after a while
+    });
     return false;
   }
   if (cmds[replica_id][instance_no].cmd.get()->kind_ == NO_OP_KIND 
@@ -477,23 +523,27 @@ bool EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
     return true;
   }
   if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
-    StartPrepare(replica_id, instance_no);
+    Coroutine::CreateRun([this, replica_id, instance_no](){
+      StartPrepare(replica_id, instance_no); // TODO: if failed then retry after a while
+    });
     return false;
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED) {
-    // Graph<EpaxosInstance> graph(true);
-    // shared_ptr<EpaxosInstance> cmd = make_shared<EpaxosInstance>(replica_id, instance_no);
-    // graph.AddV(cmd);
-    // uint64_t seq = cmds[replica_id][instance_no].seq;
-    // for (auto itr : cmds[replica_id][instance_no].deps) {
-    //   uint64_t dreplica_id = itr.first;
-    //   uint64_t dinstance_no = itr.second;
-    //   // shared_ptr<EpaxosInstance> dep = make_shared<EpaxosInstance>(EpaxosInstance(replica_id, instance_no));
-    //   // graph.AddV(dep);
-    //   // dep.get()->AddParentEdge(cmd, seq);
-      
-    // }
+    RccGraph graph;
+    shared_ptr<RccTx> cmd = make_shared<RccTx>(curr_epoch, id(replica_id, instance_no), this, false);
+    graph.AddV(cmd);
+    uint64_t seq = cmds[replica_id][instance_no].seq;
+    for (auto itr : cmds[replica_id][instance_no].deps) {
+      uint64_t dreplica_id = itr.first;
+      uint64_t dinstance_no = itr.second;
+      shared_ptr<RccTx> dep = make_shared<RccTx>(curr_epoch, id(dreplica_id, dinstance_no), this, false);
+      // shared_ptr<EpaxosInstance> dep = make_shared<EpaxosInstance>(replica_id, instance_no);
+      graph.AddV(dep);
+      dep->AddParentEdge(cmd, RANK_D);
+    }
+    Log_debug("Created graph");
   }
+  return true;
 }
 
 template<class ClassT>

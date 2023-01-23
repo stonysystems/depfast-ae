@@ -117,16 +117,19 @@ class EpaxosRequest {
 //  public:
 //   uint64_t replica_id;
 //   uint64_t instance_no;
-//   EpaxosCommand cmd;
 
-//   EpaxosInstance(uint64_t replica_id, uint64_t instance_no, EpaxosCommand &cmd) {
+//   EpaxosInstance(uint64_t id) {
+//     this->replica_id = id >> 8;
+//     this->instance_no = id - (this->replica_id << 8);
+//   }
+
+//   EpaxosInstance(uint64_t replica_id, uint64_t instance_no) {
 //     this->replica_id = replica_id;
 //     this->instance_no = instance_no;
-//     this->cmd = cmd;
 //   }
 
 //   uint64_t id() override {
-//     return cmd.seq;
+//     return replica_id << 8 + instance_no;
 //   }
 
 //   bool operator==(EpaxosInstance &rhs) const {
@@ -147,7 +150,11 @@ class EpaxosServer : public TxLogServer {
   int NO_OP_KIND = 10;
   string NO_OP_DKEY = "";
   list<EpaxosRequest> reqs;
+  set<pair<uint64_t, uint64_t>> committed_cmds;
 
+uint64_t id(uint64_t replica_id, uint64_t instance_no) {
+  return replica_id << 8 + instance_no;
+}
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);
   void StartPreAccept(shared_ptr<Marshallable>& cmd, 
                       string dkey, 
@@ -202,6 +209,8 @@ class EpaxosServer : public TxLogServer {
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
+  void PrepareAllUncommitted();
+  
  private:
   bool disconnected_ = false;
   void Setup();
