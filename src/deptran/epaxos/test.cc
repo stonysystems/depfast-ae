@@ -14,6 +14,7 @@ int EpaxosLabTest::Run(void) {
       || testSlowQuorumDependentAgree()
       || testFailNoQuorum()
       || testConcurrentAgree()
+      || testConcurrentUnreliableAgree()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -245,7 +246,7 @@ static void *doConcurrentAgreement(void *args) {
 }
 
 int EpaxosLabTest::testConcurrentAgree(void) {
-  Init2(7, "Concurrent agreement (takes a few minutes)");
+  Init2(7, "Concurrent agreements");
   std::vector<pthread_t> threads{};
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
@@ -277,6 +278,42 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   Passed2();
 }
 
+
+int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
+  Init2(8, "Unreliable concurrent agreement (takes a few minutes)");
+  config_->SetUnreliable(true);
+  std::vector<pthread_t> threads{};
+  std::vector<std::pair<uint64_t, uint64_t>> retvals{};
+  std::mutex mtx{};
+  for (int iter = 1; iter <= 50; iter++) {
+    for (int svr = 0; svr < NSERVERS; svr++) {
+      CAArgs *args = new CAArgs{};
+      args->cmd = 5000 + (svr * 1000) + iter;
+      args->svr = svr;
+      args->dkey = "5000";
+      args->mtx = &mtx;
+      args->retvals = &retvals;
+      args->config = config_;
+      pthread_t thread;
+      verify(pthread_create(&thread,
+                            nullptr,
+                            doConcurrentAgreement,
+                            (void*)args) == 0);
+      threads.push_back(thread);
+    }
+  }
+  // config_->SetUnreliable(false);
+  // join all threads
+  for (auto thread : threads) {
+    verify(pthread_join(thread, nullptr) == 0);
+  }
+  config_->PrepareAllUncommitted();
+  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  for (auto retval : retvals) {
+    AssertNCommitted(retval.first, retval.second, NSERVERS);
+  }
+  Passed2();
+}
 
 // class CSArgs {
 //  public:

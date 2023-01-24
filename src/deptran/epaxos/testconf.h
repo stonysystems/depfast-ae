@@ -72,6 +72,8 @@ class EpaxosTestConfig {
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
 
+  void PrepareAllUncommitted();
+
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id);
 

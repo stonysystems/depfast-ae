@@ -4,12 +4,6 @@
 #include "epaxos_rpc.h"
 #include "server.h"
 #include "macros.h"
-// #include "constants.h"
-// #include "../rcc/graph.h"
-// #include "../rcc/graph_marshaler.h"
-// #include "../command.h"
-// #include "../procedure.h"
-// #include "../command_marshaler.h"
 
 
 namespace janus {
@@ -95,7 +89,7 @@ class EpaxosServiceImpl : public EpaxosService {
              ballot_t*, highest_seen_ballot_no,
              uint64_t*, highest_seen_replica_id) {
     *status = false;
-    *md_cmd = MarshallDeputy(make_shared<Marshallable>(10));
+    *md_cmd = MarshallDeputy(dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>()));
     *dkey = "";
     *seq = 0;
     *deps = unordered_map<uint64_t, uint64_t>();

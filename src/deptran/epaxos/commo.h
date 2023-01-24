@@ -6,6 +6,8 @@
 
 namespace janus {
 
+#define NSERVERS 5
+
 enum EpaxosPreAcceptStatus {
   FAILED = 0,
   IDENTICAL = 1,
@@ -145,6 +147,8 @@ class EpaxosPrepareReply {
   epoch_t epoch;
   ballot_t ballot_no;
   uint64_t replica_id;
+
+  EpaxosPrepareReply() {}
 
   EpaxosPrepareReply(bool_t status,
                      shared_ptr<Marshallable> cmd,

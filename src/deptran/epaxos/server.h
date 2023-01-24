@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../scheduler.h"
+#include "../classic/tpc_command.h"
 #include "commo.h"
 
 
@@ -146,15 +147,15 @@ class EpaxosServer : public TxLogServer {
   unordered_map<uint64_t, unordered_map<uint64_t, EpaxosCommand>> cmds;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> dkey_deps;
   unordered_map<string, uint64_t> dkey_seq;
-  shared_ptr<Marshallable> NO_OP_CMD = make_shared<Marshallable>(10);
-  int NO_OP_KIND = 10;
+  shared_ptr<Marshallable> NO_OP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   string NO_OP_DKEY = "";
   list<EpaxosRequest> reqs;
   set<pair<uint64_t, uint64_t>> committed_cmds;
 
-uint64_t id(uint64_t replica_id, uint64_t instance_no) {
-  return replica_id << 8 + instance_no;
-}
+  // uint64_t id(uint64_t replica_id, uint64_t instance_no) {
+  //   return replica_id << 8 + instance_no;
+  // }
+
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);
   void StartPreAccept(shared_ptr<Marshallable>& cmd, 
                       string dkey, 
@@ -231,5 +232,6 @@ uint64_t id(uint64_t replica_id, uint64_t instance_no) {
   EpaxosCommo* commo() {
     return (EpaxosCommo*)commo_;
   }
+
 };
 } // namespace janus

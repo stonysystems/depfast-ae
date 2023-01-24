@@ -61,6 +61,12 @@ void EpaxosTestConfig::GetState(int svr,
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, committed);
 }
 
+void EpaxosTestConfig::PrepareAllUncommitted() {
+  for (int i = 0; i < NSERVERS; i++) {
+    replicas[i]->svr_->PrepareAllUncommitted();
+  }
+}
+
 int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
   int cmd, n = 0;
   for (int i = 0; i < NSERVERS; i++) {
