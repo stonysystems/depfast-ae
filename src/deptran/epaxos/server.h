@@ -35,20 +35,18 @@ class EpaxosBallot {
     this->replica_id = replica_id;
   }
 
-  int isGreater(EpaxosBallot& ballot) {
-    if (epoch > ballot.epoch || (epoch == ballot.epoch && ballot_no > ballot.ballot_no)) {
-      return true;
-    }
-    return false;
+  int isGreater(EpaxosBallot& rhs) {
+    return epoch > rhs.epoch || (epoch == rhs.epoch && ballot_no > rhs.ballot_no);
   }
 
-  int isGreaterOrEqual(EpaxosBallot& ballot) {
-    if (epoch > ballot.epoch 
-        || (epoch == ballot.epoch && ballot_no > ballot.ballot_no) 
-        || (epoch == ballot.epoch && ballot_no == ballot.ballot_no && replica_id == ballot.replica_id)) {
-      return true;
-    }
-    return false;
+  int isGreaterOrEqual(EpaxosBallot& rhs) {
+    return epoch > rhs.epoch 
+        || (epoch == rhs.epoch && ballot_no > rhs.ballot_no) 
+        || (epoch == rhs.epoch && ballot_no == rhs.ballot_no && replica_id == rhs.replica_id);
+  }
+
+  int operator==(EpaxosBallot& rhs) {
+    return epoch == rhs.epoch && ballot_no == rhs.ballot_no && replica_id == rhs.replica_id;
   }
 };
 
@@ -151,6 +149,7 @@ class EpaxosServer : public TxLogServer {
   string NO_OP_DKEY = "";
   list<EpaxosRequest> reqs;
   set<pair<uint64_t, uint64_t>> committed_cmds;
+  bool prepare = false;
 
   // uint64_t id(uint64_t replica_id, uint64_t instance_no) {
   //   return replica_id << 8 + instance_no;
