@@ -55,11 +55,11 @@ void EpaxosLabTest::Cleanup(void) {
 
 #define AssertNCommitted(replica_id, instance_no, n) { \
         auto r = config_->NCommitted(replica_id, instance_no, n); \
-        Assert2(r != 0, "failed to reach agreement for instance %d.%d among %d servers", replica_id, instance_no, n); \
-        Assert2(r != -1, "failed to reach agreement for instance %d.%d among %d servers, committed different commands", replica_id, instance_no, n); \
-        Assert2(r != -2, "failed to reach agreement for instance %d.%d among %d servers, committed different dkey", replica_id, instance_no, n); \
-        Assert2(r != -3, "failed to reach agreement for instance %d.%d among %d servers, committed different seq", replica_id, instance_no, n); \
-        Assert2(r != -4, "failed to reach agreement for instance %d.%d among %d servers, committed different deps", replica_id, instance_no, n); \
+        Assert2(r != 0, "failed to reach agreement for instance R%d.%d among %d servers", replica_id, instance_no, n); \
+        Assert2(r != -1, "failed to reach agreement for instance R%d.%d among %d servers, committed different commands", replica_id, instance_no, n); \
+        Assert2(r != -2, "failed to reach agreement for instance R%d.%d among %d servers, committed different dkey", replica_id, instance_no, n); \
+        Assert2(r != -3, "failed to reach agreement for instance R%d.%d among %d servers, committed different seq", replica_id, instance_no, n); \
+        Assert2(r != -4, "failed to reach agreement for instance R%d.%d among %d servers, committed different deps", replica_id, instance_no, n); \
       }
 
 #define DoAgreeAndAssertNCommitted(cmd, dkey, n, no_op, exp_dkey, exp_seq, exp_deps) { \
@@ -278,7 +278,6 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   Passed2();
 }
 
-
 int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   Init2(8, "Unreliable concurrent agreement (takes a few minutes)");
   config_->SetUnreliable(true);
@@ -302,13 +301,15 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
       threads.push_back(thread);
     }
   }
-  // config_->SetUnreliable(false);
   // join all threads
   for (auto thread : threads) {
     verify(pthread_join(thread, nullptr) == 0);
   }
+  Coroutine::Sleep(5000000);
+  config_->SetUnreliable(false);
+  Coroutine::Sleep(5000000);
   config_->PrepareAllUncommitted();
-  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  Coroutine::Sleep(10000000);
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }

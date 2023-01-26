@@ -101,7 +101,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
     string committed_dkey;
     uint64_t committed_seq;
     unordered_map<uint64_t, uint64_t> committed_deps;
-    int nc = 0;
+    nc = 0;
     for (int j=0; j< NSERVERS; j++) {
       shared_ptr<Marshallable> cmd_;
       string dkey_;
@@ -120,15 +120,15 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
           continue;
         }
         if (committed_cmd->kind_ != cmd_->kind_) {
-          Log_debug("committed different commands");
+          Log_debug("committed different commands, (expected %d got %d)", committed_cmd->kind_, cmd_->kind_);
           return -1;
         }
         if (committed_dkey != dkey_) {
-          Log_debug("committed different dependency keys");
+          Log_debug("committed different dependency keys, (expected %s got %s)", committed_dkey.c_str(), dkey_.c_str());
           return -2;
         }
         if (committed_seq != seq_ ) {
-          Log_debug("committed different sequence numbers");
+          Log_debug("committed different sequence numbers, (expected %d got %d)", committed_seq, seq_);
           return -3;
         }
         if (committed_deps != deps_) {
@@ -145,8 +145,9 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       return 1;
     }
     Coroutine::Sleep(10000);
+    Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   }
-  Log_debug("%d committed server", nc);
+  Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   return 0;
 }
 
@@ -178,7 +179,7 @@ int EpaxosTestConfig::DoAgreement(int cmd,
       return status;
     }
     if (!retry) {
-      Log_debug("failed to reach agreement");
+      Log_debug("failed to reach agreement for replica: %d instance: %d", replica_id, instance_no);
       return 0;
     }
   }
@@ -348,9 +349,8 @@ void EpaxosTestConfig::netctlLoop(void) {
       }
     }
     // change unreliable state every 0.1s
-    usleep(100000);
-    // Coroutine::Sleep(100000);
     lk.unlock();
+    usleep(100000);
     // cv_m_ unlocked state 2 (unreliable_ == true && finished_ == false)
     lk.lock();
   }
