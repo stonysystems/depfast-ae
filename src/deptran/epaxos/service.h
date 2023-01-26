@@ -59,10 +59,11 @@ class EpaxosServiceImpl : public EpaxosService {
     *highest_seen_replica_id = 0;
   }
 
-  RpcHandler(Commit, 9,
+  RpcHandler(Commit, 10,
              const epoch_t&, epoch,
              const ballot_t&, ballot_no,
-             const uint64_t&, replica_id,
+             const uint64_t&, ballot_replica_id,
+             const uint64_t&, leader_replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,
              const string&, dkey,

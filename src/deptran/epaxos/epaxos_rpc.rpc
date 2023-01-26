@@ -34,7 +34,8 @@ abstract service Epaxos {
 
   defer Commit(epoch_t epoch,
                ballot_t ballot_no,
-               uint64_t replica_id,
+               uint64_t ballot_replica_id,
+               uint64_t instance_replica_id,
                uint64_t instance_no,
                MarshallDeputy md_cmd,
                string dkey,
