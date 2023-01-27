@@ -19,14 +19,18 @@ namespace janus {
 // expected # of RPCs taken to commit n agreements
 #define COMMITRPCS(n) ((n + 1) * NSERVERS)
 
-
 #define Print(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 
 extern int _test_id_g;
 #define Init(test_id, description) \
   Print("TEST %d: " description, test_id); \
   _test_id_g = test_id
+
+#define InitSub(sub_test_id, description) \
+  Print("TEST %d.%d: " description, _test_id_g, sub_test_id); \
+
 #define Failed(msg, ...) Print("TEST %d Failed: " msg, _test_id_g, ##__VA_ARGS__)
+
 #define Passed() Print("TEST %d Passed", _test_id_g)
 
 class CommitIndex {
@@ -71,6 +75,8 @@ class EpaxosTestConfig {
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
+
+  void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
 
   void PrepareAllUncommitted();
 

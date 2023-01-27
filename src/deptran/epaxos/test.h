@@ -21,13 +21,19 @@ class EpaxosLabTest {
  private:
 
   int testBasicAgree(void);
-  int testFastQuorumIndependentAgree(void);
-  int testFastQuorumDependentAgree(void);
-  int testSlowQuorumIndependentAgree(void);
-  int testSlowQuorumDependentAgree(void);
+  int testFastPathIndependentAgree(void);
+  int testFastPathDependentAgree(void);
+  int testSlowPathIndependentAgree(void);
+  int testSlowPathDependentAgree(void);
   int testFailNoQuorum(void);
   int testConcurrentAgree(void);
   int testConcurrentUnreliableAgree(void);
+  int testPrepareCommittedCommand(void);
+  int testPrepareAcceptedCommand(void);
+  int testPrepareIdenticallyPreAcceptedCommand(void);
+  int testPreparePreAcceptedCommand(void);
+  int testPrepareNoopCommand(void);
+
 //   int testFailAgree(void);
 //   int testFailNoAgree(void);
 //   int testRejoin(void);

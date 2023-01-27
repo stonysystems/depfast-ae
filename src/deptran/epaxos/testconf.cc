@@ -61,6 +61,10 @@ void EpaxosTestConfig::GetState(int svr,
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, committed);
 }
 
+void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
+  replicas[svr]->svr_->Prepare(replica_id, instance_no);
+}
+
 void EpaxosTestConfig::PrepareAllUncommitted() {
   for (int i = 0; i < NSERVERS; i++) {
     replicas[i]->svr_->PrepareAllUncommitted();
@@ -94,7 +98,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
                                   uint64_t *cseq, 
                                   unordered_map<uint64_t, uint64_t> *cdeps) {
   auto start = chrono::steady_clock::now();
-  int nc;
+  int nc = 0;
   while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
     bool init = true;
     shared_ptr<Marshallable> committed_cmd;
@@ -142,13 +146,13 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       *cdkey = committed_dkey;
       *cseq = committed_seq;
       *cdeps = committed_deps;
-      return 1;
+      return nc;
     }
     Coroutine::Sleep(10000);
     Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   }
   Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
-  return 0;
+  return nc;
 }
 
 int EpaxosTestConfig::DoAgreement(int cmd, 

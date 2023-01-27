@@ -78,6 +78,27 @@ void EpaxosServer::Setup() {
   // Process prepare requests
   Coroutine::CreateRun([this](){
     while(true) {
+      mtx_.lock();
+      int size = prepare_reqs.size();
+      mtx_.unlock();
+      // Future Work: Can make more efficient by having a pub-sub kind of thing
+      if (size == 0) {
+        Coroutine::Sleep(1000);
+      } else {
+        mtx_.lock();
+        auto req = prepare_reqs.front();
+        prepare_reqs.pop_front();
+        mtx_.unlock();
+        Coroutine::CreateRun([this, &req](){
+          StartPrepare(req.first, req.second);
+        });
+      }
+    }
+  });
+
+  // Prepare all requests
+  Coroutine::CreateRun([this](){
+    while(true) {
       if(prepare) {
         mtx_.lock();
         // Prepare all instances of current replica
@@ -122,6 +143,12 @@ void EpaxosServer::Setup() {
       }
     }
   });
+}
+
+void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  Log_debug("Received prepare request in server: %d for replica: %d instance: %d", site_id_, replica_id, instance_no);
+  prepare_reqs.push_back(make_pair(replica_id, instance_no));
 }
 
 void EpaxosServer::PrepareAllUncommitted() {
@@ -417,11 +444,11 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Started prepare for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   mtx_.lock();
   // Get ballot = highest seen ballot + 1
-  EpaxosBallot ballot = EpaxosBallot(curr_epoch, 1, replica_id_);
+  EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
   EpaxosPrepareReply self_reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   if (cmds[replica_id].count(instance_no)) {
-    ballot.ballot_no = cmds[replica_id][instance_no].highest_seen.ballot_no + 1;
+    ballot.ballot_no = cmds[replica_id][instance_no].highest_seen.ballot_no;
     self_reply = EpaxosPrepareReply(true, 
                                     cmds[replica_id][instance_no].cmd, 
                                     cmds[replica_id][instance_no].dkey, 
@@ -432,118 +459,132 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
                                     cmds[replica_id][instance_no].highest_seen.epoch,
                                     cmds[replica_id][instance_no].highest_seen.ballot_no,
                                     cmds[replica_id][instance_no].highest_seen.replica_id);
-    cmds[replica_id][instance_no].highest_seen = ballot;
   }
   mtx_.unlock();
-  
-  auto ev = commo()->SendPrepare(site_id_, 
-                                 partition_id_, 
-                                 ballot.epoch, 
-                                 ballot.ballot_no, 
-                                 ballot.replica_id, 
-                                 replica_id,
-                                 instance_no);
-  ev->Wait(1000000);
 
-  Log_debug("Started prepare reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  if (ev->No()) {
-    Log_debug("Prepare failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-    UpdateHighestSeenBallot(ev->replies, replica_id, instance_no);
-    return;
-  }
-  // Add self reply
-  ev->replies.push_back(self_reply);
-  // Get set of replies with highest ballot
-  vector<EpaxosPrepareReply> highest_ballot_replies;
-  EpaxosBallot highest_ballot = EpaxosBallot();
-  for (auto reply : ev->replies) {
-    if (reply.status && reply.cmd_state != EpaxosCommandState::NOT_STARTED) {
-      EpaxosBallot reply_ballot = EpaxosBallot(reply.epoch, reply.ballot_no, reply.replica_id);
-      if (reply_ballot.isGreater(highest_ballot)) { // VERIFY: If 2 can have diff replica ids and cause issue
-        highest_ballot = reply_ballot;
-        highest_ballot_replies = vector<EpaxosPrepareReply>();
-        highest_ballot_replies.push_back(reply);
-      } else if (reply_ballot == highest_ballot) {
-        highest_ballot_replies.push_back(reply);
-      }
-    }
-  }
-  // Check id the highest ballot seen is same as default ballot
-  bool is_highest_ballot_default = highest_ballot.epoch == ballot.epoch 
-                                   && highest_ballot.ballot_no == 0 
-                                   && highest_ballot.replica_id == replica_id;
-  // Get all unique commands and their counts
-  vector<EpaxosRecoveryCommand> unique_cmds;
-  EpaxosPrepareReply any_preaccepted_reply;
-  EpaxosPrepareReply any_accepted_reply;
-  for (auto reply : highest_ballot_replies) {
-    // Atleast one commited reply
-    if (reply.cmd_state == EpaxosCommandState::COMMITTED) {
-      mtx_.lock();
-      cmds[replica_id][instance_no] = EpaxosCommand(reply.cmd, reply.dkey, reply.seq, reply.deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
-      if (reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
-        UpdateInternalAttributes(reply.dkey, reply.seq, reply.deps);
-      }
-      mtx_.unlock();
-      StartCommit(replica_id, instance_no);
-      return;
-    }
-    // Atleast one accept reply
-    if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
-      any_accepted_reply = reply;
-    }
-    if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED) {
-      any_preaccepted_reply = reply;
-      // Checking for N/2 identical replies for default ballot
-      if (is_highest_ballot_default && reply.acceptor_replica_id != replica_id) {
-        bool found = false;
-        for (auto cmd : unique_cmds) {
-          if (cmd.cmd->kind_ == reply.cmd->kind_ && cmd.seq == reply.seq && cmd.deps == reply.deps) {
-            cmd.count++;
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          EpaxosRecoveryCommand rec_cmd(reply.cmd, reply.dkey, reply.seq, reply.deps, 0);
-          unique_cmds.push_back(rec_cmd);
-        }
-      }
-      if (reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
-        UpdateInternalAttributes(reply.dkey, reply.seq, reply.deps);
-      }
-    }
-  }
-  // Atleast one accepted reply - start phase accept
-  if (any_accepted_reply.cmd_state == EpaxosCommandState::ACCEPTED) {
+  while (true) {
+    ballot.ballot_no += 1;
     mtx_.lock();
-    cmds[replica_id][instance_no] = EpaxosCommand(any_accepted_reply.cmd, any_accepted_reply.dkey, any_accepted_reply.seq, any_accepted_reply.deps, ballot, EpaxosCommandState::ACCEPTED);
-    if (any_accepted_reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
-      UpdateInternalAttributes(any_accepted_reply.dkey, any_accepted_reply.seq, any_accepted_reply.deps);
+    if (cmds[replica_id].count(instance_no)) {
+      cmds[replica_id][instance_no].highest_seen.ballot_no = ballot.ballot_no;
     }
     mtx_.unlock();
-    StartAccept(replica_id, instance_no);
-    return;
-  }
-  for (auto rec_cmd : unique_cmds) {
-    int n_total = commo()->rpc_par_proxies_[partition_id_].size();
-    // N/2 identical pre-accepted replies for default ballot
-    if (rec_cmd.count >= n_total/2) {
+    
+    auto ev = commo()->SendPrepare(site_id_, 
+                                  partition_id_, 
+                                  ballot.epoch, 
+                                  ballot.ballot_no, 
+                                  ballot.replica_id, 
+                                  replica_id,
+                                  instance_no);
+    ev->Wait(1000000);
+
+    Log_debug("Started prepare reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    if (ev->No()) {
+      Log_debug("Prepare failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+      UpdateHighestSeenBallot(ev->replies, replica_id, instance_no);
+      continue;
+    }
+    // Add self reply
+    ev->replies.push_back(self_reply);
+    // Get set of replies with highest ballot
+    vector<EpaxosPrepareReply> highest_ballot_replies;
+    EpaxosBallot highest_ballot = EpaxosBallot();
+    for (auto reply : ev->replies) {
+      if (reply.status && reply.cmd_state != EpaxosCommandState::NOT_STARTED) {
+        EpaxosBallot reply_ballot = EpaxosBallot(reply.epoch, reply.ballot_no, reply.replica_id);
+        if (reply_ballot.isGreater(highest_ballot)) { // VERIFY: If 2 can have diff replica ids and cause issue
+          highest_ballot = reply_ballot;
+          highest_ballot_replies = vector<EpaxosPrepareReply>();
+          highest_ballot_replies.push_back(reply);
+        } else if (reply_ballot == highest_ballot) {
+          highest_ballot_replies.push_back(reply);
+        }
+      }
+    }
+    // Check id the highest ballot seen is same as default ballot
+    bool is_highest_ballot_default = highest_ballot.epoch == ballot.epoch 
+                                    && highest_ballot.ballot_no == 0 
+                                    && highest_ballot.replica_id == replica_id;
+    // Get all unique commands and their counts
+    vector<EpaxosRecoveryCommand> unique_cmds;
+    EpaxosPrepareReply any_preaccepted_reply;
+    EpaxosPrepareReply any_accepted_reply;
+    for (auto reply : highest_ballot_replies) {
+      // Atleast one commited reply
+      if (reply.cmd_state == EpaxosCommandState::COMMITTED) {
+        mtx_.lock();
+        Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+        cmds[replica_id][instance_no] = EpaxosCommand(reply.cmd, reply.dkey, reply.seq, reply.deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
+        if (reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
+          UpdateInternalAttributes(reply.dkey, reply.seq, reply.deps);
+        }
+        mtx_.unlock();
+        StartCommit(replica_id, instance_no);
+        return;
+      }
+      // Atleast one accept reply
+      if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
+        Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+        any_accepted_reply = reply;
+      }
+      if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED) {
+        any_preaccepted_reply = reply;
+        Log_debug("Prepare - pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+        // Checking for N/2 identical replies for default ballot
+        if (is_highest_ballot_default && reply.acceptor_replica_id != replica_id) {
+          bool found = false;
+          for (auto &cmd : unique_cmds) {
+            if (cmd.cmd->kind_ == reply.cmd->kind_ && cmd.seq == reply.seq && cmd.deps == reply.deps) {
+              cmd.count++;
+              Log_debug("Prepare - identical %d pre-accepted cmd found for replica: %d instance: %d by replica: %d", cmd.count, replica_id, instance_no, replica_id_);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            EpaxosRecoveryCommand rec_cmd(reply.cmd, reply.dkey, reply.seq, reply.deps, 1);
+            unique_cmds.push_back(rec_cmd);
+          }
+        }
+        if (reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
+          UpdateInternalAttributes(reply.dkey, reply.seq, reply.deps);
+        }
+      }
+    }
+    // Atleast one accepted reply - start phase accept
+    if (any_accepted_reply.cmd_state == EpaxosCommandState::ACCEPTED) {
       mtx_.lock();
-      cmds[replica_id][instance_no] = EpaxosCommand(rec_cmd.cmd, rec_cmd.dkey, rec_cmd.seq, rec_cmd.deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
+      cmds[replica_id][instance_no] = EpaxosCommand(any_accepted_reply.cmd, any_accepted_reply.dkey, any_accepted_reply.seq, any_accepted_reply.deps, ballot, EpaxosCommandState::ACCEPTED);
+      if (any_accepted_reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
+        UpdateInternalAttributes(any_accepted_reply.dkey, any_accepted_reply.seq, any_accepted_reply.deps);
+      }
       mtx_.unlock();
       StartAccept(replica_id, instance_no);
       return;
     }
-  }
-  // Atleast one pre-accepted reply - start phase 1
-  if (any_preaccepted_reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED) {
-    uint64_t leader_deps_instance = any_preaccepted_reply.deps.count(replica_id) ? any_preaccepted_reply.deps[replica_id] : -1;
-    StartPreAccept(any_preaccepted_reply.cmd, any_preaccepted_reply.dkey, ballot, replica_id, instance_no, leader_deps_instance, true);
+    for (auto rec_cmd : unique_cmds) {
+      int n_total = commo()->rpc_par_proxies_[partition_id_].size();
+      // N/2 identical pre-accepted replies for default ballot
+      if (rec_cmd.count >= n_total/2) {
+        mtx_.lock();
+        Log_debug("Prepare - identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+        cmds[replica_id][instance_no] = EpaxosCommand(rec_cmd.cmd, rec_cmd.dkey, rec_cmd.seq, rec_cmd.deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
+        mtx_.unlock();
+        StartAccept(replica_id, instance_no);
+        return;
+      }
+    }
+    // Atleast one pre-accepted reply - start phase 1
+    if (any_preaccepted_reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED) {
+      uint64_t leader_deps_instance = any_preaccepted_reply.deps.count(replica_id) ? any_preaccepted_reply.deps[replica_id] : -1;
+      StartPreAccept(any_preaccepted_reply.cmd, any_preaccepted_reply.dkey, ballot, replica_id, instance_no, leader_deps_instance, true);
+      return;
+    }
+    // No pre-accepted replies - start phase 1 with NO_OP
+    StartPreAccept(NOOP_CMD, NOOP_DKEY, ballot, replica_id, instance_no, -1, true);
     return;
   }
-  // No pre-accepted replies - start phase 1 with NO_OP
-  StartPreAccept(NOOP_CMD, NOOP_DKEY, ballot, replica_id, instance_no, -1, true);
 }
 
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {

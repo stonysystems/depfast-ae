@@ -148,6 +148,7 @@ class EpaxosServer : public TxLogServer {
   shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   string NOOP_DKEY = "";
   list<EpaxosRequest> reqs;
+  list<pair<uint64_t, uint64_t>> prepare_reqs;
   set<pair<uint64_t, uint64_t>> committed_cmds;
   bool prepare = false;
 
@@ -209,6 +210,7 @@ class EpaxosServer : public TxLogServer {
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
                 bool *committed);
+  void Prepare(uint64_t replica_id, uint64_t instance_no);
   void PrepareAllUncommitted();
   
  private:

@@ -8,11 +8,12 @@ int EpaxosLabTest::Run(void) {
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   if (testBasicAgree()
-      || testFastQuorumIndependentAgree()
-      || testFastQuorumDependentAgree()
-      || testSlowQuorumIndependentAgree()
-      || testSlowQuorumDependentAgree()
+      || testFastPathIndependentAgree()
+      || testFastPathDependentAgree()
+      || testSlowPathIndependentAgree()
+      || testSlowPathDependentAgree()
       || testFailNoQuorum()
+      || testPrepareCommittedCommand()
       || testConcurrentAgree()
       || testConcurrentUnreliableAgree()
     ) {
@@ -32,6 +33,10 @@ void EpaxosLabTest::Cleanup(void) {
   Init(test_id, description); \
   verify(config_->NDisconnected() == 0 && !config_->IsUnreliable())
 
+#define InitSub2(sub_test_id, description) \
+  InitSub(sub_test_id, description); \
+  verify(config_->NDisconnected() == 0 && !config_->IsUnreliable())
+
 #define Passed2() Passed(); return 0
 
 #define Assert(expr) if (!(expr)) { \
@@ -45,7 +50,7 @@ void EpaxosLabTest::Cleanup(void) {
 
 #define AssertNoneExecuted(cmd) { \
         auto nc = config_->NExecuted(cmd); \
-        Assert2(nc == 0, "%d servers unexpectedly executed command %d", nc, cmd) \
+        Assert2(nc == 0, "%d servers unexpectedly executed command %d", nc, cmd); \
       }
 
 #define AssertNExecuted(cmd, expected) { \
@@ -53,13 +58,22 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(nc == expected, "%d servers executed command %d (%d expected)", nc, cmd, expected) \
       }
 
+#define AssertValidCommitStatus(replica_id, instance_no, n, status) { \
+          Assert2(r != -1, "failed to reach agreement for instance R%d.%d among %d servers, committed different commands", replica_id, instance_no, n); \
+          Assert2(r != -2, "failed to reach agreement for instance R%d.%d among %d servers, committed different dkey", replica_id, instance_no, n); \
+          Assert2(r != -3, "failed to reach agreement for instance R%d.%d among %d servers, committed different seq", replica_id, instance_no, n); \
+          Assert2(r != -4, "failed to reach agreement for instance R%d.%d among %d servers, committed different deps", replica_id, instance_no, n); \
+        }
+
+#define AssertSuccessCommitStatus(replica_id, instance_no, n, status) { \
+        Assert2(status != 0, "failed to reach agreement for instance R%d.%d among %d servers", replica_id, instance_no, n); \
+        AssertValidCommitStatus(replica_id, instance_no, n, status); \
+      }
+
 #define AssertNCommitted(replica_id, instance_no, n) { \
         auto r = config_->NCommitted(replica_id, instance_no, n); \
         Assert2(r != 0, "failed to reach agreement for instance R%d.%d among %d servers", replica_id, instance_no, n); \
-        Assert2(r != -1, "failed to reach agreement for instance R%d.%d among %d servers, committed different commands", replica_id, instance_no, n); \
-        Assert2(r != -2, "failed to reach agreement for instance R%d.%d among %d servers, committed different dkey", replica_id, instance_no, n); \
-        Assert2(r != -3, "failed to reach agreement for instance R%d.%d among %d servers, committed different seq", replica_id, instance_no, n); \
-        Assert2(r != -4, "failed to reach agreement for instance R%d.%d among %d servers, committed different deps", replica_id, instance_no, n); \
+        AssertSuccessCommitStatus(replica_id, instance_no, n, r); \
       }
 
 #define DoAgreeAndAssertNCommitted(cmd, dkey, n, no_op, exp_dkey, exp_seq, exp_deps) { \
@@ -103,8 +117,8 @@ int EpaxosLabTest::testBasicAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testFastQuorumIndependentAgree(void) {
-  Init2(2, "Fast quorum agreement of independent commands");
+int EpaxosLabTest::testFastPathIndependentAgree(void) {
+  Init2(2, "Fast path agreement of independent commands");
   config_->Disconnect(0);
   for (int i = 1; i <= 3; i++) {
     // complete 1 agreement and make sure its index is as expected
@@ -121,8 +135,8 @@ int EpaxosLabTest::testFastQuorumIndependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testFastQuorumDependentAgree(void) {
-  Init2(3, "Fast quorum agreement of dependent commands");
+int EpaxosLabTest::testFastPathDependentAgree(void) {
+  Init2(3, "Fast path agreement of dependent commands");
   config_->Disconnect(0);
   // Round 1
   int cmd = 301;
@@ -152,8 +166,8 @@ int EpaxosLabTest::testFastQuorumDependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testSlowQuorumIndependentAgree(void) {
-  Init2(4, "Slow quorum agreement of independent commands");
+int EpaxosLabTest::testSlowPathIndependentAgree(void) {
+  Init2(4, "Slow path agreement of independent commands");
   config_->Disconnect(0);
   config_->Disconnect(1);
   for (int i = 1; i <= 3; i++) {
@@ -172,8 +186,8 @@ int EpaxosLabTest::testSlowQuorumIndependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testSlowQuorumDependentAgree(void) {
-  Init2(5, "Slow quorum agreement of dependent commands");
+int EpaxosLabTest::testSlowPathDependentAgree(void) {
+  Init2(5, "Slow path agreement of dependent commands");
   config_->Disconnect(0);
   config_->Disconnect(1);
   // Round 1
@@ -223,6 +237,177 @@ int EpaxosLabTest::testFailNoQuorum(void) {
   config_->Reconnect(1);
   config_->Reconnect(2);
   // TODO: Check if committed through prepare
+  Passed2();
+}
+
+int EpaxosLabTest::testPrepareCommittedCommand(void) {
+  Init2(7, "Commit through prepare - committed command");
+  InitSub2(1, "Committed (via fast path) in 1 server (leader)");
+  int cmd = 701;
+  string dkey = to_string(cmd);
+  uint64_t replica_id, instance_no;
+  int time_to_sleep = 1000, diff = 200;
+  config_->Disconnect(0);
+  while (true) {
+    AssertNoneExecuted(cmd);
+    config_->Start(1, cmd, dkey, &replica_id, &instance_no);
+    Coroutine::Sleep(time_to_sleep);
+    config_->Disconnect(4);
+    config_->Disconnect(3);
+    config_->Disconnect(2);
+    config_->Disconnect(1);
+    auto nc = config_->NCommitted(replica_id, instance_no, 1);
+    verify(nc <= FAST_PATH_QUORUM);
+    if (nc == 1) {
+      break;
+    }
+    if (nc < 1) {
+      time_to_sleep += diff;
+    } else {
+      time_to_sleep -= diff;
+    }
+    cmd++;
+    dkey = to_string(cmd);
+    config_->Reconnect(1);
+    config_->Reconnect(2);
+    config_->Reconnect(3);
+    config_->Reconnect(4);
+  }
+  config_->Reconnect(0);
+  config_->Reconnect(2);
+  config_->Reconnect(3);
+  config_->Reconnect(4);
+  config_->Prepare(0, replica_id, instance_no);
+  AssertNCommitted(replica_id, instance_no, NSERVERS);
+  config_->Reconnect(1);
+
+  InitSub2(2, "Committed (via fast path) in 2 servers (leader and one replica)");
+  cmd++;
+  dkey = to_string(cmd);
+  config_->Disconnect(0);
+  while (true) {
+    AssertNoneExecuted(cmd);
+    config_->Start(1, cmd, dkey, &replica_id, &instance_no);
+    Coroutine::Sleep(time_to_sleep);
+    config_->Disconnect(4);
+    config_->Disconnect(3);
+    config_->Disconnect(2);
+    config_->Disconnect(1);
+    auto nc = config_->NCommitted(replica_id, instance_no, 2);
+    verify(nc <= FAST_PATH_QUORUM);
+    if (nc == 2) {
+      break;
+    }
+    if (nc < 2) {
+      time_to_sleep += diff;
+    } else {
+      time_to_sleep -= diff;
+    }
+    cmd++;
+    dkey = to_string(cmd);
+    config_->Reconnect(1);
+    config_->Reconnect(2);
+    config_->Reconnect(3);
+    config_->Reconnect(4);
+  }
+  config_->Reconnect(0);
+  config_->Reconnect(2);
+  config_->Reconnect(3);
+  config_->Reconnect(4);
+  config_->Prepare(0, replica_id, instance_no);
+  AssertNCommitted(replica_id, instance_no, NSERVERS);
+  config_->Reconnect(1);
+
+  InitSub2(3, "Committed (via slow path) in 1 server (leader)");
+  config_->Disconnect(0);
+  config_->Disconnect(1);
+  cmd++;
+  dkey = to_string(cmd);
+  while (true) {
+    AssertNoneExecuted(cmd);
+    config_->Start(2, cmd, dkey, &replica_id, &instance_no);
+    Coroutine::Sleep(time_to_sleep);
+    config_->Disconnect(4);
+    config_->Disconnect(3);
+    config_->Disconnect(2);
+    auto nc = config_->NCommitted(replica_id, instance_no, 1);
+    verify(nc <= SLOW_PATH_QUORUM);
+    if (nc == 1) {
+      break;
+    }
+    if (nc < 1) {
+      time_to_sleep += diff;
+    } else {
+      time_to_sleep -= diff;
+    }
+    cmd++;
+    dkey = to_string(cmd);
+    config_->Reconnect(2);
+    config_->Reconnect(3);
+    config_->Reconnect(4);
+  }
+  config_->Reconnect(0);
+  config_->Reconnect(1);
+  config_->Reconnect(3);
+  config_->Reconnect(4);
+  config_->Prepare(0, replica_id, instance_no);
+  AssertNCommitted(replica_id, instance_no, NSERVERS);
+  config_->Reconnect(2);
+
+  InitSub2(4, "Committed (via slow path) in 2 servers (leader and one replica)");
+  config_->Disconnect(0);
+  config_->Disconnect(1);
+  cmd++;
+  dkey = to_string(cmd);
+  while (true) {
+    AssertNoneExecuted(cmd);
+    config_->Start(2, cmd, dkey, &replica_id, &instance_no);
+    Coroutine::Sleep(time_to_sleep);
+    config_->Disconnect(4);
+    config_->Disconnect(3);
+    config_->Disconnect(2);
+    auto nc = config_->NCommitted(replica_id, instance_no, 2);
+    verify(nc <= SLOW_PATH_QUORUM);
+    if (nc == 2) {
+      break;
+    }
+    if (nc < 2) {
+      time_to_sleep += diff;
+    } else {
+      time_to_sleep -= diff;
+    }
+    cmd++;
+    dkey = to_string(cmd);
+    config_->Reconnect(2);
+    config_->Reconnect(3);
+    config_->Reconnect(4);
+  }
+  config_->Reconnect(0);
+  config_->Reconnect(3);
+  config_->Reconnect(4);
+  config_->Prepare(0, replica_id, instance_no);
+  AssertNCommitted(replica_id, instance_no, NSERVERS-1);
+  config_->Reconnect(1);
+  config_->Prepare(1, replica_id, instance_no);
+  config_->Prepare(1, replica_id, instance_no);
+  AssertNCommitted(replica_id, instance_no, NSERVERS);
+  config_->Reconnect(2);
+  Passed2();
+}
+
+int EpaxosLabTest::testPrepareAcceptedCommand(void) {
+  Passed2();
+}
+
+int EpaxosLabTest::testPrepareIdenticallyPreAcceptedCommand(void) {
+  Passed2();
+}
+
+int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
+  Passed2();
+}
+
+int EpaxosLabTest::testPrepareNoopCommand(void) {
   Passed2();
 }
 
