@@ -145,8 +145,8 @@ class EpaxosServer : public TxLogServer {
   unordered_map<uint64_t, unordered_map<uint64_t, EpaxosCommand>> cmds;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> dkey_deps;
   unordered_map<string, uint64_t> dkey_seq;
-  shared_ptr<Marshallable> NO_OP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
-  string NO_OP_DKEY = "";
+  shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
+  string NOOP_DKEY = "";
   list<EpaxosRequest> reqs;
   set<pair<uint64_t, uint64_t>> committed_cmds;
   bool prepare = false;

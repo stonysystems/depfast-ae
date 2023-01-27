@@ -84,6 +84,7 @@ void EpaxosServer::Setup() {
         for (uint64_t instance_no = 0; instance_no < next_instance_no; instance_no++) {
           mtx_.unlock();
           Coroutine::CreateRun([this, replica_id, instance_no](){
+            Coroutine::Sleep(((rand() * 1.0) / RAND_MAX) * 1000);
             StartPrepare(replica_id, instance_no);
           });
           mtx_.lock();
@@ -96,6 +97,7 @@ void EpaxosServer::Setup() {
         //     last_instance[replica_id] = max(last_instance[replica_id], instance_no);
         //   }
         // }
+        // last_instance[replica_id_] = next_instance_no-1;
         // for (auto itr : last_instance) {
         //   uint64_t replica_id = itr.first;
         //   for (uint64_t instance_no = 0; instance_no < itr.second; instance_no++) {
@@ -410,7 +412,7 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   // Get ballot = highest seen ballot + 1
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 1, replica_id_);
   // Create prepare reply from self
-  EpaxosPrepareReply self_reply(true, NO_OP_CMD, NO_OP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
+  EpaxosPrepareReply self_reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   if (cmds[replica_id].count(instance_no)) {
     ballot.ballot_no = cmds[replica_id][instance_no].highest_seen.ballot_no + 1;
     self_reply = EpaxosPrepareReply(true, 
@@ -534,13 +536,13 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     return;
   }
   // No pre-accepted replies - start phase 1 with NO_OP
-  StartPreAccept(NO_OP_CMD, NO_OP_DKEY, ballot, replica_id, instance_no, -1, true);
+  StartPreAccept(NOOP_CMD, NOOP_DKEY, ballot, replica_id, instance_no, -1, true);
 }
 
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received prepare request for replica: %d instance: %d in replica: %d for ballot: %d from new leader: %d", replica_id, instance_no, replica_id_, ballot.ballot_no, ballot.replica_id);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  EpaxosPrepareReply reply(true, NO_OP_CMD, NO_OP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
+  EpaxosPrepareReply reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   if (cmds[replica_id].count(instance_no)) {
     // Reject older ballots
     if (!ballot.isGreater(cmds[replica_id][instance_no].highest_seen)) {
