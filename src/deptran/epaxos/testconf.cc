@@ -57,8 +57,8 @@ void EpaxosTestConfig::GetState(int svr,
                                 string *dkey,
                                 uint64_t *seq, 
                                 unordered_map<uint64_t, uint64_t> *deps, 
-                                bool *committed) {
-  replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, committed);
+                                status_t *state) {
+  replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, state);
 }
 
 void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
@@ -111,9 +111,9 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       string dkey_;
       uint64_t seq_;
       unordered_map<uint64_t, uint64_t> deps_;
-      bool committed_;
-      GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &committed_);
-      if (committed_) {
+      status_t state_;
+      GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
+      if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
         nc++;
         if(init) {
           init = false;
@@ -153,6 +153,67 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
   }
   Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   return nc;
+}
+
+int EpaxosTestConfig::NAccepted(uint64_t replica_id, uint64_t instance_no, int n) {
+  auto start = chrono::steady_clock::now();
+  int na = 0;
+  while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
+    na = 0;
+    for (int j=0; j< NSERVERS; j++) {
+      shared_ptr<Marshallable> cmd_;
+      string dkey_;
+      uint64_t seq_;
+      unordered_map<uint64_t, uint64_t> deps_;
+      status_t state_;
+      GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
+      if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
+        return -1;
+      }
+      if (state_ == EpaxosCommandState::ACCEPTED ) {
+        na++;
+      }
+    }
+    if (na >= n) {
+      return na;
+    }
+    Coroutine::Sleep(10000);
+    Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  }
+  Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  return na;
+}
+
+int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, int n) {
+  auto start = chrono::steady_clock::now();
+  int na = 0;
+  while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
+    na = 0;
+    for (int j=0; j< NSERVERS; j++) {
+      shared_ptr<Marshallable> cmd_;
+      string dkey_;
+      uint64_t seq_;
+      unordered_map<uint64_t, uint64_t> deps_;
+      status_t state_;
+      GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
+      if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
+        return -1;
+      }
+      if (state_ == EpaxosCommandState::ACCEPTED) {
+        return -2;
+      }
+      if (state_ == EpaxosCommandState::PRE_ACCEPTED) {
+        na++;
+      }
+    }
+    if (na >= n) {
+      return na;
+    }
+    Coroutine::Sleep(10000);
+    Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  }
+  Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  return na;
 }
 
 int EpaxosTestConfig::DoAgreement(int cmd, 

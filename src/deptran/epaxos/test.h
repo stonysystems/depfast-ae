@@ -30,7 +30,6 @@ class EpaxosLabTest {
   int testConcurrentUnreliableAgree(void);
   int testPrepareCommittedCommand(void);
   int testPrepareAcceptedCommand(void);
-  int testPrepareIdenticallyPreAcceptedCommand(void);
   int testPreparePreAcceptedCommand(void);
   int testPrepareNoopCommand(void);
 

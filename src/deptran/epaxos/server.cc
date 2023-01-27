@@ -163,18 +163,17 @@ void EpaxosServer::GetState(uint64_t replica_id,
                 string *dkey,
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
-                bool *committed) {
+                status_t *state) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   if (cmds.count(replica_id) == 0 || cmds[replica_id].count(instance_no) == 0) {
-    *committed = false;
+    *state = EpaxosCommandState::NOT_STARTED;
     return;
   }
   *cmd = cmds[replica_id][instance_no].cmd;
   *dkey = cmds[replica_id][instance_no].dkey;
   *deps = cmds[replica_id][instance_no].deps;
   *seq = cmds[replica_id][instance_no].seq;
-  *committed = cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED 
-               || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED;
+  *state = cmds[replica_id][instance_no].state;
 }
 
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {

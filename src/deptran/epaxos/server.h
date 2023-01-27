@@ -209,7 +209,7 @@ class EpaxosServer : public TxLogServer {
                 string *dkey,
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
-                bool *committed);
+                status_t *state);
   void Prepare(uint64_t replica_id, uint64_t instance_no);
   void PrepareAllUncommitted();
   

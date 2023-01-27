@@ -74,7 +74,7 @@ class EpaxosTestConfig {
                 string *string,
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
-                bool *committed);
+                status_t *state);
 
   void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
 
@@ -83,7 +83,7 @@ class EpaxosTestConfig {
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id);
 
-  // Returns 1 if n servers committed the command and 
+  // Returns number of servers committed the command if atleast n servers committed and 
   // the committed cmd and attr are same across all commited servers.
   // Waits at most 2 seconds until n servers commit the command.
   // 0 if it took too long for enough servers to commit
@@ -93,7 +93,7 @@ class EpaxosTestConfig {
   // -3 if committed values of deps kind differ
   int NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
 
-  // Returns 1 if n servers committed the command and 
+  // Returns number of servers committed the command if atleast n servers committed and 
   // the committed cmd and attr are same across all commited servers.
   // Waits at most 2 seconds until n servers commit the command.
   // 0 if it took too long for enough servers to commit
@@ -109,6 +109,15 @@ class EpaxosTestConfig {
                  string *cdkey, 
                  uint64_t *cseq, 
                  unordered_map<uint64_t, uint64_t> *cdeps);
+
+  // Returns number of servers accepted the command 
+  // Returns -1 if commit was committed/executed in-between
+  int NAccepted(uint64_t replica_id, uint64_t instance_no, int n);
+
+  // Returns number of servers pre-accepted the command 
+  // Returns -1 if commit was committed/executed in-between
+  // Returns -2 if commit was accepted in-between
+  int NPreAccepted(uint64_t replica_id, uint64_t instance_no, int n);
 
   // Does one agreement.
   // Submits a command with value cmd to the leader
