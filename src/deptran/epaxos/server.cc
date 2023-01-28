@@ -445,6 +445,7 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   // Get ballot = highest seen ballot + 1
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
+  shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   EpaxosPrepareReply self_reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   if (cmds[replica_id].count(instance_no)) {
     ballot.ballot_no = cmds[replica_id][instance_no].highest_seen.ballot_no;
@@ -514,7 +515,7 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
       if (reply.cmd_state == EpaxosCommandState::COMMITTED) {
         mtx_.lock();
         Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-        cmds[replica_id][instance_no] = EpaxosCommand(reply.cmd, reply.dkey, reply.seq, reply.deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
+        cmds[replica_id][instance_no] = EpaxosCommand(reply.cmd, reply.dkey, reply.seq, reply.deps, ballot, EpaxosCommandState::COMMITTED);
         if (reply.cmd.get()->kind_ != MarshallDeputy::CMD_NOOP) {
           UpdateInternalAttributes(reply.dkey, reply.seq, reply.deps);
         }
@@ -589,6 +590,7 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received prepare request for replica: %d instance: %d in replica: %d for ballot: %d from new leader: %d", replica_id, instance_no, replica_id_, ballot.ballot_no, ballot.replica_id);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   EpaxosPrepareReply reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   if (cmds[replica_id].count(instance_no)) {
     // Reject older ballots

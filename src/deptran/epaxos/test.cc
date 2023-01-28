@@ -249,7 +249,7 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   int cmd = 701;
   string dkey = to_string(cmd);
   uint64_t replica_id, instance_no;
-  int time_to_sleep = 1000, diff = 100;
+  int time_to_sleep = 2000, diff = 100;
   config_->Disconnect(0);
   while (true) {
     AssertNoneExecuted(cmd);
@@ -287,6 +287,7 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   InitSub2(2, "Committed (via fast path) in 2 servers (leader and one replica)");
   cmd++;
   dkey = to_string(cmd);
+  time_to_sleep += 3000;
   config_->Disconnect(0);
   while (true) {
     AssertNoneExecuted(cmd);
@@ -324,6 +325,7 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   InitSub2(3, "Committed (via slow path) in 1 server (leader)");
   cmd++;
   dkey = to_string(cmd);
+  time_to_sleep += 1000;
   config_->Disconnect(0);
   config_->Disconnect(1);
   while (true) {
@@ -360,6 +362,7 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   InitSub2(4, "Committed (via slow path) in 2 servers (leader and one replica)");
   cmd++;
   dkey = to_string(cmd);
+  time_to_sleep += 2000;
   config_->Disconnect(0);
   config_->Disconnect(1);
   while (true) {
@@ -403,7 +406,7 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   int cmd = 801;
   string dkey = to_string(cmd);
   uint64_t replica_id, instance_no;
-  int time_to_sleep = 1000, diff = 100;
+  int time_to_sleep = 2000, diff = 100;
   config_->Disconnect(0);
   config_->Disconnect(1);
   cmd++;
@@ -444,6 +447,7 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   InitSub2(2, "Accepted in 2 servers (leader and one replica)");
   cmd++;
   dkey = to_string(cmd);
+  time_to_sleep += 4000;
   config_->Disconnect(0);
   config_->Disconnect(1);
   while (true) {
