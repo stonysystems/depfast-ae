@@ -673,7 +673,7 @@ void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t rep
 void EpaxosServer::UpdateAttributes(vector<EpaxosPreAcceptReply>& replies, uint64_t replica_id, uint64_t instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosCommand &cmd = cmds[replica_id][instance_no];
-  if (cmd.cmd->kind_ != MarshallDeputy::CMD_NOOP) {
+  if (cmd.cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return;
   }
   for (auto reply : replies) {
