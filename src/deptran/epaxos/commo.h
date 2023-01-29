@@ -40,12 +40,6 @@ class EpaxosPreAcceptReply {
   }
 };
 
-enum EpaxosPreAcceptQuorumEventStatus {
-  NO_QUORUM = 0,
-  FAST_PATH_QUORUM = 1,
-  SLOW_PATH_QUORUM = 2
-};
-
 class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
  public:
   int n_voted_identical_ = 0;
@@ -53,7 +47,6 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   int fast_path_quorum_;
   int slow_path_quorum_;
   bool is_recovery;
-  EpaxosPreAcceptQuorumEventStatus status;
   vector<EpaxosPreAcceptReply> replies;
 
   EpaxosPreAcceptQuorumEvent(int n_total_, bool is_recovery, int fast_path_quorum, int slow_path_quorum) : QuorumEvent(n_total_, n_total_) {
@@ -79,25 +72,29 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
     this->QuorumEvent::VoteNo();
   }
 
-  bool Yes() override {
-    if (is_recovery && n_voted_yes_ >= slow_path_quorum_) {
-      status = EpaxosPreAcceptQuorumEventStatus::SLOW_PATH_QUORUM;
-      return true;
-    }
-    if (n_voted_identical_ >= fast_path_quorum_) {
-      status = EpaxosPreAcceptQuorumEventStatus::FAST_PATH_QUORUM;
-      return true;
-    }
-    if ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_))) {
-      status = EpaxosPreAcceptQuorumEventStatus::SLOW_PATH_QUORUM;
+  bool FastPath() {
+    if (!is_recovery && n_voted_identical_ >= fast_path_quorum_) {
       return true;
     }
     return false;
   }
 
+  bool SlowPath() {
+    if (is_recovery && n_voted_yes_ >= slow_path_quorum_) {
+      return true;
+    }
+    if ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_))) {
+      return true;
+    }
+    return false;
+  }
+
+  bool Yes() override {
+    return FastPath() || SlowPath();
+  }
+
   bool No() override {
     if (n_voted_no_ > (n_total_-slow_path_quorum_)) {
-      status = EpaxosPreAcceptQuorumEventStatus::NO_QUORUM;
       return true;
     }
     return false;

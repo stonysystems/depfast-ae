@@ -22,16 +22,19 @@ namespace janus {
 #define Print(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 
 extern int _test_id_g;
+extern std::chrono::_V2::system_clock::time_point _test_starttime_g;
 #define Init(test_id, description) \
-  Print("TEST %d: " description, test_id); \
-  _test_id_g = test_id
+        Print("TEST %d: " description, test_id); \
+        _test_id_g = test_id; \
+        _test_starttime_g = std::chrono::system_clock::now();
 
 #define InitSub(sub_test_id, description) \
-  Print("TEST %d.%d: " description, _test_id_g, sub_test_id); \
+        Print("TEST %d.%d: " description, _test_id_g, sub_test_id);
 
-#define Failed(msg, ...) Print("TEST %d Failed: " msg, _test_id_g, ##__VA_ARGS__)
+#define Failed(msg, ...) Print("TEST %d Failed: " msg, _test_id_g, ##__VA_ARGS__);
 
-#define Passed() Print("TEST %d Passed", _test_id_g)
+#define Passed() \
+        Print("TEST %d Passed (time taken: %d s)", _test_id_g, (std::chrono::system_clock::now() - _test_starttime_g)/1000000000);
 
 class CommitIndex {
  private:
@@ -52,6 +55,8 @@ class EpaxosTestConfig {
 
   // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
   bool disconnected_[NSERVERS];
+  // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
+  bool slow_[NSERVERS];
   // guards disconnected_ between Disconnect()/Reconnect() and netctlLoop
   std::mutex disconnect_mtx_;
 
@@ -169,6 +174,12 @@ class EpaxosTestConfig {
   void SetUnreliable(bool unreliable = true);
 
   bool IsUnreliable(void);
+
+  // Slow down connections of a server
+  void SetSlow(int svr, bool slow);
+
+  // Returns if any server is set slow
+  bool AnySlow(void);
 
   // Reconnects all disconnected servers
   // Waits on unreliable thread

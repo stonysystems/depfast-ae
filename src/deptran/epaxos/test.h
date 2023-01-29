@@ -26,24 +26,14 @@ class EpaxosLabTest {
   int testSlowPathIndependentAgree(void);
   int testSlowPathDependentAgree(void);
   int testFailNoQuorum(void);
-  int testConcurrentAgree(void);
-  int testConcurrentUnreliableAgree(void);
+
   int testPrepareCommittedCommand(void);
   int testPrepareAcceptedCommand(void);
   int testPreparePreAcceptedCommand(void);
   int testPrepareNoopCommand(void);
 
-//   int testFailAgree(void);
-//   int testFailNoAgree(void);
-//   int testRejoin(void);
-//   int testConcurrentStarts(void);
-//   int testBackup(void);
-//   int testCount(void);
-
-//   int testUnreliableAgree(void);
-//   int testFigure8(void);
-
-  // void wait(uint64_t microseconds);
+  int testConcurrentAgree(void);
+  int testConcurrentUnreliableAgree(void);
 
 };
 

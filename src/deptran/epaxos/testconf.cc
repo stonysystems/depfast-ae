@@ -7,6 +7,7 @@ namespace janus {
 #ifdef EPAXOS_TEST_CORO
 
 int _test_id_g = 0;
+std::chrono::_V2::system_clock::time_point _test_starttime_g;
 
 EpaxosFrame **EpaxosTestConfig::replicas = nullptr;
 std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS];
@@ -83,17 +84,17 @@ int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
 }
 
 int EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
-  bool cno_op;
+  bool cnoop;
   string cdkey;
   uint64_t cseq;
   unordered_map<uint64_t, uint64_t> cdeps;
-  return NCommitted(replica_id, instance_no, n, &cno_op, &cdkey, &cseq, &cdeps);
+  return NCommitted(replica_id, instance_no, n, &cnoop, &cdkey, &cseq, &cdeps);
 }
 
 int EpaxosTestConfig::NCommitted(uint64_t replica_id, 
                                   uint64_t instance_no, 
                                   int n, 
-                                  bool *cno_op, 
+                                  bool *cnoop, 
                                   string *cdkey, 
                                   uint64_t *cseq, 
                                   unordered_map<uint64_t, uint64_t> *cdeps) {
@@ -101,7 +102,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
   int nc = 0;
   while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
     bool init = true;
-    shared_ptr<Marshallable> committed_cmd;
+    int committed_cmd_kind;
     string committed_dkey;
     uint64_t committed_seq;
     unordered_map<uint64_t, uint64_t> committed_deps;
@@ -117,14 +118,14 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
         nc++;
         if(init) {
           init = false;
-          committed_cmd = cmd_;
+          committed_cmd_kind = cmd_->kind_;
           committed_dkey = dkey_;
           committed_seq = seq_;
           committed_deps = deps_;
           continue;
         }
-        if (committed_cmd->kind_ != cmd_->kind_) {
-          Log_debug("committed different commands, (expected %d got %d)", committed_cmd->kind_, cmd_->kind_);
+        if (committed_cmd_kind != cmd_->kind_) {
+          Log_debug("committed different commands, (expected %d got %d)", committed_cmd_kind, cmd_->kind_);
           return -1;
         }
         if (committed_dkey != dkey_) {
@@ -142,7 +143,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       }
     }
     if (nc >= n) {
-      *cno_op = committed_cmd->kind_ == MarshallDeputy::CMD_NOOP;
+      *cnoop = committed_cmd_kind == MarshallDeputy::CMD_NOOP;
       *cdkey = committed_dkey;
       *cseq = committed_seq;
       *cdeps = committed_deps;
@@ -220,7 +221,7 @@ int EpaxosTestConfig::DoAgreement(int cmd,
                                   string dkey, 
                                   int n, 
                                   bool retry, 
-                                  bool *cno_op, 
+                                  bool *cnoop, 
                                   string *cdkey, 
                                   uint64_t *cseq, 
                                   unordered_map<uint64_t, uint64_t> *cdeps) {
@@ -239,7 +240,7 @@ int EpaxosTestConfig::DoAgreement(int cmd,
       break;
     }
     // If Start() successfully called, wait for agreement
-    int status = NCommitted(replica_id, instance_no, n, cno_op, cdkey, cseq, cdeps);
+    int status = NCommitted(replica_id, instance_no, n, cnoop, cdkey, cseq, cdeps);
     if (status > 0) {
       return status;
     }
@@ -458,6 +459,28 @@ void EpaxosTestConfig::reconnect(int svr, bool ignore) {
     replicas[svr]->svr_->Reconnect();
   } else if (!ignore) {
     verify(0);
+  }
+}
+
+bool EpaxosTestConfig::AnySlow(void) {
+  for (int i = 0; i < NSERVERS; i++) {
+    if (slow_[i])
+      return true;
+  }
+  return false;
+}
+
+void EpaxosTestConfig::SetSlow(int svr, bool slow) {
+  verify(svr >= 0 && svr < NSERVERS);
+  std::lock_guard<std::recursive_mutex> lk(connection_m_);
+  if (slow) {
+    verify(!slow_[svr]);
+    slow_[svr] = true;
+    this->slow(svr, 1);
+  } else {
+    verify(slow_[svr]);
+    slow_[svr] = false;
+    this->slow(svr, 0);
   }
 }
 
