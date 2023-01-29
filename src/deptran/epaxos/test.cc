@@ -598,11 +598,11 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   verify(nc == 0);
   // Commit noop in others via prepare
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-1, true, dkey, seq, deps);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-1, true, NOOP_DKEY, seq, deps);
   // Reconnect leader and see if noop is committed in all via prepare
   config_->Reconnect(CMD_LEADER);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, dkey, seq, deps);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, NOOP_DKEY, seq, deps);
   
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path).");
@@ -627,12 +627,12 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-2, true, dkey, seq, deps);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-2, true, NOOP_DKEY, seq, deps);
   // Reconnect leader and other server and see if noop is committed in all
   config_->Reconnect(CMD_LEADER);
   config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, dkey, seq, deps);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, NOOP_DKEY, seq, deps);
   Passed2();
 }
 
@@ -715,8 +715,6 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   for (auto thread : threads) {
     verify(pthread_join(thread, nullptr) == 0);
   }
-  Coroutine::Sleep(1000000);
-  config_->PrepareAllUncommitted();
   Coroutine::Sleep(1000000);
   config_->SetUnreliable(false);
   Coroutine::Sleep(1000);

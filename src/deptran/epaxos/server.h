@@ -9,7 +9,7 @@
 
 namespace janus {
 
-#define NOOP_DKEY ""
+#define NOOP_DKEY string("")
 
 enum EpaxosCommandState {
   NOT_STARTED = 0,

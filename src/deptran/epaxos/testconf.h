@@ -16,8 +16,7 @@ namespace janus {
 // servers have 1/10 chance of being disconnected to the network
 #define DOWNRATE_N 1
 #define DOWNRATE_D 10
-// expected # of RPCs taken to commit n agreements
-#define COMMITRPCS(n) ((n + 1) * NSERVERS)
+#define DKEY_NOOP ""
 
 #define Print(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 
@@ -35,15 +34,6 @@ extern std::chrono::_V2::system_clock::time_point _test_starttime_g;
 
 #define Passed() \
         Print("TEST %d Passed (time taken: %d s)", _test_id_g, (std::chrono::system_clock::now() - _test_starttime_g)/1000000000);
-
-class CommitIndex {
- private:
-  uint64_t val_;
- public:
-  CommitIndex(uint64_t val) : val_(val) {}
-  uint64_t getval(void) { return val_; }
-  void setval(uint64_t val) { val_ = val; }
-};
 
 class EpaxosTestConfig {
 
