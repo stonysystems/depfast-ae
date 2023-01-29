@@ -258,53 +258,13 @@ int EpaxosLabTest::testFailNoQuorum(void) {
 
 int EpaxosLabTest::testPrepareCommittedCommand(void) {
   Init2(7, "Commit through prepare - committed command");
-  
   /*********** Sub Test 1 ***********/
-  InitSub2(1, "Committed (via fast path) in 1 server (leader). Prepare returns N/2 identical pre-accepted replies.");
+  InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
   int cmd = 701;
-  string dkey = to_string(cmd);
+  string dkey = "700";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1100, diff = 100;
   int CMD_LEADER = 0;
-  // Keep only fast-path quorum of servers alive
-  config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
-  // Repeat till only 1 server (leader) have committed the command
-  while (true) {
-    AssertNoneExecuted(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
-    Coroutine::Sleep(time_to_sleep);
-    config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
-    config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
-    config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
-    config_->Disconnect(CMD_LEADER);
-    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc <= FAST_PATH_QUORUM);
-    AssertValidCommitStatus(replica_id, instance_no, nc);
-    if (nc == 1) break;
-    // Retry if more than 1 server committed
-    time_to_sleep = (nc < 1) ? (time_to_sleep + diff) : (time_to_sleep - diff);
-    cmd++;
-    dkey = to_string(cmd);
-    config_->Reconnect(CMD_LEADER);
-    config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
-    config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
-    config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
-  }
-  // Reconnect all except command leader and commit in all via prepare
-  config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
-  config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
-  config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
-  config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
-  config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
-  // Reconnect leader
-  config_->Reconnect(CMD_LEADER);
-
-  /*********** Sub Test 2 ***********/
-  InitSub2(2, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
-  cmd++;
-  dkey = to_string(cmd);
-  time_to_sleep = 1200;
   // Keep only fast-path quorum of servers alive
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have committed the command
@@ -323,7 +283,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
     // Retry if more than 2 servers committed
     time_to_sleep = (nc < 2) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    dkey = to_string(cmd);
     config_->Reconnect(CMD_LEADER);
     config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
@@ -339,10 +298,9 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   // Reconnect leader
   config_->Reconnect(CMD_LEADER);
 
-  /*********** Sub Test 3 ***********/
-  InitSub2(3, "Committed (via slow path) in 1 server (leader). Prepare returns 1 accepted reply.");
+  /*********** Sub Test 2 ***********/
+  InitSub2(2, "Committed (via slow path) in 1 server (leader). Prepare returns 1 accepted reply.");
   cmd++;
-  dkey = to_string(cmd);
   time_to_sleep = 1800;
   // Keep only slow-path quorum of servers alive
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
@@ -362,7 +320,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
     // Retry if more than 1 server committed
     time_to_sleep = (nc < 1) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    dkey = to_string(cmd);
     config_->Reconnect(CMD_LEADER);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
@@ -380,10 +337,46 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   // Reconnect leader
   config_->Reconnect(CMD_LEADER);
 
+  /*********** Sub Test 3 ***********/
+  InitSub2(3, "Committed (via fast path) in 1 server (leader). Prepare returns N/2 identical pre-accepted replies.");
+  cmd++;
+  time_to_sleep = 1200;
+  // Keep only fast-path quorum of servers alive
+  config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
+  // Repeat till only 1 server (leader) have committed the command
+  while (true) {
+    AssertNoneExecuted(cmd);
+    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    Coroutine::Sleep(time_to_sleep);
+    config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
+    config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
+    config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
+    config_->Disconnect(CMD_LEADER);
+    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+    verify(nc <= FAST_PATH_QUORUM);
+    AssertValidCommitStatus(replica_id, instance_no, nc);
+    if (nc == 1) break;
+    // Retry if more than 1 server committed
+    time_to_sleep = (nc < 1) ? (time_to_sleep + diff) : (time_to_sleep - diff);
+    cmd++;
+    config_->Reconnect(CMD_LEADER);
+    config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
+    config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
+    config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
+  }
+  // Reconnect all except command leader and commit in all via prepare
+  config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
+  config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+  // Reconnect leader
+  config_->Reconnect(CMD_LEADER);
+
   /*********** Sub Test 4 ***********/
   InitSub2(4, "Committed (via slow path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
   cmd++;
-  dkey = to_string(cmd);
   time_to_sleep = 1900;
   // Keep only slow-path quorum of servers alive
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
@@ -403,7 +396,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
     // Retry if more than 2 servers committed
     time_to_sleep = (nc < 2) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    dkey = to_string(cmd);
     config_->Reconnect(CMD_LEADER);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
@@ -425,11 +417,10 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
 
 int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   Init2(8, "Commit through prepare - accepted but not committed command");
-
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
   int cmd = 801;
-  string dkey = to_string(cmd);
+  string dkey = "800";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1000, diff = 100;
   int CMD_LEADER = 1;
@@ -450,7 +441,6 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
     // Retry if more than 1 server accepted
     time_to_sleep = (na < 1 && na >= 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    dkey = to_string(cmd);
     config_->Reconnect(CMD_LEADER);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
@@ -472,7 +462,6 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Accepted in 2 servers (leader and one replica). Prepare returns 1 accepted reply.");
   cmd++;
-  dkey = to_string(cmd);
   time_to_sleep = 1300;
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
@@ -490,7 +479,6 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
     // Retry if more than 2 server accepted
     time_to_sleep = (na < 2 && na >= 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    dkey = to_string(cmd);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Reconnect(CMD_LEADER);
@@ -516,7 +504,7 @@ int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare return 1 pre-accepted reply from leader (avoid fast-path).");
   int cmd = 901;
-  string dkey = to_string(cmd);
+  string dkey = "900";
   int CMD_LEADER = 2;
   uint64_t replica_id, instance_no;
   // Disconnect leader
@@ -547,7 +535,6 @@ int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns 1 pre-accepted reply from another replica (slow-path).");
   cmd++;
-  dkey = to_string(cmd);
   // Disconnect all servers except leader and 1 replica
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
@@ -579,7 +566,7 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare returns no replies (avoid fast-path).");
   int cmd = 1001;
-  string dkey = to_string(cmd);
+  string dkey = "1000";
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
   // Disconnect leader
@@ -604,7 +591,6 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path).");
   cmd++;
-  dkey = to_string(cmd);
   // Disconnect all servers except leader and 1 replica
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
