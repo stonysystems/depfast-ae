@@ -101,41 +101,28 @@ void EpaxosServer::Setup() {
     while(true) {
       if(prepare) {
         mtx_.lock();
-        // Prepare all instances of current replica
-        uint64_t replica_id = replica_id_;
-        for (uint64_t instance_no = 0; instance_no < next_instance_no; instance_no++) {
-          mtx_.unlock();
-          Coroutine::CreateRun([this, replica_id, instance_no](){
-            int time_to_sleep = ceil((rand() * 1.0) / RAND_MAX) * 1000;
-            Log_debug("Added to prepare replica: %d instance: %d and put to sleep %d us", replica_id, instance_no, time_to_sleep);
-            Coroutine::Sleep(time_to_sleep);
-            StartPrepare(replica_id, instance_no);
-          });
-          mtx_.lock();
+        unordered_map<uint64_t, uint64_t> last_instance;
+        for (auto repl : cmds) {
+          for (auto inst : repl.second) {
+            uint64_t replica_id = repl.first;
+            uint64_t instance_no = inst.first;
+            last_instance[replica_id] = max(last_instance[replica_id], instance_no);
+          }
         }
-        // Prepare all instances of all replicas
-        // unordered_map<uint64_t, uint64_t> last_instance;
-        // for (auto repl : cmds) {
-        //   for (auto inst : repl.second) {
-        //     uint64_t replica_id = repl.first;
-        //     uint64_t instance_no = inst.first;
-        //     last_instance[replica_id] = max(last_instance[replica_id], instance_no);
-        //   }
-        // }
-        // last_instance[replica_id_] = next_instance_no-1;
-        // for (auto itr : last_instance) {
-        //   uint64_t replica_id = itr.first;
-        //   for (uint64_t instance_no = 0; instance_no < itr.second; instance_no++) {
-        //     uint64_t curr_replica_id = replica_id_;
-        //     mtx_.unlock();
-        //     Coroutine::CreateRun([this, replica_id, instance_no, curr_replica_id](){
-        //       int time_to_sleep = (ceil(rand() * 1.0) / RAND_MAX) * 1000;
-        //       Log_debug("Added to prepare replica: %d instance: %d in replica: %d and put to sleep %d us", replica_id, instance_no, curr_replica_id, time_to_sleep);
-        //       StartPrepare(replica_id, instance_no);
-        //     });
-        //     mtx_.lock();
-        //   }
-        // }
+        last_instance[replica_id_] = next_instance_no-1;
+        for (auto itr : last_instance) {
+          uint64_t replica_id = itr.first;
+          for (uint64_t instance_no = 0; instance_no < itr.second; instance_no++) {
+            uint64_t curr_replica_id = replica_id_;
+            mtx_.unlock();
+            Coroutine::CreateRun([this, replica_id, instance_no, curr_replica_id](){
+              int time_to_sleep = (ceil(rand() * 1.0) / RAND_MAX) * 1000;
+              Log_debug("Added to prepare replica: %d instance: %d in replica: %d and put to sleep %d us", replica_id, instance_no, curr_replica_id, time_to_sleep);
+              StartPrepare(replica_id, instance_no);
+            });
+            mtx_.lock();
+          }
+        }
         prepare = false;
         mtx_.unlock();
       } else {

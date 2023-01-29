@@ -22,6 +22,7 @@ EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
     committed_cmds[i].push_back(-1);
     rpc_count_last[i] = 0;
     disconnected_[i] = false;
+    slow_[i] = false;
   }
   th_ = std::thread([this](){ netctlLoop(); });
 }
@@ -51,6 +52,16 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id
   replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
 }
 
+void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
+  replicas[svr]->svr_->Prepare(replica_id, instance_no);
+}
+
+void EpaxosTestConfig::PrepareAllUncommitted() {
+  for (int i = 0; i < NSERVERS; i++) {
+    replicas[i]->svr_->PrepareAllUncommitted();
+  }
+}
+
 void EpaxosTestConfig::GetState(int svr, 
                                 uint64_t replica_id, 
                                 uint64_t instance_no, 
@@ -60,16 +71,6 @@ void EpaxosTestConfig::GetState(int svr,
                                 unordered_map<uint64_t, uint64_t> *deps, 
                                 status_t *state) {
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, state);
-}
-
-void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
-  replicas[svr]->svr_->Prepare(replica_id, instance_no);
-}
-
-void EpaxosTestConfig::PrepareAllUncommitted() {
-  for (int i = 0; i < NSERVERS; i++) {
-    replicas[i]->svr_->PrepareAllUncommitted();
-  }
 }
 
 int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
@@ -253,35 +254,6 @@ int EpaxosTestConfig::DoAgreement(int cmd,
   return 0;
 }
 
-// int EpaxosTestConfig::Wait(uint64_t index, int n, uint64_t term) {
-//   int nc = 0, i;
-//   auto to = 10000; // 10 milliseconds
-//   for (i = 0; i < 30; i++) {
-//     nc = NCommitted(index);
-//     if (nc < 0) {
-//       return -3; // values differ
-//     } else if (nc >= n) {
-//       break;
-//     }
-//     Reactor::CreateSpEvent<TimeoutEvent>(to)->Wait();
-//     if (to < 1000000) {
-//       to *= 2;
-//     }
-//     if (TermMovedOn(term)) {
-//       return -2; // term changed
-//     }
-//   }
-//   if (i == 30) {
-//     return -1; // timeout
-//   }
-//   for (int i = 0; i < NSERVERS; i++) {
-//     if (EpaxosTestConfig::committed_cmds[i].size() > index) {
-//       return EpaxosTestConfig::committed_cmds[i][index];
-//     }
-//   }
-//   verify(0);
-// }
-
 void EpaxosTestConfig::Disconnect(int svr) {
   verify(svr >= 0 && svr < NSERVERS);
   std::lock_guard<std::mutex> lk(disconnect_mtx_);
@@ -305,6 +277,10 @@ int EpaxosTestConfig::NDisconnected(void) {
       count++;
   }
   return count;
+}
+
+bool EpaxosTestConfig::IsDisconnected(int svr) {
+  return isDisconnected(svr);
 }
 
 void EpaxosTestConfig::SetUnreliable(bool unreliable) {
@@ -332,6 +308,29 @@ bool EpaxosTestConfig::IsUnreliable(void) {
   return unreliable_;
 }
 
+
+bool EpaxosTestConfig::AnySlow(void) {
+  std::lock_guard<std::mutex> prlk(disconnect_mtx_);
+  for (int i = 0; i < NSERVERS; i++) {
+    if (slow_[i])
+      return true;
+  }
+  return false;
+}
+
+void EpaxosTestConfig::SetSlow(int svr, bool slow) {
+  verify(svr >= 0 && svr < NSERVERS);
+  std::lock_guard<std::mutex> prlk(disconnect_mtx_);
+  if (slow) {
+    verify(!slow_[svr]);
+    slow_[svr] = true;
+    this->slow(svr, 1);
+  } else {
+    verify(slow_[svr]);
+    slow_[svr] = false;
+    this->slow(svr, 0);
+  }
+}
 void EpaxosTestConfig::Shutdown(void) {
   // trigger netctlLoop shutdown
   {
@@ -462,36 +461,10 @@ void EpaxosTestConfig::reconnect(int svr, bool ignore) {
   }
 }
 
-bool EpaxosTestConfig::AnySlow(void) {
-  for (int i = 0; i < NSERVERS; i++) {
-    if (slow_[i])
-      return true;
-  }
-  return false;
-}
-
-void EpaxosTestConfig::SetSlow(int svr, bool slow) {
-  verify(svr >= 0 && svr < NSERVERS);
-  std::lock_guard<std::recursive_mutex> lk(connection_m_);
-  if (slow) {
-    verify(!slow_[svr]);
-    slow_[svr] = true;
-    this->slow(svr, 1);
-  } else {
-    verify(slow_[svr]);
-    slow_[svr] = false;
-    this->slow(svr, 0);
-  }
-}
-
 void EpaxosTestConfig::slow(int svr, uint32_t msec) {
   std::lock_guard<std::recursive_mutex> lk(connection_m_);
   verify(!isDisconnected(svr));
   replicas[svr]->commo_->rpc_poll_->slow(msec * 1000);
-}
-
-bool EpaxosTestConfig::IsDisconnected(int svr) {
-  return isDisconnected(svr);
 }
 
 #endif

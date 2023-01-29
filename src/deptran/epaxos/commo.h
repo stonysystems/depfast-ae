@@ -41,12 +41,13 @@ class EpaxosPreAcceptReply {
 };
 
 class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
- public:
+ private:
   int n_voted_identical_ = 0;
   int n_voted_nonidentical_ = 0;
   int fast_path_quorum_;
   int slow_path_quorum_;
   bool is_recovery;
+ public:
   vector<EpaxosPreAcceptReply> replies;
 
   EpaxosPreAcceptQuorumEvent(int n_total_, bool is_recovery, int fast_path_quorum, int slow_path_quorum) : QuorumEvent(n_total_, n_total_) {
@@ -145,7 +146,13 @@ class EpaxosPrepareReply {
   ballot_t ballot_no;
   uint64_t replica_id;
 
-  EpaxosPrepareReply() {}
+  EpaxosPrepareReply() {
+    status = false;
+    cmd_state = 0;
+    epoch = 0;
+    ballot_no = -1;
+    replica_id = 0;
+  }
 
   EpaxosPrepareReply(bool_t status,
                      shared_ptr<Marshallable> cmd,

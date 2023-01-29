@@ -715,14 +715,20 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   for (auto thread : threads) {
     verify(pthread_join(thread, nullptr) == 0);
   }
-  Coroutine::Sleep(5000000);
-  config_->SetUnreliable(false);
-  Coroutine::Sleep(5000000);
+  Coroutine::Sleep(1000000);
   config_->PrepareAllUncommitted();
-  Coroutine::Sleep(10000000);
+  Coroutine::Sleep(1000000);
+  config_->SetUnreliable(false);
+  Coroutine::Sleep(1000);
+  for (auto retval : retvals) {
+    auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
+    int CMD_LEADER = rand() % NSERVERS;
+    config_->Prepare(CMD_LEADER, retval.first, retval.second);
+  }
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
+  Coroutine::Sleep(1000000);
   Passed2();
 }
 

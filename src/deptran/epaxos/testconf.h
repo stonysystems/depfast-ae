@@ -55,7 +55,7 @@ class EpaxosTestConfig {
 
   // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
   bool disconnected_[NSERVERS];
-  // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
+  // slow_[svr] true if svr is set as slow by SetSlow()
   bool slow_[NSERVERS];
   // guards disconnected_ between Disconnect()/Reconnect() and netctlLoop
   std::mutex disconnect_mtx_;
@@ -71,6 +71,12 @@ class EpaxosTestConfig {
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
 
+  // Calls Prepare() to specified server
+  void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
+
+  // Calls PrepareAllUncommitted() in all servers
+  void PrepareAllUncommitted();
+
   // Get state of the command at an instance replica_id.instance_no in a specified server
   void GetState(int svr, 
                 uint64_t replica_id, 
@@ -80,10 +86,6 @@ class EpaxosTestConfig {
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
                 status_t *state);
-
-  void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
-
-  void PrepareAllUncommitted();
 
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id);
@@ -95,7 +97,7 @@ class EpaxosTestConfig {
   // -1 if committed values of command kind differ
   // -2 if committed values of dependency key kind differ
   // -3 if committed values of seq kind differ
-  // -3 if committed values of deps kind differ
+  // -4 if committed values of deps kind differ
   int NCommitted(uint64_t replica_id, uint64_t instance_no, int n);
 
   // Returns number of servers committed the command if atleast n servers committed and 
@@ -105,7 +107,7 @@ class EpaxosTestConfig {
   // -1 if committed values of command kind differ
   // -2 if committed values of dependency key kind differ
   // -3 if committed values of seq kind differ
-  // -3 if committed values of deps kind differ
+  // -4 if committed values of deps kind differ
   // Stores the committed command attributes in the args passed by pointer.
   int NCommitted(uint64_t replica_id, 
                  uint64_t instance_no, 
@@ -136,7 +138,7 @@ class EpaxosTestConfig {
   // -1 if committed values of command kind differ
   // -2 if committed values of dependency key kind differ
   // -3 if committed values of seq kind differ
-  // -3 if committed values of deps kind differ
+  // -4 if committed values of deps kind differ
   int DoAgreement(int cmd, 
                   string dkey, 
                   int n, 
@@ -158,14 +160,14 @@ class EpaxosTestConfig {
   // Disconnects server from rest of servers
   void Disconnect(int svr);
 
-  // Checks if server was disconnected from rest of servers
-  bool IsDisconnected(int svr);
-
   // Reconnects disconnected server
   void Reconnect(int svr);
 
   // Returns number of disconnected servers
   int NDisconnected(void);
+
+  // Checks if server was disconnected from rest of servers
+  bool IsDisconnected(int svr);
 
   // Sets/unsets network unreliable
   // Blocks until network successfully set to unreliable/reliable
@@ -212,9 +214,6 @@ class EpaxosTestConfig {
   void disconnect(int svr, bool ignore = false);
   void reconnect(int svr, bool ignore = false);
   void slow(int svr, uint32_t msec);
-
-  // other internal helpers
-  int waitOneLeader(bool want_leader, int expected);
 
 };
 
