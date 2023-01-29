@@ -9,6 +9,8 @@
 
 namespace janus {
 
+#define NOOP_DKEY ""
+
 enum EpaxosCommandState {
   NOT_STARTED = 0,
   PRE_ACCEPTED = 1,
@@ -35,6 +37,10 @@ class EpaxosBallot {
     this->replica_id = replica_id;
   }
 
+  bool isDefault() {
+    return ballot_no == 0;
+  }
+
   int isGreater(EpaxosBallot& rhs) {
     return epoch > rhs.epoch || (epoch == rhs.epoch && ballot_no > rhs.ballot_no);
   }
@@ -59,7 +65,11 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
 
-  EpaxosCommand() {}
+  EpaxosCommand() {
+    cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
+    dkey = NOOP_DKEY;
+    state = EpaxosCommandState::NOT_STARTED;
+  }
 
   EpaxosCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
     this->cmd = cmd;
@@ -145,7 +155,6 @@ class EpaxosServer : public TxLogServer {
   unordered_map<uint64_t, unordered_map<uint64_t, EpaxosCommand>> cmds;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> dkey_deps;
   unordered_map<string, uint64_t> dkey_seq;
-  string NOOP_DKEY = "";
   list<EpaxosRequest> reqs;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   set<pair<uint64_t, uint64_t>> committed_cmds;
