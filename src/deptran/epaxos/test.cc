@@ -89,9 +89,23 @@ void EpaxosLabTest::Cleanup(void) {
         AssertValidCommitStatus(replica_id, instance_no, r); \
         Assert2(cnoop == noop || !noop, "failed to reach agreement for replica: %d instance: %d, expected noop, got command", replica_id, instance_no); \
         Assert2(cnoop == noop || noop, "failed to reach agreement for replica: %d instance: %d, expected command, got noop", replica_id, instance_no); \
-        AssertValidCommitStatus(replica_id, instance_no, r); \
       }
       
+#define AssertNCommittedAndVerifyAttrs(cmd, dkey, n, noop, exp_dkey, exp_seq, exp_deps) { \
+        bool cnoop; \
+        string cdkey; \
+        uint64_t cseq; \
+        unordered_map<uint64_t, uint64_t> cdeps; \
+        auto r = config_->NCommitted(replica_id, instance_no, n, &cnoop, &cdkey, &cseq, &cdeps); \
+        Assert2(r >= n, "failed to reach agreement for replica: %d instance: %d among %d servers", replica_id, instance_no, n); \
+        AssertValidCommitStatus(replica_id, instance_no, r); \
+        Assert2(cnoop == noop || !noop, "failed to reach agreement for replica: %d instance: %d, expected noop, got command", replica_id, instance_no); \
+        Assert2(cnoop == noop || noop, "failed to reach agreement for replica: %d instance: %d, expected command, got noop", replica_id, instance_no); \
+        Assert2(cdkey == exp_dkey, "failed to reach agreement for replica: %d instance: %d, expected dkey %s, got dkey %s", replica_id, instance_no, exp_dkey.c_str(), cdkey.c_str()); \
+        Assert2(cseq == exp_seq, "failed to reach agreement for replica: %d instance: %d, expected seq %d, got seq %d", replica_id, instance_no, exp_seq, cseq); \
+        Assert2(cdeps == exp_deps, "failed to reach agreement for replica: %d instance: %d, expected deps different from committed deps", replica_id, instance_no); \
+      }
+
 #define DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, n, noop, exp_dkey, exp_seq, exp_deps) { \
         bool cnoop; \
         string cdkey; \
@@ -569,6 +583,8 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   string dkey = "1000";
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
+  auto deps = unordered_map<uint64_t, uint64_t>();
+  int seq = 0;
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
   AssertNoneExecuted(cmd);
@@ -581,12 +597,12 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
   verify(nc == 0);
   // Commit noop in others via prepare
-  config_->Prepare(0, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS-1, true);
+  config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-1, true, dkey, seq, deps);
   // Reconnect leader and see if noop is committed in all via prepare
   config_->Reconnect(CMD_LEADER);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, true);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, dkey, seq, deps);
   
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path).");
@@ -597,7 +613,7 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
   AssertNoneExecuted(cmd);
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
-  config_->Start(3, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   verify(np == 2);
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -611,12 +627,12 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
-  AssertNCommitted(replica_id, instance_no, NSERVERS-2);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-2, true, dkey, seq, deps);
   // Reconnect leader and other server and see if noop is committed in all
   config_->Reconnect(CMD_LEADER);
   config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, true);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, dkey, seq, deps);
   Passed2();
 }
 
