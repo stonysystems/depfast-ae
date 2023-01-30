@@ -296,9 +296,9 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
   deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
   config_->Start(CMD_LEADER % NSERVERS, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   // Commit in all
   cmd++;
   seq = 4;
@@ -344,9 +344,9 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
   deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
   config_->Start((CMD_LEADER + 1) % NSERVERS, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   // Commit in all
   cmd++;
   seq = 8;
