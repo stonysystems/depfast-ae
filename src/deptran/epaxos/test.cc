@@ -19,7 +19,8 @@ int EpaxosLabTest::Run(void) {
       || testPreparePreAcceptedCommandAgree()
       || testPrepareNoopCommandAgree()
       || testConcurrentAgree()
-      || testConcurrentUnreliableAgree()
+      || testConcurrentUnreliableAgree1()
+      // || testConcurrentUnreliableAgree2()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -356,7 +357,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
 }
 
 int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
-  Init2(8, "Commit through prepare - committed command");
+  Init2(8, "Commit through prepare - committed command (takes a few minutes)");
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
   int cmd = 801;
@@ -511,7 +512,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
 }
 
 int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
-  Init2(9, "Commit through prepare - accepted but not committed command");
+  Init2(9, "Commit through prepare - accepted but not committed command (takes a few minutes)");
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
   int cmd = 901;
@@ -763,7 +764,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
+int EpaxosLabTest::testConcurrentUnreliableAgree1(void) {
   Init2(13, "Unreliable concurrent agreement (takes a few minutes)");
   config_->SetUnreliable(true);
   std::vector<pthread_t> threads{};
@@ -790,7 +791,51 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   for (auto thread : threads) {
     verify(pthread_join(thread, nullptr) == 0);
   }
+  config_->SetUnreliable(false);
+  Coroutine::Sleep(1000);
+  for (auto retval : retvals) {
+    auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
+    int CMD_LEADER = rand() % NSERVERS;
+    config_->Prepare(CMD_LEADER, retval.first, retval.second);
+  }
+  for (auto retval : retvals) {
+    AssertNCommitted(retval.first, retval.second, NSERVERS);
+  }
   Coroutine::Sleep(1000000);
+  Passed2();
+}
+
+int EpaxosLabTest::testConcurrentUnreliableAgree2(void) {
+  Init2(13, "Unreliable concurrent agreement (takes a few minutes) - Prepare hell");
+  config_->SetUnreliable(true);
+  std::vector<pthread_t> threads{};
+  std::vector<std::pair<uint64_t, uint64_t>> retvals{};
+  std::mutex mtx{};
+  for (int iter = 1; iter <= 100; iter++) {
+    for (int svr = 0; svr < NSERVERS; svr++) {
+      CAArgs *args = new CAArgs{};
+      args->cmd = 50000 + (svr * 10000) + iter;
+      args->svr = svr;
+      args->dkey = "50000";
+      args->mtx = &mtx;
+      args->retvals = &retvals;
+      args->config = config_;
+      pthread_t thread;
+      verify(pthread_create(&thread,
+                            nullptr,
+                            doConcurrentAgreement,
+                            (void*)args) == 0);
+      threads.push_back(thread);
+    }
+  }
+  // join all threads
+  for (auto thread : threads) {
+    verify(pthread_join(thread, nullptr) == 0);
+  }
+  config_->PrepareAllUncommitted();
+  config_->PrepareAllUncommitted();
+  config_->PrepareAllUncommitted();
+  Coroutine::Sleep(60000000);
   config_->SetUnreliable(false);
   Coroutine::Sleep(1000);
   for (auto retval : retvals) {

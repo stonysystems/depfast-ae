@@ -435,6 +435,11 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
 void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Started prepare for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   mtx_.lock();
+  if (cmds[replica_id][instance_no].preparing) {
+    Log_debug("Prepare initiated already");
+    return;
+  }
+  cmds[replica_id][instance_no].preparing = true;
   // Get ballot = highest seen ballot + 1
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
@@ -474,6 +479,7 @@ void EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     if (ev->status_ == Event::TIMEOUT || ev->No()) {
       Log_debug("Prepare failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
       UpdateHighestSeenBallot(ev->replies, replica_id, instance_no);
+      Coroutine::Sleep(10000);
       continue;
     }
     // Add self reply

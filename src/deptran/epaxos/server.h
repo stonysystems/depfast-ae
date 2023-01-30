@@ -64,11 +64,13 @@ class EpaxosCommand {
   unordered_map<uint64_t, uint64_t> deps;
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
+  bool preparing;
 
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
     dkey = NOOP_DKEY;
     state = EpaxosCommandState::NOT_STARTED;
+    preparing = false;
   }
 
   EpaxosCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
@@ -78,6 +80,7 @@ class EpaxosCommand {
     this->deps = deps;
     this->highest_seen = highest_seen;
     this->state = state;
+    this->preparing = false;
   }
 };
 
