@@ -193,7 +193,7 @@ void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
   Log_debug("Started pre-accept for request for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
   // Initialise attributes
-  uint64_t seq = dkey_seq.count(dkey) ? (dkey_seq[dkey]+1) : 0;
+  uint64_t seq = dkey_seq[dkey] + 1;
   unordered_map<uint64_t, uint64_t> deps = dkey_deps[dkey];
   if(leader_dep_instance >= 0) {
     deps[replica_id] = leader_dep_instance;
@@ -208,7 +208,6 @@ void EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
     dkey_seq[dkey] = cmd.seq;
     dkey_deps[dkey][replica_id] = max(dkey_deps[dkey][replica_id], instance_no);
   }
-  
   mtx_.unlock();
 
   auto ev = commo()->SendPreAccept(site_id_, 
@@ -282,7 +281,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
     return reply;
   }
   // Initialise attributes
-  uint64_t seq = dkey_seq.count(dkey) ? (dkey_seq[dkey]+1) : 0;
+  uint64_t seq = dkey_seq[dkey] + 1;
   seq = max(seq, seq_);
   if (seq != seq_) {
     status = EpaxosPreAcceptStatus::NON_IDENTICAL;
@@ -292,7 +291,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
     if (dreplica_id == replica_id) continue;
-    if (dinstance_no > deps[dreplica_id]) {
+    if (deps.count(dreplica_id) == 0 || dinstance_no > deps[dreplica_id]) {
       deps[dreplica_id] = dinstance_no;
       status = EpaxosPreAcceptStatus::NON_IDENTICAL;
     }

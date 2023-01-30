@@ -13,10 +13,11 @@ int EpaxosLabTest::Run(void) {
       || testSlowPathIndependentAgree()
       || testSlowPathDependentAgree()
       || testFailNoQuorum()
-      || testPrepareCommittedCommand()
-      || testPrepareAcceptedCommand()
-      || testPreparePreAcceptedCommand()
-      || testPrepareNoopCommand()
+      || testNonIdenticalAttrsAgree()
+      || testPrepareCommittedCommandAgree()
+      || testPrepareAcceptedCommandAgree()
+      || testPreparePreAcceptedCommandAgree()
+      || testPrepareNoopCommandAgree()
       || testConcurrentAgree()
       || testConcurrentUnreliableAgree()
     ) {
@@ -91,7 +92,7 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(cnoop == noop || noop, "failed to reach agreement for replica: %d instance: %d, expected command, got noop", replica_id, instance_no); \
       }
       
-#define AssertNCommittedAndVerifyAttrs(cmd, dkey, n, noop, exp_dkey, exp_seq, exp_deps) { \
+#define AssertNCommittedAndVerifyAttrs(replica_id, instance_no, n, noop, exp_dkey, exp_seq, exp_deps) { \
         bool cnoop; \
         string cdkey; \
         uint64_t cseq; \
@@ -103,7 +104,7 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(cnoop == noop || noop, "failed to reach agreement for replica: %d instance: %d, expected command, got noop", replica_id, instance_no); \
         Assert2(cdkey == exp_dkey, "failed to reach agreement for replica: %d instance: %d, expected dkey %s, got dkey %s", replica_id, instance_no, exp_dkey.c_str(), cdkey.c_str()); \
         Assert2(cseq == exp_seq, "failed to reach agreement for replica: %d instance: %d, expected seq %d, got seq %d", replica_id, instance_no, exp_seq, cseq); \
-        Assert2(cdeps == exp_deps, "failed to reach agreement for replica: %d instance: %d, expected deps different from committed deps", replica_id, instance_no); \
+        Assert2(cdeps == exp_deps, "failed to reach agreement for replica: %d instance: %d, expected deps %s different from committed deps %s", replica_id, instance_no, map_to_string(exp_deps).c_str(), map_to_string(cdeps).c_str()); \
       }
 
 #define DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, n, noop, exp_dkey, exp_seq, exp_deps) { \
@@ -121,7 +122,7 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(cnoop == noop || noop, "failed to reach agreement for command %d, expected command, got noop", cmd); \
         Assert2(cdkey == exp_dkey, "failed to reach agreement for command %d, expected dkey %s, got dkey %s", cmd, exp_dkey.c_str(), cdkey.c_str()); \
         Assert2(cseq == exp_seq, "failed to reach agreement for command %d, expected seq %d, got seq %d", cmd, exp_seq, cseq); \
-        Assert2(cdeps == exp_deps, "failed to reach agreement for command %d, expected deps different from committed deps", cmd); \
+        Assert2(cdeps == exp_deps, "failed to reach agreement for command %d, expected deps %s different from committed deps %s", cmd, map_to_string(exp_deps).c_str(), map_to_string(cdeps).c_str()); \
       }
       
 #define DoAgreeAndAssertNoneCommitted(cmd, dkey) { \
@@ -139,10 +140,8 @@ int EpaxosLabTest::testBasicAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 100 + i;
     string dkey = to_string(cmd);
-    // make sure no commits exist before any agreements are started
-    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
-    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, NSERVERS, false, dkey, 0, deps);
+    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, NSERVERS, false, dkey, 1, deps);
   }
   Passed2();
 }
@@ -154,10 +153,8 @@ int EpaxosLabTest::testFastPathIndependentAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 200 + i;
     string dkey = to_string(cmd);
-    // make sure no commits exist before any agreements are started
-    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
-    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, 0, deps);
+    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, 1, deps);
   }
   // Reconnect all
   config_->Reconnect(0);
@@ -171,24 +168,18 @@ int EpaxosLabTest::testFastPathDependentAgree(void) {
   // Round 1
   int cmd = 301;
   string dkey = "300";
-  uint64_t seq = 0;
+  uint64_t seq = 1;
   unordered_map<uint64_t, uint64_t> deps;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Round 2
   cmd++;
   seq++;
   deps[1] = 3;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Round 3
   cmd++;
   seq++;
   deps[1] = 4;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   config_->Reconnect(0);
@@ -204,10 +195,8 @@ int EpaxosLabTest::testSlowPathIndependentAgree(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 400 + i;
     string dkey = to_string(cmd);
-    // make sure no commits exist before any agreements are started
-    AssertNoneExecuted(cmd);
     unordered_map<uint64_t, uint64_t> deps;
-    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, 0, deps);
+    DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, 1, deps);
   }
   // Reconnect all
   config_->Reconnect(0);
@@ -223,24 +212,18 @@ int EpaxosLabTest::testSlowPathDependentAgree(void) {
   // Round 1
   int cmd = 501;
   string dkey = "500";
-  uint64_t seq = 0;
+  uint64_t seq = 1;
   unordered_map<uint64_t, uint64_t> deps;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Round 2
   cmd++;
   seq++;
   deps[2] = 3;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Round 3
   cmd++;
   seq++;
   deps[2] = 4;
-  // make sure no commits exist before any agreements are started
-  AssertNoneExecuted(cmd);
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   // Reconnect all
   config_->Reconnect(0);
@@ -258,8 +241,6 @@ int EpaxosLabTest::testFailNoQuorum(void) {
     // complete 1 agreement and make sure its index is as expected
     int cmd = 600 + i;
     string dkey = to_string(cmd);
-    // make sure no commits exist before any agreements are started
-    AssertNoneExecuted(cmd);
     DoAgreeAndAssertNoneCommitted(cmd, dkey);
   }
   // Reconnect all
@@ -270,12 +251,116 @@ int EpaxosLabTest::testFailNoQuorum(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareCommittedCommand(void) {
-  Init2(7, "Commit through prepare - committed command");
+int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
+  Init2(7, "Leader and replicas have different dependencies");
   /*********** Sub Test 1 ***********/
-  InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
+  InitSub2(1, "Leader have more dependencies than replicas");
   int cmd = 701;
   string dkey = "700";
+  uint64_t replica_id, instance_no;
+  unordered_map<uint64_t, uint64_t> init_deps;
+  // Pre-accept different commands in each server
+  for (int i=0; i<NSERVERS; i++) {
+    config_->Disconnect(i);
+    config_->Start(i, cmd, dkey, &replica_id, &instance_no);
+    auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
+    verify(np == 1);
+    auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
+    verify(na == 0);
+    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+    verify(nc == 0);
+    init_deps[replica_id] = instance_no;
+    cmd++;
+    config_->Reconnect(i);
+  }
+  int CMD_LEADER = 4;
+  // Commit in majority
+  int seq = 2;
+  unordered_map<uint64_t, uint64_t> deps;
+  config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
+  config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
+  deps[CMD_LEADER] = init_deps[CMD_LEADER];
+  deps[(CMD_LEADER + 3) % NSERVERS] = init_deps[(CMD_LEADER + 3) % NSERVERS];
+  deps[(CMD_LEADER + 4) % NSERVERS] = init_deps[(CMD_LEADER + 4) % NSERVERS];
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
+  config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
+  // Commit in another majority
+  cmd++;
+  seq = 3;
+  config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
+  config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
+  deps[CMD_LEADER] = instance_no;
+  deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
+  deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
+  config_->Start(CMD_LEADER % NSERVERS, cmd, dkey, &replica_id, &instance_no);
+  config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
+  // Commit in all
+  cmd++;
+  seq = 4;
+  deps[CMD_LEADER] = instance_no;
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
+
+
+  /*********** Sub Test 2 ***********/
+  InitSub2(2, "Replicas have more dependencies than leader");
+  cmd++;
+  // Pre-accept different commands in each server
+  for (int i=0; i<NSERVERS; i++) {
+    config_->Disconnect(i);
+    config_->Start(i, cmd, dkey, &replica_id, &instance_no);
+    auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
+    verify(np == 1);
+    auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
+    verify(na == 0);
+    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+    verify(nc == 0);
+    init_deps[replica_id] = instance_no;
+    cmd++;
+    config_->Reconnect(i);
+  }
+  // Commit in majority
+  seq = 6;
+  config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
+  config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
+  deps[CMD_LEADER] = init_deps[CMD_LEADER];
+  deps[(CMD_LEADER + 3) % NSERVERS] = init_deps[(CMD_LEADER + 3) % NSERVERS];
+  deps[(CMD_LEADER + 4) % NSERVERS] = init_deps[(CMD_LEADER + 4) % NSERVERS];
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
+  config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
+  // Commit in another majority
+  cmd++;
+  seq = 7;
+  config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
+  config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
+  deps[CMD_LEADER] = instance_no;
+  deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
+  deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
+  config_->Start((CMD_LEADER + 1) % NSERVERS, cmd, dkey, &replica_id, &instance_no);
+  config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
+  config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
+  // Commit in all
+  cmd++;
+  seq = 8;
+  deps[(CMD_LEADER + 1) % NSERVERS] = instance_no;
+  config_->Start((CMD_LEADER + 2) % NSERVERS, cmd, dkey, &replica_id, &instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
+  Passed2();
+}
+
+int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
+  Init2(8, "Commit through prepare - committed command");
+  /*********** Sub Test 1 ***********/
+  InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
+  int cmd = 801;
+  string dkey = "800";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1100, diff = 100;
   int CMD_LEADER = 0;
@@ -283,7 +368,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have committed the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -321,7 +405,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -359,7 +442,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -397,7 +479,6 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have committed the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -429,12 +510,12 @@ int EpaxosLabTest::testPrepareCommittedCommand(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareAcceptedCommand(void) {
-  Init2(8, "Commit through prepare - accepted but not committed command");
+int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
+  Init2(9, "Commit through prepare - accepted but not committed command");
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
-  int cmd = 801;
-  string dkey = "800";
+  int cmd = 901;
+  string dkey = "900";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1000, diff = 100;
   int CMD_LEADER = 1;
@@ -443,7 +524,6 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 1 server (leader) have accepted the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
@@ -481,7 +561,6 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have accepted the command
   while (true) {
-    AssertNoneExecuted(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
@@ -513,17 +592,16 @@ int EpaxosLabTest::testPrepareAcceptedCommand(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
-  Init2(9, "Commit through prepare - pre-accepted but not in majority");
+int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
+  Init2(10, "Commit through prepare - pre-accepted but not in majority");
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare return 1 pre-accepted reply from leader (avoid fast-path).");
-  int cmd = 901;
-  string dkey = "900";
+  int cmd = 1001;
+  string dkey = "1000";
   int CMD_LEADER = 2;
   uint64_t replica_id, instance_no;
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
-  AssertNoneExecuted(cmd);
   // Start agreement in leader - will not replicate as leader is disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
@@ -553,7 +631,6 @@ int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
-  AssertNoneExecuted(cmd);
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
@@ -575,19 +652,18 @@ int EpaxosLabTest::testPreparePreAcceptedCommand(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareNoopCommand(void) {
-  Init2(10, "Commit through prepare - commit noop");
+int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
+  Init2(11, "Commit through prepare - commit noop");
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare returns no replies (avoid fast-path).");
-  int cmd = 1001;
-  string dkey = "1000";
+  int cmd = 1101;
+  string dkey = "1100";
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
   auto deps = unordered_map<uint64_t, uint64_t>();
-  int seq = 0;
+  int seq = 1;
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
-  AssertNoneExecuted(cmd);
   // Start agreement in leader - will not replicate as leader is disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
@@ -611,7 +687,6 @@ int EpaxosLabTest::testPrepareNoopCommand(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
-  AssertNoneExecuted(cmd);
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
@@ -656,16 +731,16 @@ static void *doConcurrentAgreement(void *args) {
 }
 
 int EpaxosLabTest::testConcurrentAgree(void) {
-  Init2(11, "Concurrent agreements");
+  Init2(12, "Concurrent agreements");
   std::vector<pthread_t> threads{};
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
-      args->cmd = svr * 1000 + iter;
+      args->cmd = svr * 10000 + iter;
       args->svr = svr;
-      args->dkey = "1000";
+      args->dkey = "10000";
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
@@ -689,7 +764,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
 }
 
 int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
-  Init2(12, "Unreliable concurrent agreement (takes a few minutes)");
+  Init2(13, "Unreliable concurrent agreement (takes a few minutes)");
   config_->SetUnreliable(true);
   std::vector<pthread_t> threads{};
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
@@ -697,9 +772,9 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
-      args->cmd = 5000 + (svr * 1000) + iter;
+      args->cmd = 50000 + (svr * 10000) + iter;
       args->svr = svr;
-      args->dkey = "5000";
+      args->dkey = "50000";
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;

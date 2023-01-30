@@ -18,16 +18,19 @@ class EpaxosLabTest {
   void Cleanup(void);
 
  private:
+  // Pre-accept/Accept/Commit tests
   int testBasicAgree(void);
   int testFastPathIndependentAgree(void);
   int testFastPathDependentAgree(void);
   int testSlowPathIndependentAgree(void);
   int testSlowPathDependentAgree(void);
+  int testNonIdenticalAttrsAgree(void);
   int testFailNoQuorum(void);
-  int testPrepareCommittedCommand(void);
-  int testPrepareAcceptedCommand(void);
-  int testPreparePreAcceptedCommand(void);
-  int testPrepareNoopCommand(void);
+  // Prepare tests
+  int testPrepareCommittedCommandAgree(void);
+  int testPrepareAcceptedCommandAgree(void);
+  int testPreparePreAcceptedCommandAgree(void);
+  int testPrepareNoopCommandAgree(void);
   int testConcurrentAgree(void);
   int testConcurrentUnreliableAgree(void);
 

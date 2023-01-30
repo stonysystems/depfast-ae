@@ -1,7 +1,6 @@
 #pragma once
 
 #include "frame.h"
-#include "coordinator.h"
 
 namespace janus {
 
@@ -34,6 +33,8 @@ extern std::chrono::_V2::system_clock::time_point _test_starttime_g;
 
 #define Passed() \
         Print("TEST %d Passed (time taken: %d s)", _test_id_g, (std::chrono::system_clock::now() - _test_starttime_g)/1000000000);
+
+extern string map_to_string(unordered_map<uint64_t, uint64_t> m);
 
 class EpaxosTestConfig {
 

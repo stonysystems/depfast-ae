@@ -9,6 +9,15 @@ namespace janus {
 int _test_id_g = 0;
 std::chrono::_V2::system_clock::time_point _test_starttime_g;
 
+string map_to_string(unordered_map<uint64_t, uint64_t> m) {
+  string result = "";
+  for (auto itr : m) {
+    result += to_string(itr.first) + ":" + to_string(itr.second) + ", ";
+  }
+  result = result.substr(0, result.size() - 2);
+  return result;
+}
+
 EpaxosFrame **EpaxosTestConfig::replicas = nullptr;
 std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS];
 std::vector<int> EpaxosTestConfig::committed_cmds[NSERVERS];
@@ -138,7 +147,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
           return -3;
         }
         if (committed_deps != deps_) {
-          Log_debug("committed different dependencies");
+          Log_debug("committed different dependencies, (expected %s got %s)", map_to_string(committed_deps).c_str(), map_to_string(deps_).c_str());
           return -4;
         }
       }
