@@ -118,12 +118,9 @@ class EpaxosTestConfig {
                  unordered_map<uint64_t, uint64_t> *cdeps);
 
   // Returns number of servers accepted the command 
-  // Returns -1 if commit was committed/executed in-between
   int NAccepted(uint64_t replica_id, uint64_t instance_no, int n);
 
   // Returns number of servers pre-accepted the command 
-  // Returns -1 if commit was committed/executed in-between
-  // Returns -2 if commit was accepted in-between
   int NPreAccepted(uint64_t replica_id, uint64_t instance_no, int n);
 
   // Does one agreement.

@@ -213,9 +213,6 @@ int EpaxosTestConfig::NAccepted(uint64_t replica_id, uint64_t instance_no, int n
       unordered_map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
-      if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
-        return -1;
-      }
       if (state_ == EpaxosCommandState::ACCEPTED ) {
         na++;
       }
@@ -242,12 +239,6 @@ int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, in
       unordered_map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
-      if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
-        return -1;
-      }
-      if (state_ == EpaxosCommandState::ACCEPTED) {
-        return -2;
-      }
       if (state_ == EpaxosCommandState::PRE_ACCEPTED) {
         na++;
       }

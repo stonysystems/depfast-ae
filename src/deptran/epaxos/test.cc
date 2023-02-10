@@ -291,11 +291,11 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
     config_->Disconnect(i);
     config_->Start(i, cmd, dkey, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-    verify(np == 1);
+    Assert2(np == 1, "unexpected number of pre-accepted servers");
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-    verify(na == 0);
+    Assert2(na == 0, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc == 0);
+    Assert2(nc == 0, "unexpected number of accepted servers");
     init_deps[replica_id] = instance_no;
     cmd++;
     config_->Reconnect(i);
@@ -341,11 +341,11 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
     config_->Disconnect(i);
     config_->Start(i, cmd, dkey, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-    verify(np == 1);
+    Assert2(np == 1, "unexpected number of pre-accepted servers");
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-    verify(na == 0);
+    Assert2(na == 0, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc == 0);
+    Assert2(nc == 0, "unexpected number of accepted servers");
     init_deps[replica_id] = instance_no;
     cmd++;
     config_->Reconnect(i);
@@ -403,7 +403,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc <= FAST_PATH_QUORUM);
+    Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of accepted servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 2) break;
     // Retry if more than 2 servers committed
@@ -439,7 +439,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc <= SLOW_PATH_QUORUM);
+    Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 1) break;
     // Retry if more than 1 server committed
@@ -477,7 +477,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc <= FAST_PATH_QUORUM);
+    Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of accepted servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 1) break;
     // Retry if more than 1 server committed
@@ -513,7 +513,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    verify(nc <= SLOW_PATH_QUORUM);
+    Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 2) break;
     // Retry if more than 2 servers committed
@@ -559,17 +559,18 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-    verify(na <= SLOW_PATH_QUORUM);
-    if (na == 1) break;
+    Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
+    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+    if (na == 1 && nc == 0) break;
     // Retry if more than 1 server accepted
-    time_to_sleep = (na < 1 && na >= 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
+    time_to_sleep = (na < 1 && nc == 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
     config_->Reconnect(CMD_LEADER);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   }
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Reconnect all disconnected servers and one pre-accepted server and commit in those via prepare
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
@@ -596,17 +597,18 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Disconnect(CMD_LEADER);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-    verify(na <= SLOW_PATH_QUORUM);
-    if (na == 2) break;
+    Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
+    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+    if (na == 2 && nc == 0) break;
     // Retry if more than 2 server accepted
-    time_to_sleep = (na < 2 && na >= 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
+    time_to_sleep = (na < 2 && nc == 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
     config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
     config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
     config_->Reconnect(CMD_LEADER);
   }
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Reconnect all disconnected servers and commit via prepare
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
@@ -635,11 +637,11 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   // Start agreement in leader - will not replicate as leader is disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-  verify(np == 1);
+  Assert2(np == 1, "unexpected number of pre-accepted servers");
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-  verify(na == 0);
+  Assert2(na == 0, "unexpected number of accepted servers");
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Reconnect leader and commit via prepare
   config_->Reconnect(CMD_LEADER);
   // Set non-leaders slow to prevent from committing noop
@@ -664,11 +666,11 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-  verify(np == 2);
+  Assert2(np == 2, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-  verify(na == 0);
+  Assert2(na == 0, "unexpected number of accepted servers");
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Disconnect leader and reconnect majority-1 non pre-accepted servers to commit pre-accepted command via prepare
   config_->Disconnect(CMD_LEADER);
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
@@ -698,11 +700,11 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   // Start agreement in leader - will not replicate as leader is disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-  verify(np == 1);
+  Assert2(np == 1, "unexpected number of pre-accepted servers");
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-  verify(na == 0);
+  Assert2(na == 0, "unexpected number of accepted servers");
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Commit noop in others via prepare
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-1, true, NOOP_DKEY, seq, deps);
@@ -721,11 +723,11 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
-  verify(np == 2);
+  Assert2(np == 2, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
-  verify(na == 0);
+  Assert2(na == 0, "unexpected number of accepted servers");
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  verify(nc == 0);
+  Assert2(nc == 0, "unexpected number of accepted servers");
   // Disconnect pre-accepted servers and commit noop in others via prepare
   config_->Disconnect(CMD_LEADER);
   config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
