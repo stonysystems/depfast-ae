@@ -177,7 +177,6 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
   }
   // Pre-accept command
   EpaxosCommand cmd(cmd_, dkey, seq, deps, ballot, EpaxosCommandState::PRE_ACCEPTED);
-  cmd.initial_round = !recovery;
   cmds[replica_id][instance_no] = cmd;
   // Update internal atributes
   if (cmd_->kind_ != MarshallDeputy::CMD_NOOP) {
@@ -221,8 +220,6 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
   else {
     verify(0);
   }
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  cmds[replica_id][instance_no].initial_round = false;
   return status;
 }
 
@@ -558,8 +555,8 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
     mtx_.unlock();
     return;
   }
-  while (cmds[replica_id][instance_no].initial_round) {
-    Log_debug("Initial pre-accept in progress for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  while (chrono::system_clock::now() - cmds[replica_id][instance_no].received_time < chrono::milliseconds{100}) {
+    Log_debug("Not timedout yet for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
     mtx_.unlock();
     Coroutine::Sleep(10000);
     mtx_.lock();
@@ -567,12 +564,11 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
   cmds[replica_id][instance_no].preparing = true;
   mtx_.unlock();
 
-  bool commit_status = false;
-  while (!commit_status) {
-    commit_status = StartPrepare(replica_id, instance_no);
-    if (!commit_status) {
-      Coroutine::Sleep(10000);
-    }
+  while (true) {
+    if(StartPrepare(replica_id, instance_no)) {
+      return;
+    };
+    Coroutine::Sleep(10000);
   }
 }
 

@@ -85,7 +85,10 @@ class EpaxosTestConfig {
   vector<int> GetExecutedCommands(int svr);
 
   // Returns 1 if n servers executed the command
-  int NExecuted(uint64_t tx_id);
+  int NExecuted(uint64_t tx_id, int n);
+
+  // Returns true if all servers executed commands with given ids in the same order (if executed)
+  bool ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_order);
 
   // Returns number of servers committed the command if atleast n servers committed and 
   // the committed cmd and attr are same across all commited servers.

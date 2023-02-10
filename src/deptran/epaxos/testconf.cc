@@ -92,15 +92,40 @@ vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
   return committed_cmds[svr];
 }
 
-int EpaxosTestConfig::NExecuted(uint64_t tx_id) {
-  int cmd, n = 0;
-  for (int i = 0; i < NSERVERS; i++) {
-    auto cmd = std::find(committed_cmds[i].begin(), committed_cmds[i].end(), tx_id);
-    if (cmd != committed_cmds[i].end()) {
-      n++;
+int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
+  auto start = chrono::steady_clock::now();
+  int ne = 0;
+  while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
+    ne = 0;
+    for (int i = 0; i < NSERVERS; i++) {
+      auto cmd = std::find(committed_cmds[i].begin(), committed_cmds[i].end(), tx_id);
+      if (cmd != committed_cmds[i].end()) {
+        ne++;
+      }
+    } 
+    if (ne >= n) {
+      return ne;
+    }
+    Coroutine::Sleep(10000);
+    Log_info("%d executed server for cmd: %d", ne, tx_id);
+  }
+  return ne;
+}
+
+bool EpaxosTestConfig::ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_order) {
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    for (int i = 0; i < exp_order.size(); i++) {
+      auto occ = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), exp_order[i].first);
+      if (occ == committed_cmds[svr].end()) continue;
+      auto occ_next = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), exp_order[i].second);
+      if (occ_next == committed_cmds[svr].end()) continue;
+      if (occ - committed_cmds[svr].begin() > occ_next - committed_cmds[svr].begin()) {
+        Log_debug("cmd: %d executed before cmd: %d", exp_order[i].second, exp_order[i].first);
+        return false;
+      }
     }
   }
-  return n;
+  return true;
 }
 
 int EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {

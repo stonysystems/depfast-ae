@@ -64,14 +64,14 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   bool preparing;
-  bool initial_round;
+  chrono::_V2::system_clock::time_point received_time;
 
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
     dkey = NOOP_DKEY;
     state = EpaxosCommandState::NOT_STARTED;
     preparing = false;
-    initial_round = false;
+    received_time = std::chrono::system_clock::now();
   }
 
   EpaxosCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
@@ -82,7 +82,7 @@ class EpaxosCommand {
     this->highest_seen = highest_seen;
     this->state = state;
     this->preparing = false;
-    this->initial_round = false;
+    this->received_time = std::chrono::system_clock::now();
   }
 };
 

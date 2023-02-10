@@ -44,6 +44,7 @@ void EpaxosLabTest::Cleanup(void) {
 
 #define Init2(test_id, description) { \
         Init(test_id, description); \
+        cmd = ((cmd / 100) + 1) * 100; \
         verify(config_->NDisconnected() == 0 && !config_->IsUnreliable() && !config_->AnySlow()); \
       }
 
@@ -67,13 +68,18 @@ void EpaxosLabTest::Cleanup(void) {
       }
 
 #define AssertNoneExecuted(cmd) { \
-        auto nc = config_->NExecuted(cmd); \
-        Assert2(nc == 0, "%d servers unexpectedly executed command %d", nc, cmd); \
+        auto ne = config_->NExecuted(cmd, NSERVERS); \
+        Assert2(ne == 0, "%d servers unexpectedly executed command %d", ne, cmd); \
       }
 
 #define AssertNExecuted(cmd, expected) { \
-        auto nc = config_->NExecuted(cmd); \
-        Assert2(nc == expected, "%d servers executed command %d (%d expected)", nc, cmd, expected) \
+        auto ne = config_->NExecuted(cmd, expected); \
+        Assert2(ne == expected, "%d servers executed command %d (%d expected)", ne, cmd, expected) \
+      }
+
+#define AssertExecutedOrder(expected_exec_order) { \
+        auto r = config_->ExecutedInOrder(expected_exec_order); \
+        Assert2(r, "unexpected execution order of commands"); \
       }
 
 #define AssertValidCommitStatus(replica_id, instance_no, r) { \
@@ -145,124 +151,129 @@ void EpaxosLabTest::Cleanup(void) {
 
 int EpaxosLabTest::testBasicAgree(void) {
   Init2(1, "Basic agreement");
-  config_->PauseExecution(true);
   for (int i = 1; i <= 3; i++) {
-    // complete 1 agreement and make sure its index is as expected
-    int cmd = 100 + i;
+    // complete agreement and make sure its attributes are as expected
+    cmd++;
     string dkey = to_string(cmd);
     unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, NSERVERS, false, dkey, 1, deps);
+    AssertNExecuted(cmd, NSERVERS);
   }
   Passed2();
 }
 
 int EpaxosLabTest::testFastPathIndependentAgree(void) {
   Init2(2, "Fast path agreement of independent commands");
-  config_->PauseExecution(true);
   config_->Disconnect(0);
+  unordered_map<uint64_t, uint64_t> deps;
   for (int i = 1; i <= 3; i++) {
-    // complete 1 agreement and make sure its index is as expected
-    int cmd = 200 + i;
+    // complete agreement and make sure its attributes are as expected
+    cmd++;
     string dkey = to_string(cmd);
-    unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, 1, deps);
+    AssertNExecuted(cmd, FAST_PATH_QUORUM);
   }
   // Reconnect all
   config_->Reconnect(0);
-  // TODO: Check if committed through prepare
   Passed2();
 }
 
 int EpaxosLabTest::testFastPathDependentAgree(void) {
   Init2(3, "Fast path agreement of dependent commands");
-  config_->PauseExecution(true);
   config_->Disconnect(0);
-  // Round 1
-  int cmd = 301;
-  string dkey = "300";
+  // complete 1st agreement and make sure its attributes are as expected
+  uint64_t cmd1 = ++cmd;
+  string dkey = "1";
   uint64_t seq = 1;
   unordered_map<uint64_t, uint64_t> deps;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
-  // Round 2
-  cmd++;
+  AssertNExecuted(cmd, FAST_PATH_QUORUM);
+  // complete 2nd agreement and make sure its attributes are as expected
+  uint64_t cmd2 = ++cmd;
   seq++;
   deps[1] = 3;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
-  // Round 3
-  cmd++;
+  AssertNExecuted(cmd, FAST_PATH_QUORUM);
+  // complete 3rd agreement and make sure its attributes are as expected
+  uint64_t cmd3 = ++cmd;
   seq++;
   deps[1] = 4;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, FAST_PATH_QUORUM, false, dkey, seq, deps);
+  AssertNExecuted(cmd, FAST_PATH_QUORUM);
+  // Verify order of execution
+  vector<pair<uint64_t, uint64_t>> exp_exec_order = {{cmd1, cmd2}, {cmd2, cmd3}};
+  AssertExecutedOrder(exp_exec_order)
   // Reconnect all
   config_->Reconnect(0);
-  // TODO: Check if committed through prepare
   Passed2();
 }
 
 int EpaxosLabTest::testSlowPathIndependentAgree(void) {
   Init2(4, "Slow path agreement of independent commands");
-  config_->PauseExecution(true);
   config_->Disconnect(0);
   config_->Disconnect(1);
   for (int i = 1; i <= 3; i++) {
-    // complete 1 agreement and make sure its index is as expected
-    int cmd = 400 + i;
+    // complete agreement and make sure its attributes are as expected
+    cmd++;
     string dkey = to_string(cmd);
     unordered_map<uint64_t, uint64_t> deps;
     DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, 1, deps);
+    AssertNExecuted(cmd, SLOW_PATH_QUORUM);
   }
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
-  // TODO: Check if committed through prepare
   Passed2();
 }
 
 int EpaxosLabTest::testSlowPathDependentAgree(void) {
   Init2(5, "Slow path agreement of dependent commands");
-  config_->PauseExecution(true);
   config_->Disconnect(0);
   config_->Disconnect(1);
-  // Round 1
-  int cmd = 501;
-  string dkey = "500";
+  // complete 1st agreement and make sure its attributes are as expected
+  uint64_t cmd1 = ++cmd;
+  string dkey = "2";
   uint64_t seq = 1;
   unordered_map<uint64_t, uint64_t> deps;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
-  // Round 2
-  cmd++;
+  AssertNExecuted(cmd, SLOW_PATH_QUORUM);
+  // complete 2nd agreement and make sure its attributes are as expected
+  uint64_t cmd2 = ++cmd;
   seq++;
   deps[2] = 3;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
-  // Round 3
-  cmd++;
+  AssertNExecuted(cmd, SLOW_PATH_QUORUM);
+  // complete 3rd agreement and make sure its attributes are as expected
+  uint64_t cmd3 = ++cmd;
   seq++;
   deps[2] = 4;
   DoAgreeAndAssertNCommittedAndVerifyAttrs(cmd, dkey, SLOW_PATH_QUORUM, false, dkey, seq, deps);
+  AssertNExecuted(cmd, SLOW_PATH_QUORUM);
+  // Verify order of execution
+  vector<pair<uint64_t, uint64_t>> exp_exec_order = {{cmd1, cmd2}, {cmd1, cmd3}};
+  AssertExecutedOrder(exp_exec_order)
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
-  // TODO: Check if committed through prepare
   Passed2();
 }
 
 int EpaxosLabTest::testFailNoQuorum(void) {
   Init2(6, "No agreement if too many servers disconnect");
-  config_->PauseExecution(true);
   config_->Disconnect(0);
   config_->Disconnect(1);
   config_->Disconnect(2);
   for (int i = 1; i <= 3; i++) {
-    // complete 1 agreement and make sure its index is as expected
-    int cmd = 600 + i;
+    // complete 1 agreement and make sure its not committed
+    cmd++;
     string dkey = to_string(cmd);
     DoAgreeAndAssertNoneCommitted(cmd, dkey);
+    AssertNoneExecuted(cmd);
   }
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
   config_->Reconnect(2);
-  // TODO: Check if committed through prepare
   Passed2();
 }
 
@@ -271,8 +282,8 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Leader have more dependencies than replicas");
-  int cmd = 701;
-  string dkey = "700";
+  cmd++;
+  string dkey = "3";
   uint64_t replica_id, instance_no;
   unordered_map<uint64_t, uint64_t> init_deps;
   // Pre-accept different commands in each server
@@ -376,8 +387,8 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
-  int cmd = 801;
-  string dkey = "800";
+  cmd++;
+  string dkey = "4";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1100, diff = 100;
   int CMD_LEADER = 0;
@@ -532,8 +543,8 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
-  int cmd = 901;
-  string dkey = "900";
+  cmd++;
+  string dkey = "5";
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1000, diff = 100;
   int CMD_LEADER = 1;
@@ -615,8 +626,8 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare return 1 pre-accepted reply from leader (avoid fast-path).");
-  int cmd = 1001;
-  string dkey = "1000";
+  cmd++;
+  string dkey = "6";
   int CMD_LEADER = 2;
   uint64_t replica_id, instance_no;
   // Disconnect leader
@@ -676,8 +687,8 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare returns no replies (avoid fast-path).");
-  int cmd = 1101;
-  string dkey = "1100";
+  cmd++;
+  string dkey = "7";
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
   auto deps = unordered_map<uint64_t, uint64_t>();
@@ -759,9 +770,9 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
-      args->cmd = svr * 10000 + iter;
+      args->cmd = ++cmd;
       args->svr = svr;
-      args->dkey = "10000";
+      args->dkey = "8";
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
@@ -794,9 +805,9 @@ int EpaxosLabTest::testConcurrentUnreliableAgree1(void) {
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
-      args->cmd = 50000 + (svr * 10000) + iter;
+      args->cmd = ++cmd;
       args->svr = svr;
-      args->dkey = "50000";
+      args->dkey = "9";
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
@@ -835,9 +846,9 @@ int EpaxosLabTest::testConcurrentUnreliableAgree2(void) {
   for (int iter = 1; iter <= 100; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
-      args->cmd = 50000 + (svr * 10000) + iter;
+      args->cmd = ++cmd;
       args->svr = svr;
-      args->dkey = "50000";
+      args->dkey = "10";
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
