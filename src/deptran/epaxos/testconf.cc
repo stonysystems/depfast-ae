@@ -61,16 +61,6 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id
   replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
 }
 
-void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
-  replicas[svr]->svr_->Prepare(replica_id, instance_no);
-}
-
-void EpaxosTestConfig::PrepareAllUncommitted() {
-  for (int i = 0; i < NSERVERS; i++) {
-    replicas[i]->svr_->PrepareAllUncommitted();
-  }
-}
-
 void EpaxosTestConfig::GetState(int svr, 
                                 uint64_t replica_id, 
                                 uint64_t instance_no, 
@@ -80,6 +70,26 @@ void EpaxosTestConfig::GetState(int svr,
                                 unordered_map<uint64_t, uint64_t> *deps, 
                                 status_t *state) {
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, state);
+}
+
+void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_no) {
+  replicas[svr]->svr_->Prepare(replica_id, instance_no);
+}
+
+void EpaxosTestConfig::PrepareAll() {
+  for (int i = 0; i < NSERVERS; i++) {
+    replicas[i]->svr_->PrepareAll();
+  }
+}
+
+void EpaxosTestConfig::PauseExecution(bool pause) {
+  for (int i = 0; i < NSERVERS; i++) {
+    replicas[i]->svr_->PauseExecution(pause);
+  }
+}
+
+vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
+  return committed_cmds[svr];
 }
 
 int EpaxosTestConfig::NExecuted(uint64_t tx_id) {

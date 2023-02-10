@@ -34,6 +34,7 @@ class EpaxosLabTest {
   int testConcurrentAgree(void);
   int testConcurrentUnreliableAgree1(void);
   int testConcurrentUnreliableAgree2(void);
+  int testExecutionOrder(void);
 
 };
 

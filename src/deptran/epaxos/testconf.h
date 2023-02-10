@@ -62,12 +62,6 @@ class EpaxosTestConfig {
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
 
-  // Calls Prepare() to specified server
-  void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
-
-  // Calls PrepareAllUncommitted() in all servers
-  void PrepareAllUncommitted();
-
   // Get state of the command at an instance replica_id.instance_no in a specified server
   void GetState(int svr, 
                 uint64_t replica_id, 
@@ -77,6 +71,18 @@ class EpaxosTestConfig {
                 uint64_t *seq, 
                 unordered_map<uint64_t, uint64_t> *deps, 
                 status_t *state);
+
+  // Calls Prepare() to specified server
+  void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
+
+  // Calls PrepareAll() in all servers
+  void PrepareAll();
+
+  // Calls PauseExecution() in all servers
+  void PauseExecution(bool pause);
+
+  // Return all executed commands in the executed order
+  vector<int> GetExecutedCommands(int svr);
 
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id);
