@@ -6,8 +6,12 @@ namespace janus {
 #ifdef EPAXOS_TEST_CORO
 
 int EpaxosLabTest::Run(void) {
-  TestGraph::Run();
-  Print("GRAPH UNIT TESTS PASSED");
+  Print("START UNIT TESTS");
+  TestGraph test_graph;
+  test_graph.Run();
+  Print("ALL TESTS PASSED\n");
+
+  Print("START WHOLISTIC TESTS");
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   if (testBasicAgree()

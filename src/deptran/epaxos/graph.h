@@ -15,15 +15,11 @@ class EVertex {
     return 0;
   }
   
-  virtual int operator>(T &rhs) {
+  virtual bool isFirstInSCC(shared_ptr<T> &rhs) {
     verify(0);
     return 0;
   }
 
-  virtual int operator<(T &rhs){
-    verify(0);
-    return 0;
-  }
 };
 
 // V is vertex type
@@ -101,8 +97,8 @@ class EGraph {
       in_stk[poppedId] = false;
       stk.pop();
     }
-    sort(scc.begin(), scc.end(), [](shared_ptr<V> &v1, shared_ptr<V> &v2)->bool{
-      return v1.get() < v2.get();
+    sort(scc.begin(), scc.end(), [](shared_ptr<V> &v1, shared_ptr<V> &v2) -> bool {
+      return v1->isFirstInSCC(v2);
     });
     for (auto &vertex : scc) {
       scc_vertices[vertex->id()] = scc;
@@ -132,39 +128,31 @@ class EGraph {
     }
   }
 
-  void TopologicalSortUtil(uint64_t id, unordered_map<uint64_t, bool> &visited, stack<uint64_t> &stk) {
-    visited[id] = true;
+  void TopologicalSortUtil(uint64_t id, unordered_map<uint64_t, bool> &visited, vector<shared_ptr<V>> &que) {
     for (auto scc_v : scc_vertices[id]) {
       visited[scc_v->id()] = true;
     }
     for (auto scc_v : scc_vertices[id]) {
       for (auto parent_id : parents[scc_v->id()]) {
         if(!visited[parent_id]) {
-          TopologicalSortUtil(parent_id, visited, stk);
+          TopologicalSortUtil(parent_id, visited, que);
         }
       }
     }
     for (auto scc_v : scc_vertices[id]) {
-      stk.push(scc_v->id());
+      que.push_back(scc_v);
     }
   }
 
  public:
   vector<shared_ptr<V>> GetSortedVertices() {
     PopulateSCCs();
-
     unordered_map<uint64_t, bool> visited;
-    stack<uint64_t> stk;
     vector<shared_ptr<V>> sorted_vertices;
     for (auto itr : vertices) {
       uint64_t id = itr.first;
       if (!visited[id]) {
-        TopologicalSortUtil(id, visited, stk);
-      }
-      while (!stk.empty()) {
-        uint64_t poppedId = stk.top();
-        sorted_vertices.push_back(vertices[poppedId]);
-        stk.pop();
+        TopologicalSortUtil(id, visited, sorted_vertices);
       }
     }
     return sorted_vertices;

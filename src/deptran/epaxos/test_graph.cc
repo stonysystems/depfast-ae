@@ -1,10 +1,21 @@
 #include "graph.h"
 
+
 namespace janus {
 
 #define AssertOrder(res, vertex1, vertex2) { \
-          verify(find(res.begin(), res.end(), vertex1) - res.begin() < find(res.begin(), res.end(), vertex2) - res.begin()); \
+          auto occ1 = find(res.begin(), res.end(), vertex1); \
+          auto occ2 = find(res.begin(), res.end(), vertex2); \
+          verify(occ1 != res.end()); \
+          verify(occ2 != res.end()); \
+          verify(occ1 - res.begin() < occ2  - res.begin()); \
         }
+        
+#define AssertExists(res, vertex1) { \
+          verify(find(res.begin(), res.end(), vertex1) != res.end()); \
+        }
+
+#define AssertEmpty(res) verify(res.size() == 0);
 
 class TestEVertex: public EVertex<TestEVertex> {
  public:
@@ -20,12 +31,8 @@ class TestEVertex: public EVertex<TestEVertex> {
     return id_;
   }
 
-  bool operator>(TestEVertex &rhs) const {
-    return this->priority > rhs.priority;
-  }
-  
-  bool operator<(TestEVertex &rhs) const {
-    return this->priority < rhs.priority;
+  bool isFirstInSCC(shared_ptr<TestEVertex> &rhs) override {
+    return this->priority > rhs->priority;
   }
 };
 
@@ -33,13 +40,41 @@ class TestEGraph: public EGraph<TestEVertex> {};
 
 class TestGraph {
  public:
-  static void Run() {
+  void EmptyGraph() {
     TestEGraph graph;
-    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 1);
+    auto res = graph.GetSortedVertices();
+    AssertEmpty(res);
+  }
+
+  void SingleNodeGraph() {
+    TestEGraph graph;
+    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 3);
+    graph.FindOrCreateVertex(v1);
+    auto res = graph.GetSortedVertices();
+    AssertExists(res, v1);
+  }
+
+  void UnconnectedNodesGraph() {
+    TestEGraph graph;
+    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 3);
     shared_ptr<TestEVertex> v2 = make_shared<TestEVertex>(2, 2);
-    shared_ptr<TestEVertex> v3 = make_shared<TestEVertex>(3, 3);
-    shared_ptr<TestEVertex> v4 = make_shared<TestEVertex>(4, 2);
-    shared_ptr<TestEVertex> v5 = make_shared<TestEVertex>(5, 4);
+    shared_ptr<TestEVertex> v3 = make_shared<TestEVertex>(3, 1);
+    graph.FindOrCreateVertex(v1);
+    graph.FindOrCreateVertex(v2);
+    graph.FindOrCreateVertex(v3);
+    auto res = graph.GetSortedVertices();
+    AssertExists(res, v1);
+    AssertExists(res, v2);
+    AssertExists(res, v3);
+  }
+
+  void SingleTreeGraph() {
+    TestEGraph graph;
+    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 3);
+    shared_ptr<TestEVertex> v2 = make_shared<TestEVertex>(2, 2);
+    shared_ptr<TestEVertex> v3 = make_shared<TestEVertex>(3, 1);
+    shared_ptr<TestEVertex> v4 = make_shared<TestEVertex>(4, 1);
+    shared_ptr<TestEVertex> v5 = make_shared<TestEVertex>(5, 2);
     shared_ptr<TestEVertex> v6 = make_shared<TestEVertex>(6, 3);
     graph.FindOrCreateVertex(v1);
     graph.FindOrCreateVertex(v2);
@@ -47,25 +82,88 @@ class TestGraph {
     graph.FindOrCreateVertex(v4);
     graph.FindOrCreateVertex(v5);
     graph.FindOrCreateVertex(v6);
-    graph.FindOrCreateParentEdge(v2, v1);
+    graph.FindOrCreateParentEdge(v1, v2);
+    graph.FindOrCreateParentEdge(v1, v3);
+    graph.FindOrCreateParentEdge(v2, v4);
+    graph.FindOrCreateParentEdge(v2, v5);
+    graph.FindOrCreateParentEdge(v3, v6);
+    auto res = graph.GetSortedVertices();
+    AssertOrder(res, v2, v1);
+    AssertOrder(res, v3, v1);
+    AssertOrder(res, v4, v2);
+    AssertOrder(res, v5, v2);
+    AssertOrder(res, v6, v3);
+  }
+
+  void SingleSCCGraph() {
+    TestEGraph graph;
+    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 3);
+    shared_ptr<TestEVertex> v2 = make_shared<TestEVertex>(2, 2);
+    shared_ptr<TestEVertex> v3 = make_shared<TestEVertex>(3, 1);
+    shared_ptr<TestEVertex> v4 = make_shared<TestEVertex>(4, 1);
+    shared_ptr<TestEVertex> v5 = make_shared<TestEVertex>(5, 2);
+    shared_ptr<TestEVertex> v6 = make_shared<TestEVertex>(6, 3);
+    graph.FindOrCreateVertex(v1);
+    graph.FindOrCreateVertex(v2);
+    graph.FindOrCreateVertex(v3);
+    graph.FindOrCreateVertex(v4);
+    graph.FindOrCreateVertex(v5);
+    graph.FindOrCreateVertex(v6);
+    graph.FindOrCreateParentEdge(v1, v2);
+    graph.FindOrCreateParentEdge(v1, v3);
+    graph.FindOrCreateParentEdge(v2, v4);
+    graph.FindOrCreateParentEdge(v2, v5);
+    graph.FindOrCreateParentEdge(v3, v6);
+    graph.FindOrCreateParentEdge(v4, v1);
+    graph.FindOrCreateParentEdge(v5, v3);
+    graph.FindOrCreateParentEdge(v6, v2);
+    auto res = graph.GetSortedVertices();
+    AssertOrder(res, v1, v6);
+    AssertOrder(res, v6, v2);
+    AssertOrder(res, v2, v5);
+    AssertOrder(res, v5, v3);
+    AssertOrder(res, v3, v4);
+  }
+
+  void MultipleSCCGraph() {
+    TestEGraph graph;
+    shared_ptr<TestEVertex> v1 = make_shared<TestEVertex>(1, 3);
+    shared_ptr<TestEVertex> v2 = make_shared<TestEVertex>(2, 2);
+    shared_ptr<TestEVertex> v3 = make_shared<TestEVertex>(3, 1);
+    shared_ptr<TestEVertex> v4 = make_shared<TestEVertex>(4, 1);
+    shared_ptr<TestEVertex> v5 = make_shared<TestEVertex>(5, 2);
+    shared_ptr<TestEVertex> v6 = make_shared<TestEVertex>(6, 3);
+    shared_ptr<TestEVertex> v7 = make_shared<TestEVertex>(7, 2);
+    graph.FindOrCreateVertex(v1);
+    graph.FindOrCreateVertex(v2);
+    graph.FindOrCreateVertex(v3);
+    graph.FindOrCreateVertex(v4);
+    graph.FindOrCreateVertex(v5);
+    graph.FindOrCreateVertex(v6);
+    graph.FindOrCreateVertex(v7);
     graph.FindOrCreateParentEdge(v1, v3);
     graph.FindOrCreateParentEdge(v3, v2);
+    graph.FindOrCreateParentEdge(v2, v1);
     graph.FindOrCreateParentEdge(v4, v2);
     graph.FindOrCreateParentEdge(v4, v5);
     graph.FindOrCreateParentEdge(v4, v6);
+    graph.FindOrCreateParentEdge(v4, v7);
+    graph.FindOrCreateParentEdge(v7, v4);
     graph.FindOrCreateParentEdge(v5, v6);
     auto res = graph.GetSortedVertices();
-    // AssertOrder(res, v3 , v2);
-    // AssertOrder(res, v2 , v1);
-    // AssertOrder(res, v1 , v4);
-    // AssertOrder(res, v5 , v4);
-    // AssertOrder(res, v6 , v5);
+    AssertOrder(res, v1, v2);
+    AssertOrder(res, v2, v3);
+    AssertOrder(res, v3, v4);
+    AssertOrder(res, v7, v4);
+    AssertOrder(res, v5, v4);
+    AssertOrder(res, v6, v5);
+  }
 
-    string log = "";
-    for (auto itr : res) {
-      log += to_string(itr->id()) + ", ";
-    }
-    Log_debug("Sorted order: %s", log.c_str());
+  void Run() {
+    SingleNodeGraph();
+    UnconnectedNodesGraph();
+    SingleTreeGraph();
+    MultipleSCCGraph();
   }
 };
 

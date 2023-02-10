@@ -145,18 +145,11 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
     return id_;
   }
 
-  bool operator>(EpaxosVertex &rhs) const {
-    if (this->cmd->seq == rhs.cmd->seq) {
-      return this->replica_id > rhs.replica_id;
+  bool isFirstInSCC(shared_ptr<EpaxosVertex> &rhs) override {
+    if (this->cmd->seq == rhs->cmd->seq) {
+      return this->replica_id < rhs->replica_id;
     }
-    return this->cmd->seq > rhs.cmd->seq;
-  }
-  
-  bool operator<(EpaxosVertex &rhs) const {
-    if (this->cmd->seq == rhs.cmd->seq) {
-      return this->replica_id < rhs.replica_id;
-    }
-    return this->cmd->seq < rhs.cmd->seq;
+    return this->cmd->seq < rhs->cmd->seq;
   }
 };
 
