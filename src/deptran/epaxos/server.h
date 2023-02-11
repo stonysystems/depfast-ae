@@ -128,9 +128,11 @@ class EpaxosRequest {
 };
 
 class EpaxosVertex: public EVertex<EpaxosVertex> {
+ private:
+  uint64_t id_;
+
  public:
   EpaxosCommand *cmd;
-  uint64_t id_;
   uint64_t replica_id;
   uint64_t instance_no;
 
@@ -138,7 +140,7 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
     this->cmd = cmd;
     this->replica_id = replica_id;
     this->instance_no = instance_no;
-    this->id_ = replica_id << 8 + instance_no;
+    this->id_ = replica_id << 8 | instance_no;
   }
 
   uint64_t id() override {

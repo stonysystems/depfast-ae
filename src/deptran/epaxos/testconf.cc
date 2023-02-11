@@ -128,6 +128,33 @@ bool EpaxosTestConfig::ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_orde
   return true;
 }
 
+bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmds) {
+  vector<vector<uint64_t>> exec_orders;
+  vector<uint64_t> longest_exec_order;
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    exec_orders.push_back(vector<uint64_t>());
+    for (auto itr = committed_cmds[svr].begin(); itr != committed_cmds[svr].end(); itr++) {
+      if (dependent_cmds.count(*itr) > 0) {
+        exec_orders[svr].push_back(*itr);
+      }
+    }
+    if (exec_orders[svr].size() > longest_exec_order.size()) {
+      longest_exec_order = exec_orders[svr];
+    }
+  }
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
+    for (int i = 0; i < exec_orders[svr].size(); i++) {
+      if (exec_orders[svr][i] != longest_exec_order[i]) {
+        Log_debug("Execution order is different in server: %d", svr);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
 int EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int n) {
   bool cnoop;
   string cdkey;

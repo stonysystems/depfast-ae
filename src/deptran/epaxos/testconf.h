@@ -90,6 +90,9 @@ class EpaxosTestConfig {
   // Returns true if all servers executed commands with given ids in the same order (if executed)
   bool ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_order);
 
+  // Check if the commands are executed in same order in all servers
+  bool ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmds);
+
   // Returns number of servers committed the command if atleast n servers committed and 
   // the committed cmd and attr are same across all commited servers.
   // Waits at most 2 seconds until n servers commit the command.

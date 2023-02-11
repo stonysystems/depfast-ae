@@ -82,6 +82,11 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(r, "unexpected execution order of commands"); \
       }
 
+#define AssertSameExecutedOrder(dependent_cmds) { \
+        auto r = config_->ExecutedInSameOrder(dependent_cmds); \
+        Assert2(r, "execution order of dependent commands is different in servers"); \
+      }
+
 #define AssertValidCommitStatus(replica_id, instance_no, r) { \
           Assert2(r != -1, "failed to reach agreement for replica: %d instance: %d, committed different commands", replica_id, instance_no); \
           Assert2(r != -2, "failed to reach agreement for replica: %d instance: %d, committed different dkey", replica_id, instance_no); \
@@ -286,9 +291,11 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   string dkey = "3";
   uint64_t replica_id, instance_no;
   unordered_map<uint64_t, uint64_t> init_deps;
+  unordered_set<uint64_t> dependent_cmds;
   // Pre-accept different commands in each server
   for (int i=0; i<NSERVERS; i++) {
     config_->Disconnect(i);
+    dependent_cmds.insert(cmd);
     config_->Start(i, cmd, dkey, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
     Assert2(np == 1, "unexpected number of pre-accepted servers");
@@ -309,6 +316,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[CMD_LEADER] = init_deps[CMD_LEADER];
   deps[(CMD_LEADER + 3) % NSERVERS] = init_deps[(CMD_LEADER + 3) % NSERVERS];
   deps[(CMD_LEADER + 4) % NSERVERS] = init_deps[(CMD_LEADER + 4) % NSERVERS];
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
@@ -321,6 +329,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[CMD_LEADER] = instance_no;
   deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
   deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER % NSERVERS, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
@@ -329,6 +338,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   cmd++;
   seq = 4;
   deps[CMD_LEADER] = instance_no;
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
 
@@ -339,6 +349,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   // Pre-accept different commands in each server
   for (int i=0; i<NSERVERS; i++) {
     config_->Disconnect(i);
+    dependent_cmds.insert(cmd);
     config_->Start(i, cmd, dkey, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
     Assert2(np == 1, "unexpected number of pre-accepted servers");
@@ -357,6 +368,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[CMD_LEADER] = init_deps[CMD_LEADER];
   deps[(CMD_LEADER + 3) % NSERVERS] = init_deps[(CMD_LEADER + 3) % NSERVERS];
   deps[(CMD_LEADER + 4) % NSERVERS] = init_deps[(CMD_LEADER + 4) % NSERVERS];
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
@@ -369,6 +381,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   deps[CMD_LEADER] = instance_no;
   deps[(CMD_LEADER + 1) % NSERVERS] = init_deps[(CMD_LEADER + 1) % NSERVERS];
   deps[(CMD_LEADER + 2) % NSERVERS] = init_deps[(CMD_LEADER + 2) % NSERVERS];
+  dependent_cmds.insert(cmd);
   config_->Start((CMD_LEADER + 1) % NSERVERS, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
@@ -377,8 +390,15 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   cmd++;
   seq = 8;
   deps[(CMD_LEADER + 1) % NSERVERS] = instance_no;
+  dependent_cmds.insert(cmd);
   config_->Start((CMD_LEADER + 2) % NSERVERS, cmd, dkey, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
+
+  /*********** Execution order ***********/
+  InitSub2(3, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(50000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
