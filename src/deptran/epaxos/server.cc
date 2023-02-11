@@ -374,24 +374,12 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd_,
 
 bool EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no) {
   mtx_.lock();
-  EpaxosCommand cmd = cmds[replica_id][instance_no];
-  mtx_.unlock();
-  return StartCommit(replica_id, instance_no, cmd);
-}
-
-bool EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no, EpaxosCommand &cmd) {
-  mtx_.lock();
   Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Commit command if not committed
-  if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
-      && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    cmds[replica_id][instance_no].cmd = cmd.cmd;
-    cmds[replica_id][instance_no].dkey = cmd.dkey;
-    cmds[replica_id][instance_no].seq = cmd.seq;
-    cmds[replica_id][instance_no].deps = cmd.deps;
-    cmds[replica_id][instance_no].highest_seen = cmd.highest_seen;
+  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   }
+  EpaxosCommand cmd = cmds[replica_id][instance_no];
   mtx_.unlock();
   // TODO: reply to client
   auto ev = commo()->SendCommit(site_id_, 
@@ -510,8 +498,14 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
       Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
       UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
-      EpaxosCommand cmd(reply.cmd, reply.dkey, reply.seq, reply.deps, ballot, EpaxosCommandState::COMMITTED);
-      return StartCommit(replica_id, instance_no, cmd);
+      mtx_.lock();
+      cmds[replica_id][instance_no].cmd = reply.cmd;
+      cmds[replica_id][instance_no].dkey = reply.dkey;
+      cmds[replica_id][instance_no].seq = reply.seq;
+      cmds[replica_id][instance_no].deps = reply.deps;
+      cmds[replica_id][instance_no].highest_seen = ballot;
+      mtx_.unlock();
+      return StartCommit(replica_id, instance_no);
     }
     // Atleast one accept reply
     if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {

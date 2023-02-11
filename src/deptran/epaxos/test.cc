@@ -397,7 +397,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   /*********** Execution order ***********/
   InitSub2(3, "Execution order");
   config_->PauseExecution(false);
-  Coroutine::Sleep(50000000);
+  Coroutine::Sleep(100000000);
   AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
@@ -409,6 +409,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
   cmd++;
   string dkey = "4";
+  unordered_set<uint64_t> dependent_cmds;
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1100, diff = 100;
   int CMD_LEADER = 0;
@@ -416,6 +417,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have committed the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -453,6 +455,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -490,6 +493,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -527,6 +531,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have committed the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 4) % NSERVERS);
@@ -555,6 +560,12 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
   // Reconnect leader
   config_->Reconnect(CMD_LEADER);
+
+  /*********** Execution order ***********/
+  InitSub2(5, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(50000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -565,6 +576,7 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
   cmd++;
   string dkey = "5";
+  unordered_set<uint64_t> dependent_cmds;
   uint64_t replica_id, instance_no;
   int time_to_sleep = 1000, diff = 100;
   int CMD_LEADER = 1;
@@ -573,6 +585,7 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 1 server (leader) have accepted the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
@@ -611,6 +624,7 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   // Repeat till only 2 servers (leader and one replica) have accepted the command
   while (true) {
+    dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
     config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
@@ -640,6 +654,12 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   config_->Reconnect(CMD_LEADER);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+
+  /*********** Execution order ***********/
+  InitSub2(3, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(50000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -650,11 +670,13 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare return 1 pre-accepted reply from leader (avoid fast-path).");
   cmd++;
   string dkey = "6";
+  unordered_set<uint64_t> dependent_cmds;
   int CMD_LEADER = 2;
   uint64_t replica_id, instance_no;
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
   // Start agreement in leader - will not replicate as leader is disconnected
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 1, "unexpected number of pre-accepted servers");
@@ -684,6 +706,7 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 3) % NSERVERS);
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
+  dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 2, "unexpected number of pre-accepted servers");
@@ -701,6 +724,12 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   config_->Reconnect((CMD_LEADER + 3) % NSERVERS);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+
+  /*********** Execution order ***********/
+  InitSub2(3, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(50000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -789,6 +818,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   std::vector<pthread_t> threads{};
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
+  unordered_set<uint64_t> dependent_cmds;
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
@@ -798,6 +828,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
+      dependent_cmds.insert(cmd);
       pthread_t thread;
       verify(pthread_create(&thread,
                             nullptr,
