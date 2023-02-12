@@ -169,6 +169,7 @@ class EpaxosServer : public TxLogServer {
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   unordered_map<uint64_t, uint64_t> received_till;
   unordered_map<uint64_t, uint64_t> exec_started_till;
+  unordered_set<string> in_process_dkeys;
   bool pause_execution = false;
 
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);

@@ -76,7 +76,7 @@ void EpaxosServer::Setup() {
       mtx_.unlock();
       // Future Work: Can make more efficient by having a pub-sub kind of thing
       if (size == 0) {
-        Coroutine::Sleep(1000);
+        Coroutine::Sleep(10000);
       } else {
         mtx_.lock();
         auto req = prepare_reqs.front();
@@ -433,7 +433,6 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     mtx_.unlock();
     return true;
   }
-  Log_debug("Started prepare for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Get ballot = highest seen ballot
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
@@ -453,6 +452,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   }
   ballot.ballot_no = max(ballot.ballot_no, cmds[replica_id][instance_no].highest_seen.ballot_no) + 1;
   cmds[replica_id][instance_no].highest_seen = ballot;
+  Log_debug("Started prepare for replica: %d instance: %d by replica: %d for ballot: %d", replica_id, instance_no, replica_id_, ballot.ballot_no);
   mtx_.unlock();
   
   auto ev = commo()->SendPrepare(site_id_, 
@@ -566,32 +566,37 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
 }
 
 void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
-  mtx_.lock();
+  Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
   // Wait till timeout or concurrent prepare succeeds
-  while (cmds[replica_id][instance_no].preparing
-        || chrono::system_clock::now() - cmds[replica_id][instance_no].received_time < chrono::milliseconds{10}) {
-    if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
-      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-      mtx_.unlock();
-      return;
-    }
+  mtx_.lock();
+  bool prepare_ready = chrono::system_clock::now() - cmds[replica_id][instance_no].received_time > chrono::milliseconds{10}
+                       && !cmds[replica_id][instance_no].preparing;
+  mtx_.unlock();
+  while (!prepare_ready) {
     Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-    mtx_.unlock();
     Coroutine::Sleep(100000);
     mtx_.lock();
+    prepare_ready = chrono::system_clock::now() - cmds[replica_id][instance_no].received_time > chrono::milliseconds{10}
+                    && !cmds[replica_id][instance_no].preparing;
+    mtx_.unlock();
+  }
+  mtx_.lock();
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
+        || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    mtx_.unlock();
+    return;
   }
   cmds[replica_id][instance_no].preparing = true;
   mtx_.unlock();
   // Wait till prepare succeeds
-  while (true) {
-    if(StartPrepare(replica_id, instance_no)) {
-      mtx_.lock();
-      cmds[replica_id][instance_no].preparing = false;
-      mtx_.unlock();
-      return;
-    };
+  bool committed = StartPrepare(replica_id, instance_no);
+  while (!committed) {
     Coroutine::Sleep(100000 + (rand() % 50000));
+    committed = StartPrepare(replica_id, instance_no);
   }
+  mtx_.lock();
+  cmds[replica_id][instance_no].preparing = false;
+  mtx_.unlock();
 }
 
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
@@ -652,11 +657,11 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
     int status = CreateEpaxosGraph(dreplica_id, dinstance_no, graph);
     mtx_.lock();
     if (status == 0) {
-      uint64_t prev_instance_no = dinstance_no-1;
+      int64_t prev_instance_no = dinstance_no - 1;
       while (prev_instance_no >= 0) {
         if (cmds[dreplica_id][prev_instance_no].state == EpaxosCommandState::NOT_STARTED) {
           mtx_.unlock();
-          PrepareTillCommitted(replica_id, instance_no);
+          PrepareTillCommitted(dreplica_id, prev_instance_no);
           mtx_.lock();
         }
         if (cmds[dreplica_id][prev_instance_no].dkey == parent->cmd->dkey) {
@@ -664,7 +669,7 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
         }
         prev_instance_no--;
       }
-      if (prev_instance_no == -1) continue;
+      if (prev_instance_no < 0) continue;
       mtx_.unlock();
       status = CreateEpaxosGraph(dreplica_id, prev_instance_no, graph);
       mtx_.lock();
@@ -679,11 +684,25 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
 }
 
 void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
+  mtx_.lock();
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  bool should_wait = cmds[replica_id][instance_no].state != EpaxosCommandState::NOT_STARTED
+                     && in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0;
+  mtx_.unlock();
+  while (should_wait) {
+    Coroutine::Sleep(10000);
+    mtx_.lock();
+    should_wait = cmds[replica_id][instance_no].state != EpaxosCommandState::NOT_STARTED
+                  && in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0;
+    mtx_.unlock();
+  }
+  mtx_.lock();
+  in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
+  mtx_.unlock();
+
   EpaxosGraph graph = EpaxosGraph();
   CreateEpaxosGraph(replica_id, instance_no, &graph);
   auto sorted_vertices = graph.GetSortedVertices();
-
   Log_debug("Added to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   std::lock_guard<std::recursive_mutex> lock(mtx_); // can move lock inside if required
   for (auto vertex : sorted_vertices) {
@@ -693,6 +712,8 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
       Log_debug("Executed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
     }
   }
+  Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  in_process_dkeys.erase(cmds[replica_id][instance_no].dkey);
 }
 
 template<class ClassT>
