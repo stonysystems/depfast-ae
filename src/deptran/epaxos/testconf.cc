@@ -146,7 +146,7 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
     Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
     for (int i = 0; i < exec_orders[svr].size(); i++) {
       if (exec_orders[svr][i] != longest_exec_order[i]) {
-        Log_debug("Execution order is different in server: %d", svr);
+        Log_debug("Execution order for cmd: %d is different in server: %d", exec_orders[svr][i], svr);
         return false;
       }
     }

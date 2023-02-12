@@ -63,6 +63,7 @@ class EpaxosCommand {
   unordered_map<uint64_t, uint64_t> deps;
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
+  EpaxosBallot highest_accepted;
   bool preparing;
   chrono::_V2::system_clock::time_point received_time;
 
