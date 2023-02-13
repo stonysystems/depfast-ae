@@ -76,12 +76,6 @@ void EpaxosTestConfig::Prepare(int svr, uint64_t replica_id, uint64_t instance_n
   replicas[svr]->svr_->Prepare(replica_id, instance_no);
 }
 
-void EpaxosTestConfig::PrepareAll() {
-  for (int i = 0; i < NSERVERS; i++) {
-    replicas[i]->svr_->PrepareAll();
-  }
-}
-
 void EpaxosTestConfig::PauseExecution(bool pause) {
   for (int i = 0; i < NSERVERS; i++) {
     replicas[i]->svr_->PauseExecution(pause);

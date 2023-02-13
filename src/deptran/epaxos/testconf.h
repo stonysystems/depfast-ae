@@ -75,9 +75,6 @@ class EpaxosTestConfig {
   // Calls Prepare() to specified server
   void Prepare(int svr, uint64_t replica_id, uint64_t instance_no);
 
-  // Calls PrepareAll() in all servers
-  void PrepareAll();
-
   // Calls PauseExecution() in all servers
   void PauseExecution(bool pause);
 

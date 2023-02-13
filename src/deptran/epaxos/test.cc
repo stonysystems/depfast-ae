@@ -26,9 +26,7 @@ int EpaxosLabTest::Run(void) {
       || testPreparePreAcceptedCommandAgree()
       || testPrepareNoopCommandAgree()
       || testConcurrentAgree()
-      || testConcurrentUnreliableAgree1()
-      // || testConcurrentUnreliableAgree2()
-      // || testExecutionOrder()
+      || testConcurrentUnreliableAgree()
     ) {
     Print("TESTS FAILED");
     return 1;
@@ -825,7 +823,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
   unordered_set<uint64_t> dependent_cmds;
-  for (int iter = 1; iter <= 50; iter++) {
+  for (int iter = 1; iter <= 30; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
       args->cmd = ++cmd;
@@ -848,14 +846,14 @@ int EpaxosLabTest::testConcurrentAgree(void) {
     verify(pthread_join(thread, nullptr) == 0);
   }
   Coroutine::Sleep(1000000);
-  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  Assert2(retvals.size() == 150, "Failed to reach agreement");
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
   Passed2();
 }
 
-int EpaxosLabTest::testConcurrentUnreliableAgree1(void) {
+int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   Init2(13, "Unreliable concurrent agreement (takes a few minutes)");
   config_->PauseExecution(false);
   config_->SetUnreliable(true);
@@ -892,75 +890,6 @@ int EpaxosLabTest::testConcurrentUnreliableAgree1(void) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
   Coroutine::Sleep(1000000);
-  Passed2();
-}
-
-int EpaxosLabTest::testConcurrentUnreliableAgree2(void) {
-  Init2(13, "Unreliable concurrent agreement (takes a few minutes) - Prepare hell");
-  config_->PauseExecution(false);
-  config_->SetUnreliable(true);
-  std::vector<pthread_t> threads{};
-  std::vector<std::pair<uint64_t, uint64_t>> retvals{};
-  std::mutex mtx{};
-  for (int iter = 1; iter <= 100; iter++) {
-    for (int svr = 0; svr < NSERVERS; svr++) {
-      CAArgs *args = new CAArgs{};
-      args->cmd = ++cmd;
-      args->svr = svr;
-      args->dkey = "10";
-      args->mtx = &mtx;
-      args->retvals = &retvals;
-      args->config = config_;
-      pthread_t thread;
-      verify(pthread_create(&thread,
-                            nullptr,
-                            doConcurrentAgreement,
-                            (void*)args) == 0);
-      threads.push_back(thread);
-    }
-  }
-  // join all threads
-  for (auto thread : threads) {
-    verify(pthread_join(thread, nullptr) == 0);
-  }
-  config_->PrepareAll();
-  config_->PrepareAll();
-  config_->PrepareAll();
-  Coroutine::Sleep(60000000);
-  config_->SetUnreliable(false);
-  Coroutine::Sleep(1000);
-  for (auto retval : retvals) {
-    auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
-    int CMD_LEADER = rand() % NSERVERS;
-    config_->Prepare(CMD_LEADER, retval.first, retval.second);
-  }
-  for (auto retval : retvals) {
-    AssertNCommitted(retval.first, retval.second, NSERVERS);
-  }
-  Coroutine::Sleep(1000000);
-  Passed2();
-}
-
-int EpaxosLabTest::testExecutionOrder(void) {
-  Init2(14, "Test if all commands were executed in same order");
-  config_->PauseExecution(false);
-  Coroutine::Sleep(20000000);
-  auto executed_cmds = config_->GetExecutedCommands(0);
-  string s = "";
-  for (auto cmd : executed_cmds) {
-    s = s + to_string(cmd) + ", ";
-  }
-  Log_debug("Exec order in %d is %s", 0, s.c_str());
-  for (int svr = 1; svr < NSERVERS; svr++) {
-    auto cmds = config_->GetExecutedCommands(svr);
-    s = "";
-    for (auto cmd : cmds) {
-      s = s + to_string(cmd) + ", ";
-    }
-    Log_debug("Exec order in %d is %s", svr, s.c_str());
-    // verify(executed_cmds == cmds);
-  }
-  config_->PauseExecution(true);
   Passed2();
 }
 

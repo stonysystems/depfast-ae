@@ -174,7 +174,7 @@ class EpaxosServer : public TxLogServer {
   list<EpaxosRequest> reqs;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   unordered_map<uint64_t, uint64_t> received_till;
-  unordered_map<uint64_t, uint64_t> exec_started_till;
+  unordered_map<uint64_t, uint64_t> prepared_till;
   unordered_set<string> in_process_dkeys;
   bool pause_execution = false;
 
@@ -242,7 +242,6 @@ class EpaxosServer : public TxLogServer {
                 unordered_map<uint64_t, uint64_t> *deps, 
                 status_t *state);
   void Prepare(uint64_t replica_id, uint64_t instance_no);
-  void PrepareAll();
   void PauseExecution(bool pause);
   
  private:
