@@ -56,6 +56,8 @@ class EpaxosBallot {
 };
 
 class EpaxosCommand {
+ private:
+  chrono::_V2::system_clock::time_point received_time;
  public:
   shared_ptr<Marshallable> cmd;
   string dkey;
@@ -65,7 +67,6 @@ class EpaxosCommand {
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
   bool preparing;
-  chrono::_V2::system_clock::time_point received_time;
 
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
@@ -84,6 +85,10 @@ class EpaxosCommand {
     this->state = state;
     this->preparing = false;
     this->received_time = std::chrono::system_clock::now();
+  }
+
+  bool isCreatedBefore(int time_in_millis) {
+    return chrono::system_clock::now() - received_time > chrono::milliseconds{time_in_millis};
   }
 };
 
@@ -210,6 +215,7 @@ class EpaxosServer : public TxLogServer {
 
   int CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph);
   void StartExecution(uint64_t replica_id, uint64_t instance_no);
+  void StartExecutionAsync(uint64_t replica_id, uint64_t instance_no);
 
   template<class ClassT>
   void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no);
