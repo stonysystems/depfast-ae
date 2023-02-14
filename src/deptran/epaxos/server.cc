@@ -5,14 +5,15 @@
 namespace janus {
 
 EpaxosServer::EpaxosServer(Frame * frame) {
-  /* Your code here. This function can be called from another OS thread. */
   frame_ = frame;
   Log::set_level(Log::DEBUG); // <REMOVE_AFTER_TESTING>
 }
 
-EpaxosServer::~EpaxosServer() {
-  /* Your code here for server teardown */
-}
+EpaxosServer::~EpaxosServer() {}
+
+/***********************************
+   Main event processing loop      *
+************************************/
 
 void EpaxosServer::Setup() {
   // Future Work: Give unique replica id on restarts (by storing old replica_id persistently and new_replica_id = old_replica_id + N)
@@ -89,11 +90,16 @@ void EpaxosServer::Setup() {
         lock.unlock();
         Coroutine::CreateRun([this, &req](){
           PrepareTillCommitted(req.first, req.second);
+          StartExecution(req.first, req.second);
         });
        }
      }
    });
 }
+
+/***********************************
+      Client Request Handlers      *
+************************************/
 
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -142,6 +148,10 @@ EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, s
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   return EpaxosRequest(cmd, dkey, ballot, replica_id_, instance_no, leader_dep_instance);
 }
+
+/***********************************
+       Phase 1: Pre-accept         *
+************************************/
 
 bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_, 
                                   string dkey, 
@@ -289,6 +299,10 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   return reply;
 }
 
+/***********************************
+         Phase 2: Accept           *
+************************************/
+
 bool EpaxosServer::StartAccept(uint64_t replica_id, uint64_t instance_no) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   // Accept command
@@ -368,6 +382,10 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd_,
   return reply;
 }
 
+/***********************************
+          Commit Phase             *
+************************************/
+
 bool EpaxosServer::StartCommit(uint64_t replica_id, uint64_t instance_no) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -425,6 +443,10 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd_,
   // Execute
   StartExecutionAsync(replica_id, instance_no);
 }
+
+/***********************************
+         Prepare Phase             *
+************************************/
 
 bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
@@ -575,33 +597,6 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   return StartPreAccept(NOOP_CMD, NOOP_DKEY, ballot, replica_id, instance_no, -1, true);
 }
 
-void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
-  // Wait till concurrent prepare succeeds
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
-  Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-  while (cmds[replica_id][instance_no].preparing) {
-    lock.unlock();
-    Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-    Coroutine::Sleep(100000);
-    lock.lock();
-  }
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
-      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    return;
-  }
-  cmds[replica_id][instance_no].preparing = true;
-  lock.unlock();
-  // Wait till prepare succeeds
-  bool committed = StartPrepare(replica_id, instance_no);
-  while (!committed) {
-    Coroutine::Sleep(100000 + (rand() % 50000));
-    committed = StartPrepare(replica_id, instance_no);
-  }
-  // Mark preparing
-  lock.lock();
-  cmds[replica_id][instance_no].preparing = false;
-}
-
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received prepare request for replica: %d instance: %d in replica: %d for ballot: %d from new leader: %d", replica_id, instance_no, replica_id_, ballot.ballot_no, ballot.replica_id);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -630,9 +625,37 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
   return reply;
 }
 
-// returns 0 if noop
-// returns 1 if executed
-// returns 2 if added to graph
+void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
+  // Wait till concurrent prepare succeeds
+  std::unique_lock<std::recursive_mutex> lock(mtx_);
+  Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
+  while (cmds[replica_id][instance_no].preparing) {
+    lock.unlock();
+    Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
+    Coroutine::Sleep(100000);
+    lock.lock();
+  }
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
+      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    return;
+  }
+  cmds[replica_id][instance_no].preparing = true;
+  lock.unlock();
+  // Wait till prepare succeeds
+  bool committed = StartPrepare(replica_id, instance_no);
+  while (!committed) {
+    Coroutine::Sleep(100000 + (rand() % 50000));
+    committed = StartPrepare(replica_id, instance_no);
+  }
+  // Mark preparing
+  lock.lock();
+  cmds[replica_id][instance_no].preparing = false;
+}
+
+/***********************************
+        Execution Phase            *
+************************************/
+
 int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -736,6 +759,10 @@ void EpaxosServer::StartExecutionAsync(uint64_t replica_id, uint64_t instance_no
     StartExecution(replica_id, instance_no);
   });
 }
+
+/***********************************
+         Helper Methods            *
+************************************/
 
 template<class ClassT>
 void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no) {

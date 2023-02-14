@@ -146,7 +146,7 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
     this->cmd = cmd;
     this->replica_id = replica_id;
     this->instance_no = instance_no;
-    this->id_ = replica_id << 8 | instance_no;
+    this->id_ = replica_id << 32 | instance_no;
   }
 
   uint64_t id() override {
@@ -167,7 +167,7 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
 class EpaxosGraph: public EGraph<EpaxosVertex> {};
 
 class EpaxosServer : public TxLogServer {
- public:
+ private:
   uint64_t replica_id_;
   epoch_t curr_epoch = 1;
   uint64_t next_instance_no = 0;
@@ -189,33 +189,11 @@ class EpaxosServer : public TxLogServer {
                       uint64_t instance_no,
                       int64_t leader_dep_instance,
                       bool recovery);
-  EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
-                                          string dkey, 
-                                          EpaxosBallot ballot, 
-                                          uint64_t seq, 
-                                          unordered_map<uint64_t, uint64_t> deps, 
-                                          uint64_t replica_id, 
-                                          uint64_t instance_no);
   bool StartAccept(uint64_t replica_id, uint64_t instance_no);
-  EpaxosAcceptReply OnAcceptRequest(shared_ptr<Marshallable>& cmd_, 
-                                    string dkey, 
-                                    EpaxosBallot ballot, 
-                                    uint64_t seq, 
-                                    unordered_map<uint64_t, uint64_t> deps, 
-                                    uint64_t replica_id, 
-                                    uint64_t instance_no);
   bool StartCommit(uint64_t replica_id, uint64_t instance_no);
-  void OnCommitRequest(shared_ptr<Marshallable>& cmd_, 
-                       string dkey, 
-                       EpaxosBallot ballot, 
-                       uint64_t seq, 
-                       unordered_map<uint64_t, uint64_t> deps, 
-                       uint64_t replica_id, 
-                       uint64_t instance_no);
   void PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no);
   bool StartPrepare(uint64_t replica_id, uint64_t instance_no);
-  EpaxosPrepareReply OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no);
-
+  // returns 0 if noop, 1 if executed, 2 if added to graph
   int CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph);
   void StartExecution(uint64_t replica_id, uint64_t instance_no);
   void StartExecutionAsync(uint64_t replica_id, uint64_t instance_no);
@@ -230,12 +208,37 @@ class EpaxosServer : public TxLogServer {
                                 uint64_t seq, 
                                 unordered_map<uint64_t, uint64_t> deps);
 
-  /* do not modify this class below here */
+  /* RPC handlers */
 
  public:
-  EpaxosServer(Frame *frame) ;
-  ~EpaxosServer() ;
+  EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
+                                          string dkey, 
+                                          EpaxosBallot ballot, 
+                                          uint64_t seq, 
+                                          unordered_map<uint64_t, uint64_t> deps, 
+                                          uint64_t replica_id, 
+                                          uint64_t instance_no);
+  EpaxosAcceptReply OnAcceptRequest(shared_ptr<Marshallable>& cmd_, 
+                                    string dkey, 
+                                    EpaxosBallot ballot, 
+                                    uint64_t seq, 
+                                    unordered_map<uint64_t, uint64_t> deps, 
+                                    uint64_t replica_id, 
+                                    uint64_t instance_no);
+  void OnCommitRequest(shared_ptr<Marshallable>& cmd_, 
+                       string dkey, 
+                       EpaxosBallot ballot, 
+                       uint64_t seq, 
+                       unordered_map<uint64_t, uint64_t> deps, 
+                       uint64_t replica_id, 
+                       uint64_t instance_no);
+  EpaxosPrepareReply OnPrepareRequest(EpaxosBallot ballot, 
+                                      uint64_t replica_id, 
+                                      uint64_t instance_no);
 
+  /* Client request handlers */
+
+public:
   void Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
   void GetState(uint64_t replica_id, 
                 uint64_t instance_no, 
@@ -246,6 +249,12 @@ class EpaxosServer : public TxLogServer {
                 status_t *state);
   void Prepare(uint64_t replica_id, uint64_t instance_no);
   void PauseExecution(bool pause);
+
+  /* Do not modify this class below here */
+
+ public:
+  EpaxosServer(Frame *frame) ;
+  ~EpaxosServer() ;
   
  private:
   bool disconnected_ = false;
