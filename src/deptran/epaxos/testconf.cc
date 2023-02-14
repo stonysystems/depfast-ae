@@ -106,15 +106,15 @@ int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
   return ne;
 }
 
-bool EpaxosTestConfig::ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_order) {
+bool EpaxosTestConfig::ExecutedPairsInOrder(vector<pair<uint64_t, uint64_t>> expected_pairs) {
   for (int svr = 0; svr < NSERVERS; svr++) {
-    for (int i = 0; i < exp_order.size(); i++) {
-      auto occ = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), exp_order[i].first);
+    for (int i = 0; i < expected_pairs.size(); i++) {
+      auto occ = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), expected_pairs[i].first);
       if (occ == committed_cmds[svr].end()) continue;
-      auto occ_next = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), exp_order[i].second);
+      auto occ_next = find(committed_cmds[svr].begin(), committed_cmds[svr].end(), expected_pairs[i].second);
       if (occ_next == committed_cmds[svr].end()) continue;
       if (occ - committed_cmds[svr].begin() > occ_next - committed_cmds[svr].begin()) {
-        Log_debug("cmd: %d executed before cmd: %d", exp_order[i].second, exp_order[i].first);
+        Log_debug("cmd: %d executed before cmd: %d", expected_pairs[i].second, expected_pairs[i].first);
         return false;
       }
     }
@@ -124,7 +124,7 @@ bool EpaxosTestConfig::ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_orde
 
 bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmds) {
   vector<vector<uint64_t>> exec_orders;
-  vector<uint64_t> longest_exec_order;
+  uint64_t longest_svr = 0;
   for (int svr = 0; svr < NSERVERS; svr++) {
     exec_orders.push_back(vector<uint64_t>());
     for (auto itr = committed_cmds[svr].begin(); itr != committed_cmds[svr].end(); itr++) {
@@ -132,15 +132,16 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
         exec_orders[svr].push_back(*itr);
       }
     }
-    if (exec_orders[svr].size() > longest_exec_order.size()) {
-      longest_exec_order = exec_orders[svr];
+    if (exec_orders[svr].size() > exec_orders[longest_svr].size()) {
+      longest_svr = svr;
     }
+    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
+    verify(exec_orders[svr].size() > (dependent_cmds.size() * 0.8));
   }
   for (int svr = 0; svr < NSERVERS; svr++) {
-    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
     for (int i = 0; i < exec_orders[svr].size(); i++) {
-      if (exec_orders[svr][i] != longest_exec_order[i]) {
-        Log_debug("Execution order for cmd: %d is different in server: %d", exec_orders[svr][i], svr);
+      if (exec_orders[svr][i] != exec_orders[longest_svr][i]) {
+        Log_debug("Execution order for cmd: %d is different in server: %d from longest %d", exec_orders[svr][i], svr, longest_svr);
         return false;
       }
     }
@@ -374,19 +375,22 @@ bool EpaxosTestConfig::AnySlow(void) {
   return false;
 }
 
-void EpaxosTestConfig::SetSlow(int svr, bool slow) {
+void EpaxosTestConfig::SetSlow(int svr, int msec) {
   verify(svr >= 0 && svr < NSERVERS);
   std::lock_guard<std::mutex> prlk(disconnect_mtx_);
-  if (slow) {
-    verify(!slow_[svr]);
-    slow_[svr] = true;
-    this->slow(svr, 1);
-  } else {
-    verify(slow_[svr]);
-    slow_[svr] = false;
-    this->slow(svr, 0);
-  }
+  verify(!slow_[svr]);
+  slow_[svr] = true;
+  this->slow(svr, msec);
 }
+
+void EpaxosTestConfig::ResetSlow(int svr) {
+  verify(svr >= 0 && svr < NSERVERS);
+  std::lock_guard<std::mutex> prlk(disconnect_mtx_);
+  verify(slow_[svr]);
+  slow_[svr] = false;
+  this->slow(svr, 0);
+}
+
 void EpaxosTestConfig::Shutdown(void) {
   // trigger netctlLoop shutdown
   {

@@ -75,8 +75,8 @@ void EpaxosLabTest::Cleanup(void) {
         Assert2(ne == expected, "%d servers executed command %d (%d expected)", ne, cmd, expected) \
       }
 
-#define AssertExecutedOrder(expected_exec_order) { \
-        auto r = config_->ExecutedInOrder(expected_exec_order); \
+#define AssertExecutedPairsInOrder(expected_pairs) { \
+        auto r = config_->ExecutedPairsInOrder(expected_pairs); \
         Assert2(r, "unexpected execution order of commands"); \
       }
 
@@ -208,7 +208,7 @@ int EpaxosLabTest::testFastPathDependentAgree(void) {
   AssertNExecuted(cmd, FAST_PATH_QUORUM);
   // Verify order of execution
   vector<pair<uint64_t, uint64_t>> exp_exec_order = {{cmd1, cmd2}, {cmd2, cmd3}};
-  AssertExecutedOrder(exp_exec_order)
+  AssertExecutedPairsInOrder(exp_exec_order)
   // Reconnect all
   config_->Reconnect(0);
   Passed2();
@@ -259,7 +259,7 @@ int EpaxosLabTest::testSlowPathDependentAgree(void) {
   AssertNExecuted(cmd, SLOW_PATH_QUORUM);
   // Verify order of execution
   vector<pair<uint64_t, uint64_t>> exp_exec_order = {{cmd1, cmd2}, {cmd1, cmd3}};
-  AssertExecutedOrder(exp_exec_order)
+  AssertExecutedPairsInOrder(exp_exec_order)
   // Reconnect all
   config_->Reconnect(0);
   config_->Reconnect(1);
@@ -401,8 +401,8 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   /*********** Execution order ***********/
   InitSub2(3, "Execution order");
   config_->PauseExecution(false);
-  Coroutine::Sleep(1000000);
-  // AssertSameExecutedOrder(dependent_cmds);
+  Coroutine::Sleep(5000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -568,8 +568,8 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   /*********** Execution order ***********/
   InitSub2(5, "Execution order");
   config_->PauseExecution(false);
-  Coroutine::Sleep(50000000);
-  // AssertSameExecutedOrder(dependent_cmds);
+  Coroutine::Sleep(5000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -662,8 +662,8 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   /*********** Execution order ***********/
   InitSub2(3, "Execution order");
   config_->PauseExecution(false);
-  Coroutine::Sleep(50000000);
-  // AssertSameExecutedOrder(dependent_cmds);
+  Coroutine::Sleep(5000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -691,16 +691,16 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   // Reconnect leader and commit via prepare
   config_->Reconnect(CMD_LEADER);
   // Set non-leaders slow to prevent from committing noop
-  config_->SetSlow((CMD_LEADER + 1) % NSERVERS, true);
-  config_->SetSlow((CMD_LEADER + 2) % NSERVERS, true);
-  config_->SetSlow((CMD_LEADER + 3) % NSERVERS, true);
-  config_->SetSlow((CMD_LEADER + 4) % NSERVERS, true);
+  config_->SetSlow((CMD_LEADER + 1) % NSERVERS, 100);
+  config_->SetSlow((CMD_LEADER + 2) % NSERVERS, 100);
+  config_->SetSlow((CMD_LEADER + 3) % NSERVERS, 100);
+  config_->SetSlow((CMD_LEADER + 4) % NSERVERS, 100);
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
-  config_->SetSlow((CMD_LEADER + 1) % NSERVERS, false);
-  config_->SetSlow((CMD_LEADER + 2) % NSERVERS, false);
-  config_->SetSlow((CMD_LEADER + 3) % NSERVERS, false);
-  config_->SetSlow((CMD_LEADER + 4) % NSERVERS, false);
+  config_->ResetSlow((CMD_LEADER + 1) % NSERVERS);
+  config_->ResetSlow((CMD_LEADER + 2) % NSERVERS);
+  config_->ResetSlow((CMD_LEADER + 3) % NSERVERS);
+  config_->ResetSlow((CMD_LEADER + 4) % NSERVERS);
   
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns 1 pre-accepted reply from another replica (slow-path).");
@@ -732,8 +732,8 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   /*********** Execution order ***********/
   InitSub2(3, "Execution order");
   config_->PauseExecution(false);
-  Coroutine::Sleep(50000000);
-  // AssertSameExecutedOrder(dependent_cmds);
+  Coroutine::Sleep(5000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -742,7 +742,7 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Pre-accepted in 1 server (leader). Prepare returns no replies (avoid fast-path).");
-  cmd++;
+  int cmd1 = ++cmd;
   string dkey = "7";
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
@@ -768,7 +768,7 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   
   /*********** Sub Test 2 ***********/
   InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path).");
-  cmd++;
+  int cmd2 = ++cmd;
   // Disconnect all servers except leader and 1 replica
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   config_->Disconnect((CMD_LEADER + 2) % NSERVERS);
@@ -794,6 +794,13 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   config_->Reconnect((CMD_LEADER + 4) % NSERVERS);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, NOOP_DKEY, seq, deps);
+
+  /*********** Execution order ***********/
+  InitSub2(3, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(5000000);
+  AssertNoneExecuted(cmd1);
+  AssertNoneExecuted(cmd2);
   Passed2();
 }
 
@@ -850,6 +857,8 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
+  Coroutine::Sleep(6000000);
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 
@@ -882,14 +891,14 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
     verify(pthread_join(thread, nullptr) == 0);
   }
   config_->SetUnreliable(false);
-  Coroutine::Sleep(1000);
+  Coroutine::Sleep(6000000);
   for (auto retval : retvals) {
     auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
   }
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
-  Coroutine::Sleep(1000000);
+  Coroutine::Sleep(6000000);
   Passed2();
 }
 

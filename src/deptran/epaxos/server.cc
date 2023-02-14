@@ -56,7 +56,7 @@ void EpaxosServer::Setup() {
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() {
             std::unique_lock<std::recursive_mutex> lock(mtx_);
-            while(!cmds[replica_id][instance_no].isCreatedBefore(500)) {
+            while(!cmds[replica_id][instance_no].isCreatedBefore(2000)) {
               lock.unlock();
               Coroutine::Sleep(10000);
               lock.lock();
@@ -153,6 +153,12 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started pre-accept for request for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
+  // Reject old message - we have moved on
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED
+      || cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
+      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    return false;
+  }
   // Initialise attributes
   uint64_t seq = dkey_seq[dkey] + 1;
   unordered_map<uint64_t, uint64_t> deps = dkey_deps[dkey];
@@ -287,6 +293,11 @@ bool EpaxosServer::StartAccept(uint64_t replica_id, uint64_t instance_no) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   // Accept command
   Log_debug("Started accept request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  // Reject old message - we have moved on
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
+      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    return false;
+  }
   cmds[replica_id][instance_no].state = EpaxosCommandState::ACCEPTED;
   EpaxosCommand cmd = cmds[replica_id][instance_no];
   lock.unlock();
@@ -634,12 +645,12 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return 0;
   }
-  shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
-  bool exists = graph->FindOrCreateVertex(parent);
+  shared_ptr<EpaxosVertex> child = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
+  bool exists = graph->FindOrCreateVertex(child);
   if (exists) {
     return 2;
   }
-  for (auto itr : parent->cmd->deps) {
+  for (auto itr : child->cmd->deps) {
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
     lock.unlock();
@@ -653,7 +664,7 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
           PrepareTillCommitted(dreplica_id, prev_instance_no);
           lock.lock();
         }
-        if (cmds[dreplica_id][prev_instance_no].dkey == parent->cmd->dkey) {
+        if (cmds[dreplica_id][prev_instance_no].dkey == child->cmd->dkey) {
           break;
         }
         prev_instance_no--;
@@ -665,7 +676,7 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
       dinstance_no = prev_instance_no;
     }
     if (status == 1) continue;
-    shared_ptr<EpaxosVertex> child = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
+    shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
     graph->FindOrCreateParentEdge(child, parent);
   }
   return 2;

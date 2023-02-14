@@ -84,8 +84,8 @@ class EpaxosTestConfig {
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id, int n);
 
-  // Returns true if all servers executed commands with given ids in the same order (if executed)
-  bool ExecutedInOrder(vector<pair<uint64_t, uint64_t>> exp_order);
+  // Returns true if all servers executed first command in pair before second command (if executed)
+  bool ExecutedPairsInOrder(vector<pair<uint64_t, uint64_t>> expected_pairs);
 
   // Check if the commands are executed in same order in all servers
   bool ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmds);
@@ -175,7 +175,10 @@ class EpaxosTestConfig {
   bool IsUnreliable(void);
 
   // Slow down connections of a server
-  void SetSlow(int svr, bool slow);
+  void SetSlow(int svr, int msec);
+
+  // Reset a slowed server
+  void ResetSlow(int svr);
 
   // Returns if any server is set slow
   bool AnySlow(void);

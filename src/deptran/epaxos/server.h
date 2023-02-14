@@ -154,6 +154,9 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
   }
 
   bool isFirstInSCC(shared_ptr<EpaxosVertex> &rhs) override {
+    if (this->cmd->seq == rhs->cmd->seq && this->replica_id == rhs->replica_id) {
+      return this->instance_no < rhs->instance_no;
+    }
     if (this->cmd->seq == rhs->cmd->seq) {
       return this->replica_id < rhs->replica_id;
     }
