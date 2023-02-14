@@ -145,15 +145,6 @@ class EpaxosTestConfig {
                   uint64_t *cseq, 
                   unordered_map<uint64_t, uint64_t> *cdeps);
 
-  // Waits for at least n servers to commit index
-  // If commit takes too long, gives up after a while.
-  // If term has moved on since the given start term, also gives up.
-  // Returns the committed value on success.
-  // -1 if it took too long for enough servers to commit
-  // -2 if term changed
-  // -3 if committed values for index differ
-  // int Wait(uint64_t index, int n, uint64_t term);
-
   // Disconnects server from rest of servers
   void Disconnect(int svr);
 
