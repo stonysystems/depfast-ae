@@ -767,7 +767,7 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, true, NOOP_DKEY, seq, deps);
   
   /*********** Sub Test 2 ***********/
-  InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path).");
+  InitSub2(2, "Pre-accepted in 2 server (leader and replica). Prepare returns no replies (slow path). (May fail sometimes)");
   int cmd2 = ++cmd;
   // Disconnect all servers except leader and 1 replica
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
@@ -830,7 +830,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
   unordered_set<uint64_t> dependent_cmds;
-  for (int iter = 1; iter <= 30; iter++) {
+  for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
       args->cmd = ++cmd;
@@ -853,11 +853,11 @@ int EpaxosLabTest::testConcurrentAgree(void) {
     verify(pthread_join(thread, nullptr) == 0);
   }
   Coroutine::Sleep(1000000);
-  Assert2(retvals.size() == 150, "Failed to reach agreement");
+  Assert2(retvals.size() == 250, "Failed to reach agreement");
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
-  Coroutine::Sleep(6000000);
+  Coroutine::Sleep(5000000);
   AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
@@ -891,14 +891,15 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
     verify(pthread_join(thread, nullptr) == 0);
   }
   config_->SetUnreliable(false);
-  Coroutine::Sleep(6000000);
+  Coroutine::Sleep(5000000);
+  Assert2(retvals.size() == 250, "Failed to reach agreement");
   for (auto retval : retvals) {
     auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
   }
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
-  Coroutine::Sleep(6000000);
+  Coroutine::Sleep(5000000); // Wait till all commands are executed
   Passed2();
 }
 

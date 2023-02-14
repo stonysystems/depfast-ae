@@ -195,7 +195,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
                                    dkey, 
                                    seq, 
                                    deps);
-  ev->Wait(1000000);
+  ev->Wait(2000000);
   // Process pre-accept replies
   Log_debug("Started pre-accept reply processing for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
@@ -313,7 +313,7 @@ bool EpaxosServer::StartAccept(uint64_t replica_id, uint64_t instance_no) {
                                 cmd.dkey, 
                                 cmd.seq, 
                                 cmd.deps);
-  ev->Wait(1000000);
+  ev->Wait(2000000);
   // Process accept replies
   Log_debug("Started accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Fail if timeout/no-majority
@@ -461,7 +461,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
                                 ballot.replica_id, 
                                 replica_id,
                                 instance_no);
-  ev->Wait(1000000);
+  ev->Wait(2000000);
   // Process prepare replies
   Log_debug("Started prepare reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (ev->status_ == Event::TIMEOUT || ev->No()) {
@@ -653,34 +653,42 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
   if (exists) {
     return 2;
   }
-  for (auto itr : child->cmd->deps) {
+  auto deps = child->cmd->deps;
+  string dkey = child->cmd->dkey;
+  lock.unlock();
+
+  for (auto itr : deps) {
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
-    lock.unlock();
     int status = CreateEpaxosGraph(dreplica_id, dinstance_no, graph);
-    lock.lock();
     if (status == 0) {
       int64_t prev_instance_no = dinstance_no - 1;
       while (prev_instance_no >= 0) {
-        if (cmds[dreplica_id][prev_instance_no].state == EpaxosCommandState::NOT_STARTED) {
-          lock.unlock();
-          PrepareTillCommitted(dreplica_id, prev_instance_no);
-          lock.lock();
+        lock.lock();
+        string dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
+        lock.unlock();
+        if (dep_dkey != NOOP_DKEY && dep_dkey != dkey) {
+          prev_instance_no--;
+          continue;
         }
-        if (cmds[dreplica_id][prev_instance_no].dkey == child->cmd->dkey) {
+        PrepareTillCommitted(dreplica_id, prev_instance_no);
+        lock.lock();
+        dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
+        lock.unlock();
+        if (dep_dkey == dkey) {
           break;
         }
         prev_instance_no--;
       }
       if (prev_instance_no < 0) continue;
-      lock.unlock();
       status = CreateEpaxosGraph(dreplica_id, prev_instance_no, graph);
-      lock.lock();
       dinstance_no = prev_instance_no;
     }
     if (status == 1) continue;
+    lock.lock();
     shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
     graph->FindOrCreateParentEdge(child, parent);
+    lock.unlock();
   }
   return 2;
 }
@@ -708,7 +716,6 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   EpaxosGraph graph = EpaxosGraph();
   CreateEpaxosGraph(replica_id, instance_no, &graph);
   auto sorted_vertices = graph.GetSortedVertices();
-  Log_debug("Added to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   lock.lock();
   for (auto vertex : sorted_vertices) {
     if (vertex->cmd->state != EpaxosCommandState::EXECUTED) {
