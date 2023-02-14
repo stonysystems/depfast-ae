@@ -7,7 +7,7 @@ namespace janus {
 EpaxosServer::EpaxosServer(Frame * frame) {
   /* Your code here. This function can be called from another OS thread. */
   frame_ = frame;
-  Log::set_level(Log::DEBUG); // TODO: REMOVE
+  Log::set_level(Log::DEBUG); // <REMOVE_AFTER_TESTING>
 }
 
 EpaxosServer::~EpaxosServer() {
@@ -63,7 +63,7 @@ void EpaxosServer::Setup() {
             }
             lock.unlock();
             PrepareTillCommitted(replica_id, instance_no);
-            StartExecution(replica_id, instance_no);
+            StartExecution(replica_id, instance_no); // <REMOVE_AFTER_TESTING>
           });
           Coroutine::Sleep(10);
           instance_no++;
@@ -76,7 +76,7 @@ void EpaxosServer::Setup() {
     }
   });
 
-  // Process prepare requests
+  // Process prepare requests <REMOVE_AFTER_TESTING>
    Coroutine::CreateRun([this](){
      while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
@@ -119,13 +119,13 @@ void EpaxosServer::GetState(uint64_t replica_id,
   *state = cmds[replica_id][instance_no].state;
 }
 
-void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) { // <REMOVE_AFTER_TESTING>
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received prepare request in server: %d for replica: %d instance: %d", site_id_, replica_id, instance_no);
   prepare_reqs.push_back(make_pair(replica_id, instance_no));
 }
 
-void EpaxosServer::PauseExecution(bool pause) {
+void EpaxosServer::PauseExecution(bool pause) { // <REMOVE_AFTER_TESTING>
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   pause_execution = pause;
 }
@@ -630,6 +630,9 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
   return reply;
 }
 
+// returns 0 if noop
+// returns 1 if executed
+// returns 2 if added to graph
 int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -682,21 +685,24 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
   return 2;
 }
 
+// Should be called only after command at that instance is committed
 void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
   std::unique_lock<std::recursive_mutex> lock(mtx_);
-  if (pause_execution) {
+  if (pause_execution) { // <REMOVE_AFTER_TESTING>
     return;
   }
-  if (cmds[replica_id][instance_no].cmd->kind_ != MarshallDeputy::CMD_NOOP) {
-    while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0) {
-      lock.unlock();
-      Coroutine::Sleep(10000);
-      lock.lock();
-    }
-    in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
+  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
+    return;
   }
+  // Stop execution of next command of same dkey
+  while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0) {
+    lock.unlock();
+    Coroutine::Sleep(10000);
+    lock.lock();
+  }
+  in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
   lock.unlock();
   // Execute
   EpaxosGraph graph = EpaxosGraph();
@@ -707,8 +713,8 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   for (auto vertex : sorted_vertices) {
     if (vertex->cmd->state != EpaxosCommandState::EXECUTED) {
       vertex->cmd->state = EpaxosCommandState::EXECUTED;
+      Log_debug("Executed replica: %d instance: %d in replica: %d kind: %d", vertex->replica_id, vertex->instance_no, replica_id_, vertex->cmd->cmd->kind_);
       app_next_(*(vertex->cmd->cmd));
-      Log_debug("Executed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
     }
   }
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);

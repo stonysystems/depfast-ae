@@ -330,7 +330,7 @@ def _properly_split(args):
         return args.split()
 
 def _gen_srpc_headers():
-    for srpc in glob.glob("deptran/*/*.rpc"):
+    for srpc in glob.glob("src/deptran/**/*.rpc"):
         target = os.path.splitext(srpc)[0]+'.h'
         _depend(target,
                 srpc,
