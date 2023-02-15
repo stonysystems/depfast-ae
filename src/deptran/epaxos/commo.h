@@ -251,7 +251,6 @@ class EpaxosCommo : public Communicator {
                      
   /* Do not modify this class below here */
 
-  friend class FpgaEpaxosProxy;
  public:
   #ifdef EPAXOS_TEST_CORO
   std::recursive_mutex rpc_mtx_ = {};

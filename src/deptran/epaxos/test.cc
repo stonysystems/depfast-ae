@@ -869,6 +869,7 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
   std::vector<pthread_t> threads{};
   std::vector<std::pair<uint64_t, uint64_t>> retvals{};
   std::mutex mtx{};
+  unordered_set<uint64_t> dependent_cmds;
   for (int iter = 1; iter <= 50; iter++) {
     for (int svr = 0; svr < NSERVERS; svr++) {
       CAArgs *args = new CAArgs{};
@@ -878,6 +879,7 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
       args->mtx = &mtx;
       args->retvals = &retvals;
       args->config = config_;
+      dependent_cmds.insert(cmd);
       pthread_t thread;
       verify(pthread_create(&thread,
                             nullptr,
@@ -900,6 +902,7 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
   Coroutine::Sleep(5000000); // Wait till all commands are executed
+  AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
 

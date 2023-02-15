@@ -493,7 +493,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   }
   // Add self reply
   ev->replies.push_back(self_reply);
-  // Get set of replies with highest ballot
+  // Get set of replies with highest accepted ballot
   vector<EpaxosPrepareReply> highest_ballot_replies;
   EpaxosBallot highest_ballot = EpaxosBallot();
   for (auto reply : ev->replies) {
@@ -508,7 +508,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
       }
     }
   }
-  // Check if the highest ballot seen is same as default ballot
+  // Check if the highest accepted ballot is same as default ballot
   bool is_default_ballot = highest_ballot.isDefault(); 
   // Get all unique commands and their counts
   vector<EpaxosRecoveryCommand> unique_cmds;
