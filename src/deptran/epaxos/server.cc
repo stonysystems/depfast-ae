@@ -531,16 +531,18 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
         if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
           Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
           rec_command = reply;
-        }
-        if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ 
-            && rec_command.cmd_state != EpaxosCommandState::ACCEPTED) {
+        } 
+        // Identical replies of default ballot
+        else if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ 
+                 && rec_command.cmd_state != EpaxosCommandState::ACCEPTED) {
           Log_debug("Prepare - identical pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
           rec_command = reply;
           identical_replies++;
-        }
-        if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED 
-            && rec_command.cmd_state != EpaxosCommandState::ACCEPTED
-            && rec_command.cmd_state != EpaxosCommandState::PRE_ACCEPTED_EQ) {
+        } 
+        // Non-identical replies of default ballot
+        else if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED 
+                 && rec_command.cmd_state != EpaxosCommandState::ACCEPTED
+                 && rec_command.cmd_state != EpaxosCommandState::PRE_ACCEPTED_EQ) {
           Log_debug("Prepare - pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
           rec_command = reply;
         }
@@ -562,7 +564,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     return StartAccept(replica_id, instance_no);
   }
   // N/2 identical pre-accepted replies for default ballot
-  if (identical_replies >= NSERVERS/2) {
+  if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_replies >= NSERVERS/2) {
     Log_debug("Prepare - Majority identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
     lock.lock();
@@ -728,8 +730,8 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   // Execute
   EpaxosGraph graph = EpaxosGraph();
   CreateEpaxosGraph(replica_id, instance_no, &graph);
-  auto sorted_vertices = graph.GetSortedVertices();
   lock.lock();
+  auto sorted_vertices = graph.GetSortedVertices();
   for (auto vertex : sorted_vertices) {
     if (vertex->cmd->state != EpaxosCommandState::EXECUTED) {
       vertex->cmd->state = EpaxosCommandState::EXECUTED;
