@@ -217,10 +217,12 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd_,
   }
   // Success via fast path quorum
   if (ev->FastPath()) {
+    Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return StartCommit(replica_id, instance_no);
   }
   // Success via slow path quorum
   if (ev->SlowPath()) {
+    Log_debug("Slowpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     UpdateAttributes(ev->replies, replica_id, instance_no);
     return StartAccept(replica_id, instance_no);
   }

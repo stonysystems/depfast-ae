@@ -18,6 +18,14 @@ string map_to_string(unordered_map<uint64_t, uint64_t> m) {
   return result;
 }
 
+string vector_to_string(vector<uint64_t> exec_orders) {
+  string s = "";
+  for(int i = 0; i < exec_orders.size(); i++) {
+    s += to_string(exec_orders[i]) + ", ";
+  }
+  return s;
+}
+
 EpaxosFrame **EpaxosTestConfig::replicas = nullptr;
 std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS];
 std::vector<int> EpaxosTestConfig::committed_cmds[NSERVERS];
@@ -142,6 +150,20 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
     for (int i = 0; i < exec_orders[svr].size(); i++) {
       if (exec_orders[svr][i] != exec_orders[longest_svr][i]) {
         Log_debug("Execution order for cmd: %d is different in server: %d from longest %d", exec_orders[svr][i], svr, longest_svr);
+        string cmds = vector_to_string(exec_orders[longest_svr]);
+        int i = 0;
+        while (i + 100 <= cmds.size()){
+          Log_debug("Longest: %s", cmds.substr(i, 100).c_str());
+          i += 100;
+        }
+        Log_debug("Longest: %s", cmds.substr(i, cmds.size()).c_str());
+        cmds = vector_to_string(exec_orders[svr]);
+        i = 0;
+        while (i + 100 <= cmds.size()){
+          Log_debug("Got: %s", cmds.substr(i, 100).c_str());
+          i += 100;
+        }
+        Log_debug("Got: %s", cmds.substr(i, cmds.size()).c_str());
         return false;
       }
     }
