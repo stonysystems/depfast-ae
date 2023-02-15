@@ -6,10 +6,6 @@ namespace janus {
 
 #ifdef EPAXOS_TEST_CORO
 
-// 5 servers in test configuration
-#define NSERVERS 5
-#define FAST_PATH_QUORUM 4
-#define SLOW_PATH_QUORUM 3
 // slow network connections have latency up to 26 milliseconds
 #define MAXSLOW 27
 // servers have 1/10 chance of being disconnected to the network

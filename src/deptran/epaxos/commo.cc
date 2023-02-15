@@ -23,9 +23,9 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                            const uint64_t& seq,
                            const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS-1;
-  int fast_path_quorum = NSERVERS-2;
-  int slow_path_quorum = NSERVERS/2;
+  int n_total = NSERVERS - 1;
+  int fast_path_quorum = FAST_PATH_QUORUM - 1;
+  int slow_path_quorum = SLOW_PATH_QUORUM - 1;
   auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(n_total, is_recovery, fast_path_quorum, slow_path_quorum);
   for (auto& p : proxies) {
       if (p.first == site_id) {
@@ -86,8 +86,8 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
                         const uint64_t& seq,
                         const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS-1;
-  int quorum = NSERVERS/2;
+  int n_total = NSERVERS - 1;
+  int quorum = SLOW_PATH_QUORUM - 1;
   auto ev = Reactor::CreateSpEvent<EpaxosAcceptQuorumEvent>(n_total, quorum);
   for (auto& p : proxies) {
     if (p.first == site_id) {
@@ -142,7 +142,7 @@ EpaxosCommo::SendCommit(const siteid_t& site_id,
                         const uint64_t& seq,
                         const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS-1;
+  int n_total = NSERVERS - 1;
   auto ev = Reactor::CreateSpEvent<QuorumEvent>(n_total, n_total);
   for (auto& p : proxies) {
     if (p.first == site_id) {
@@ -179,8 +179,8 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
                          const uint64_t& leader_replica_id,
                          const uint64_t& instance_no) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS-1;
-  int quorum = NSERVERS/2;
+  int n_total = NSERVERS - 1;
+  int quorum = SLOW_PATH_QUORUM - 1;
   auto ev = Reactor::CreateSpEvent<EpaxosPrepareQuorumEvent>(n_total, quorum);
   for (auto& p : proxies) {
     if (p.first == site_id) {
