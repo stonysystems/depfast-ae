@@ -8,14 +8,16 @@
 
 namespace janus {
 
+#define NSERVERS 5
 #define NOOP_DKEY string("")
 
 enum EpaxosCommandState {
   NOT_STARTED = 0,
   PRE_ACCEPTED = 1,
-  ACCEPTED = 2,
-  COMMITTED = 3,
-  EXECUTED = 4
+  PRE_ACCEPTED_EQ = 2,
+  ACCEPTED = 3,
+  COMMITTED = 4,
+  EXECUTED = 5
 };
 
 class EpaxosBallot {
@@ -41,13 +43,15 @@ class EpaxosBallot {
   }
 
   int isGreater(EpaxosBallot& rhs) {
-    return epoch > rhs.epoch || (epoch == rhs.epoch && ballot_no > rhs.ballot_no);
+    return epoch > rhs.epoch 
+           || (epoch == rhs.epoch && ballot_no > rhs.ballot_no)
+           || (epoch == rhs.epoch && ballot_no == rhs.ballot_no && replica_id > rhs.replica_id);
   }
 
   int isGreaterOrEqual(EpaxosBallot& rhs) {
     return epoch > rhs.epoch 
-        || (epoch == rhs.epoch && ballot_no > rhs.ballot_no) 
-        || (epoch == rhs.epoch && ballot_no == rhs.ballot_no && replica_id == rhs.replica_id);
+           || (epoch == rhs.epoch && ballot_no > rhs.ballot_no)
+           || (epoch == rhs.epoch && ballot_no == rhs.ballot_no && replica_id >= rhs.replica_id);
   }
 
   int operator==(EpaxosBallot& rhs) {
@@ -89,23 +93,6 @@ class EpaxosCommand {
 
   bool isCreatedBefore(int time_in_millis) {
     return chrono::system_clock::now() - received_time > chrono::milliseconds{time_in_millis};
-  }
-};
-
-class EpaxosRecoveryCommand {
- public:
-  shared_ptr<Marshallable> cmd;
-  string dkey;
-  uint64_t seq;
-  unordered_map<uint64_t, uint64_t> deps;
-  int count;
-
-  EpaxosRecoveryCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, int count) {
-    this->cmd = cmd;
-    this->dkey = dkey;
-    this->seq = seq;
-    this->deps = deps;
-    this->count = count;
   }
 };
 

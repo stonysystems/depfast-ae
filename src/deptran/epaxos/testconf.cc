@@ -283,7 +283,7 @@ int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, in
       unordered_map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
-      if (state_ == EpaxosCommandState::PRE_ACCEPTED) {
+      if (state_ == EpaxosCommandState::PRE_ACCEPTED || state_ == EpaxosCommandState::PRE_ACCEPTED_EQ) {
         na++;
       }
     }

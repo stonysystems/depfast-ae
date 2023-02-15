@@ -279,6 +279,10 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
       status = EpaxosPreAcceptStatus::NON_IDENTICAL;
     }
   }
+  // Eq state not set if ballot is not default ballot
+  if (!ballot.isDefault()) {
+    status = EpaxosPreAcceptStatus::NON_IDENTICAL;
+  }
   // Pre-accept command
   cmds[replica_id][instance_no].cmd = cmd_;
   cmds[replica_id][instance_no].dkey = dkey;
@@ -286,7 +290,9 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   cmds[replica_id][instance_no].deps = deps;
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
-  cmds[replica_id][instance_no].state = EpaxosCommandState::PRE_ACCEPTED;
+  cmds[replica_id][instance_no].state = status ==  EpaxosPreAcceptStatus::IDENTICAL ? 
+                                        EpaxosCommandState::PRE_ACCEPTED_EQ : 
+                                        EpaxosCommandState::PRE_ACCEPTED;
   // Update internal attributes
   if (cmd_->kind_ != MarshallDeputy::CMD_NOOP) {
     dkey_seq[dkey] = cmds[replica_id][instance_no].seq;
@@ -495,104 +501,86 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   }
   // Add self reply
   ev->replies.push_back(self_reply);
-  // Get set of replies with highest accepted ballot
-  vector<EpaxosPrepareReply> highest_ballot_replies;
-  EpaxosBallot highest_ballot = EpaxosBallot();
+  EpaxosBallot highest_accepted_ballot = EpaxosBallot();
+  EpaxosPrepareReply rec_command;
+  int identical_replies = 0;
   for (auto reply : ev->replies) {
     if (reply.status && reply.cmd_state != EpaxosCommandState::NOT_STARTED) {
       EpaxosBallot reply_ballot = EpaxosBallot(reply.epoch, reply.ballot_no, reply.replica_id);
-      if (reply_ballot.isGreater(highest_ballot)) { // VERIFY: If 2 can have diff replica ids and cause issue
-        highest_ballot = reply_ballot;
-        highest_ballot_replies = vector<EpaxosPrepareReply>();
-        highest_ballot_replies.push_back(reply);
-      } else if (reply_ballot == highest_ballot) {
-        highest_ballot_replies.push_back(reply);
+      if (reply_ballot.isGreater(highest_accepted_ballot)) {
+        highest_accepted_ballot = reply_ballot;
+        rec_command = EpaxosPrepareReply();
       }
-    }
-  }
-  // Check if the highest accepted ballot is same as default ballot
-  bool is_default_ballot = highest_ballot.isDefault(); 
-  // Get all unique commands and their counts
-  vector<EpaxosRecoveryCommand> unique_cmds;
-  EpaxosPrepareReply any_preaccepted_reply;
-  EpaxosPrepareReply any_accepted_reply;
-  for (auto reply : highest_ballot_replies) {
-    // Atleast one commited reply
-    if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
-      Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-      UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
-      lock.lock();
-      cmds[replica_id][instance_no].cmd = reply.cmd;
-      cmds[replica_id][instance_no].dkey = reply.dkey;
-      cmds[replica_id][instance_no].seq = reply.seq;
-      cmds[replica_id][instance_no].deps = reply.deps;
-      cmds[replica_id][instance_no].highest_seen = ballot;
-      cmds[replica_id][instance_no].highest_accepted = ballot;
-      lock.unlock();
-      return StartCommit(replica_id, instance_no);
-    }
-    // Atleast one accept reply
-    if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
-      Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-      UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
-      any_accepted_reply = reply;
-    }
-    // Atleast one pre-accept reply
-    if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED && any_accepted_reply.cmd_state != EpaxosCommandState::ACCEPTED) {
-      any_preaccepted_reply = reply;
-      Log_debug("Prepare - pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-      UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
-      // Checking for N/2 identical replies for default ballot
-      if (is_default_ballot && reply.acceptor_replica_id != replica_id) {
-        bool found = false;
-        for (auto &cmd : unique_cmds) {
-          if (cmd.cmd->kind_ == reply.cmd->kind_ && cmd.seq == reply.seq && cmd.deps == reply.deps) {
-            cmd.count++;
-            Log_debug("Prepare - identical %d pre-accepted cmd found for replica: %d instance: %d by replica: %d", cmd.count, replica_id, instance_no, replica_id_);
-            found = true;
-            break;
-          }
+      if (reply_ballot.isGreaterOrEqual(highest_accepted_ballot)) {
+        highest_accepted_ballot = reply_ballot;
+        // Atleast one commited reply
+        if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
+          Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+          UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
+          lock.lock();
+          cmds[replica_id][instance_no].cmd = reply.cmd;
+          cmds[replica_id][instance_no].dkey = reply.dkey;
+          cmds[replica_id][instance_no].seq = reply.seq;
+          cmds[replica_id][instance_no].deps = reply.deps;
+          cmds[replica_id][instance_no].highest_seen = ballot;
+          cmds[replica_id][instance_no].highest_accepted = ballot;
+          lock.unlock();
+          return StartCommit(replica_id, instance_no);
         }
-        if (!found) {
-          EpaxosRecoveryCommand rec_cmd(reply.cmd, reply.dkey, reply.seq, reply.deps, 1);
-          unique_cmds.push_back(rec_cmd);
+        // Atleast one accept reply
+        if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
+          Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+          rec_command = reply;
+        }
+        if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ 
+            && rec_command.cmd_state != EpaxosCommandState::ACCEPTED) {
+          Log_debug("Prepare - identical pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+          rec_command = reply;
+          identical_replies++;
+        }
+        if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED 
+            && rec_command.cmd_state != EpaxosCommandState::ACCEPTED
+            && rec_command.cmd_state != EpaxosCommandState::PRE_ACCEPTED_EQ) {
+          Log_debug("Prepare - pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+          rec_command = reply;
         }
       }
     }
   }
   // Atleast one accepted reply - start phase accept
-  if (any_accepted_reply.cmd_state == EpaxosCommandState::ACCEPTED) {
+  if (rec_command.cmd_state == EpaxosCommandState::ACCEPTED) {
+    Log_debug("Prepare - Atleast one accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
     lock.lock();
-    cmds[replica_id][instance_no].cmd = any_accepted_reply.cmd;
-    cmds[replica_id][instance_no].dkey = any_accepted_reply.dkey;
-    cmds[replica_id][instance_no].seq = any_accepted_reply.seq;
-    cmds[replica_id][instance_no].deps = any_accepted_reply.deps;
+    cmds[replica_id][instance_no].cmd = rec_command.cmd;
+    cmds[replica_id][instance_no].dkey = rec_command.dkey;
+    cmds[replica_id][instance_no].seq = rec_command.seq;
+    cmds[replica_id][instance_no].deps = rec_command.deps;
     cmds[replica_id][instance_no].highest_seen = ballot;
     cmds[replica_id][instance_no].highest_accepted = ballot;
     lock.unlock();
     return StartAccept(replica_id, instance_no);
   }
   // N/2 identical pre-accepted replies for default ballot
-  for (auto rec_cmd : unique_cmds) {
-    int n_total = commo()->rpc_par_proxies_[partition_id_].size();
-    if (rec_cmd.count >= n_total/2) {
-      Log_debug("Prepare - identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-      lock.lock();
-      cmds[replica_id][instance_no].cmd = rec_cmd.cmd;
-      cmds[replica_id][instance_no].dkey = rec_cmd.dkey;
-      cmds[replica_id][instance_no].seq = rec_cmd.seq;
-      cmds[replica_id][instance_no].deps = rec_cmd.deps;
-      cmds[replica_id][instance_no].highest_seen = ballot;
-      cmds[replica_id][instance_no].highest_accepted = ballot;
-      lock.unlock();
-      return StartAccept(replica_id, instance_no);
-    }
+  if (identical_replies >= NSERVERS/2) {
+    Log_debug("Prepare - Majority identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
+    lock.lock();
+    cmds[replica_id][instance_no].cmd = rec_command.cmd;
+    cmds[replica_id][instance_no].dkey = rec_command.dkey;
+    cmds[replica_id][instance_no].seq = rec_command.seq;
+    cmds[replica_id][instance_no].deps = rec_command.deps;
+    cmds[replica_id][instance_no].highest_seen = ballot;
+    cmds[replica_id][instance_no].highest_accepted = ballot;
+    lock.unlock();
+    return StartAccept(replica_id, instance_no);
   }
   // Atleast one pre-accepted reply - start phase pre-accept
-  if (any_preaccepted_reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED) {
+  if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED || rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ) {
     Log_debug("Prepare - Atleast one pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-    uint64_t leader_deps_instance = any_preaccepted_reply.deps.count(replica_id) ? any_preaccepted_reply.deps[replica_id] : -1;
-    return StartPreAccept(any_preaccepted_reply.cmd, any_preaccepted_reply.dkey, ballot, replica_id, instance_no, leader_deps_instance, true);
+    uint64_t leader_deps_instance = rec_command.deps.count(replica_id) ? rec_command.deps[replica_id] : -1;
+    UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
+    return StartPreAccept(rec_command.cmd, rec_command.dkey, ballot, replica_id, instance_no, leader_deps_instance, true);
   }
   // No pre-accepted replies - start phase pre-accept with NO_OP
   Log_debug("Prepare - No pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
