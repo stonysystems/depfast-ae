@@ -108,7 +108,7 @@ int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
     if (ne >= n) {
       return ne;
     }
-    Coroutine::Sleep(10000);
+    Coroutine::Sleep(100000);
     Log_info("%d executed server for cmd: %d", ne, tx_id);
   }
   return ne;
@@ -238,7 +238,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       *cdeps = committed_deps;
       return nc;
     }
-    Coroutine::Sleep(10000);
+    Coroutine::Sleep(100000);
     Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   }
   Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
@@ -264,7 +264,7 @@ int EpaxosTestConfig::NAccepted(uint64_t replica_id, uint64_t instance_no, int n
     if (na >= n) {
       return na;
     }
-    Coroutine::Sleep(10000);
+    Coroutine::Sleep(100000);
     Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   }
   Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
@@ -290,7 +290,7 @@ int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, in
     if (na >= n) {
       return na;
     }
-    Coroutine::Sleep(10000);
+    Coroutine::Sleep(100000);
     Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   }
   Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);

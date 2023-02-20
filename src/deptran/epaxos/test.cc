@@ -312,7 +312,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na == 0, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc == 0, "unexpected number of accepted servers");
+    Assert2(nc == 0, "unexpected number of committed servers");
     init_deps[replica_id] = instance_no;
     cmd++;
     config_->Reconnect(i);
@@ -371,7 +371,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na == 0, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc == 0, "unexpected number of accepted servers");
+    Assert2(nc == 0, "unexpected number of committed servers");
     init_deps[replica_id] = instance_no;
     cmd++;
     config_->Reconnect(i);
@@ -426,7 +426,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   Init2(8, "Commit through prepare - committed command (takes a few minutes)");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
-  InitSub2(1, "Committed (via fast path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
+  InitSub2(1, "Committed (via fast path). Prepare returns committed replies.");
   cmd++;
   string dkey = "4";
   unordered_set<uint64_t> dependent_cmds;
@@ -437,38 +437,39 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   for (int i = 1 ; i <= NSERVERS - FAST_PATH_QUORUM; i++) {
     config_->Disconnect(i);
   }
-  // Repeat till only 2 servers (leader and one replica) have committed the command
-  while (true) {
-    dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
-    Coroutine::Sleep(time_to_sleep);
-    for (int i = NSERVERS - FAST_PATH_QUORUM + 1; i < NSERVERS; i++) {
-      config_->Disconnect(i);
-    }
-    config_->Disconnect(CMD_LEADER);
-    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of accepted servers");
-    AssertValidCommitStatus(replica_id, instance_no, nc);
-    if (nc == 2) break;
-    // Retry if more than 2 servers committed
-    time_to_sleep = (nc < 2) ? (time_to_sleep + diff) : (time_to_sleep - diff);
-    cmd++;
-    config_->Reconnect(CMD_LEADER);
-    for (int i = NSERVERS - FAST_PATH_QUORUM + 1; i < NSERVERS; i++) {
-      config_->Reconnect(i);
-    }
-  }
-  // Reconnect all except command leader and commit in all via prepare
-  for (int i = 1; i < NSERVERS; i++) {
+  dependent_cmds.insert(cmd);
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  auto nc = config_->NCommitted(replica_id, instance_no, FAST_PATH_QUORUM);
+  Assert2(nc == FAST_PATH_QUORUM, "unexpected number of committed servers");
+  // Reconnect all
+  for (int i = 1; i <= NSERVERS - FAST_PATH_QUORUM; i++) {
     config_->Reconnect(i);
   }
-  config_->Prepare(CMD_LEADER + 1, replica_id, instance_no);
+  config_->Prepare(1, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
-  // Reconnect leader
-  config_->Reconnect(CMD_LEADER);
 
   /*********** Sub Test 2 ***********/
-  InitSub2(2, "Committed (via slow path) in 1 server (leader). Prepare returns 1 accepted reply.");
+  InitSub2(2, "Committed (via slow path). Prepare returns committed replies.");
+  cmd++;
+  time_to_sleep = 1900;
+  // Keep only slow-path quorum of servers alive
+  for (int i = 1; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
+    config_->Disconnect(i);
+  }
+
+  dependent_cmds.insert(cmd);
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  nc = config_->NCommitted(replica_id, instance_no, SLOW_PATH_QUORUM);
+  Assert2(nc == SLOW_PATH_QUORUM, "unexpected number of committed servers");
+  // Reconnect all
+  for (int i = 1; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
+    config_->Reconnect(i);
+  }
+  config_->Prepare(1, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+
+  /*********** Sub Test 4 ***********/
+  InitSub2(4, "Committed (via slow path) in 1 server (leader). Prepare returns 1 accepted reply.");
   cmd++;
   time_to_sleep = 1800;
   // Keep only slow-path quorum of servers alive
@@ -485,7 +486,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     }
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
+    Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of committed servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 1) break;
     // Retry if more than 1 server committed
@@ -502,7 +503,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   }
   config_->Reconnect(NSERVERS - SLOW_PATH_QUORUM + 1);
   config_->Prepare(CMD_LEADER + 1, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS-1, false);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM + 1, false);
   // Reconnect other accepted server and commit in all via prepare
   for (int i = NSERVERS - SLOW_PATH_QUORUM + 2; i < NSERVERS; i++) {
     config_->Reconnect(i);
@@ -511,58 +512,6 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
   // Reconnect leader
   config_->Reconnect(CMD_LEADER);
-
-  /*********** Sub Test 3 ***********/
-  InitSub2(4, "Committed (via slow path) in 2 servers (leader and one replica). Prepare returns 1 committed reply.");
-  cmd++;
-  time_to_sleep = 1900;
-  // Keep only slow-path quorum of servers alive
-  for (int i = 1; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
-    config_->Disconnect(i);
-  }
-  // Repeat till only 2 servers (leader and one replica) have committed the command
-  while (true) {
-    dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
-    Coroutine::Sleep(time_to_sleep);
-    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
-      config_->Disconnect(i);
-    }
-    config_->Disconnect(CMD_LEADER);
-    auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
-    AssertValidCommitStatus(replica_id, instance_no, nc);
-    if (nc == 2) break;
-    // Retry if more than 2 servers committed
-    time_to_sleep = (nc < 2) ? (time_to_sleep + diff) : (time_to_sleep - diff);
-    cmd++;
-    config_->Reconnect(CMD_LEADER);
-    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
-      config_->Reconnect(i);
-    }
-  }
-  // Reconnect one disconnected server and commit in those via prepare
-  config_->Reconnect(CMD_LEADER + 1);
-  for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
-    config_->Reconnect(i);
-  }
-  config_->Prepare(CMD_LEADER + 1, replica_id, instance_no);
-  AssertNCommitted(replica_id, instance_no, NSERVERS-1);
-  // Reconnect other disconnected server and prepare again in it
-  for (int i = CMD_LEADER + 2; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
-    config_->Reconnect(i);
-  }
-  config_->Prepare(CMD_LEADER + 2, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
-  // Reconnect leader
-  config_->Reconnect(CMD_LEADER);
-
-  /*********** Execution order ***********/
-  InitSub2(5, "Execution order");
-  config_->PauseExecution(false);
-  Coroutine::Sleep(5000000);
-  AssertSameExecutedOrder(dependent_cmds);
-  Passed2();
 
   /*********** Sub Test 4 ***********/
   InitSub2(4, "Committed (via fast path) in 1 server (leader). Prepare returns N/2 identical pre-accepted replies.");
@@ -582,7 +531,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
     }
     config_->Disconnect(CMD_LEADER);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of accepted servers");
+    Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of committed servers");
     AssertValidCommitStatus(replica_id, instance_no, nc);
     if (nc == 1) break;
     // Retry if more than 1 server committed
@@ -601,6 +550,13 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
   // Reconnect leader
   config_->Reconnect(CMD_LEADER);
+
+  /*********** Execution order ***********/
+  InitSub2(5, "Execution order");
+  config_->PauseExecution(false);
+  Coroutine::Sleep(5000000);
+  AssertSameExecutedOrder(dependent_cmds);
+  Passed2();
 }
 
 int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
@@ -640,15 +596,15 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
     }
   }
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
+  Assert2(nc == 0, "unexpected number of committed servers");
   // Reconnect all disconnected servers and one pre-accepted server and commit in those via prepare
   for (int i = 0; i < NSERVERS - SLOW_PATH_QUORUM; i++) {
     config_->Reconnect(i);
   }
   config_->Reconnect(NSERVERS - SLOW_PATH_QUORUM + 1);
   config_->Prepare(0, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS-2, false);
-  // Reconnect leader and other pre-accepted server and commit in those via prepare
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM, false);
+  // Reconnect leader and other pre-accepted servers and commit in those via prepare
   config_->Reconnect(CMD_LEADER);
   for (int i = NSERVERS - SLOW_PATH_QUORUM + 2; i < NSERVERS; i++) {
     config_->Reconnect(i);
@@ -657,45 +613,41 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
 
   /*********** Sub Test 2 ***********/
-  InitSub2(2, "Accepted in 2 servers (leader and one replica). Prepare returns 1 accepted reply.");
+  InitSub2(2, "Accepted in 1 server (leader). Prepare returns 1 accepted reply.");
   cmd++;
   time_to_sleep = 1300;
   CMD_LEADER = 0;
   for (int i = 1; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
     config_->Disconnect(i);
   }
-  // Repeat till only 2 servers (leader and one replica) have accepted the command
+  // Repeat till only 1 server (leader) have accepted the command
   while (true) {
     dependent_cmds.insert(cmd);
     config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
     Coroutine::Sleep(time_to_sleep);
-    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS ; i++) {
+    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-    if (na == 2 && nc == 0) break;
-    // Retry if more than 2 server accepted
-    time_to_sleep = (na < 2 && nc == 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
+    if (na == 1 && nc == 0) break;
+    // Retry if more than 1 server accepted
+    time_to_sleep = (na < 1 && nc == 0) ? (time_to_sleep + diff) : (time_to_sleep - diff);
     cmd++;
-    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS ; i++) {
+    config_->Reconnect(CMD_LEADER);
+    for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Reconnect(i);
     }
-    config_->Reconnect(CMD_LEADER);
   }
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
-  // Reconnect all disconnected servers and commit via prepare
-  for (int i = 1; i < NSERVERS ; i++) {
+  Assert2(nc == 0, "unexpected number of committed servers");
+  // Reconnect all disconnected servers and commit in those via prepare
+  for (int i = 0; i < NSERVERS; i++) {
     config_->Reconnect(i);
   }
-  config_->Prepare(CMD_LEADER + 1, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS-1, false);
-  // Reconnect leader and commit in it via prepare
-  config_->Reconnect(CMD_LEADER);
-  config_->Prepare(CMD_LEADER, replica_id, instance_no);
+  config_->Prepare(1, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
 
   /*********** Execution order ***********/
@@ -726,7 +678,7 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
   Assert2(na == 0, "unexpected number of accepted servers");
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
+  Assert2(nc == 0, "unexpected number of committed servers");
   // Reconnect leader and commit via prepare
   config_->Reconnect(CMD_LEADER);
   // Set non-leaders slow to prevent from committing noop
@@ -756,14 +708,14 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
   Assert2(na == 0, "unexpected number of accepted servers");
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
+  Assert2(nc == 0, "unexpected number of committed servers");
   // Disconnect leader and reconnect majority-1 non pre-accepted servers to commit pre-accepted command via prepare
   config_->Disconnect(CMD_LEADER);
   for (int i = 3; i < NSERVERS; i++) {
     config_->Reconnect((CMD_LEADER + i) % NSERVERS);
   }
   config_->Prepare((CMD_LEADER + 3) % NSERVERS, replica_id, instance_no);
-  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS-2, false);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM, false);
   config_->Reconnect(CMD_LEADER);
   config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
@@ -797,7 +749,7 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
   Assert2(na == 0, "unexpected number of accepted servers");
   auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
+  Assert2(nc == 0, "unexpected number of committed servers");
   // Commit noop in others via prepare
   config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-1, true, NOOP_DKEY, seq, deps);
@@ -820,15 +772,15 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
   Assert2(na == 0, "unexpected number of accepted servers");
   nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
-  Assert2(nc == 0, "unexpected number of accepted servers");
+  Assert2(nc == 0, "unexpected number of committed servers");
   // Disconnect pre-accepted servers and commit noop in others via prepare
   config_->Disconnect(CMD_LEADER);
   config_->Disconnect((CMD_LEADER + 1) % NSERVERS);
   for (int i = 2; i < NSERVERS; i++) {
     config_->Reconnect((CMD_LEADER + i) % NSERVERS);
   }
-  config_->Prepare((CMD_LEADER + 1) % NSERVERS, replica_id, instance_no);
-  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS-2, true, NOOP_DKEY, seq, deps);
+  config_->Prepare((CMD_LEADER + 2) % NSERVERS, replica_id, instance_no);
+  AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, true, NOOP_DKEY, seq, deps);
   // Reconnect leader and other server and see if noop is committed in all
   config_->Reconnect(CMD_LEADER);
   config_->Reconnect((CMD_LEADER + 1) % NSERVERS);
@@ -892,12 +844,12 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   for (auto thread : threads) {
     verify(pthread_join(thread, nullptr) == 0);
   }
-  Coroutine::Sleep(1000000);
-  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  Coroutine::Sleep(100000000);
+  Assert2(retvals.size() == (50 * NSERVERS), "Failed to reach agreement");
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
-  Coroutine::Sleep(5000000);
+  Coroutine::Sleep(10000000);
   AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
@@ -933,15 +885,15 @@ int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
     verify(pthread_join(thread, nullptr) == 0);
   }
   config_->SetUnreliable(false);
-  Coroutine::Sleep(5000000);
-  Assert2(retvals.size() == 250, "Failed to reach agreement");
+  Coroutine::Sleep(150000000);
+  Assert2(retvals.size() == (50 * NSERVERS), "Failed to reach agreement");
   for (auto retval : retvals) {
     auto nc = config_->NCommitted(retval.first, retval.second, NSERVERS);
   }
   for (auto retval : retvals) {
     AssertNCommitted(retval.first, retval.second, NSERVERS);
   }
-  Coroutine::Sleep(5000000); // Wait till all commands are executed
+  Coroutine::Sleep(10000000); // Wait till all commands are executed
   AssertSameExecutedOrder(dependent_cmds);
   Passed2();
 }
