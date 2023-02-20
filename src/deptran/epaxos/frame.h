@@ -14,7 +14,7 @@ class EpaxosFrame : public Frame {
   static std::mutex epaxos_test_mutex_;
   static std::shared_ptr<Coroutine> epaxos_test_coro_;
   static uint16_t n_replicas_;
-  static EpaxosFrame *replicas_[5];
+  static EpaxosFrame *replicas_[NSERVERS];
   static uint16_t n_commo_;
   static bool tests_done_;
   #endif

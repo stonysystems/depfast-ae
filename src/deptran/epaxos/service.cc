@@ -87,6 +87,32 @@ void EpaxosServiceImpl::HandleCommit(const epoch_t& epoch,
   defer->reply();
 }
 
+void EpaxosServiceImpl::HandleTryPreAccept(const epoch_t& epoch,
+                                           const ballot_t& ballot_no,
+                                           const uint64_t& ballot_replica_id,
+                                           const uint64_t& leader_replica_id,
+                                           const uint64_t& instance_no,
+                                           const MarshallDeputy& md_cmd,
+                                           const string& dkey,
+                                           const uint64_t& seq,
+                                           const unordered_map<uint64_t,uint64_t>& deps,
+                                           bool_t* status,
+                                           epoch_t* highest_seen_epoch,
+                                           ballot_t* highest_seen_ballot_no,
+                                           uint64_t* highest_seen_replica_id,
+                                           rrr::DeferredReply* defer) {
+  EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
+  shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
+  EpaxosTryPreAcceptReply reply = svr_->OnTryPreAcceptRequest(cmd, dkey, ballot, seq, deps, leader_replica_id, instance_no);
+  *status = reply.status;
+  *highest_seen_epoch = reply.epoch;
+  *highest_seen_ballot_no = reply.ballot_no;
+  *highest_seen_replica_id = reply.replica_id;
+  Log_debug("Return try-pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d as status: %d", 
+            leader_replica_id, instance_no, dkey.c_str(), reply.ballot_no, ballot.replica_id, reply.status);
+  defer->reply();
+}
+
 void EpaxosServiceImpl::HandlePrepare(const epoch_t& epoch,
                                       const ballot_t& ballot_no,
                                       const uint64_t& ballot_replica_id,

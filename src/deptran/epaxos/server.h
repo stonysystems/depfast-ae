@@ -8,7 +8,6 @@
 
 namespace janus {
 
-#define NSERVERS 5
 #define NOOP_DKEY string("")
 
 enum EpaxosCommandState {
@@ -178,6 +177,14 @@ class EpaxosServer : public TxLogServer {
                       bool recovery);
   bool StartAccept(uint64_t replica_id, uint64_t instance_no);
   bool StartCommit(uint64_t replica_id, uint64_t instance_no);
+  bool StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
+                         string dkey, 
+                         EpaxosBallot ballot, 
+                         uint64_t seq,
+                         unordered_map<uint64_t, uint64_t> deps, 
+                         uint64_t replica_id, 
+                         uint64_t instance_no,
+                         unordered_set<siteid_t> preaccepted_sites);
   void PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no);
   bool StartPrepare(uint64_t replica_id, uint64_t instance_no);
   // returns 0 if noop, 1 if executed, 2 if added to graph
@@ -219,6 +226,13 @@ class EpaxosServer : public TxLogServer {
                        unordered_map<uint64_t, uint64_t> deps, 
                        uint64_t replica_id, 
                        uint64_t instance_no);
+  EpaxosTryPreAcceptReply OnTryPreAcceptRequest(shared_ptr<Marshallable>& cmd_, 
+                                                string dkey, 
+                                                EpaxosBallot ballot, 
+                                                uint64_t seq_, 
+                                                unordered_map<uint64_t, uint64_t> deps_, 
+                                                uint64_t replica_id, 
+                                                uint64_t instance_no);
   EpaxosPrepareReply OnPrepareRequest(EpaxosBallot ballot, 
                                       uint64_t replica_id, 
                                       uint64_t instance_no);

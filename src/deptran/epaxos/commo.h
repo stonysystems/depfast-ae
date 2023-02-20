@@ -6,10 +6,9 @@
 
 namespace janus {
 
-#define NSERVERS 5
-#define FAST_PATH_QUORUM 4
-#define SLOW_PATH_QUORUM 3
-
+#define NSERVERS 7
+#define FAST_PATH_QUORUM 6
+#define SLOW_PATH_QUORUM 4
 enum EpaxosPreAcceptStatus {
   FAILED = 0,
   IDENTICAL = 1,
@@ -183,13 +182,46 @@ class EpaxosPrepareQuorumEvent : public QuorumEvent {
  public:
   using QuorumEvent::QuorumEvent;
   vector<EpaxosPrepareReply> replies;
+  unordered_map<uint64_t, siteid_t> replicaid_siteid_map;
 
-  void VoteYes(EpaxosPrepareReply& reply) {
+  void VoteYes(siteid_t site_id, EpaxosPrepareReply& reply) {
     replies.push_back(reply);
+    replicaid_siteid_map[reply.acceptor_replica_id] = site_id;
     this->QuorumEvent::VoteYes();
   }
 
   void VoteNo(EpaxosPrepareReply& reply) {
+    replies.push_back(reply);
+    this->QuorumEvent::VoteNo();
+  }
+};
+
+class EpaxosTryPreAcceptReply {
+ public:
+  bool_t status;
+  epoch_t epoch;
+  ballot_t ballot_no;
+  uint64_t replica_id;
+
+  EpaxosTryPreAcceptReply(bool_t status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
+    this->status = status;
+    this->epoch = epoch;
+    this->ballot_no = ballot_no;
+    this->replica_id = replica_id;
+  }
+};
+
+class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
+ public:
+  using QuorumEvent::QuorumEvent;
+  vector<EpaxosTryPreAcceptReply> replies;
+
+  void VoteYes(EpaxosTryPreAcceptReply& reply) {
+    replies.push_back(reply);
+    this->QuorumEvent::VoteYes();
+  }
+
+  void VoteNo(EpaxosTryPreAcceptReply& reply) {
     replies.push_back(reply);
     this->QuorumEvent::VoteNo();
   }
@@ -241,7 +273,21 @@ class EpaxosCommo : public Communicator {
              const string& dkey,
              const uint64_t& seq,
              const unordered_map<uint64_t, uint64_t>& deps);
-         
+  
+  shared_ptr<EpaxosTryPreAcceptQuorumEvent> 
+  SendTryPreAccept(const siteid_t& site_id,
+                   const parid_t& par_id,
+                   const unordered_set<siteid_t>& preaccepted_sites,
+                   const epoch_t& epoch,
+                   const ballot_t& ballot_no,
+                   const uint64_t& ballot_replica_id,
+                   const uint64_t& leader_replica_id,
+                   const uint64_t& instance_no,
+                   const shared_ptr<Marshallable>& cmd,
+                   const string& dkey,
+                   const uint64_t& seq,
+                   const unordered_map<uint64_t, uint64_t>& deps);
+
   shared_ptr<EpaxosPrepareQuorumEvent>
   SendPrepare(const siteid_t& site_id,
               const parid_t& par_id,

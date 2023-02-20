@@ -73,6 +73,26 @@ class EpaxosServiceImpl : public EpaxosService {
     *status = false;
   }
 
+  RpcHandler(TryPreAccept, 13,
+             const epoch_t&,epoch,
+             const ballot_t&, ballot_no,
+             const uint64_t&, ballot_replica_id,
+             const uint64_t&, leader_replica_id,
+             const uint64_t&, instance_no,
+             const MarshallDeputy&, md_cmd,
+             const string&, dkey,
+             const uint64_t&, seq,
+             const unordered_map_uint64_uint64_t&, deps,
+             bool_t*, status,
+             epoch_t*, highest_seen_epoch,
+             ballot_t*, highest_seen_ballot_no,
+             uint64_t*, highest_seen_replica_id) {
+    *status = false;
+    *highest_seen_epoch = 0;
+    *highest_seen_ballot_no = -1;
+    *highest_seen_replica_id = 0;
+  }
+
   RpcHandler(Prepare, 15,
              const epoch_t&,epoch,
              const ballot_t&, ballot_no,
