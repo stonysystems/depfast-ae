@@ -205,7 +205,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
                                    dkey, 
                                    seq, 
                                    deps);
-  ev->Wait(20000000);
+  ev->Wait(10000000);
   // Process pre-accept replies
   Log_debug("Started pre-accept reply processing for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
@@ -348,7 +348,7 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd,
                                 dkey, 
                                 seq, 
                                 deps);
-  ev->Wait(20000000);
+  ev->Wait(10000000);
   // Process accept replies
   Log_debug("Started accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Fail if timeout/no-majority
@@ -511,7 +511,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
                                       dkey, 
                                       seq, 
                                       deps);
-  ev->Wait(20000000);
+  ev->Wait(10000000);
   // Process try-pre-accept replies
   Log_debug("Started try-pre-accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Fail if timeout/no-majority
@@ -637,7 +637,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
                                 ballot.replica_id, 
                                 replica_id,
                                 instance_no);
-  ev->Wait(20000000);
+  ev->Wait(10000000);
   // Process prepare replies
   Log_debug("Started prepare reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (ev->status_ == Event::TIMEOUT || ev->No()) {
