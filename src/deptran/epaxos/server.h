@@ -175,8 +175,20 @@ class EpaxosServer : public TxLogServer {
                       uint64_t instance_no,
                       int64_t leader_dep_instance,
                       bool recovery);
-  bool StartAccept(uint64_t replica_id, uint64_t instance_no);
-  bool StartCommit(uint64_t replica_id, uint64_t instance_no);
+  bool StartAccept(shared_ptr<Marshallable>& cmd, 
+                   string dkey, 
+                   EpaxosBallot ballot, 
+                   uint64_t seq,
+                   unordered_map<uint64_t, uint64_t> deps, 
+                   uint64_t replica_id, 
+                   uint64_t instance_no);
+  bool StartCommit(shared_ptr<Marshallable>& cmd, 
+                   string dkey, 
+                   EpaxosBallot ballot, 
+                   uint64_t seq,
+                   unordered_map<uint64_t, uint64_t> deps, 
+                   uint64_t replica_id, 
+                   uint64_t instance_no);
   bool StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
                          string dkey, 
                          EpaxosBallot ballot, 
@@ -194,7 +206,8 @@ class EpaxosServer : public TxLogServer {
 
   template<class ClassT>
   void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no);
-  void UpdateAttributes(vector<EpaxosPreAcceptReply>& replies, uint64_t replica_id, uint64_t instance_no);
+  pair<uint64_t, unordered_map<uint64_t, uint64_t>>
+  MergeAttributes(vector<EpaxosPreAcceptReply>& replies);
   void UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,
                                 string dkey, 
                                 uint64_t replica_id, 

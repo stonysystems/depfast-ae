@@ -425,7 +425,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
 }
 
 int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
-  Init2(8, "Commit through prepare - committed command (takes a few minutes)");
+  Init2(8, "Commit through prepare - committed command");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Committed (via fast path). Prepare returns committed replies.");
@@ -564,7 +564,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
 }
 
 int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
-  Init2(9, "Commit through prepare - accepted but not committed command (takes a few minutes)");
+  Init2(9, "Commit through prepare - accepted but not committed command");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
   InitSub2(1, "Accepted in 1 server (leader). Prepare returns 1 pre-accepted reply.");
@@ -866,7 +866,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
 }
 
 int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
-  Init2(13, "Unreliable concurrent agreement (takes a few minutes)");
+  Init2(13, "Unreliable concurrent agreement");
   config_->PauseExecution(false);
   config_->SetUnreliable(true);
   std::vector<pthread_t> threads{};
