@@ -25,7 +25,7 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
                                         ballot_t* highest_seen_ballot_no,
                                         uint64_t* highest_seen_replica_id,
                                         uint64_t* updated_seq,
-                                        unordered_map<uint64_t,uint64_t>* updated_deps,
+                                        unordered_map_uint64_pair* updated_deps,
                                         rrr::DeferredReply* defer) {
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
@@ -100,6 +100,8 @@ void EpaxosServiceImpl::HandleTryPreAccept(const epoch_t& epoch,
                                            epoch_t* highest_seen_epoch,
                                            ballot_t* highest_seen_ballot_no,
                                            uint64_t* highest_seen_replica_id,
+                                           uint64_t* conflict_replica_id,
+                                           uint64_t* conflict_instance_no,
                                            rrr::DeferredReply* defer) {
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
@@ -108,6 +110,8 @@ void EpaxosServiceImpl::HandleTryPreAccept(const epoch_t& epoch,
   *highest_seen_epoch = reply.epoch;
   *highest_seen_ballot_no = reply.ballot_no;
   *highest_seen_replica_id = reply.replica_id;
+  *conflict_replica_id = reply.conflict_replica_id;
+  *conflict_instance_no = reply.conflict_instance_no;
   Log_debug("Return try-pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d as status: %d", 
             leader_replica_id, instance_no, dkey.c_str(), reply.ballot_no, ballot.replica_id, reply.status);
   defer->reply();

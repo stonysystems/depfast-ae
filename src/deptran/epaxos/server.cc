@@ -171,12 +171,16 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Initialise attributes
-  uint64_t seq = dkey_seq[dkey] + 1;
-  unordered_map<uint64_t, uint64_t> deps = dkey_deps[dkey];
-  if(leader_dep_instance >= 0) {
-    deps[replica_id] = leader_dep_instance;
-  } else {
-    deps.erase(replica_id);
+  uint64_t seq = 0;
+  unordered_map<uint64_t, uint64_t> deps;
+  if (cmd->kind_ != MarshallDeputy::CMD_NOOP) {
+    uint64_t seq = dkey_seq[dkey] + 1;
+    unordered_map<uint64_t, uint64_t> deps = dkey_deps[dkey];
+    if(leader_dep_instance >= 0) {
+      deps[replica_id] = leader_dep_instance;
+    } else {
+      deps.erase(replica_id);
+    }
   }
   // Pre-accept command
   cmds[replica_id][instance_no].cmd = cmd;
@@ -217,19 +221,15 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success via fast path quorum
-  if (ev->FastPath()) {
+  if (ev->FastPath() && ballot.isDefault() && AllDependenciesCommitted(ev->replies, deps)) {
     Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
   }
   // Success via slow path quorum
-  if (ev->SlowPath()) {
-    Log_debug("Slowpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-    auto merged_res = MergeAttributes(ev->replies);
-    UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, merged_res.first, merged_res.second);
-    return StartAccept(cmd, dkey, ballot, merged_res.first, merged_res.second, replica_id, instance_no);
-  }
-  verify(0);
-  return false;
+  Log_debug("Slowpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  auto merged_res = MergeAttributes(ev->replies);
+  UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, merged_res.first, merged_res.second);
+  return StartAccept(cmd, dkey, ballot, merged_res.first, merged_res.second, replica_id, instance_no);
 }
 
 EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
@@ -281,6 +281,18 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
       status = EpaxosPreAcceptStatus::NON_IDENTICAL;
     }
   }
+  // Set committed status for deps
+  unordered_map<uint64_t, pair<uint64_t, bool_t>> deps_with_status;
+  for (auto itr : merged_deps) {
+    uint64_t dreplica_id = itr.first;
+    uint64_t dinstance_no = itr.second;
+    if (cmds[dreplica_id][dinstance_no].state == EpaxosCommandState::COMMITTED
+        || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+      deps_with_status[dreplica_id] = {dinstance_no, true};
+    } else {
+      deps_with_status[dreplica_id] = {dinstance_no, false};
+    }
+  }
   // Eq state not set if ballot is not default ballot
   if (!ballot.isDefault()) {
     status = EpaxosPreAcceptStatus::NON_IDENTICAL;
@@ -305,7 +317,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   }
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   // Reply
-  EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id, merged_seq, merged_deps);
+  EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id, merged_seq, deps_with_status);
   return reply;
 }
 
@@ -359,11 +371,7 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success
-  if (ev->Yes()) {
     return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
-  }
-  verify(0);
-  return false;
 }
 
 EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd, 
@@ -483,6 +491,55 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
 /***********************************
        TryPreAccept Phase          *
 ************************************/
+void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
+                                            string dkey, 
+                                            uint64_t seq,
+                                            unordered_map<uint64_t, uint64_t> deps, 
+                                            uint64_t replica_id, 
+                                            uint64_t instance_no,
+                                            EpaxosTryPreAcceptStatus *conflict_state,
+                                            uint64_t *conflict_replica_id, 
+                                            uint64_t *conflict_instance_no) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  if ((cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED
+       || cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED_EQ)
+       && (cmds[replica_id][instance_no].seq == seq && cmds[replica_id][instance_no].deps == deps)) {
+    *conflict_replica_id = 0;
+    *conflict_instance_no = 0;
+    *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;
+    return;
+  }
+  for (auto itr : dkey_deps[dkey]) {
+    uint64_t dreplica_id = itr.first;
+    for(uint64_t dinstance_no = executed_till[dkey][dreplica_id]; dinstance_no <= itr.second; dinstance_no++) {
+      // no point checking past instance in replica's row
+      if (dreplica_id == replica_id && dinstance_no == instance_no) break;
+      //the instance cannot be a dependency for itself
+      if (deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) continue;
+      EpaxosCommand e_cmd = cmds[replica_id][instance_no];
+      if (e_cmd.state == EpaxosCommandState::NOT_STARTED) continue;
+      if (e_cmd.dkey != dkey) continue;
+      if (e_cmd.deps.count(replica_id) && e_cmd.deps[replica_id] >= instance_no) continue;
+      if (dinstance_no > deps[dreplica_id]
+          || (dinstance_no < deps[dreplica_id] 
+              && e_cmd.seq >= seq 
+              && (dreplica_id != replica_id
+                  || e_cmd.state == EpaxosCommandState::ACCEPTED
+                  || e_cmd.state == EpaxosCommandState::COMMITTED
+                  || e_cmd.state == EpaxosCommandState::EXECUTED))) {
+        *conflict_replica_id = dreplica_id;
+        *conflict_instance_no = dinstance_no;
+        if (e_cmd.state == EpaxosCommandState::COMMITTED || e_cmd.state == EpaxosCommandState::EXECUTED) {
+          *conflict_state = EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT;
+        } else {
+          *conflict_state = EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT;
+        }
+        return;
+      }
+    }
+  }
+}
+
 bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
                                      string dkey, 
                                      EpaxosBallot ballot, 
@@ -490,6 +547,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
                                      unordered_map<uint64_t, uint64_t> deps, 
                                      uint64_t replica_id, 
                                      uint64_t instance_no,
+                                     int64_t leader_dep_instance,
                                      unordered_set<siteid_t> preaccepted_sites) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   // Reject old message - we have moved on
@@ -501,12 +559,26 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
   }
   // Add self reply
   if (preaccepted_sites.count(site_id_) == 0) {
-    auto reply = OnTryPreAcceptRequest(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
-    if (reply.status) {
+    EpaxosTryPreAcceptStatus conflict_state;
+    uint64_t conflict_replica_id;
+    uint64_t conflict_instance_no;
+    FindTryPreAcceptConflict(cmd, dkey, seq, deps, replica_id, instance_no, &conflict_state, &conflict_replica_id, &conflict_instance_no);
+    // committed conflict
+    if (conflict_state == EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT) {
+      lock.unlock();
+      return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
+    } 
+    // Pre-accept command
+    else if (conflict_state == EpaxosTryPreAcceptStatus::NO_CONFLICT) {
+      cmds[replica_id][instance_no].cmd = cmd;
+      cmds[replica_id][instance_no].dkey = dkey;
+      cmds[replica_id][instance_no].seq = seq;
+      cmds[replica_id][instance_no].deps = deps;
+      cmds[replica_id][instance_no].highest_seen = ballot;
+      cmds[replica_id][instance_no].highest_accepted = ballot;
+      cmds[replica_id][instance_no].state = EpaxosCommandState::PRE_ACCEPTED;
       preaccepted_sites.insert(site_id_);
     }
-  } else {
-    preaccepted_sites.insert(site_id_);
   }
   lock.unlock();
   // Send try-pre-accept requests
@@ -525,17 +597,49 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
   ev->Wait(20000000);
   // Process try-pre-accept replies
   Log_debug("Started try-pre-accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  // Fail if timeout/no-majority
-  if (ev->status_ == Event::TIMEOUT || ev->No()) {
+  // Fail if timeout
+  if (ev->status_ == Event::TIMEOUT) {
     Log_debug("Try-pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     UpdateHighestSeenBallot(ev->replies, replica_id, instance_no);
     return false;
   }
   // Success
-  if (ev->Yes()) {
+  if (ev->NoConflict()) {
+    Log_debug("Try-pre-accept success for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return StartAccept(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
   }
-  verify(0);
+  // Old message - moved on
+  if (ev->MovedOn()) {
+    Log_debug("Try-pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    return false;
+  }
+  // Committed conflict
+  if (ev->CommittedConflict()) {
+    Log_debug("Try-pre-accept committed conflict for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
+  }
+  // Fail if no-majority
+  if (ev->No()) {
+    Log_debug("Try-pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    UpdateHighestSeenBallot(ev->replies, replica_id, instance_no);
+    return false;
+  }
+  // Defer
+  bool is_deferred = deferred[replica_id].count(instance_no) != 0;
+  pair<uint64_t, uint64_t> deferred_inst, conflict_inst;
+  if (is_deferred) {
+    deferred_inst = deferred[replica_id][instance_no];
+  }
+  for (auto reply : ev->replies) {
+    if (reply.status != EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT) {
+      continue;
+    }
+    if (is_deferred && deferred_inst.first == reply.conflict_replica_id) {
+      return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
+    }
+    conflict_inst = make_pair(reply.conflict_replica_id, reply.conflict_instance_no);
+  }
+  deferred[conflict_inst.first][conflict_inst.second] = make_pair(replica_id, instance_no);
   return false;
 }
 
@@ -552,46 +656,37 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
   // Reject older ballots
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
     EpaxosBallot &highest_seen = cmds[replica_id][instance_no].highest_seen;
-    EpaxosTryPreAcceptReply reply(false, highest_seen.epoch, highest_seen.ballot_no, highest_seen.replica_id);
+    EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::REJECTED, highest_seen.epoch, highest_seen.ballot_no, highest_seen.replica_id, 0, 0);
     return reply;
   }
-  // Reject old and previously conflict detected messages - we have moved on
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED 
-      || cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED 
+  // Reject old messages - we have moved on
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     cmds[replica_id][instance_no].highest_seen = ballot;
-    EpaxosTryPreAcceptReply reply(false, ballot.epoch, ballot.ballot_no, ballot.replica_id);
+    EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::MOVED_ON, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
     return reply;
   }
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED_EQ) {
+  EpaxosTryPreAcceptStatus conflict_state;
+  uint64_t conflict_replica_id;
+  uint64_t conflict_instance_no;
+  FindTryPreAcceptConflict(cmd, dkey, seq, deps, replica_id, instance_no, &conflict_state, &conflict_replica_id, &conflict_instance_no);
+  // Reject old messages - we have moved on
+  if (conflict_state == EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT) {
     cmds[replica_id][instance_no].highest_seen = ballot;
-    EpaxosTryPreAcceptReply reply(true, ballot.epoch, ballot.ballot_no, ballot.replica_id);
+    EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, conflict_replica_id, conflict_instance_no);
     return reply;
   }
-  // Initialise attributes
-  uint64_t merged_seq = dkey_seq[dkey] + 1;
-  merged_seq = max(merged_seq, seq);
-  if (merged_seq > seq) {
-    EpaxosTryPreAcceptReply reply(false, ballot.epoch, ballot.ballot_no, ballot.replica_id);
+  if (conflict_state == EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT) {
+    cmds[replica_id][instance_no].highest_seen = ballot;
+    EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, conflict_replica_id, conflict_instance_no);
     return reply;
-  }
-  auto merged_deps = deps;
-  for (auto itr : dkey_deps[dkey]) {
-    uint64_t dreplica_id = itr.first;
-    uint64_t dinstance_no = itr.second;
-    if (dreplica_id == replica_id) continue;
-    if (merged_deps.count(dreplica_id) == 0 || dinstance_no > merged_deps[dreplica_id]) {
-      merged_deps[dreplica_id] = dinstance_no;
-      EpaxosTryPreAcceptReply reply(false, ballot.epoch, ballot.ballot_no, ballot.replica_id);
-      return reply;
-    }
   }
   // Pre-accept command
   cmds[replica_id][instance_no].cmd = cmd;
   cmds[replica_id][instance_no].dkey = dkey;
-  cmds[replica_id][instance_no].seq = merged_seq;
-  cmds[replica_id][instance_no].deps = merged_deps;
+  cmds[replica_id][instance_no].seq = seq;
+  cmds[replica_id][instance_no].deps = deps;
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::PRE_ACCEPTED;
@@ -605,7 +700,7 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
   }
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   // Reply
-  EpaxosTryPreAcceptReply reply(true, ballot.epoch, ballot.ballot_no, ballot.replica_id);
+  EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::NO_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
   return reply;
 }
 
@@ -661,39 +756,38 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   EpaxosBallot highest_accepted_ballot = EpaxosBallot();
   EpaxosPrepareReply rec_command;
   unordered_set<siteid_t> identical_preaccepted_sites;
+  bool leader_replied = false;
   for (auto reply : ev->replies) {
     if (!reply.status || reply.cmd_state == EpaxosCommandState::NOT_STARTED) continue;
     EpaxosBallot reply_ballot = EpaxosBallot(reply.epoch, reply.ballot_no, reply.replica_id);
-    if (reply_ballot.isGreater(highest_accepted_ballot)) {
-      highest_accepted_ballot = reply_ballot;
-      rec_command = EpaxosPrepareReply();
+    // Atleast one commited reply
+    if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
+      Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+      UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
+      return StartCommit(reply.cmd, reply.dkey, ballot, reply.seq, reply.deps, replica_id, instance_no);
     }
-    if (reply_ballot.isGreaterOrEqual(highest_accepted_ballot)) {
+    // Atleast one accept reply
+    if (reply.cmd_state == EpaxosCommandState::ACCEPTED && reply_ballot.isGreater(highest_accepted_ballot)) {
+      Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+      rec_command = reply;
       highest_accepted_ballot = reply_ballot;
-      // Atleast one commited reply
-      if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
-        Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-        UpdateInternalAttributes(reply.cmd, reply.dkey, replica_id, instance_no, reply.seq, reply.deps);
-        return StartCommit(reply.cmd, reply.dkey, ballot, reply.seq, reply.deps, replica_id, instance_no);
-      }
-      // Atleast one accept reply
-      if (reply.cmd_state == EpaxosCommandState::ACCEPTED) {
-        Log_debug("Prepare - accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+    }
+    // Identical/non-identical replies of default ballot
+    else if ((reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ || reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED)
+              && (rec_command.cmd_state != EpaxosCommandState::ACCEPTED)) {
+      if (rec_command.cmd_state == EpaxosCommandState::NOT_STARTED) {
+        Log_debug("Prepare - one pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
         rec_command = reply;
-      } 
-      // Identical replies of default ballot
-      else if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ 
-                && rec_command.cmd_state != EpaxosCommandState::ACCEPTED) {
+      } else if (reply.seq == rec_command.seq && reply.deps == rec_command.deps) {
+        Log_debug("Prepare - similar pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
+        identical_preaccepted_sites.insert(ev->replicaid_siteid_map[reply.acceptor_replica_id]);
+      } else if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ) {
         Log_debug("Prepare - identical pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
         rec_command = reply;
-        identical_preaccepted_sites.insert(ev->replicaid_siteid_map[reply.acceptor_replica_id]);
-      } 
-      // Non-identical replies of default ballot
-      else if (reply.cmd_state == EpaxosCommandState::PRE_ACCEPTED 
-                && rec_command.cmd_state != EpaxosCommandState::ACCEPTED
-                && rec_command.cmd_state != EpaxosCommandState::PRE_ACCEPTED_EQ) {
-        Log_debug("Prepare - pre-accepted cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, replica_id_, reply.acceptor_replica_id);
-        rec_command = reply;
+        identical_preaccepted_sites = unordered_set<siteid_t>();
+      }
+      if (reply.acceptor_replica_id == replica_id) {
+        leader_replied = true;
       }
     }
   }
@@ -704,17 +798,18 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     return StartAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no);
   }
   // N/2 identical pre-accepted replies for default ballot
-  if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= NSERVERS/2) {
+  if (!leader_replied && rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= NSERVERS/2) {
     Log_debug("Prepare - Majority identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
     return StartAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no);
   }
   // (F+1)/2 identical pre-accepted replies for default ballot
-  if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= (NSERVERS/2 + 1)/2) {
-    // Log_debug("Prepare - (F+1)/2 identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-    // UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
-    // bool status = StartTryPreAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no, identical_preaccepted_sites);
-    // if (status) return status;
+  if (!leader_replied && rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= (NSERVERS/2 + 1)/2) {
+    Log_debug("Prepare - (F+1)/2 identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    uint64_t leader_deps_instance = rec_command.deps.count(replica_id) ? rec_command.deps[replica_id] : -1;
+    UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
+    bool status = StartTryPreAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no, leader_deps_instance, identical_preaccepted_sites);
+    if (status) return status;
   }
   // Atleast one pre-accepted reply - start phase pre-accept
   if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED || rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ) {
@@ -725,7 +820,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   }
   // No pre-accepted replies - start phase pre-accept with NO_OP
   Log_debug("Prepare - No pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  return StartPreAccept(NOOP_CMD, NOOP_DKEY, ballot, replica_id, instance_no, -1, true);
+  return StartAccept(NOOP_CMD, NOOP_DKEY, ballot, 0, unordered_map<uint64_t, uint64_t>(), replica_id, instance_no);
 }
 
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
@@ -876,6 +971,8 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
       vertex->cmd->state = EpaxosCommandState::EXECUTED;
       Log_debug("Executed replica: %d instance: %d in replica: %d kind: %d", vertex->replica_id, vertex->instance_no, replica_id_, vertex->cmd->cmd->kind_);
       app_next_(*(vertex->cmd->cmd));
+      // Update executed_till
+      executed_till[vertex->cmd->dkey][vertex->replica_id] = max(executed_till[vertex->cmd->dkey][vertex->replica_id], vertex->instance_no);
     }
   }
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -916,11 +1013,37 @@ EpaxosServer::MergeAttributes(vector<EpaxosPreAcceptReply>& replies) {
     seq = max(seq, reply.seq);
     for (auto itr : reply.deps) {
       uint64_t dreplica_id = itr.first;
-      uint64_t dinstance_no = itr.second;
+      uint64_t dinstance_no = itr.second.first;
       deps[dreplica_id] = max(deps[dreplica_id], dinstance_no);
     }
   }
   return make_pair(seq, deps);
+}
+
+bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t> deps) {
+  unordered_set<uint64_t> committed_deps;
+  for (auto itr : deps) {
+    uint64_t replica_id = itr.first;
+    uint64_t instance_no = itr.second;
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    if(cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED 
+       || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+      committed_deps.insert(replica_id);
+    }
+  }
+  for (int i = 0; i < replies.size(); i++) {
+    if (replies[i].status != EpaxosPreAcceptStatus::IDENTICAL) {
+      continue;
+    }
+    for (auto itr : replies[i].deps) {
+      uint64_t dreplica_id = itr.first;
+      bool_t dstatus = itr.second.second;
+      if(dstatus) {
+        committed_deps.insert(dreplica_id);
+      }
+    }
+  }
+  return deps.size() == committed_deps.size();
 }
 
 void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,

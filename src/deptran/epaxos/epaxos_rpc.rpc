@@ -16,7 +16,7 @@ abstract service Epaxos {
                   ballot_t highest_seen_ballot_no,
                   uint64_t highest_seen_replica_id,
                   uint64_t updated_seq,
-                  unordered_map<uint64_t,uint64_t> updated_deps);
+                  unordered_map<uint64_t,pair<uint64_t,bool_t>> updated_deps);
                        
   defer Accept(epoch_t epoch,
                ballot_t ballot_no,
@@ -55,7 +55,9 @@ abstract service Epaxos {
                      bool_t status,
                      epoch_t highest_seen_epoch,
                      ballot_t highest_seen_ballot_no,
-                     uint64_t highest_seen_replica_id);
+                     uint64_t highest_seen_replica_id,
+                     uint64_t conflict_replica_id,
+                     uint64_t conflict_instance_no);
 
   defer Prepare(epoch_t epoch,
                 ballot_t ballot_no,

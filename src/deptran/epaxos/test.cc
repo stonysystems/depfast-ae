@@ -721,13 +721,15 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   Assert2(nc == 0, "unexpected number of committed servers");
   // Disconnect leader and reconnect majority-1 non pre-accepted servers to commit pre-accepted command via prepare
   config_->Disconnect(CMD_LEADER);
-  for (int i = 3; i < NSERVERS; i++) {
+  for (int i = 2; i < (NSERVERS/2)+2; i++) {
     config_->Reconnect((CMD_LEADER + i) % NSERVERS);
   }
-  config_->Prepare((CMD_LEADER + 3) % NSERVERS, replica_id, instance_no);
+  config_->Prepare((CMD_LEADER + 2) % NSERVERS, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM, false);
   config_->Reconnect(CMD_LEADER);
-  config_->Reconnect((CMD_LEADER + 2) % NSERVERS);
+  for (int i = (NSERVERS/2)+2; i < NSERVERS; i++) {
+    config_->Reconnect((CMD_LEADER + i) % NSERVERS);
+  }
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
 

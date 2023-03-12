@@ -1,6 +1,7 @@
 #pragma once
 
 typedef unordered_map<uint64_t, uint64_t> unordered_map_uint64_uint64_t;
+typedef unordered_map<uint64_t, pair<uint64_t, bool_t>> unordered_map_uint64_pair;
 
 #define _PARAMS0(...)
 #define _PARAMS1(first, second, ...) second

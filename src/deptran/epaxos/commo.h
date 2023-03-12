@@ -7,7 +7,7 @@
 namespace janus {
 
 #define NSERVERS 7
-#define FAST_PATH_QUORUM 6
+#define FAST_PATH_QUORUM 5
 #define SLOW_PATH_QUORUM 4
 enum EpaxosPreAcceptStatus {
   FAILED = 0,
@@ -22,7 +22,7 @@ class EpaxosPreAcceptReply {
   ballot_t ballot_no;
   uint64_t replica_id;
   uint64_t seq;
-  unordered_map<uint64_t, uint64_t> deps;
+  unordered_map<uint64_t, pair<uint64_t, bool_t>> deps;
 
   EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
     this->status = status;
@@ -31,7 +31,7 @@ class EpaxosPreAcceptReply {
     this->replica_id = replica_id;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, unordered_map<uint64_t, pair<uint64_t, bool_t>>& deps) {
     this->status = status;
     this->epoch = epoch;
     this->ballot_no = ballot_no;
@@ -75,20 +75,12 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   }
 
   bool FastPath() {
-    if (!is_recovery && n_voted_identical_ >= fast_path_quorum_) {
-      return true;
-    }
-    return false;
+    return !is_recovery && n_voted_identical_ >= fast_path_quorum_;
   }
 
   bool SlowPath() {
-    if (is_recovery && n_voted_yes_ >= slow_path_quorum_) {
-      return true;
-    }
-    if ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_))) {
-      return true;
-    }
-    return false;
+    return (is_recovery && n_voted_yes_ >= slow_path_quorum_) 
+           || ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_)));
   }
 
   bool Yes() override {
@@ -96,10 +88,7 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   }
 
   bool No() override {
-    if (n_voted_no_ > (n_total_-slow_path_quorum_)) {
-      return true;
-    }
-    return false;
+    return n_voted_no_ > (n_total_-slow_path_quorum_);
   }
 };
 
@@ -131,6 +120,108 @@ class EpaxosAcceptQuorumEvent : public QuorumEvent {
   void VoteNo(EpaxosAcceptReply& reply) {
     replies.push_back(reply);
     this->QuorumEvent::VoteNo();
+  }
+};
+
+enum EpaxosTryPreAcceptStatus {
+  REJECTED = 0,
+  NO_CONFLICT = 1,
+  COMMITTED_CONFLICT = 2,
+  UNCOMMITTED_CONFLICT = 3,
+  MOVED_ON = 4
+};
+
+class EpaxosTryPreAcceptReply {
+ public:
+  EpaxosTryPreAcceptStatus status;
+  epoch_t epoch;
+  ballot_t ballot_no;
+  uint64_t replica_id;
+  uint64_t conflict_replica_id;
+  uint64_t conflict_instance_no;
+
+  EpaxosTryPreAcceptReply(EpaxosTryPreAcceptStatus status,
+                          epoch_t epoch, 
+                          ballot_t ballot_no, 
+                          uint64_t replica_id,
+                          uint64_t conflict_replica_id, 
+                          uint64_t conflict_instance_no) {
+    this->status = status;
+    this->epoch = epoch;
+    this->ballot_no = ballot_no;
+    this->replica_id = replica_id;
+    this->replica_id = conflict_replica_id;
+    this->replica_id = conflict_instance_no;
+  }
+};
+
+class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
+ private:
+  int n_voted_noconflict_ = 0;
+  int n_voted_conflict_ = 0;
+  bool voted_committed_conflict_ = false;
+  bool voted_moved_on_ = false;
+  int quorum_;
+ public:
+  vector<EpaxosTryPreAcceptReply> replies;
+
+  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum) : QuorumEvent(n_total_, quorum) {
+    this->quorum_ = quorum_;
+  }
+
+  void VoteNoConflict(EpaxosTryPreAcceptReply& reply) {
+    n_voted_noconflict_++;
+    replies.push_back(reply);
+    this->QuorumEvent::VoteYes();
+  }
+
+  void VoteMovedOn(EpaxosTryPreAcceptReply& reply) {
+    voted_moved_on_ = true;
+    n_voted_conflict_++;
+    replies.push_back(reply);
+    this->QuorumEvent::VoteYes();
+  }
+
+  void VoteCommittedConflict(EpaxosTryPreAcceptReply& reply) {
+    n_voted_conflict_++;
+    voted_committed_conflict_ = true;
+    replies.push_back(reply);
+    this->QuorumEvent::VoteYes();
+  }
+
+  void VoteUncommittedConflict(EpaxosTryPreAcceptReply& reply) {
+    n_voted_conflict_++;
+    replies.push_back(reply);
+    this->QuorumEvent::VoteYes();
+  }
+  
+  void VoteNo(EpaxosTryPreAcceptReply& reply) {
+    replies.push_back(reply);
+    this->QuorumEvent::VoteNo();
+  }
+  
+  bool NoConflict() {
+    return n_voted_noconflict_ >= quorum_;
+  }
+
+  bool MovedOn() {
+    return voted_moved_on_;
+  }
+
+  bool CommittedConflict() {
+    return voted_committed_conflict_;
+  }
+  
+  bool Conflict() {
+    return (n_voted_no_ + n_voted_conflict_) > (n_total_-quorum_);
+  }
+
+  bool Yes() override {
+    return NoConflict() || Conflict() || CommittedConflict() || MovedOn();
+  }
+
+  bool No() override {
+    return n_voted_no_ > (n_total_-quorum_);
   }
 };
 
@@ -191,37 +282,6 @@ class EpaxosPrepareQuorumEvent : public QuorumEvent {
   }
 
   void VoteNo(EpaxosPrepareReply& reply) {
-    replies.push_back(reply);
-    this->QuorumEvent::VoteNo();
-  }
-};
-
-class EpaxosTryPreAcceptReply {
- public:
-  bool_t status;
-  epoch_t epoch;
-  ballot_t ballot_no;
-  uint64_t replica_id;
-
-  EpaxosTryPreAcceptReply(bool_t status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
-    this->status = status;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
-  }
-};
-
-class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
- public:
-  using QuorumEvent::QuorumEvent;
-  vector<EpaxosTryPreAcceptReply> replies;
-
-  void VoteYes(EpaxosTryPreAcceptReply& reply) {
-    replies.push_back(reply);
-    this->QuorumEvent::VoteYes();
-  }
-
-  void VoteNo(EpaxosTryPreAcceptReply& reply) {
     replies.push_back(reply);
     this->QuorumEvent::VoteNo();
   }
@@ -307,4 +367,3 @@ class EpaxosCommo : public Communicator {
 };
 
 } // namespace janus
-

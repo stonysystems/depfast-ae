@@ -40,7 +40,7 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
         ballot_t highest_seen_ballot_no;
         uint64_t highest_seen_replica_id;
         uint64_t updated_seq;
-        unordered_map<uint64_t, uint64_t> updated_deps;
+        unordered_map<uint64_t, pair<uint64_t, bool_t>> updated_deps;
         fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps;
         EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
                                    highest_seen_epoch, 
@@ -63,8 +63,8 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                  ballot_no, 
                  ballot_replica_id,
                  leader_replica_id, 
-                 instance_no, 
-                 md_cmd, 
+                 instance_no,
+                 md_cmd,
                  dkey,
                  seq, 
                  deps, 
@@ -197,17 +197,26 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
       EpaxosProxy *proxy = (EpaxosProxy*) p.second;
       FutureAttr fuattr;
       fuattr.callback = [ev](Future* fu) {
-        bool_t status;
+        status_t status;
         epoch_t highest_seen_epoch;
         ballot_t highest_seen_ballot_no;
         uint64_t highest_seen_replica_id;
+        uint64_t conflict_replica_id;
+        uint64_t conflict_instance_no;
         fu->get_reply() >> status >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id;
-        EpaxosTryPreAcceptReply reply(status, 
+        fu->get_reply() >> conflict_replica_id >> conflict_instance_no;
+        EpaxosTryPreAcceptReply reply(static_cast<EpaxosTryPreAcceptStatus>(status), 
                                       highest_seen_epoch, 
                                       highest_seen_ballot_no, 
-                                      highest_seen_replica_id);
-        if (status) {
-          ev->VoteYes(reply);
+                                      highest_seen_replica_id,
+                                      conflict_replica_id,
+                                      conflict_instance_no);
+        if (status == EpaxosTryPreAcceptStatus::NO_CONFLICT) {
+          ev->VoteNoConflict(reply);
+        } else if (status == EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT) {
+          ev->VoteCommittedConflict(reply);
+        } else if (status == EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT) {
+          ev->VoteUncommittedConflict(reply);
         } else {
           ev->VoteNo(reply);
         }

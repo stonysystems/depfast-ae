@@ -30,13 +30,13 @@ class EpaxosServiceImpl : public EpaxosService {
              ballot_t*, highest_seen_ballot_no,
              uint64_t*, highest_seen_replica_id,
              uint64_t*, updated_seq,
-             unordered_map_uint64_uint64_t*, updated_deps) {
+             unordered_map_uint64_pair*, updated_deps) {
     *status = EpaxosPreAcceptStatus::FAILED;
     *highest_seen_epoch = 0;
     *highest_seen_ballot_no = -1;
     *highest_seen_replica_id = 0;
     *updated_seq = 0;
-    *updated_deps = unordered_map<uint64_t, uint64_t>();
+    *updated_deps = unordered_map<uint64_t, pair<uint64_t, bool_t>>();
   }
 
   RpcHandler(Accept, 13,
@@ -73,7 +73,7 @@ class EpaxosServiceImpl : public EpaxosService {
     *status = false;
   }
 
-  RpcHandler(TryPreAccept, 13,
+  RpcHandler(TryPreAccept, 15,
              const epoch_t&,epoch,
              const ballot_t&, ballot_no,
              const uint64_t&, ballot_replica_id,
@@ -86,11 +86,15 @@ class EpaxosServiceImpl : public EpaxosService {
              bool_t*, status,
              epoch_t*, highest_seen_epoch,
              ballot_t*, highest_seen_ballot_no,
-             uint64_t*, highest_seen_replica_id) {
-    *status = false;
+             uint64_t*, highest_seen_replica_id,
+             uint64_t*, conflict_replica_id,
+             uint64_t*, conflict_instance_no) {
+    *status = EpaxosTryPreAcceptStatus::REJECTED;
     *highest_seen_epoch = 0;
     *highest_seen_ballot_no = -1;
     *highest_seen_replica_id = 0;
+    *conflict_replica_id = 0;
+    *conflict_instance_no = 0;
   }
 
   RpcHandler(Prepare, 15,
