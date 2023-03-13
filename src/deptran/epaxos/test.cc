@@ -751,7 +751,7 @@ int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
   int CMD_LEADER = 3;
   uint64_t replica_id, instance_no;
   auto deps = unordered_map<uint64_t, uint64_t>();
-  int seq = 1;
+  int seq = 0;
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
   // Start agreement in leader - will not replicate as leader is disconnected

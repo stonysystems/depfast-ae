@@ -217,6 +217,8 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
           ev->VoteCommittedConflict(reply);
         } else if (status == EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT) {
           ev->VoteUncommittedConflict(reply);
+        } else if (status == EpaxosTryPreAcceptStatus::MOVED_ON) {
+          ev->VoteMovedOn(reply);
         } else {
           ev->VoteNo(reply);
         }

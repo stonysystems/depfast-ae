@@ -7,7 +7,7 @@
 namespace janus {
 
 #define NSERVERS 7
-#define FAST_PATH_QUORUM 5
+#define FAST_PATH_QUORUM 6
 #define SLOW_PATH_QUORUM 4
 enum EpaxosPreAcceptStatus {
   FAILED = 0,
