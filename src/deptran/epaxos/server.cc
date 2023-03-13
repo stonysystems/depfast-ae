@@ -221,7 +221,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success via fast path quorum
-  if (ev->FastPath() && ballot.isDefault()){// && AllDependenciesCommitted(ev->replies, deps)) {
+  if (ev->FastPath() && ballot.isDefault() && AllDependenciesCommitted(ev->replies, deps)) {
     Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
   }
@@ -550,6 +550,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
                                      int64_t leader_dep_instance,
                                      unordered_set<siteid_t> preaccepted_sites) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
+  Log_debug("Started try-pre-accept for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject old message - we have moved on
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
@@ -805,13 +806,12 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
     return StartAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no);
   }
   // (F+1)/2 identical pre-accepted replies for default ballot
-  // if (!leader_replied && rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= (NSERVERS/2 + 1)/2) {
-  //   Log_debug("Prepare - (F+1)/2 identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  //   uint64_t leader_deps_instance = rec_command.deps.count(replica_id) ? rec_command.deps[replica_id] : -1;
-  //   UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
-  //   bool status = StartTryPreAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no, leader_deps_instance, identical_preaccepted_sites);
-  //   if (status) return status;
-  // }
+  if (!leader_replied && rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ && identical_preaccepted_sites.size() >= (NSERVERS/2 + 1)/2) {
+    Log_debug("Prepare - (F+1)/2 identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    uint64_t leader_deps_instance = rec_command.deps.count(replica_id) ? rec_command.deps[replica_id] : -1;
+    UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
+    return StartTryPreAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no, leader_deps_instance, identical_preaccepted_sites);
+  }
   // Atleast one pre-accepted reply - start phase pre-accept
   if (rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED || rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ) {
     Log_debug("Prepare - Atleast one pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);

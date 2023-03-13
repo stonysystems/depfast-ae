@@ -7,7 +7,7 @@
 namespace janus {
 
 #define NSERVERS 7
-#define FAST_PATH_QUORUM 6
+#define FAST_PATH_QUORUM 5
 #define SLOW_PATH_QUORUM 4
 enum EpaxosPreAcceptStatus {
   FAILED = 0,
@@ -165,8 +165,11 @@ class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
  public:
   vector<EpaxosTryPreAcceptReply> replies;
 
-  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum) : QuorumEvent(n_total_, quorum) {
+  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum, bool self_ack) : QuorumEvent(n_total_, quorum) {
     this->quorum_ = quorum_;
+    if (!self_ack) {
+      n_voted_conflict_++;
+    }
   }
 
   void VoteNoConflict(EpaxosTryPreAcceptReply& reply) {

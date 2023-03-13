@@ -189,7 +189,7 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
     n_total--;
   }
   int quorum = (NSERVERS/2 + 1) - preaccepted_sites.size();
-  auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(n_total, quorum);
+  auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(n_total, quorum, preaccepted_sites.count(site_id));
   for (auto& p : proxies) {
       if (p.first == site_id || preaccepted_sites.count(p.first) != 0) {
         continue;
@@ -203,8 +203,7 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
         uint64_t highest_seen_replica_id;
         uint64_t conflict_replica_id;
         uint64_t conflict_instance_no;
-        fu->get_reply() >> status >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id;
-        fu->get_reply() >> conflict_replica_id >> conflict_instance_no;
+        fu->get_reply() >> status >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> conflict_replica_id >> conflict_instance_no;
         EpaxosTryPreAcceptReply reply(static_cast<EpaxosTryPreAcceptStatus>(status), 
                                       highest_seen_epoch, 
                                       highest_seen_ballot_no, 
