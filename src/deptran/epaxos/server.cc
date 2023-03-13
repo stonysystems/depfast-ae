@@ -611,7 +611,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
   }
   // Old message - moved on
   if (ev->MovedOn()) {
-    Log_debug("Try-pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+    Log_debug("Try-pre-accept moved on for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return false;
   }
   // Committed conflict
@@ -626,6 +626,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Defer
+  Log_debug("Try-pre-accept conflict for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   bool is_deferred = deferred[replica_id].count(instance_no) != 0;
   pair<uint64_t, uint64_t> deferred_inst, conflict_inst;
   if (is_deferred) {
@@ -636,11 +637,13 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
       continue;
     }
     if (is_deferred && deferred_inst.first == reply.conflict_replica_id) {
+      Log_debug("Try-pre-accept loop for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
       return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
     }
     conflict_inst = make_pair(reply.conflict_replica_id, reply.conflict_instance_no);
   }
   deferred[conflict_inst.first][conflict_inst.second] = make_pair(replica_id, instance_no);
+  Log_debug("Try-pre-accept deferred for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   return false;
 }
 
