@@ -371,7 +371,7 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success
-    return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
+  return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
 }
 
 EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd, 
@@ -501,12 +501,12 @@ void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd,
                                             uint64_t *conflict_replica_id, 
                                             uint64_t *conflict_instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  *conflict_replica_id = 0;
+  *conflict_instance_no = 0;
+  *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;
   if ((cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED
        || cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED_EQ)
       && (cmds[replica_id][instance_no].seq == seq && cmds[replica_id][instance_no].deps == deps)) {
-    *conflict_replica_id = 0;
-    *conflict_instance_no = 0;
-    *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;
     return;
   }
   for (auto itr : dkey_deps[dkey]) {
@@ -559,7 +559,10 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Add self reply
-  if (preaccepted_sites.count(site_id_) == 0) {
+  EpaxosTryPreAcceptReply self_reply(EpaxosTryPreAcceptStatus::NO_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
+  if (preaccepted_sites.count(site_id_) != 0) {
+    preaccepted_sites.erase(site_id_);
+  } else {
     EpaxosTryPreAcceptStatus conflict_state;
     uint64_t conflict_replica_id;
     uint64_t conflict_instance_no;
@@ -570,7 +573,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
       return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
     } 
     // Pre-accept command
-    else if (conflict_state == EpaxosTryPreAcceptStatus::NO_CONFLICT) {
+    if (conflict_state == EpaxosTryPreAcceptStatus::NO_CONFLICT) {
       cmds[replica_id][instance_no].cmd = cmd;
       cmds[replica_id][instance_no].dkey = dkey;
       cmds[replica_id][instance_no].seq = seq;
@@ -578,7 +581,11 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
       cmds[replica_id][instance_no].highest_seen = ballot;
       cmds[replica_id][instance_no].highest_accepted = ballot;
       cmds[replica_id][instance_no].state = EpaxosCommandState::PRE_ACCEPTED;
-      preaccepted_sites.insert(site_id_);
+    } else {
+      self_reply.status = EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT;
+      self_reply.conflict_replica_id = conflict_replica_id;
+      self_reply.conflict_instance_no = conflict_instance_no;
+      Log_debug("New leader has conflict in try-pre-accept for replica: %d instance: %d by replica: %d conflicted by replica: %d instance: %d", replica_id, instance_no, replica_id_, conflict_replica_id, conflict_instance_no);
     }
   }
   lock.unlock();
@@ -595,6 +602,8 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
                                       dkey, 
                                       seq, 
                                       deps);
+  ev->VoteYes(self_reply);
+  Log_debug("Added try-pre-accept self-reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   ev->Wait(20000000);
   // Process try-pre-accept replies
   Log_debug("Started try-pre-accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -643,7 +652,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
     conflict_inst = make_pair(reply.conflict_replica_id, reply.conflict_instance_no);
   }
   deferred[conflict_inst.first][conflict_inst.second] = make_pair(replica_id, instance_no);
-  Log_debug("Try-pre-accept deferred for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
+  Log_debug("Try-pre-accept deferred for replica: %d instance: %d by replica: %d conflicted by replica: %d instance: %d", replica_id, instance_no, replica_id_, conflict_inst.first, conflict_inst.second);
   return false;
 }
 

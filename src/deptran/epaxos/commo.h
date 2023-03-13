@@ -150,8 +150,8 @@ class EpaxosTryPreAcceptReply {
     this->epoch = epoch;
     this->ballot_no = ballot_no;
     this->replica_id = replica_id;
-    this->replica_id = conflict_replica_id;
-    this->replica_id = conflict_instance_no;
+    this->conflict_replica_id = conflict_replica_id;
+    this->conflict_instance_no = conflict_instance_no;
   }
 };
 
@@ -165,35 +165,27 @@ class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
  public:
   vector<EpaxosTryPreAcceptReply> replies;
 
-  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum, bool self_ack) : QuorumEvent(n_total_, quorum) {
+  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum) : QuorumEvent(n_total_, quorum) {
     this->quorum_ = quorum_;
-    if (!self_ack) {
-      n_voted_conflict_++;
+  }
+
+  void VoteYes(EpaxosTryPreAcceptReply& reply) {
+    switch(reply.status) {
+      case EpaxosTryPreAcceptStatus::NO_CONFLICT:
+        n_voted_noconflict_++;
+        break;
+      case EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT:
+        voted_committed_conflict_ = true;
+        n_voted_conflict_++;
+        break;
+      case EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT:
+        n_voted_conflict_++;
+        break;
+      case EpaxosTryPreAcceptStatus::MOVED_ON:
+        voted_moved_on_ = true;
+        n_voted_conflict_++;
+        break;
     }
-  }
-
-  void VoteNoConflict(EpaxosTryPreAcceptReply& reply) {
-    n_voted_noconflict_++;
-    replies.push_back(reply);
-    this->QuorumEvent::VoteYes();
-  }
-
-  void VoteMovedOn(EpaxosTryPreAcceptReply& reply) {
-    voted_moved_on_ = true;
-    n_voted_conflict_++;
-    replies.push_back(reply);
-    this->QuorumEvent::VoteYes();
-  }
-
-  void VoteCommittedConflict(EpaxosTryPreAcceptReply& reply) {
-    n_voted_conflict_++;
-    voted_committed_conflict_ = true;
-    replies.push_back(reply);
-    this->QuorumEvent::VoteYes();
-  }
-
-  void VoteUncommittedConflict(EpaxosTryPreAcceptReply& reply) {
-    n_voted_conflict_++;
     replies.push_back(reply);
     this->QuorumEvent::VoteYes();
   }
@@ -216,7 +208,7 @@ class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
   }
   
   bool Conflict() {
-    return (n_voted_no_ + n_voted_conflict_) > (n_total_-quorum_);
+    return (n_voted_no_ + n_voted_conflict_) > (n_total_ - quorum_);
   }
 
   bool Yes() override {
