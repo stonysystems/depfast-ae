@@ -161,13 +161,9 @@ class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
   int n_voted_conflict_ = 0;
   bool voted_committed_conflict_ = false;
   bool voted_moved_on_ = false;
-  int quorum_;
  public:
+  using QuorumEvent::QuorumEvent;
   vector<EpaxosTryPreAcceptReply> replies;
-
-  EpaxosTryPreAcceptQuorumEvent(int n_total_, int quorum) : QuorumEvent(n_total_, quorum) {
-    this->quorum_ = quorum_;
-  }
 
   void VoteYes(EpaxosTryPreAcceptReply& reply) {
     switch(reply.status) {
