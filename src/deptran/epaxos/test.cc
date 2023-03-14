@@ -831,6 +831,72 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   config_->Prepare(CMD_LEADER, replica_id, instance_no);
   AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
 
+  /*********** Sub Test 3 ***********/
+  InitSub2(3, "Pre-accepted in (F+1)/2 servers. Prepare returns (F+1)/2 identical pre-accepted replies but includes leader.");
+  cmd++;
+  CMD_LEADER = 0;
+  // Keep only (F+1)/2 quorum of servers alive
+  int X = ((NSERVERS/2) + 1)/2 - 1;
+  for (int i = 1; i < NSERVERS - X; i++) {
+    config_->Disconnect(i);
+  }
+  // Start agreement in leader - will replicate to only 1 replica as others are disconnected
+  dependent_cmds.insert(cmd);
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
+  Assert2(np == X+1, "unexpected number of pre-accepted servers");
+  na = config_->NAccepted(replica_id, instance_no, NSERVERS);
+  Assert2(na == 0, "unexpected number of accepted servers");
+  nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+  AssertValidCommitStatus(replica_id, instance_no, nc);
+  Assert2(nc == 0, "unexpected number of committed servers");
+  // Reconnect majority servers to commit pre-accepted command via prepare
+  for (int i = NSERVERS - SLOW_PATH_QUORUM; i < NSERVERS - X; i++) {
+    config_->Reconnect(i);
+  }
+  config_->Prepare(NSERVERS - SLOW_PATH_QUORUM, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM, false);
+  // Reconnect all and commit via prepare
+  for (int i = 1; i < NSERVERS - SLOW_PATH_QUORUM; i++) {
+    config_->Reconnect(i);
+  }
+  config_->Prepare(1, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+
+ /*********** Sub Test 4 ***********/
+  InitSub2(4, "Pre-accepted in leader and (F+1)/2 servers. Prepare returns (F+1)/2 identical pre-accepted replies.");
+  cmd++;
+  CMD_LEADER = 0;
+  // Keep only leader + (F+1)/2 quorum of servers alive
+  X = ((NSERVERS/2) + 1)/2;
+  for (int i = 1; i < NSERVERS - X; i++) {
+    config_->Disconnect(i);
+  }
+  // Start agreement in leader - will replicate to only 1 replica as others are disconnected
+  dependent_cmds.insert(cmd);
+  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
+  Assert2(np == X+1, "unexpected number of pre-accepted servers");
+  na = config_->NAccepted(replica_id, instance_no, NSERVERS);
+  Assert2(na == 0, "unexpected number of accepted servers");
+  nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
+  AssertValidCommitStatus(replica_id, instance_no, nc);
+  Assert2(nc == 0, "unexpected number of committed servers");
+  // Reconnect majority servers to commit pre-accepted command via prepare
+  config_->Disconnect(CMD_LEADER);
+  for (int i = NSERVERS - SLOW_PATH_QUORUM ; i < NSERVERS - X; i++) {
+    config_->Reconnect(i);
+  }
+  config_->Prepare(NSERVERS - SLOW_PATH_QUORUM, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, SLOW_PATH_QUORUM, false);
+  // Reconnect all and commit via prepare
+  config_->Reconnect(CMD_LEADER);
+  for (int i = 1; i < NSERVERS - SLOW_PATH_QUORUM; i++) {
+    config_->Reconnect(i);
+  }
+  config_->Prepare(1, replica_id, instance_no);
+  AssertNCommittedAndVerifyNoop(replica_id, instance_no, NSERVERS, false);
+
   /*********** Execution order ***********/
   InitSub2(3, "Execution order");
   config_->PauseExecution(false);

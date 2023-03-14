@@ -41,7 +41,7 @@ void EpaxosServer::Setup() {
   Coroutine::CreateRun([this](){
     while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
-      if (pause_execution) {
+      if (pause_execution) { // <REMOVE_AFTER_TESTING>
         lock.unlock();
         Coroutine::Sleep(10000);
         continue;
@@ -59,7 +59,7 @@ void EpaxosServer::Setup() {
             std::unique_lock<std::recursive_mutex> lock(mtx_);
             while(!cmds[replica_id][instance_no].isCreatedBefore(2000)) {
               lock.unlock();
-              Coroutine::Sleep(10000);
+              Coroutine::Sleep(100000);
               lock.lock();
             }
             lock.unlock();
@@ -491,55 +491,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
 /***********************************
        TryPreAccept Phase          *
 ************************************/
-void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
-                                            string dkey, 
-                                            uint64_t seq,
-                                            unordered_map<uint64_t, uint64_t> deps, 
-                                            uint64_t replica_id, 
-                                            uint64_t instance_no,
-                                            EpaxosTryPreAcceptStatus *conflict_state,
-                                            uint64_t *conflict_replica_id, 
-                                            uint64_t *conflict_instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  *conflict_replica_id = 0;
-  *conflict_instance_no = 0;
-  *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;
-  if ((cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED
-       || cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED_EQ)
-      && (cmds[replica_id][instance_no].seq == seq && cmds[replica_id][instance_no].deps == deps)) {
-    return;
-  }
-  for (auto itr : dkey_deps[dkey]) {
-    uint64_t dreplica_id = itr.first;
-    for(uint64_t dinstance_no = executed_till[dkey][dreplica_id]; dinstance_no <= itr.second; dinstance_no++) {
-      // no point checking past instance in replica's row
-      if (dreplica_id == replica_id && dinstance_no == instance_no) break;
-      //the instance cannot be a dependency for itself
-      if (deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) continue;
-      EpaxosCommand e_cmd = cmds[replica_id][instance_no];
-      if (e_cmd.state == EpaxosCommandState::NOT_STARTED) continue;
-      if (e_cmd.dkey != dkey) continue;
-      if (e_cmd.deps.count(replica_id) && e_cmd.deps[replica_id] >= instance_no) continue;
-      if (dinstance_no > deps[dreplica_id]
-          || (dinstance_no < deps[dreplica_id] 
-              && e_cmd.seq >= seq 
-              && (dreplica_id != replica_id
-                  || e_cmd.state == EpaxosCommandState::ACCEPTED
-                  || e_cmd.state == EpaxosCommandState::COMMITTED
-                  || e_cmd.state == EpaxosCommandState::EXECUTED))) {
-        *conflict_replica_id = dreplica_id;
-        *conflict_instance_no = dinstance_no;
-        if (e_cmd.state == EpaxosCommandState::COMMITTED || e_cmd.state == EpaxosCommandState::EXECUTED) {
-          *conflict_state = EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT;
-        } else {
-          *conflict_state = EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT;
-        }
-        return;
-      }
-    }
-  }
-}
-
 bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
                                      string dkey, 
                                      EpaxosBallot ballot, 
@@ -961,9 +912,7 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
   std::unique_lock<std::recursive_mutex> lock(mtx_);
-  if (pause_execution) { // <REMOVE_AFTER_TESTING>
-    return;
-  }
+  if (pause_execution)  return; // <REMOVE_AFTER_TESTING>
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return;
   }
@@ -1080,6 +1029,55 @@ void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,
     received_till[dreplica_id] = max(received_till[dreplica_id], dinstance_no);
   }
   dkey_deps[dkey][replica_id] = max(dkey_deps[dkey][replica_id], instance_no);
+}
+
+void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
+                                            string dkey, 
+                                            uint64_t seq,
+                                            unordered_map<uint64_t, uint64_t> deps, 
+                                            uint64_t replica_id, 
+                                            uint64_t instance_no,
+                                            EpaxosTryPreAcceptStatus *conflict_state,
+                                            uint64_t *conflict_replica_id, 
+                                            uint64_t *conflict_instance_no) {
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  *conflict_replica_id = 0;
+  *conflict_instance_no = 0;
+  *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;
+  if ((cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED
+       || cmds[replica_id][instance_no].state == EpaxosCommandState::PRE_ACCEPTED_EQ)
+      && (cmds[replica_id][instance_no].seq == seq && cmds[replica_id][instance_no].deps == deps)) {
+    return;
+  }
+  for (auto itr : dkey_deps[dkey]) {
+    uint64_t dreplica_id = itr.first;
+    for(uint64_t dinstance_no = executed_till[dkey][dreplica_id]; dinstance_no <= itr.second; dinstance_no++) {
+      // no point checking past instance in replica's row
+      if (dreplica_id == replica_id && dinstance_no == instance_no) break;
+      // the instance cannot be a dependency for itself
+      if (deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) continue;
+      EpaxosCommand e_cmd = cmds[replica_id][instance_no];
+      if (e_cmd.state == EpaxosCommandState::NOT_STARTED) continue;
+      if (e_cmd.dkey != dkey) continue;
+      if (e_cmd.deps.count(replica_id) && e_cmd.deps[replica_id] >= instance_no) continue;
+      if (dinstance_no > deps[dreplica_id]
+          || (dinstance_no < deps[dreplica_id] 
+              && e_cmd.seq >= seq 
+              && (dreplica_id != replica_id
+                  || e_cmd.state == EpaxosCommandState::ACCEPTED
+                  || e_cmd.state == EpaxosCommandState::COMMITTED
+                  || e_cmd.state == EpaxosCommandState::EXECUTED))) {
+        *conflict_replica_id = dreplica_id;
+        *conflict_instance_no = dinstance_no;
+        if (e_cmd.state == EpaxosCommandState::COMMITTED || e_cmd.state == EpaxosCommandState::EXECUTED) {
+          *conflict_state = EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT;
+        } else {
+          *conflict_state = EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT;
+        }
+        return;
+      }
+    }
+  }
 }
 
 /* Do not modify any code below here */
