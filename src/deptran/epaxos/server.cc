@@ -41,11 +41,13 @@ void EpaxosServer::Setup() {
   Coroutine::CreateRun([this](){
     while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
-      if (pause_execution) { // <REMOVE_AFTER_TESTING>
+      #ifdef EPAXOS_TEST_CORO
+      if (pause_execution) { 
         lock.unlock();
         Coroutine::Sleep(10000);
         continue;
       }
+      #endif
       auto received_till_ = this->received_till;
       auto prepared_till_ = this->prepared_till;
       lock.unlock();
@@ -64,7 +66,9 @@ void EpaxosServer::Setup() {
             }
             lock.unlock();
             PrepareTillCommitted(replica_id, instance_no);
-            StartExecution(replica_id, instance_no); // <REMOVE_AFTER_TESTING>
+            #ifdef EPAXOS_TEST_CORO
+            StartExecution(replica_id, instance_no);
+            #endif
           });
           Coroutine::Sleep(10);
           instance_no++;
@@ -77,9 +81,9 @@ void EpaxosServer::Setup() {
     }
   });
 
-  // Process prepare requests <REMOVE_AFTER_TESTING>
-   Coroutine::CreateRun([this](){
-     while(true) {
+  #ifdef EPAXOS_TEST_CORO
+  Coroutine::CreateRun([this](){
+    while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
       if (prepare_reqs.size() == 0) {
         lock.unlock();
@@ -92,9 +96,10 @@ void EpaxosServer::Setup() {
           PrepareTillCommitted(req.first, req.second);
           StartExecution(req.first, req.second);
         });
-       }
-     }
-   });
+      }
+    }
+  });
+  #endif
 }
 
 /***********************************
@@ -110,6 +115,7 @@ void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *r
   reqs.push_back(req);
 }
 
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 void EpaxosServer::GetState(uint64_t replica_id, 
                 uint64_t instance_no, 
                 shared_ptr<Marshallable> *cmd, 
@@ -125,16 +131,17 @@ void EpaxosServer::GetState(uint64_t replica_id,
   *state = cmds[replica_id][instance_no].state;
 }
 
-void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) { // <REMOVE_AFTER_TESTING>
+void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received prepare request in server: %d for replica: %d instance: %d", site_id_, replica_id, instance_no);
   prepare_reqs.push_back(make_pair(replica_id, instance_no));
 }
 
-void EpaxosServer::PauseExecution(bool pause) { // <REMOVE_AFTER_TESTING>
+void EpaxosServer::PauseExecution(bool pause) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   pause_execution = pause;
 }
+#endif
 
 EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -912,7 +919,9 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
   std::unique_lock<std::recursive_mutex> lock(mtx_);
-  if (pause_execution)  return; // <REMOVE_AFTER_TESTING>
+  #ifdef EPAXOS_TEST_CORO
+  if (pause_execution)  return;
+  #endif
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return;
   }

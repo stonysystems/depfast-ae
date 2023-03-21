@@ -56,6 +56,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('', '--enable-epaxos-test', dest='enable_epaxos_test',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-epaxos-perf-test', dest='enable_epaxos_perf_test',
+                   default=False, action='store_true')
     opt.parse_args();
 
 def configure(conf):
@@ -83,6 +85,7 @@ def configure(conf):
     _enable_db_checksum(conf)
     _enable_leaksan(conf)
     _enable_epaxos_test(conf)
+    _enable_epaxos_perf_test(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -309,6 +312,11 @@ def _enable_epaxos_test(conf):
     if Options.options.enable_epaxos_test:
         Logs.pprint("PINK", "Epaxos testing coroutine enabled")
         conf.env.append_value("CXXFLAGS", "-DEPAXOS_TEST_CORO")
+
+def _enable_epaxos_perf_test(conf):
+    if Options.options.enable_epaxos_perf_test:
+        Logs.pprint("PINK", "Epaxos performance testing coroutine enabled")
+        conf.env.append_value("CXXFLAGS", "-DEPAXOS_PERF_TEST_CORO")
 
 def _enable_debug(conf):
     if Options.options.debug:

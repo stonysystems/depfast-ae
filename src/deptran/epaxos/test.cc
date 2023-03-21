@@ -3,9 +3,10 @@
 
 namespace janus {
 
+
 #ifdef EPAXOS_TEST_CORO
 
-int EpaxosLabTest::Run(void) {
+int EpaxosTest::Run(void) {
   Print("START UNIT TESTS");
   TestGraph test_graph;
   test_graph.Run();
@@ -36,7 +37,7 @@ int EpaxosLabTest::Run(void) {
   return 0;
 }
 
-void EpaxosLabTest::Cleanup(void) {
+void EpaxosTest::Cleanup(void) {
   config_->Shutdown();
 }
 
@@ -164,7 +165,7 @@ void EpaxosLabTest::Cleanup(void) {
         } \
       }
 
-int EpaxosLabTest::testBasicAgree(void) {
+int EpaxosTest::testBasicAgree(void) {
   Init2(1, "Basic agreement");
   config_->PauseExecution(false);
   for (int i = 1; i <= 3; i++) {
@@ -178,7 +179,7 @@ int EpaxosLabTest::testBasicAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testFastPathIndependentAgree(void) {
+int EpaxosTest::testFastPathIndependentAgree(void) {
   Init2(2, "Fast path agreement of independent commands");
   config_->PauseExecution(false);
   DisconnectNServers(NSERVERS - FAST_PATH_QUORUM);
@@ -195,7 +196,7 @@ int EpaxosLabTest::testFastPathIndependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testFastPathDependentAgree(void) {
+int EpaxosTest::testFastPathDependentAgree(void) {
   Init2(3, "Fast path agreement of dependent commands");
   config_->PauseExecution(false);
   DisconnectNServers(NSERVERS - FAST_PATH_QUORUM);
@@ -227,7 +228,7 @@ int EpaxosLabTest::testFastPathDependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testSlowPathIndependentAgree(void) {
+int EpaxosTest::testSlowPathIndependentAgree(void) {
   Init2(4, "Slow path agreement of independent commands");
   config_->PauseExecution(false);
   DisconnectNServers(NSERVERS - SLOW_PATH_QUORUM);
@@ -244,7 +245,7 @@ int EpaxosLabTest::testSlowPathIndependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testSlowPathDependentAgree(void) {
+int EpaxosTest::testSlowPathDependentAgree(void) {
   Init2(5, "Slow path agreement of dependent commands");
   config_->PauseExecution(false);
   DisconnectNServers(NSERVERS - SLOW_PATH_QUORUM);
@@ -276,7 +277,7 @@ int EpaxosLabTest::testSlowPathDependentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testFailNoQuorum(void) {
+int EpaxosTest::testFailNoQuorum(void) {
   Init2(6, "No agreement if too many servers disconnect");
   config_->PauseExecution(false);
   DisconnectNServers(NSERVERS + 1 - SLOW_PATH_QUORUM);
@@ -292,7 +293,7 @@ int EpaxosLabTest::testFailNoQuorum(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
+int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   Init2(7, "Leader and replicas have different dependencies");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
@@ -424,7 +425,7 @@ int EpaxosLabTest::testNonIdenticalAttrsAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
+int EpaxosTest::testPrepareCommittedCommandAgree(void) {
   Init2(8, "Commit through prepare - committed command");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
@@ -459,7 +460,6 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   for (int i = 1; i <= NSERVERS - SLOW_PATH_QUORUM; i++) {
     config_->Disconnect(i);
   }
-
   dependent_cmds.insert(cmd);
   config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
   nc = config_->NCommitted(replica_id, instance_no, SLOW_PATH_QUORUM);
@@ -611,7 +611,7 @@ int EpaxosLabTest::testPrepareCommittedCommandAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
+int EpaxosTest::testPrepareAcceptedCommandAgree(void) {
   Init2(9, "Commit through prepare - accepted but not committed command");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
@@ -764,7 +764,7 @@ int EpaxosLabTest::testPrepareAcceptedCommandAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
+int EpaxosTest::testPreparePreAcceptedCommandAgree(void) {
   Init2(10, "Commit through prepare - pre-accepted but not in majority");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
@@ -905,7 +905,7 @@ int EpaxosLabTest::testPreparePreAcceptedCommandAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testPrepareNoopCommandAgree(void) {
+int EpaxosTest::testPrepareNoopCommandAgree(void) {
   Init2(11, "Commit through prepare - commit noop");
   config_->PauseExecution(true);
   /*********** Sub Test 1 ***********/
@@ -993,7 +993,7 @@ static void *doConcurrentAgreement(void *args) {
   return nullptr;
 }
 
-int EpaxosLabTest::testConcurrentAgree(void) {
+int EpaxosTest::testConcurrentAgree(void) {
   Init2(12, "Concurrent agreements");
   config_->PauseExecution(false);
   std::vector<pthread_t> threads{};
@@ -1031,7 +1031,7 @@ int EpaxosLabTest::testConcurrentAgree(void) {
   Passed2();
 }
 
-int EpaxosLabTest::testConcurrentUnreliableAgree(void) {
+int EpaxosTest::testConcurrentUnreliableAgree(void) {
   Init2(13, "Unreliable concurrent agreement");
   config_->PauseExecution(false);
   config_->SetUnreliable(true);

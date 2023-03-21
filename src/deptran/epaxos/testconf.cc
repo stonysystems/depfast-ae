@@ -4,7 +4,7 @@
 
 namespace janus {
 
-#ifdef EPAXOS_TEST_CORO
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 
 int _test_id_g = 0;
 std::chrono::_V2::system_clock::time_point _test_starttime_g;

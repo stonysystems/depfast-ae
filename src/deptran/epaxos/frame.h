@@ -10,7 +10,7 @@ namespace janus {
 
 class EpaxosFrame : public Frame {
  private:
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   static std::mutex epaxos_test_mutex_;
   static std::shared_ptr<Coroutine> epaxos_test_coro_;
   static uint16_t n_replicas_;

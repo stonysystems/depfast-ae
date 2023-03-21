@@ -4,12 +4,13 @@
 #include "server.h"
 #include "service.h"
 #include "test.h"
+#include "perf_test.h"
 
 namespace janus {
 
 REG_FRAME(MODE_EPAXOS, vector<string>({"epaxos"}), EpaxosFrame);
 
-#ifdef EPAXOS_TEST_CORO
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 std::mutex EpaxosFrame::epaxos_test_mutex_;
 std::shared_ptr<Coroutine> EpaxosFrame::epaxos_test_coro_ = nullptr;
 uint16_t EpaxosFrame::n_replicas_ = 0;
@@ -30,7 +31,7 @@ TxLogServer *EpaxosFrame::CreateScheduler() {
   }
   Log_debug("create epaxos sched loc: %d", this->site_info_->locale_id);
 
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   epaxos_test_mutex_.lock();
   verify(n_replicas_ < NSERVERS);
   replicas_[this->site_info_->id] = this;
@@ -46,7 +47,7 @@ Communicator *EpaxosFrame::CreateCommo(PollMgr *poll) {
     commo_ = new EpaxosCommo(poll);
   }
 
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   epaxos_test_mutex_.lock();
   verify(n_replicas_ == NSERVERS);
   n_commo_++;
@@ -60,9 +61,16 @@ Communicator *EpaxosFrame::CreateCommo(PollMgr *poll) {
       // Run tests
       verify(n_replicas_ == NSERVERS);
       auto testconfig = new EpaxosTestConfig(replicas_);
-      EpaxosLabTest test(testconfig);
+      #ifdef EPAXOS_PERF_TEST_CORO
+      EpaxosPerfTest perf_test(testconfig);
+      perf_test.Run();
+      perf_test.Cleanup();
+      #endif
+      #ifdef EPAXOS_TEST_CORO
+      EpaxosTest test(testconfig);
       test.Run();
       test.Cleanup();
+      #endif
       // Turn off Reactor loop
       Reactor::GetReactor()->looping_ = false;
       return;

@@ -162,12 +162,14 @@ class EpaxosServer : public TxLogServer {
   unordered_map<string, uint64_t> dkey_seq;
   unordered_map<uint64_t, unordered_map<uint64_t, pair<uint64_t, uint64_t>>> deferred;
   list<EpaxosRequest> reqs;
-  list<pair<uint64_t, uint64_t>> prepare_reqs;
   unordered_map<uint64_t, uint64_t> received_till;
   unordered_map<uint64_t, uint64_t> prepared_till;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
   unordered_set<string> in_process_dkeys;
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
+  #endif
 
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);
   bool StartPreAccept(shared_ptr<Marshallable>& cmd, 
@@ -267,6 +269,7 @@ class EpaxosServer : public TxLogServer {
 
 public:
   void Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   void GetState(uint64_t replica_id, 
                 uint64_t instance_no, 
                 shared_ptr<Marshallable> *cmd, 
@@ -276,6 +279,7 @@ public:
                 status_t *state);
   void Prepare(uint64_t replica_id, uint64_t instance_no);
   void PauseExecution(bool pause);
+  #endif
 
   /* Do not modify this class below here */
 

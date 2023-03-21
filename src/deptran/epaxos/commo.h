@@ -352,7 +352,7 @@ class EpaxosCommo : public Communicator {
   /* Do not modify this class below here */
 
  public:
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   std::recursive_mutex rpc_mtx_ = {};
   uint64_t rpc_count_ = 0;
   #endif

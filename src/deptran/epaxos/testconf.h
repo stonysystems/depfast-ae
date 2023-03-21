@@ -4,7 +4,7 @@
 
 namespace janus {
 
-#ifdef EPAXOS_TEST_CORO
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 
 // slow network connections have latency up to 26 milliseconds
 #define MAXSLOW 27

@@ -6,7 +6,7 @@ namespace janus {
 
 #ifdef EPAXOS_TEST_CORO
 
-class EpaxosLabTest {
+class EpaxosTest {
 
  private:
   EpaxosTestConfig *config_;
@@ -14,7 +14,7 @@ class EpaxosLabTest {
   uint64_t cmd = 0;
 
  public:
-  EpaxosLabTest(EpaxosTestConfig *config) : config_(config) {}
+  EpaxosTest(EpaxosTestConfig *config) : config_(config) {}
   int Run(void);
   void Cleanup(void);
 
