@@ -10,11 +10,7 @@ int EpaxosPerfTest::Run(void) {
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   int concurrent = Config::GetConfig()->get_concurrent_txn();
-  vector<string> commands(concurrent);
-  for (int i = 0; i < concurrent; i++) {
-    commands[i] = to_string(i+1);
-  }
-  int tot_num = concurrent * NSERVERS;
+  int tot_num = concurrent;
 
   #ifdef CPU_PROFILE
   char prof_file[1024];
@@ -25,13 +21,17 @@ int EpaxosPerfTest::Run(void) {
   gettimeofday(&t1, NULL);
   EpaxosTestConfig *config_ = this->config_;
   vector<std::thread> ths;
+  int svr = 0;
+  int command;
   for (int i = 0; i < concurrent; i++) {
-    for (int svr = 0; svr < NSERVERS; svr++) {
-      ths.push_back(std::thread([config_, commands, i, svr]() {
-        uint64_t replica_id, instance_no;
-        config_->Start(svr, i+1, commands[i], &replica_id, &instance_no);
-      }));
-    }
+    svr = svr % NSERVERS;
+    command = cmd;
+    ths.push_back(std::thread([config_, command, i, svr]() {
+      uint64_t replica_id, instance_no;
+      config_->Start(svr, command, to_string(command), &replica_id, &instance_no);
+    }));
+    svr++;
+    cmd++;
   }
   Log_info("waiting for submission threads.");
   for (auto& th : ths) {
@@ -40,8 +40,10 @@ int EpaxosPerfTest::Run(void) {
   while (1) {
     bool flag = true;
     for (int svr = 0; svr < NSERVERS; svr++) {
-      if (config_->GetExecutedCommands(svr).size() < tot_num)
+      if (config_->GetExecutedCommands(svr).size() < tot_num) {
+        Log_info("svr: %d size: %d tot: %d", svr, config_->GetExecutedCommands(svr).size(), tot_num);
         flag = false;
+      }
     }
     if (flag) {
       break;

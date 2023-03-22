@@ -58,13 +58,7 @@ void EpaxosServer::Setup() {
         uint64_t instance_no = prepared_till_.count(replica_id) ? prepared_till_[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() {
-            std::unique_lock<std::recursive_mutex> lock(mtx_);
-            while(!cmds[replica_id][instance_no].isCreatedBefore(2000)) {
-              lock.unlock();
-              Coroutine::Sleep(100000);
-              lock.lock();
-            }
-            lock.unlock();
+            Coroutine::Sleep(2000000);
             PrepareTillCommitted(replica_id, instance_no);
             #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
@@ -107,11 +101,11 @@ void EpaxosServer::Setup() {
 ************************************/
 
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosRequest req = CreateEpaxosRequest(cmd, dkey);
   *replica_id = req.replica_id;
   *instance_no = req.instance_no;
   Log_debug("Received request in server: %d for dep_key: %s replica: %d instance: %d", site_id_, dkey.c_str(), req.replica_id, req.instance_no);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
   reqs.push_back(req);
 }
 
@@ -144,10 +138,10 @@ void EpaxosServer::PauseExecution(bool pause) {
 #endif
 
 EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey) {
+  int64_t leader_dep_instance = -1;
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   uint64_t instance_no = next_instance_no;
   next_instance_no = next_instance_no + 1;
-  int64_t leader_dep_instance = -1;
   if (dkey_deps[dkey].count(replica_id_)) {
     leader_dep_instance = dkey_deps[dkey][replica_id_];
   }
@@ -431,7 +425,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
                                uint64_t replica_id, 
                                uint64_t instance_no) {
   std::unique_lock<std::recursive_mutex> lock(mtx_);
-  Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);// Use the latest ballot
+  Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
     ballot = cmds[replica_id][instance_no].highest_seen;
   }
@@ -446,6 +440,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   lock.unlock();
+  Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Execute
   StartExecutionAsync(replica_id, instance_no);
   // Send async commit request to all
