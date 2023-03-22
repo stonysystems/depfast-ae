@@ -1,4 +1,7 @@
 #include "perf_test.h"
+#ifdef CPU_PROFILE
+#include <gperftools/profiler.h>
+#endif
 
 namespace janus {
 
