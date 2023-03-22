@@ -237,7 +237,7 @@ void ServerWorker::SetupCommo() {
   auto sp_job = std::dynamic_pointer_cast<Job>(sp_j);
   svr_poll_mgr_->add(sp_j);
 
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   // To keep thread alive for coroutine scheduling
   // TODO, figure out a better approach
   if (rep_sched_->site_id_ == 0) {

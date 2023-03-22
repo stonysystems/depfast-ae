@@ -16,7 +16,6 @@ class EpaxosTest {
  public:
   EpaxosTest(EpaxosTestConfig *config) : config_(config) {}
   int Run(void);
-  void Cleanup(void);
 
  private:
   // Pre-accept/Accept/Commit tests

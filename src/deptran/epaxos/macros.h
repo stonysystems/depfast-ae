@@ -63,7 +63,7 @@ typedef unordered_map<uint64_t, pair<uint64_t, bool_t>> unordered_map_uint64_pai
   void Handle##name(_ARGPAIRS(__VA_ARGS__), rrr::DeferredReply* defer); \
   void OnDisconnected##name(_ARGPAIRS(__VA_ARGS__))
 
-#ifdef EPAXOS_TEST_CORO
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 #define _RPC_COUNT() { \
     std::lock_guard<std::recursive_mutex> lock(rpc_mtx_); \
     rpc_count_++; \

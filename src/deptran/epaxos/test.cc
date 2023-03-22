@@ -37,10 +37,6 @@ int EpaxosTest::Run(void) {
   return 0;
 }
 
-void EpaxosTest::Cleanup(void) {
-  config_->Shutdown();
-}
-
 #define Init2(test_id, description) { \
         Init(test_id, description); \
         cmd = ((cmd / 100) + 1) * 100; \

@@ -58,15 +58,10 @@ int EpaxosPerfTest::Run(void) {
   ProfilerStop();
   #endif
 
-  Log_info("Time consumed: %f", tot_sec_ + ((float)tot_usec_) / 1000000);
-           
   Print("PERFORMANCE TESTS COMPLETED");
+  Print("Time consumed: %lf", tot_sec_ + ((float)tot_usec_) / 1000000);
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   return 0;
-}
-
-void EpaxosPerfTest::Cleanup(void) {
-  config_->Shutdown();
 }
 
 #endif

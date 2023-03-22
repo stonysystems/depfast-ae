@@ -61,16 +61,15 @@ Communicator *EpaxosFrame::CreateCommo(PollMgr *poll) {
       // Run tests
       verify(n_replicas_ == NSERVERS);
       auto testconfig = new EpaxosTestConfig(replicas_);
-      #ifdef EPAXOS_PERF_TEST_CORO
-      EpaxosPerfTest perf_test(testconfig);
-      perf_test.Run();
-      perf_test.Cleanup();
-      #endif
       #ifdef EPAXOS_TEST_CORO
       EpaxosTest test(testconfig);
       test.Run();
-      test.Cleanup();
       #endif
+      #ifdef EPAXOS_PERF_TEST_CORO
+      EpaxosPerfTest perf_test(testconfig);
+      perf_test.Run();
+      #endif
+      testconfig->Shutdown();
       // Turn off Reactor loop
       Reactor::GetReactor()->looping_ = false;
       return;

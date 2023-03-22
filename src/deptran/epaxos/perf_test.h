@@ -16,7 +16,6 @@ class EpaxosPerfTest {
  public:
   EpaxosPerfTest(EpaxosTestConfig *config) : config_(config) {}
   int Run(void);
-  void Cleanup(void);
 
 };
 
