@@ -29,6 +29,7 @@ string vector_to_string(vector<uint64_t> exec_orders) {
 EpaxosFrame **EpaxosTestConfig::replicas = nullptr;
 std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS];
 std::vector<int> EpaxosTestConfig::committed_cmds[NSERVERS];
+std::atomic<int> EpaxosTestConfig::committed_count[NSERVERS];
 uint64_t EpaxosTestConfig::rpc_count_last[NSERVERS];
 
 EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
@@ -37,6 +38,7 @@ EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
   for (int i = 0; i < NSERVERS; i++) {
     replicas[i]->svr_->rep_frame_ = replicas[i]->svr_->frame_;
     committed_cmds[i].push_back(-1);
+    committed_count[i] = 0;
     rpc_count_last[i] = 0;
     disconnected_[i] = false;
     slow_[i] = false;
@@ -51,6 +53,7 @@ void EpaxosTestConfig::SetLearnerAction(void) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       Log_debug("server %d committed value %d", i, command.tx_id_);
       committed_cmds[i].push_back(command.tx_id_);
+      committed_count[i]++;
     };
     replicas[i]->svr_->RegLearnerAction(commit_callbacks[i]);
   }
@@ -92,6 +95,10 @@ void EpaxosTestConfig::PauseExecution(bool pause) {
 
 vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
   return committed_cmds[svr];
+}
+
+int EpaxosTestConfig::GetExecutedCount(int svr) {
+  return committed_count[svr];
 }
 
 int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {

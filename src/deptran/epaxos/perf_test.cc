@@ -13,7 +13,9 @@ int EpaxosPerfTest::Run(void) {
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();
   int concurrent = Config::GetConfig()->get_concurrent_txn();
-  int tot_num = concurrent;
+  int duration = Config::GetConfig()->get_duration();
+  int tot_req_num_ = Config::GetConfig()->get_tot_req();
+  int tot_num = 0;
 
   #ifdef CPU_PROFILE
   char prof_file[1024];
@@ -35,6 +37,7 @@ int EpaxosPerfTest::Run(void) {
     }));
     svr++;
     cmd++;
+    tot_num++;
   }
   Log_info("waiting for submission threads.");
   for (auto& th : ths) {
@@ -43,16 +46,14 @@ int EpaxosPerfTest::Run(void) {
   while (1) {
     bool flag = true;
     for (int svr = 0; svr < NSERVERS; svr++) {
-      if (config_->GetExecutedCommands(svr).size() < tot_num) {
-        Log_info("svr: %d size: %d tot: %d", svr, config_->GetExecutedCommands(svr).size(), tot_num);
+      if (config_->GetExecutedCount(svr) < tot_num) {
         flag = false;
       }
     }
     if (flag) {
       break;
     }
-    Log_info("execution going.");
-    Coroutine::Sleep(10);
+    Coroutine::Sleep(1000);
   }
   Log_info("execution done.");
 

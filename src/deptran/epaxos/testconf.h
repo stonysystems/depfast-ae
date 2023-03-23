@@ -38,6 +38,7 @@ class EpaxosTestConfig {
   static EpaxosFrame **replicas;
   static std::function<void(Marshallable &)> commit_callbacks[NSERVERS];
   static std::vector<int> committed_cmds[NSERVERS];
+  static std::atomic<int> committed_count[NSERVERS];
   static uint64_t rpc_count_last[NSERVERS];
 
   // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
@@ -76,6 +77,9 @@ class EpaxosTestConfig {
 
   // Return all executed commands in the executed order
   vector<int> GetExecutedCommands(int svr);
+
+  // Return total number of executed commands
+  int GetExecutedCount(int svr);
 
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id, int n);
