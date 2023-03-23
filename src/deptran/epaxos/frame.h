@@ -12,14 +12,13 @@ class EpaxosFrame : public Frame {
  private:
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   static std::mutex epaxos_test_mutex_;
-  static std::shared_ptr<Coroutine> epaxos_test_coro_;
   static uint16_t n_replicas_;
-  static EpaxosFrame *replicas_[NSERVERS];
-  static uint16_t n_commo_;
-  static bool tests_done_;
   #endif
 
  public:
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  static EpaxosFrame *replicas_[NSERVERS];
+  #endif
   EpaxosCommo *commo_ = nullptr;
   EpaxosServer *svr_ = nullptr;
 

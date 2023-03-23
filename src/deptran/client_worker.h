@@ -71,7 +71,7 @@ class ClientWorker {
   ClientWorker() = delete;
   ~ClientWorker();
   // This is called from a different thread.
-  void Work();
+  virtual void Work();
   Coordinator* FindOrCreateCoordinator();
   void FailoverPreprocess(Coordinator* coo);
   void DispatchRequest(Coordinator *coo);

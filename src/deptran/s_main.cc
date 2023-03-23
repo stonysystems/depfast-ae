@@ -6,11 +6,12 @@
 #include "command_marshaler.h"
 #include "benchmark_control_rpc.h"
 #include "server_worker.h"
+#include "epaxos/client_worker.h"
 #include "../rrr/reactor/event.h"
 
 #ifdef CPU_PROFILE
-# include <gperftools/profiler.h>
-#endif // ifdef CPU_PROFILE
+#include <gperftools/profiler.h>
+#endif
 
 using namespace janus;
 
@@ -56,6 +57,15 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
 
   failover_triggers = new bool[client_sites.size()]() ;
   for (uint32_t client_id = 0; client_id < client_sites.size(); client_id++) {
+    #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+    ClientWorker* worker = new EpaxosClientWorker(client_id,
+                                                  client_sites[client_id],
+                                                  Config::GetConfig(),
+                                                  ccsi_g, nullptr, 
+                                                  &(failover_triggers[client_id]),
+                                                  &failover_server_quit,
+                                                  &failover_server_idx);
+    #else
     ClientWorker* worker = new ClientWorker(client_id,
                                             client_sites[client_id],
                                             Config::GetConfig(),
@@ -63,6 +73,7 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
                                             &(failover_triggers[client_id]),
                                             &failover_server_quit,
                                             &failover_server_idx);
+    #endif
     workers.push_back(worker);
     client_threads_g.push_back(std::thread(&ClientWorker::Work, worker));
     client_workers_g.push_back(std::unique_ptr<ClientWorker>(worker));
