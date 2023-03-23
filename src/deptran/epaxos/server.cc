@@ -6,7 +6,9 @@ namespace janus {
 
 EpaxosServer::EpaxosServer(Frame * frame) {
   frame_ = frame;
-  Log::set_level(Log::DEBUG); // <REMOVE_AFTER_TESTING>
+  #ifdef EPAXOS_TEST_CORO
+  Log::set_level(Log::DEBUG);
+  #endif
 }
 
 EpaxosServer::~EpaxosServer() {}
@@ -211,7 +213,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
                                    dkey, 
                                    seq, 
                                    deps);
-  ev->Wait(20000000);
+  ev->Wait(rpc_timeout);
   // Process pre-accept replies
   Log_debug("Started pre-accept reply processing for replica: %d instance: %d dep_key: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
@@ -362,7 +364,7 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd,
                                 dkey, 
                                 seq, 
                                 deps);
-  ev->Wait(20000000);
+  ev->Wait(rpc_timeout);
   // Process accept replies
   Log_debug("Started accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Fail if timeout/no-majority
@@ -557,7 +559,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
                                       deps);
   ev->VoteYes(self_reply);
   Log_debug("Added try-pre-accept self-reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  ev->Wait(20000000);
+  ev->Wait(rpc_timeout);
   // Process try-pre-accept replies
   Log_debug("Started try-pre-accept reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Fail if timeout
@@ -709,7 +711,7 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
                                 ballot.replica_id, 
                                 replica_id,
                                 instance_no);
-  ev->Wait(20000000);
+  ev->Wait(rpc_timeout);
   // Process prepare replies
   Log_debug("Started prepare reply processing for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (ev->status_ == Event::TIMEOUT || ev->No()) {
@@ -825,7 +827,7 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
   while (cmds[replica_id][instance_no].preparing) {
     lock.unlock();
     Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-    Coroutine::Sleep(100000);
+    Coroutine::Sleep(10000);
     lock.lock();
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED

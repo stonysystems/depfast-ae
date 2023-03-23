@@ -23,6 +23,7 @@ class EpaxosClientWorker : public ClientWorker {
       EpaxosPerfTest perf_test(testconfig);
       perf_test.Run();
       #endif
+      Coroutine::Sleep(10);
       testconfig->Shutdown();
       Reactor::GetReactor()->looping_ = false;
     });

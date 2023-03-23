@@ -16,6 +16,7 @@ int EpaxosPerfTest::Run(void) {
   int duration = Config::GetConfig()->get_duration();
   int tot_req_num_ = Config::GetConfig()->get_tot_req();
   int tot_num = 0;
+  Log_info("Perf test args - concurrent: %d duration: %d tot_req_num_: %d", concurrent, duration, tot_req_num_);
 
   #ifdef CPU_PROFILE
   char prof_file[1024];
@@ -53,7 +54,7 @@ int EpaxosPerfTest::Run(void) {
     if (flag) {
       break;
     }
-    Coroutine::Sleep(1000);
+    Coroutine::Sleep(100000);
   }
   Log_info("execution done.");
 

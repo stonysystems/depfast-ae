@@ -59,8 +59,6 @@ class EpaxosBallot {
 };
 
 class EpaxosCommand {
- private:
-  chrono::_V2::system_clock::time_point received_time;
  public:
   shared_ptr<Marshallable> cmd;
   string dkey;
@@ -76,7 +74,6 @@ class EpaxosCommand {
     dkey = NOOP_DKEY;
     state = EpaxosCommandState::NOT_STARTED;
     preparing = false;
-    received_time = std::chrono::system_clock::now();
   }
 
   EpaxosCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
@@ -87,11 +84,6 @@ class EpaxosCommand {
     this->highest_seen = highest_seen;
     this->state = state;
     this->preparing = false;
-    this->received_time = std::chrono::system_clock::now();
-  }
-
-  bool isCreatedBefore(int time_in_millis) {
-    return chrono::system_clock::now() - received_time > chrono::milliseconds{time_in_millis};
   }
 };
 
@@ -169,6 +161,11 @@ class EpaxosServer : public TxLogServer {
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
+  #endif
+  #ifdef EPAXOS_TEST_CORO
+  int rpc_timeout = 20000000;
+  #else
+  int rpc_timeout = 1000000;
   #endif
 
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);

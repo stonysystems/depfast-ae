@@ -116,7 +116,7 @@ int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
       return ne;
     }
     Coroutine::Sleep(100000);
-    Log_info("%d executed server for cmd: %d", ne, tx_id);
+    Log_debug("%d executed server for cmd: %d", ne, tx_id);
   }
   return ne;
 }
@@ -150,7 +150,7 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
     if (exec_orders[svr].size() > exec_orders[longest_svr].size()) {
       longest_svr = svr;
     }
-    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
+    Log_info("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
     verify(exec_orders[svr].size() > 0); // atleast some commands are executed
   }
   for (int svr = 0; svr < NSERVERS; svr++) {
@@ -246,9 +246,9 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
       return nc;
     }
     Coroutine::Sleep(100000);
-    Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
+    Log_debug("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   }
-  Log_info("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
+  Log_debug("%d committed server for replica: %d instance: %d", nc, replica_id, instance_no);
   return nc;
 }
 
@@ -272,9 +272,9 @@ int EpaxosTestConfig::NAccepted(uint64_t replica_id, uint64_t instance_no, int n
       return na;
     }
     Coroutine::Sleep(100000);
-    Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+    Log_debug("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   }
-  Log_info("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  Log_debug("%d accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   return na;
 }
 
@@ -298,9 +298,9 @@ int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, in
       return na;
     }
     Coroutine::Sleep(100000);
-    Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+    Log_debug("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   }
-  Log_info("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
+  Log_debug("%d pre-accepted servers for replica: %d instance: %d", na, replica_id, instance_no);
   return na;
 }
 

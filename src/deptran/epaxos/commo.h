@@ -6,7 +6,7 @@
 
 namespace janus {
 
-#define NSERVERS 3
+#define NSERVERS 7
 #define FAST_PATH_QUORUM ((NSERVERS/2)+(((NSERVERS/2)+1)/2))
 #define SLOW_PATH_QUORUM ((NSERVERS/2) + 1)
 
