@@ -76,7 +76,7 @@ class EpaxosCommand {
     preparing = false;
   }
 
-  EpaxosCommand(shared_ptr<Marshallable>& cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
+  EpaxosCommand(shared_ptr<Marshallable> cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
     this->cmd = cmd;
     this->dkey = dkey;
     this->seq = seq;
@@ -96,7 +96,7 @@ class EpaxosRequest {
   uint64_t instance_no;
   int64_t leader_dep_instance;
 
-  EpaxosRequest(shared_ptr<Marshallable>& cmd, 
+  EpaxosRequest(shared_ptr<Marshallable> cmd, 
                 string dkey, 
                 EpaxosBallot& ballot, 
                 uint64_t replica_id, 
@@ -168,29 +168,29 @@ class EpaxosServer : public TxLogServer {
   int rpc_timeout = 1000000;
   #endif
 
-  EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable>& cmd, string dkey);
-  bool StartPreAccept(shared_ptr<Marshallable>& cmd, 
+  EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable> cmd, string dkey);
+  bool StartPreAccept(shared_ptr<Marshallable> cmd, 
                       string dkey, 
                       EpaxosBallot ballot, 
                       uint64_t replica_id, 
                       uint64_t instance_no,
                       int64_t leader_dep_instance,
                       bool recovery);
-  bool StartAccept(shared_ptr<Marshallable>& cmd, 
+  bool StartAccept(shared_ptr<Marshallable> cmd, 
                    string dkey, 
                    EpaxosBallot ballot, 
                    uint64_t seq,
                    unordered_map<uint64_t, uint64_t> deps, 
                    uint64_t replica_id, 
                    uint64_t instance_no);
-  bool StartCommit(shared_ptr<Marshallable>& cmd, 
+  bool StartCommit(shared_ptr<Marshallable> cmd, 
                    string dkey, 
                    EpaxosBallot ballot, 
                    uint64_t seq,
                    unordered_map<uint64_t, uint64_t> deps, 
                    uint64_t replica_id, 
                    uint64_t instance_no);
-  bool StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
+  bool StartTryPreAccept(shared_ptr<Marshallable> cmd, 
                          string dkey, 
                          EpaxosBallot ballot, 
                          uint64_t seq,
@@ -206,7 +206,7 @@ class EpaxosServer : public TxLogServer {
   void StartExecution(uint64_t replica_id, uint64_t instance_no);
   void StartExecutionAsync(uint64_t replica_id, uint64_t instance_no);
 
-  void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
+  void FindTryPreAcceptConflict(shared_ptr<Marshallable> cmd, 
                                 string dkey, 
                                 uint64_t seq,
                                 unordered_map<uint64_t, uint64_t> deps, 
@@ -230,28 +230,28 @@ class EpaxosServer : public TxLogServer {
   /* RPC handlers */
 
  public:
-  EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
+  EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable> cmd, 
                                           string dkey, 
                                           EpaxosBallot ballot, 
                                           uint64_t seq, 
                                           unordered_map<uint64_t, uint64_t> deps, 
                                           uint64_t replica_id, 
                                           uint64_t instance_no);
-  EpaxosAcceptReply OnAcceptRequest(shared_ptr<Marshallable>& cmd_, 
+  EpaxosAcceptReply OnAcceptRequest(shared_ptr<Marshallable> cmd_, 
                                     string dkey, 
                                     EpaxosBallot ballot, 
                                     uint64_t seq, 
                                     unordered_map<uint64_t, uint64_t> deps, 
                                     uint64_t replica_id, 
                                     uint64_t instance_no);
-  void OnCommitRequest(shared_ptr<Marshallable>& cmd_, 
+  void OnCommitRequest(shared_ptr<Marshallable> cmd_, 
                        string dkey, 
                        EpaxosBallot ballot, 
                        uint64_t seq, 
                        unordered_map<uint64_t, uint64_t> deps, 
                        uint64_t replica_id, 
                        uint64_t instance_no);
-  EpaxosTryPreAcceptReply OnTryPreAcceptRequest(shared_ptr<Marshallable>& cmd_, 
+  EpaxosTryPreAcceptReply OnTryPreAcceptRequest(shared_ptr<Marshallable> cmd_, 
                                                 string dkey, 
                                                 EpaxosBallot ballot, 
                                                 uint64_t seq_, 
@@ -265,7 +265,7 @@ class EpaxosServer : public TxLogServer {
   /* Client request handlers */
 
 public:
-  void Start(shared_ptr<Marshallable>& cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+  void Start(shared_ptr<Marshallable> cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   void GetState(uint64_t replica_id, 
                 uint64_t instance_no, 
