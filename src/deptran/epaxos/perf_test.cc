@@ -12,10 +12,31 @@ int EpaxosPerfTest::Run(void) {
   Print("START PERFORMANCE TESTS");
   int concurrent = Config::GetConfig()->get_concurrent_txn();
   int tot_req_num = Config::GetConfig()->get_tot_req();
-  int conflicts = Config::GetConfig()->get_conflict_perc();
-  config_->SetRepeatedLearnerAction(conflicts, concurrent, tot_req_num);
+  int conflict_perc = Config::GetConfig()->get_conflict_perc();
+  int tot_executions = tot_req_num * NSERVERS;
+  config_->SetRepeatedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
+    return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
+      auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      if (submitted_count >= tot_req_num) {
+        if (config_->GetRequestCount(svr) == 0) {
+          finish_mtx_.lock();
+          finished_count++;
+          if (finished_count == NSERVERS) {
+            finish_cond_.notify_all();
+          }
+          finish_mtx_.unlock();
+        }
+        return;
+      };
+      if (config_->GetRequestCount(svr) >= concurrent) return;
+      int next_cmd = ++submitted_count;
+      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
+      uint64_t replica_id, instance_no;
+      config_->Start(svr, next_cmd, dkey, &replica_id, &instance_no);
+    });
+  });
   uint64_t start_rpc = config_->RpcTotal();
-  Log_info("Perf test args - concurrent: %d conflicts: %d tot_req_num: %d", concurrent, conflicts, tot_req_num);
+  Log_info("Perf test args - concurrent: %d conflicts: %d tot_req_num: %d", concurrent, conflict_perc, tot_req_num);
 
   #ifdef CPU_PROFILE
   char prof_file[1024];
@@ -24,17 +45,17 @@ int EpaxosPerfTest::Run(void) {
   #endif
   struct timeval t1, t2;
   gettimeofday(&t1, NULL);
-  EpaxosTestConfig *config_ = this->config_;
   vector<std::thread> ths;
   int svr = 0;
+  int cmd;
   string dkey;
   for (int i = 1; i <= concurrent; i++) {
     svr = svr % NSERVERS;
-    dkey = ((rand() % 100) < conflicts) ? "0" : to_string(i);
-    ths.push_back(std::thread([config_, i, dkey, conflicts, svr]() {
+    cmd = ++submitted_count;
+    dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
+    ths.push_back(std::thread([this, cmd, dkey, svr]() {
       uint64_t replica_id, instance_no;
-      config_->Start(svr, i, dkey, &replica_id, &instance_no);
-      Log_info("server %d submitted value %d", svr, i);
+      config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
     }));
     svr++;
   }
@@ -42,16 +63,8 @@ int EpaxosPerfTest::Run(void) {
   for (auto& th : ths) {
     th.join();
   }
-  while (1) {
-    int executed_num = 0;
-    for (int svr = 0; svr < NSERVERS; svr++) {
-      executed_num += config_->GetExecutedCount(svr);
-    }
-    if (executed_num >= tot_req_num) {
-      break;
-    }
-    Coroutine::Sleep(100000);
-  }
+  std::unique_lock<std::mutex> lk(finish_mtx_);
+  finish_cond_.wait(lk);
   Log_info("execution done.");
 
   gettimeofday(&t2, NULL);

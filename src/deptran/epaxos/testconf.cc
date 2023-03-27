@@ -27,9 +27,7 @@ string vector_to_string(vector<uint64_t> exec_orders) {
 }
 
 EpaxosFrame **EpaxosTestConfig::replicas = nullptr;
-std::function<void(Marshallable &)> EpaxosTestConfig::commit_callbacks[NSERVERS];
 std::vector<int> EpaxosTestConfig::committed_cmds[NSERVERS];
-std::atomic<int> EpaxosTestConfig::committed_count[NSERVERS];
 uint64_t EpaxosTestConfig::rpc_count_last[NSERVERS];
 
 EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
@@ -37,8 +35,6 @@ EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
   replicas = replicas_;
   for (int i = 0; i < NSERVERS; i++) {
     replicas[i]->svr_->rep_frame_ = replicas[i]->svr_->frame_;
-    committed_cmds[i].push_back(-1);
-    committed_count[i] = 0;
     rpc_count_last[i] = 0;
     disconnected_[i] = false;
     slow_[i] = false;
@@ -48,33 +44,18 @@ EpaxosTestConfig::EpaxosTestConfig(EpaxosFrame **replicas_) {
 
 void EpaxosTestConfig::SetLearnerAction(void) {
   for (int i = 0; i < NSERVERS; i++) {
-    commit_callbacks[i] = [i](Marshallable& cmd) {
+    replicas[i]->svr_->RegLearnerAction([i](Marshallable& cmd) {
       verify(cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT);
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       Log_debug("server %d committed value %d", i, command.tx_id_);
       committed_cmds[i].push_back(command.tx_id_);
-      committed_count[i]++;
-    };
-    replicas[i]->svr_->RegLearnerAction(commit_callbacks[i]);
+    });
   }
 }
 
-void EpaxosTestConfig::SetRepeatedLearnerAction(int conflict_perc, int concurrent, int tot_num) {
+void EpaxosTestConfig::SetRepeatedLearnerAction(function<function<void(Marshallable &)>(int)> callback) {
   for (int i = 0; i < NSERVERS; i++) {
-    commit_callbacks[i] = [i, this, conflict_perc, concurrent, tot_num](Marshallable& cmd) {
-      verify(cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT);
-      auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-      Log_debug("server %d committed value %d", i, command.tx_id_);
-      committed_count[i]++;
-      committed_by[command.tx_id_]++;
-      if (committed_count[i] >= tot_num) return;
-      if (committed_by[command.tx_id_] < NSERVERS) return;
-      int next_cmd = command.tx_id_ + concurrent;
-      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
-      uint64_t replica_id, instance_no;
-      this->Start(i, next_cmd, dkey, &replica_id, &instance_no);
-    };
-    replicas[i]->svr_->RegLearnerAction(commit_callbacks[i]);
+    replicas[i]->svr_->RegLearnerAction(callback(i));
   }
 }
 
@@ -87,7 +68,7 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id
   cmdptr->cmd_ = vpd_p;
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
-  Log_info("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
+  Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
   replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
 }
 
@@ -116,8 +97,8 @@ vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
   return committed_cmds[svr];
 }
 
-int EpaxosTestConfig::GetExecutedCount(int svr) {
-  return committed_count[svr];
+int EpaxosTestConfig::GetRequestCount(int svr) {
+  return replicas[svr]->svr_->GetRequestCount();
 }
 
 int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
@@ -169,7 +150,7 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
     if (exec_orders[svr].size() > exec_orders[longest_svr].size()) {
       longest_svr = svr;
     }
-    Log_info("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
+    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
     verify(exec_orders[svr].size() > 0); // atleast some commands are executed
   }
   for (int svr = 0; svr < NSERVERS; svr++) {

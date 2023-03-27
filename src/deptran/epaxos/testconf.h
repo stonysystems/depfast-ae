@@ -36,9 +36,7 @@ class EpaxosTestConfig {
 
  private:
   static EpaxosFrame **replicas;
-  static std::function<void(Marshallable &)> commit_callbacks[NSERVERS];
   static std::vector<int> committed_cmds[NSERVERS];
-  static std::atomic<int> committed_count[NSERVERS];
   static uint64_t rpc_count_last[NSERVERS];
 
   // disconnected_[svr] true if svr is disconnected by Disconnect()/Reconnect()
@@ -47,7 +45,6 @@ class EpaxosTestConfig {
   bool slow_[NSERVERS];
   // guards disconnected_ between Disconnect()/Reconnect() and netctlLoop
   std::mutex disconnect_mtx_;
-  std::unordered_map<int, int> committed_by;
 
  public:
   EpaxosTestConfig(EpaxosFrame **replicas);
@@ -57,7 +54,8 @@ class EpaxosTestConfig {
   // logged to this test's data structures.
   void SetLearnerAction(void);
 
-  void SetRepeatedLearnerAction(int conflict_perc, int concurrent, int tot_num);
+  // sets up learner action functions for the servers to the passed callback function
+  void SetRepeatedLearnerAction(function<function<void(Marshallable &)>(int)> callback);
 
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
@@ -81,8 +79,8 @@ class EpaxosTestConfig {
   // Return all executed commands in the executed order
   vector<int> GetExecutedCommands(int svr);
 
-  // Return total number of executed commands
-  int GetExecutedCount(int svr);
+  // Return number of in-process requests
+  int GetRequestCount(int svr);
 
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id, int n);
