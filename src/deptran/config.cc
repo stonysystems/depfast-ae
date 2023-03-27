@@ -67,11 +67,11 @@ int Config::CreateConfig(int argc, char **argv) {
   int server_or_client          = -1;
   int32_t tot_req_num           = 10000;
   int16_t n_concurrent          = 1;
-
+  int16_t conflict_perc         = 0;
   int c;
   optind = 1;
   string filename;
-  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:")) != -1) {
+  while ((c = getopt(argc, argv, "bc:d:f:h:i:k:p:P:r:s:S:t:H:T:n:o:")) != -1) {
     switch (c) {
       case 'b': // heartbeat to controller
         heart_beat = true;
@@ -169,6 +169,11 @@ int Config::CreateConfig(int argc, char **argv) {
         if ((end_ptr == NULL) || (*end_ptr != '\0'))
           return -4;
         break;
+      case 'o':
+        conflict_perc = strtoul(optarg, &end_ptr, 10);
+        if ((end_ptr == NULL) || (*end_ptr != '\0'))
+          return -4;
+        break;
       case '?':
         // TODO remove
         if ((optopt == 'c') ||
@@ -200,6 +205,7 @@ int Config::CreateConfig(int argc, char **argv) {
     ctrl_init,
     tot_req_num,
     n_concurrent,
+    conflict_perc,
     // ctrl_run,
     duration,
     heart_beat,
@@ -227,6 +233,7 @@ Config::Config(char           *ctrl_hostname,
                char           *ctrl_init,
                int32_t         tot_req_num,
                int16_t         n_concurrent,
+               int16_t         conflict_perc,
                uint32_t        duration,
                bool            heart_beat,
                single_server_t single_server,
@@ -254,6 +261,7 @@ Config::Config(char           *ctrl_hostname,
   logging_path_(logging_path),
   single_server_(single_server),
   n_concurrent_(n_concurrent),
+  conflict_perc_(conflict_perc),
   max_retry_(1),
   num_site_(0),
   start_coordinator_id_(0),
@@ -326,6 +334,10 @@ void Config::LoadYML(std::string &filename) {
   if (config["n_concurrent"]) {
     n_concurrent_ = config["n_concurrent"].as<uint16_t>();
     Log_info("# of concurrent requests: %d", n_concurrent_);
+  }
+  if (config["conflict_perc"]) {
+    conflict_perc_ = config["conflict_perc"].as<uint16_t>();
+    Log_info("Percentage of conflicting requests: %d", conflict_perc_);
   }
   if (config["n_parallel_dispatch"]) {
     n_parallel_dispatch_ = config["n_parallel_dispatch"].as<int32_t>();
@@ -989,6 +1001,10 @@ Config::single_server_t Config::get_single_server() {
 
 unsigned int Config::get_concurrent_txn() {
   return n_concurrent_;
+}
+
+unsigned int Config::get_conflict_perc() {
+  return conflict_perc_;
 }
 
 bool Config::get_batch_start() {

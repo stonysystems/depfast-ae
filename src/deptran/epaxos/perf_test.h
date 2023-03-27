@@ -11,7 +11,6 @@ class EpaxosPerfTest {
  private:
   EpaxosTestConfig *config_;
   uint64_t init_rpcs_;
-  uint64_t cmd = 0;
 
  public:
   EpaxosPerfTest(EpaxosTestConfig *config) : config_(config) {}

@@ -59,6 +59,25 @@ void EpaxosTestConfig::SetLearnerAction(void) {
   }
 }
 
+void EpaxosTestConfig::SetRepeatedLearnerAction(int conflict_perc, int concurrent, int tot_num) {
+  for (int i = 0; i < NSERVERS; i++) {
+    commit_callbacks[i] = [i, this, conflict_perc, concurrent, tot_num](Marshallable& cmd) {
+      verify(cmd.kind_ == MarshallDeputy::CMD_TPC_COMMIT);
+      auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      Log_debug("server %d committed value %d", i, command.tx_id_);
+      committed_count[i]++;
+      committed_by[command.tx_id_]++;
+      if (committed_count[i] >= tot_num) return;
+      if (committed_by[command.tx_id_] < NSERVERS) return;
+      int next_cmd = command.tx_id_ + concurrent;
+      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
+      uint64_t replica_id, instance_no;
+      this->Start(i, next_cmd, dkey, &replica_id, &instance_no);
+    };
+    replicas[i]->svr_->RegLearnerAction(commit_callbacks[i]);
+  }
+}
+
 void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_
   auto cmdptr = std::make_shared<TpcCommitCommand>();
@@ -68,7 +87,7 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id
   cmdptr->cmd_ = vpd_p;
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
-  Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
+  Log_info("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
   replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
 }
 

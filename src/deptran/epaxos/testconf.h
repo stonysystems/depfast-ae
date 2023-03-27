@@ -47,6 +47,7 @@ class EpaxosTestConfig {
   bool slow_[NSERVERS];
   // guards disconnected_ between Disconnect()/Reconnect() and netctlLoop
   std::mutex disconnect_mtx_;
+  std::unordered_map<int, int> committed_by;
 
  public:
   EpaxosTestConfig(EpaxosFrame **replicas);
@@ -55,6 +56,8 @@ class EpaxosTestConfig {
   // so that each committed command on each server is
   // logged to this test's data structures.
   void SetLearnerAction(void);
+
+  void SetRepeatedLearnerAction(int conflict_perc, int concurrent, int tot_num);
 
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);

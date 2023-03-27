@@ -10,13 +10,12 @@ namespace janus {
 
 int EpaxosPerfTest::Run(void) {
   Print("START PERFORMANCE TESTS");
-  config_->SetLearnerAction();
-  uint64_t start_rpc = config_->RpcTotal();
   int concurrent = Config::GetConfig()->get_concurrent_txn();
-  int duration = Config::GetConfig()->get_duration();
-  int tot_req_num_ = Config::GetConfig()->get_tot_req();
-  int tot_num = 0;
-  Log_info("Perf test args - concurrent: %d duration: %d tot_req_num_: %d", concurrent, duration, tot_req_num_);
+  int tot_req_num = Config::GetConfig()->get_tot_req();
+  int conflicts = Config::GetConfig()->get_conflict_perc();
+  config_->SetRepeatedLearnerAction(conflicts, concurrent, tot_req_num);
+  uint64_t start_rpc = config_->RpcTotal();
+  Log_info("Perf test args - concurrent: %d conflicts: %d tot_req_num: %d", concurrent, conflicts, tot_req_num);
 
   #ifdef CPU_PROFILE
   char prof_file[1024];
@@ -28,30 +27,27 @@ int EpaxosPerfTest::Run(void) {
   EpaxosTestConfig *config_ = this->config_;
   vector<std::thread> ths;
   int svr = 0;
-  int command;
-  for (int i = 0; i < concurrent; i++) {
+  string dkey;
+  for (int i = 1; i <= concurrent; i++) {
     svr = svr % NSERVERS;
-    command = cmd;
-    ths.push_back(std::thread([config_, command, i, svr]() {
+    dkey = ((rand() % 100) < conflicts) ? "0" : to_string(i);
+    ths.push_back(std::thread([config_, i, dkey, conflicts, svr]() {
       uint64_t replica_id, instance_no;
-      config_->Start(svr, command, to_string(command), &replica_id, &instance_no);
+      config_->Start(svr, i, dkey, &replica_id, &instance_no);
+      Log_info("server %d submitted value %d", svr, i);
     }));
     svr++;
-    cmd++;
-    tot_num++;
   }
   Log_info("waiting for submission threads.");
   for (auto& th : ths) {
     th.join();
   }
   while (1) {
-    bool flag = true;
+    int executed_num = 0;
     for (int svr = 0; svr < NSERVERS; svr++) {
-      if (config_->GetExecutedCount(svr) < tot_num) {
-        flag = false;
-      }
+      executed_num += config_->GetExecutedCount(svr);
     }
-    if (flag) {
+    if (executed_num >= tot_req_num) {
       break;
     }
     Coroutine::Sleep(100000);
