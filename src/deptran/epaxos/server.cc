@@ -6,9 +6,6 @@ namespace janus {
 
 EpaxosServer::EpaxosServer(Frame * frame) {
   frame_ = frame;
-  #ifdef EPAXOS_TEST_CORO
-  Log::set_level(Log::DEBUG);
-  #endif
 }
 
 EpaxosServer::~EpaxosServer() {}
@@ -1077,17 +1074,17 @@ void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable> cmd,
       if (dreplica_id == replica_id && dinstance_no == instance_no) break;
       // the instance cannot be a dependency for itself
       if (deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) continue;
-      EpaxosCommand e_cmd = cmds[replica_id][instance_no];
+      // command not seen by the server yet
+      EpaxosCommand e_cmd = cmds[dreplica_id][dinstance_no];
       if (e_cmd.state == EpaxosCommandState::NOT_STARTED) continue;
+      // command not interefering (case 6.i in proof)
       if (e_cmd.dkey != dkey) continue;
-      if (e_cmd.deps.count(replica_id) && e_cmd.deps[replica_id] >= instance_no) continue;
-      if (dinstance_no > deps[dreplica_id]
-          || (dinstance_no < deps[dreplica_id] 
-              && e_cmd.seq >= seq 
-              && (dreplica_id != replica_id
-                  || e_cmd.state == EpaxosCommandState::ACCEPTED
-                  || e_cmd.state == EpaxosCommandState::COMMITTED
-                  || e_cmd.state == EpaxosCommandState::EXECUTED))) {
+      // command depends on currently try-pre-accepting command, so not a conflict (case 6.ii in proof)
+      if (e_cmd.deps[replica_id] >= instance_no) continue;
+      if (dinstance_no > deps[dreplica_id]  // (case 6.iii.a in proof)
+          || (e_cmd.seq >= seq // (case 6.iii.b)
+              && !(dreplica_id == replica_id && (e_cmd.state == EpaxosCommandState::PRE_ACCEPTED // (case 6.iii.b exception)
+                                                 || e_cmd.state == EpaxosCommandState::PRE_ACCEPTED_EQ)))) {
         *conflict_replica_id = dreplica_id;
         *conflict_instance_no = dinstance_no;
         if (e_cmd.state == EpaxosCommandState::COMMITTED || e_cmd.state == EpaxosCommandState::EXECUTED) {
