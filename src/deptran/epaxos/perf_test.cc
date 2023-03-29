@@ -17,6 +17,12 @@ int EpaxosPerfTest::Run(void) {
   config_->SetRepeatedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
     return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      struct timeval t1;
+      gettimeofday(&t1, NULL);
+      pair<int, int> startime = start_time[command.tx_id_];
+      finish_mtx_.lock();
+      res_times.push_back(t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000);
+      finish_mtx_.unlock();
       if (submitted_count >= tot_req_num) {
         if (config_->GetRequestCount(svr) == 0) {
           finish_mtx_.lock();
@@ -32,6 +38,11 @@ int EpaxosPerfTest::Run(void) {
       int next_cmd = ++submitted_count;
       string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
       uint64_t replica_id, instance_no;
+      struct timeval t2;
+      gettimeofday(&t2, NULL);
+      finish_mtx_.lock();
+      start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
+      finish_mtx_.unlock();
       config_->Start(svr, next_cmd, dkey, &replica_id, &instance_no);
     });
   });
@@ -55,6 +66,11 @@ int EpaxosPerfTest::Run(void) {
     dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
     ths.push_back(std::thread([this, cmd, dkey, svr]() {
       uint64_t replica_id, instance_no;
+      struct timeval t;
+      gettimeofday(&t, NULL);
+      finish_mtx_.lock();
+      start_time[cmd] = {t.tv_sec, t.tv_usec};
+      finish_mtx_.unlock();
       config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
     }));
     svr++;
@@ -75,7 +91,13 @@ int EpaxosPerfTest::Run(void) {
   #endif
 
   Print("PERFORMANCE TESTS COMPLETED");
-  Print("Time consumed: %lf", tot_sec_ + ((float)tot_usec_) / 1000000);
+  Print("Time consumed - avg: %lf", tot_sec_ + ((float)tot_usec_) / 1000000);
+  PercentileCalculator pc(res_times);
+  Print("Time consumed - p50: %lf", pc.CalculateNthPercentile(50));
+  Print("Time consumed - p90: %lf", pc.CalculateNthPercentile(90));
+  Print("Time consumed - p99: %lf", pc.CalculateNthPercentile(99));
+  Print("Time consumed - max: %lf", pc.CalculateNthPercentile(100));
+  Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   return 0;
 }

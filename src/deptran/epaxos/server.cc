@@ -141,6 +141,10 @@ void EpaxosServer::PauseExecution(bool pause) {
 int EpaxosServer::GetRequestCount() {
   return inprocess_reqs;
 }
+
+pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
+  return make_pair(fast, slow);
+}
 #endif
 
 EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable> cmd, string dkey) {
@@ -229,10 +233,16 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable> cmd,
   }
   // Success via fast path quorum
   if (ev->FastPath() && ballot.isDefault() && AllDependenciesCommitted(ev->replies, deps)) {
+    #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+    fast++;
+    #endif
     Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
   }
   // Success via slow path quorum
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  slow++;
+  #endif
   Log_debug("Slowpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   auto merged_res = MergeAttributes(ev->replies);
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, merged_res.first, merged_res.second);

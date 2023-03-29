@@ -101,6 +101,16 @@ int EpaxosTestConfig::GetRequestCount(int svr) {
   return replicas[svr]->svr_->GetRequestCount();
 }
 
+double EpaxosTestConfig::GetFastpathPercent() {
+  double fast = 0, slow = 0;
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    pair<int, int> res = replicas[svr]->svr_->GetFastAndSlowPathCount();
+    fast += res.first;
+    slow += res.second;
+  }
+  return (fast*100)/(fast+slow);
+}
+
 int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
   auto start = chrono::steady_clock::now();
   int ne = 0;

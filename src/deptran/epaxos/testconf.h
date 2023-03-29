@@ -82,6 +82,9 @@ class EpaxosTestConfig {
   // Return number of in-process requests
   int GetRequestCount(int svr);
 
+  // Return number of in-process requests
+  double GetFastpathPercent();
+
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id, int n);
 
