@@ -19,9 +19,11 @@ int EpaxosPerfTest::Run(void) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       struct timeval t1;
       gettimeofday(&t1, NULL);
-      pair<int, int> startime = start_time[command.tx_id_];
       finish_mtx_.lock();
-      res_times.push_back(t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000);
+      pair<int, int> startime = start_time[command.tx_id_];
+      float time_taken = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
+      min_res_times[command.tx_id_] = min_res_times[command.tx_id_] ? min(time_taken, min_res_times[command.tx_id_]) : time_taken;
+      max_res_times[command.tx_id_] = max_res_times[command.tx_id_] ? max(time_taken, max_res_times[command.tx_id_]) : time_taken;
       finish_mtx_.unlock();
       if (submitted_count >= tot_req_num) {
         if (config_->GetRequestCount(svr) == 0) {
@@ -91,14 +93,20 @@ int EpaxosPerfTest::Run(void) {
   #endif
 
   Print("PERFORMANCE TESTS COMPLETED");
-  Print("Time consumed - avg: %lf", tot_sec_ + ((float)tot_usec_) / 1000000);
-  PercentileCalculator pc(res_times);
-  Print("Time consumed - p50: %lf", pc.CalculateNthPercentile(50));
-  Print("Time consumed - p90: %lf", pc.CalculateNthPercentile(90));
-  Print("Time consumed - p99: %lf", pc.CalculateNthPercentile(99));
-  Print("Time consumed - max: %lf", pc.CalculateNthPercentile(100));
   Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
+  ofstream out_file;
+  out_file.open("max_latencies.log");
+  for (pair<int, float> t : max_res_times) {
+    out_file << t.second << endl;
+  }
+  out_file.close();
+  out_file.open("min_latencies.log");
+  for (pair<int, float> t : min_res_times) {
+    out_file << t.second << endl;
+  }
+  out_file.close();
+  Print("Throughput: %lf", tot_req_num / (tot_sec_ + ((float)tot_usec_) / 1000000));
   return 0;
 }
 
