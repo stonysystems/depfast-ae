@@ -96,12 +96,12 @@ int EpaxosPerfTest::Run(void) {
   Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   ofstream out_file;
-  out_file.open("max_latencies.log");
+  out_file.open("./plots/epaxos/max_latencies.log");
   for (pair<int, float> t : max_res_times) {
     out_file << t.second << endl;
   }
   out_file.close();
-  out_file.open("min_latencies.log");
+  out_file.open("./plots/epaxos/min_latencies.log");
   for (pair<int, float> t : min_res_times) {
     out_file << t.second << endl;
   }

@@ -321,7 +321,7 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 
 	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
-  } else {
+  } else if (sp_coro->status_ == Coroutine::PAUSED || sp_coro->status_ == Coroutine::RECYCLED) {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }

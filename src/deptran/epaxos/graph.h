@@ -59,7 +59,9 @@ class EGraph {
     if (parents[v->id()].count(parent->id())) {
       return true;
     }
-    this->AddVertex(parent);
+    if (!vertices.count(parent->id())) {
+      this->AddVertex(parent);
+    }
     this->AddParentEdge(v, parent);
     return false;
   }
