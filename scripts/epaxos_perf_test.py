@@ -11,20 +11,21 @@ def calculate_latency_metrics(file, concurrent, req, conflict):
             if len(line.split(': ')) >= 1:
                 latencies.append(float(line.split(':')[0]))
     latencies.sort()
+    latencies = [ x * 1000 for x in latencies ]
 
-    print('Time consumed (ms) - p50:    ', round(np.percentile(latencies, 50), 6) * 1000)
-    print('Time consumed (ms) - p90:    ', round(np.percentile(latencies, 90), 6) * 1000)
-    print('Time consumed (ms) - p99:    ', round(np.percentile(latencies, 99), 6) * 1000)
-    print('Time consumed (ms) - p99.9:  ', round(np.percentile(latencies, 99.9), 6) * 1000)
-    print('Time consumed (ms) - p99.99: ', round(np.percentile(latencies, 99.99), 6) * 1000)
-    print('Time consumed (ms) - max:    ', round(latencies[-1], 6) * 1000)
-    print('Time consumed (ms) - avg:    ', round(np.average(latencies), 6) * 1000)
+    print('Time consumed (ms) - p50:    ', round(np.percentile(latencies, 50), 6))
+    print('Time consumed (ms) - p90:    ', round(np.percentile(latencies, 90), 6))
+    print('Time consumed (ms) - p99:    ', round(np.percentile(latencies, 99), 6))
+    print('Time consumed (ms) - p99.9:  ', round(np.percentile(latencies, 99.9), 6))
+    print('Time consumed (ms) - p99.99: ', round(np.percentile(latencies, 99.99), 6))
+    print('Time consumed (ms) - max:    ', round(latencies[-1], 6))
+    print('Time consumed (ms) - avg:    ', round(np.average(latencies), 6))
 
     # Plot histogram
     a = np.array(latencies)
     plt.clf()
     plt.hist(a, bins = 10000) 
-    plt.xlabel('Time (in sec)')
+    plt.xlabel('Time (in ms)')
     plt.ylabel('Count')
     plt.savefig('plots/epaxos/' + file + '_' + concurrent + '_' + req + '_' + conflict + '.png')
 
@@ -33,7 +34,7 @@ def calculate_latency_metrics(file, concurrent, req, conflict):
     percentiles = [np.percentile(latencies, p) for p in range(101)]
     plt.plot(percentiles)
     plt.xlabel('Percentile')
-    plt.ylabel('Time (in sec)')
+    plt.ylabel('Time (in ms)')
     plt.savefig('plots/epaxos/' + file + '_percentile' + '_' + concurrent + '_' + req + '_' + conflict + '.png') 
 
 def main(argv):
