@@ -1,4 +1,6 @@
 #include "perf_test.h"
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/post.hpp>
 #ifdef CPU_PROFILE
 #include <gperftools/profiler.h>
 #endif
@@ -58,36 +60,56 @@ int EpaxosPerfTest::Run(void) {
   #endif
   struct timeval t1, t2;
   gettimeofday(&t1, NULL);
-  vector<std::thread> ths;
   int svr = 0;
   int cmd;
   string dkey;
-  for (int i = 1; i <= concurrent; i++) {
-    svr = svr % NSERVERS;
-    cmd = ++submitted_count;
-    dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
-    ths.push_back(std::thread([this, cmd, dkey, svr]() {
-      uint64_t replica_id, instance_no;
-      struct timeval t;
-      gettimeofday(&t, NULL);
-      finish_mtx_.lock();
-      start_time[cmd] = {t.tv_sec, t.tv_usec};
-      finish_mtx_.unlock();
-      config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
-    }));
-    svr++;
-  }
-  Log_info("waiting for submission threads.");
-  for (auto& th : ths) {
-    th.join();
+  if (concurrent > 100) {
+    boost::asio::thread_pool pool(100);
+    for (int i = 1; i <= concurrent; i++) {
+      svr = svr % NSERVERS;
+      cmd = ++submitted_count;
+      dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
+      boost::asio::post(pool, [this, cmd, dkey, svr]() {
+        uint64_t replica_id, instance_no;
+        struct timeval t;
+        gettimeofday(&t, NULL);
+        finish_mtx_.lock();
+        start_time[cmd] = {t.tv_sec, t.tv_usec};
+        finish_mtx_.unlock();
+        config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
+      });
+      svr++;
+    }
+    Log_info("waiting for submission threads.");
+    pool.join();
+  } else {
+    vector<std::thread> ths;
+    for (int i = 1; i <= concurrent; i++) {
+      svr = svr % NSERVERS;
+      cmd = ++submitted_count;
+      dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
+      ths.push_back(std::thread([this, cmd, dkey, svr]() {
+        uint64_t replica_id, instance_no;
+        struct timeval t;
+        gettimeofday(&t, NULL);
+        finish_mtx_.lock();
+        start_time[cmd] = {t.tv_sec, t.tv_usec};
+        finish_mtx_.unlock();
+        config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
+      }));
+      svr++;
+    }
+    Log_info("waiting for submission threads.");
+    for (auto& th : ths) {
+      th.join();
+    }
   }
   std::unique_lock<std::mutex> lk(finish_mtx_);
   finish_cond_.wait(lk);
-  Log_info("execution done.");
-
   gettimeofday(&t2, NULL);
   int tot_sec_ = t2.tv_sec - t1.tv_sec;
   int tot_usec_ = t2.tv_usec - t1.tv_usec;
+  Log_info("execution done.");
   #ifdef CPU_PROFILE
   ProfilerStop();
   #endif

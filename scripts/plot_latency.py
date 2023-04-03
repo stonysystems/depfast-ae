@@ -12,12 +12,13 @@ def calculate_latency_metrics(file, concurrent, req, conflict):
                 latencies.append(float(line.split(':')[0]))
     latencies.sort()
 
-    print('Time consumed - p90:    ', round(np.percentile(latencies, 90), 6))
-    print('Time consumed - p99:    ', round(np.percentile(latencies, 99), 6))
-    print('Time consumed - p99.9:  ', round(np.percentile(latencies, 99.9), 6))
-    print('Time consumed - p99.99: ', round(np.percentile(latencies, 99.99), 6))
-    print('Time consumed - max:    ', round(latencies[-1], 6))
-    print('Time consumed - avg:    ', round(np.average(latencies), 6))
+    print('Time consumed (ms) - p50:    ', round(np.percentile(latencies, 50), 6) * 1000)
+    print('Time consumed (ms) - p90:    ', round(np.percentile(latencies, 90), 6) * 1000)
+    print('Time consumed (ms) - p99:    ', round(np.percentile(latencies, 99), 6) * 1000)
+    print('Time consumed (ms) - p99.9:  ', round(np.percentile(latencies, 99.9), 6) * 1000)
+    print('Time consumed (ms) - p99.99: ', round(np.percentile(latencies, 99.99), 6) * 1000)
+    print('Time consumed (ms) - max:    ', round(latencies[-1], 6) * 1000)
+    print('Time consumed (ms) - avg:    ', round(np.average(latencies), 6) * 1000)
 
     # Plot histogram
     a = np.array(latencies)
