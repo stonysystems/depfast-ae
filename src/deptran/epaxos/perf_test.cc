@@ -15,7 +15,6 @@ int EpaxosPerfTest::Run(void) {
   int concurrent = Config::GetConfig()->get_concurrent_txn();
   int tot_req_num = Config::GetConfig()->get_tot_req();
   int conflict_perc = Config::GetConfig()->get_conflict_perc();
-  int tot_executions = tot_req_num * NSERVERS;
   config_->SetRepeatedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
     return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
@@ -96,15 +95,16 @@ int EpaxosPerfTest::Run(void) {
   Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   ofstream out_file;
-  out_file.open("./plots/epaxos/max_latencies.log");
+  out_file.open("./plots/epaxos/max_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
   for (pair<int, float> t : max_res_times) {
-    out_file << t.second << endl;
+    out_file << t.second << ",";
   }
   out_file.close();
-  out_file.open("./plots/epaxos/min_latencies.log");
+  out_file.open("./plots/epaxos/min_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
   for (pair<int, float> t : min_res_times) {
-    out_file << t.second << endl;
+    out_file << t.second << ",";
   }
+  out_file << endl;
   out_file.close();
   Print("Throughput: %lf", tot_req_num / (tot_sec_ + ((float)tot_usec_) / 1000000));
   return 0;

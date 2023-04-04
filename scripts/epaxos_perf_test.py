@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys, getopt
 import subprocess
+import csv
 
 def calculate_latency_metrics(file, concurrent, req, conflict):
     latencies = []
-    with open('./plots/epaxos/' + file + '.log') as f:
-        for line in f:
-            if len(line.split(': ')) >= 1:
-                latencies.append(float(line.split(':')[0]))
+    with open('./plots/epaxos/' + file + '_' + concurrent + '_' + req + '_' + conflict + '.csv') as csvfile:
+        spamreader = csv.reader(csvfile, delimiter=',')
+        for row in spamreader:
+            for index in range(0, len(row)-1):
+                latencies.append(float(row[index]))
     latencies.sort()
     latencies = [ x * 1000 for x in latencies ]
 
