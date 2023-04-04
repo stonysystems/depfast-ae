@@ -7,7 +7,7 @@ import csv
 
 def calculate_latency_metrics(file, concurrent, req, conflict):
     latencies = []
-    with open('./plots/epaxos/' + file + '_' + concurrent + '_' + req + '_' + conflict + '.csv') as csvfile:
+    with open('./plots/epaxos/' + file + '_' + concurrent + '_' + req + '_' + conflict + '.csv', 'a') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',')
         for row in spamreader:
             for index in range(0, len(row)-1):
