@@ -24,6 +24,9 @@ class TxLogServer {
   unordered_map<txid_t, Executor *> executors_{};
 
   function<void(Marshallable &)> app_next_{};
+  #ifdef EPAXOS_PERF_TEST_CORO
+  function<void(Marshallable &)> commit_next_{};
+  #endif
   function<shared_ptr<vector<MultiValue>>(Marshallable&)> key_deps_{};
 
   shared_ptr<mdb::TxnMgr> mdb_txn_mgr_{};
@@ -156,6 +159,12 @@ class TxLogServer {
   void RegLearnerAction(function<void(Marshallable &)> learner_action) {
     app_next_ = learner_action;
   }
+  
+  #ifdef EPAXOS_PERF_TEST_CORO
+  void RegCommitLearnerAction(function<void(Marshallable &)> learner_action) {
+    commit_next_ = learner_action;
+  }
+  #endif
 
   /**
    * Check if the command is already committed

@@ -53,11 +53,19 @@ void EpaxosTestConfig::SetLearnerAction(void) {
   }
 }
 
-void EpaxosTestConfig::SetRepeatedLearnerAction(function<function<void(Marshallable &)>(int)> callback) {
+void EpaxosTestConfig::SetCustomLearnerAction(function<function<void(Marshallable &)>(int)> callback) {
   for (int i = 0; i < NSERVERS; i++) {
     replicas[i]->svr_->RegLearnerAction(callback(i));
   }
 }
+
+#ifdef EPAXOS_PERF_TEST_CORO
+void EpaxosTestConfig::SetCommittedLearnerAction(function<function<void(Marshallable &)>(int)> callback) {
+  for (int i = 0; i < NSERVERS; i++) {
+    replicas[i]->svr_->RegCommitLearnerAction(callback(i));
+  }
+}
+#endif
 
 void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_

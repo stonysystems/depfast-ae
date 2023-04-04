@@ -454,6 +454,11 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
     cmds[replica_id][instance_no].dkey = dkey;
     cmds[replica_id][instance_no].seq = seq;
     cmds[replica_id][instance_no].deps = deps;
+    #ifdef EPAXOS_PERF_TEST_CORO
+    if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
+      commit_next_(*cmd);
+    }
+    #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
     lock.unlock();
     // Execute
@@ -502,6 +507,9 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
+  #ifdef EPAXOS_PERF_TEST_CORO
+  commit_next_(*cmd);
+  #endif
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
   lock.unlock();

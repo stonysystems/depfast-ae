@@ -15,7 +15,7 @@ int EpaxosPerfTest::Run(void) {
   int concurrent = Config::GetConfig()->get_concurrent_txn();
   int tot_req_num = Config::GetConfig()->get_tot_req();
   int conflict_perc = Config::GetConfig()->get_conflict_perc();
-  config_->SetRepeatedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
+  config_->SetCustomLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
     return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       struct timeval t1;
@@ -45,8 +45,21 @@ int EpaxosPerfTest::Run(void) {
       gettimeofday(&t2, NULL);
       finish_mtx_.lock();
       start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
+      leader[next_cmd] = svr;
       finish_mtx_.unlock();
       config_->Start(svr, next_cmd, dkey, &replica_id, &instance_no);
+    });
+  });
+  config_->SetCommittedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
+    return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
+      auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      if (leader[command.tx_id_] != svr) return;
+      struct timeval t1;
+      gettimeofday(&t1, NULL);
+      pair<int, int> startime = start_time[command.tx_id_];
+      // float time_taken = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
+      commit_res_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
+      // commit_res_times[command.tx_id_] = commit_res_times[command.tx_id_] ? min(time_taken, commit_res_times[command.tx_id_]) : time_taken;
     });
   });
   uint64_t start_rpc = config_->RpcTotal();
@@ -74,6 +87,7 @@ int EpaxosPerfTest::Run(void) {
       gettimeofday(&t, NULL);
       finish_mtx_.lock();
       start_time[cmd] = {t.tv_sec, t.tv_usec};
+      leader[cmd] = svr;
       finish_mtx_.unlock();
       config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
     });
@@ -102,6 +116,12 @@ int EpaxosPerfTest::Run(void) {
   out_file.close();
   out_file.open("./plots/epaxos/min_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
   for (pair<int, float> t : min_res_times) {
+    out_file << t.second << ",";
+  }
+  out_file << endl;
+  out_file.close();
+  out_file.open("./plots/epaxos/commit_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
+  for (pair<int, float> t : commit_res_times) {
     out_file << t.second << ",";
   }
   out_file << endl;

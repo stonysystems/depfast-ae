@@ -55,7 +55,12 @@ class EpaxosTestConfig {
   void SetLearnerAction(void);
 
   // sets up learner action functions for the servers to the passed callback function
-  void SetRepeatedLearnerAction(function<function<void(Marshallable &)>(int)> callback);
+  void SetCustomLearnerAction(function<function<void(Marshallable &)>(int)> callback);
+
+  #ifdef EPAXOS_PERF_TEST_CORO
+  // sets up commit learner action functions for the servers to the passed callback function
+  void SetCommittedLearnerAction(function<function<void(Marshallable &)>(int)> callback);
+  #endif
 
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);

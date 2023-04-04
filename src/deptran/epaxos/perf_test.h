@@ -18,6 +18,8 @@ class EpaxosPerfTest {
   unordered_map<int, pair<int, int>> start_time;
   unordered_map<int, float> min_res_times;
   unordered_map<int, float> max_res_times;
+  unordered_map<int, float> commit_res_times;
+  unordered_map<int, int> leader;
 
  public:
   EpaxosPerfTest(EpaxosTestConfig *config) : config_(config) {}
