@@ -32,6 +32,7 @@ void EpaxosServer::Setup() {
       }
       EpaxosRequest req = reqs.front();
       reqs.pop_front();
+      lock.unlock();
       int64_t leader_dep_instance = -1;
       uint64_t replica_id = replica_id_;
       uint64_t instance_no = next_instance_no;
@@ -40,7 +41,6 @@ void EpaxosServer::Setup() {
         leader_dep_instance = dkey_deps[req.dkey][replica_id_];
       }
       dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
-      lock.unlock();
       EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
       #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
       SetInstance(req.cmd, replica_id, instance_no);
@@ -184,7 +184,6 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable> cmd,
                                   uint64_t instance_no,
                                   int64_t leader_dep_instance,
                                   bool recovery) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started pre-accept for request for replica: %d instance: %d dkey: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
   // Reject old message - we have moved on
@@ -220,7 +219,6 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable> cmd,
     dkey_deps[dkey][replica_id] = max(dkey_deps[dkey][replica_id], instance_no);
   }
   received_till[replica_id] = max(received_till[replica_id], instance_no);
-  lock.unlock();
   // Send pre-accept requests
   auto ev = commo()->SendPreAccept(site_id_, 
                                    partition_id_, 
@@ -269,7 +267,6 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable> c
                                                       unordered_map<uint64_t, uint64_t> deps, 
                                                       uint64_t replica_id, 
                                                       uint64_t instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received pre-accept request for replica: %d instance: %d dkey: %s with ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, replica_id_);
   EpaxosPreAcceptStatus status = EpaxosPreAcceptStatus::IDENTICAL;
@@ -362,7 +359,6 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable> cmd,
                                unordered_map<uint64_t, uint64_t> deps, 
                                uint64_t replica_id, 
                                uint64_t instance_no) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started accept request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject old message - we have moved on
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
@@ -378,7 +374,6 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable> cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::ACCEPTED;
-  lock.unlock();
   // Send accept requests
   auto ev = commo()->SendAccept(site_id_, 
                                 partition_id_, 
@@ -411,7 +406,6 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable> cmd,
                                                 unordered_map<uint64_t, uint64_t> deps, 
                                                 uint64_t replica_id, 
                                                 uint64_t instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received accept request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject older ballots
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
@@ -453,7 +447,6 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
                                unordered_map<uint64_t, uint64_t> deps, 
                                uint64_t replica_id, 
                                uint64_t instance_no) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
     ballot = cmds[replica_id][instance_no].highest_seen;
@@ -473,11 +466,8 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
     }
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
-    lock.unlock();
     // Execute
     StartExecutionAsync(replica_id, instance_no);
-  } else {
-    lock.unlock();
   }
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
@@ -502,7 +492,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
                                    unordered_map<uint64_t, uint64_t> deps, 
                                    uint64_t replica_id, 
                                    uint64_t instance_no) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Received commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Use the latest ballot
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
@@ -525,7 +514,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
   #endif
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
-  lock.unlock();
   // Execute
   StartExecutionAsync(replica_id, instance_no);
 }
@@ -542,7 +530,6 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable> cmd,
                                      uint64_t instance_no,
                                      int64_t leader_dep_instance,
                                      unordered_set<siteid_t> preaccepted_sites) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Started try-pre-accept for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject old message - we have moved on
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED
@@ -562,7 +549,6 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable> cmd,
     FindTryPreAcceptConflict(cmd, dkey, seq, deps, replica_id, instance_no, &conflict_state, &conflict_replica_id, &conflict_instance_no);
     // committed conflict
     if (conflict_state == EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT) {
-      lock.unlock();
       return StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, true);
     } 
     // Pre-accept command
@@ -581,7 +567,6 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable> cmd,
       Log_debug("New leader has conflict in try-pre-accept for replica: %d instance: %d by replica: %d conflicted by replica: %d instance: %d", replica_id, instance_no, replica_id_, conflict_replica_id, conflict_instance_no);
     }
   }
-  lock.unlock();
   // Send try-pre-accept requests
   auto ev = commo()->SendTryPreAccept(site_id_, 
                                       partition_id_,
@@ -656,7 +641,6 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
                                                             unordered_map<uint64_t, uint64_t> deps, 
                                                             uint64_t replica_id, 
                                                             uint64_t instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received try-pre-accept request for replica: %d instance: %d dkey: %s with ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, replica_id_);
   // Reject older ballots
@@ -715,7 +699,6 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
 ************************************/
 
 bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     return true;
@@ -740,7 +723,6 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   ballot.ballot_no = max(ballot.ballot_no, cmds[replica_id][instance_no].highest_seen.ballot_no) + 1;
   cmds[replica_id][instance_no].highest_seen = ballot;
   Log_debug("Started prepare for replica: %d instance: %d by replica: %d for ballot: %d", replica_id, instance_no, replica_id_, ballot.ballot_no);
-  lock.unlock();
   // Send prepare requests
   auto ev = commo()->SendPrepare(site_id_, 
                                 partition_id_, 
@@ -831,7 +813,6 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
 
 EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received prepare request for replica: %d instance: %d in replica: %d for ballot: %d from new leader: %d", replica_id, instance_no, replica_id_, ballot.ballot_no, ballot.replica_id);
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   EpaxosPrepareReply reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
   // Reject older ballots
@@ -860,20 +841,16 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
 
 void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
   // Wait till concurrent prepare succeeds
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
   while (cmds[replica_id][instance_no].preparing) {
-    lock.unlock();
     Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
     Coroutine::Sleep(10000);
-    lock.lock();
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     return;
   }
   cmds[replica_id][instance_no].preparing = true;
-  lock.unlock();
   // Repeat till prepare succeeds
   bool committed = StartPrepare(replica_id, instance_no);
   while (!committed) {
@@ -881,7 +858,6 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
     committed = StartPrepare(replica_id, instance_no);
   }
   // Mark preparing
-  lock.lock();
   cmds[replica_id][instance_no].preparing = false;
 }
 
@@ -890,13 +866,10 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
 ************************************/
 
 int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
       && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    lock.unlock();
     PrepareTillCommitted(replica_id, instance_no);
-    lock.lock();
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     return 1;
@@ -911,7 +884,6 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
   }
   auto deps = child->cmd->deps;
   string dkey = child->cmd->dkey;
-  lock.unlock();
 
   for (auto itr : deps) {
     uint64_t dreplica_id = itr.first;
@@ -920,17 +892,13 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
     if (status == 0) {
       int64_t prev_instance_no = dinstance_no - 1;
       while (prev_instance_no >= 0) {
-        lock.lock();
         string dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
-        lock.unlock();
         if (dep_dkey != NOOP_DKEY && dep_dkey != dkey) {
           prev_instance_no--;
           continue;
         }
         PrepareTillCommitted(dreplica_id, prev_instance_no);
-        lock.lock();
         dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
-        lock.unlock();
         if (dep_dkey == dkey) {
           break;
         }
@@ -941,10 +909,8 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
       dinstance_no = prev_instance_no;
     }
     if (status == 1) continue;
-    lock.lock();
     shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
     graph->FindOrCreateParentEdge(child, parent);
-    lock.unlock();
   }
   return 2;
 }
@@ -955,23 +921,18 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   // Stop execution of next command of same dkey
   std::unique_lock<std::recursive_mutex> lock(mtx_);
   #ifdef EPAXOS_TEST_CORO
-  if (pause_execution)  return;
+  if (pause_execution) return;
   #endif
-  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
-    return;
-  }
+  lock.unlock();
+  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   // Stop execution of next command of same dkey
   while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0) {
-    lock.unlock();
     Coroutine::Sleep(10000);
-    lock.lock();
   }
   in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
-  lock.unlock();
   // Execute
   EpaxosGraph graph = EpaxosGraph();
   CreateEpaxosGraph(replica_id, instance_no, &graph);
-  lock.lock();
   auto sorted_vertices = graph.GetSortedVertices();
   for (auto vertex : sorted_vertices) {
     if (vertex->cmd->state != EpaxosCommandState::EXECUTED) {
@@ -1006,7 +967,6 @@ void EpaxosServer::StartExecutionAsync(uint64_t replica_id, uint64_t instance_no
 
 template<class ClassT>
 void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   EpaxosBallot highest_seen_ballot = cmds[replica_id][instance_no].highest_seen;
   for (auto reply : replies) {
     EpaxosBallot ballot(reply.epoch, reply.ballot_no, reply.replica_id);
@@ -1037,7 +997,6 @@ bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replie
   for (auto itr : deps) {
     uint64_t replica_id = itr.first;
     uint64_t instance_no = itr.second;
-    std::unique_lock<std::recursive_mutex> lock(mtx_);
     if(cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED 
        || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
       committed_deps.insert(replica_id);
@@ -1065,7 +1024,6 @@ void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,
                                             uint64_t instance_no, 
                                             uint64_t seq, 
                                             unordered_map<uint64_t, uint64_t> deps) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return;
@@ -1089,7 +1047,6 @@ void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable> cmd,
                                             EpaxosTryPreAcceptStatus *conflict_state,
                                             uint64_t *conflict_replica_id, 
                                             uint64_t *conflict_instance_no) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   *conflict_replica_id = 0;
   *conflict_instance_no = 0;
   *conflict_state = EpaxosTryPreAcceptStatus::NO_CONFLICT;

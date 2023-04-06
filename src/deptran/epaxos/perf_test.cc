@@ -53,10 +53,10 @@ int EpaxosPerfTest::Run(void) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       finish_mtx_.lock();
-      int cmd_leader = leader[command.tx_id_]
+      int cmd_leader = leader[command.tx_id_];
       pair<int, int> startime = start_time[command.tx_id_];
       finish_mtx_.unlock();
-      if (cmd_leader!= svr) return;
+      if (cmd_leader != svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
       commit_res_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
