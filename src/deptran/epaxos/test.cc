@@ -303,7 +303,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   for (int i=0; i<NSERVERS; i++) {
     config_->Disconnect(i);
     dependent_cmds.insert(cmd);
-    config_->Start(i, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(i, cmd, dkey);
+    config_->GetInstance(i, cmd, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
     Assert2(np == 1, "unexpected number of pre-accepted servers");
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -326,7 +327,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
     deps[i] = init_deps[i];
   }
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   for (int i = 0; i < NSERVERS/2; i++) {
     config_->Reconnect(i);
@@ -342,7 +344,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
     deps[i] = init_deps[i];
   }
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   for (int i = CMD_LEADER + 1; i < NSERVERS; i++) {
     config_->Reconnect(i);
@@ -352,7 +355,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   seq = 4;
   deps[CMD_LEADER] = instance_no;
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
 
 
@@ -363,7 +367,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   for (int i=0; i<NSERVERS; i++) {
     config_->Disconnect(i);
     dependent_cmds.insert(cmd);
-    config_->Start(i, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(i, cmd, dkey);
+    config_->GetInstance(i, cmd, &replica_id, &instance_no);
     auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
     Assert2(np == 1, "unexpected number of pre-accepted servers");
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -384,7 +389,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
     deps[i] = init_deps[i];
   }
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps);
   for (int i = 0; i < NSERVERS/2; i++) {
     config_->Reconnect(i);
@@ -400,7 +406,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   }
   deps[CMD_LEADER] = instance_no;
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER - 1, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER - 1, cmd, dkey);
+  config_->GetInstance(CMD_LEADER - 1, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, SLOW_PATH_QUORUM, false, dkey, seq, deps)
   for (int i = CMD_LEADER + 1; i < NSERVERS; i++) {
     config_->Reconnect(i);
@@ -410,7 +417,8 @@ int EpaxosTest::testNonIdenticalAttrsAgree(void) {
   seq = 8;
   deps[CMD_LEADER - 1] = instance_no;
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER - 2, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER - 2, cmd, dkey);
+  config_->GetInstance(CMD_LEADER - 2, cmd, &replica_id, &instance_no);
   AssertNCommittedAndVerifyAttrs(replica_id, instance_no, NSERVERS, false, dkey, seq, deps);
 
   /*********** Execution order ***********/
@@ -437,7 +445,8 @@ int EpaxosTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect(i);
   }
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   auto nc = config_->NCommitted(replica_id, instance_no, FAST_PATH_QUORUM);
   AssertValidCommitStatus(replica_id, instance_no, nc);
   Assert2(nc == FAST_PATH_QUORUM, "unexpected number of committed servers");
@@ -457,7 +466,8 @@ int EpaxosTest::testPrepareCommittedCommandAgree(void) {
     config_->Disconnect(i);
   }
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   nc = config_->NCommitted(replica_id, instance_no, SLOW_PATH_QUORUM);
   AssertValidCommitStatus(replica_id, instance_no, nc);
   Assert2(nc == SLOW_PATH_QUORUM, "unexpected number of committed servers");
@@ -479,12 +489,13 @@ int EpaxosTest::testPrepareCommittedCommandAgree(void) {
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
     AssertValidCommitStatus(replica_id, instance_no, nc);
     Assert2(nc <= SLOW_PATH_QUORUM, "unexpected number of committed servers");
@@ -524,12 +535,13 @@ int EpaxosTest::testPrepareCommittedCommandAgree(void) {
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - FAST_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
     AssertValidCommitStatus(replica_id, instance_no, nc);
     Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of committed servers");
@@ -562,12 +574,13 @@ int EpaxosTest::testPrepareCommittedCommandAgree(void) {
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - FAST_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
     AssertValidCommitStatus(replica_id, instance_no, nc);
     Assert2(nc <= FAST_PATH_QUORUM, "unexpected number of committed servers");
@@ -625,12 +638,13 @@ int EpaxosTest::testPrepareAcceptedCommandAgree(void) {
   // Repeat till only 1 server (leader) have accepted the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
@@ -673,12 +687,13 @@ int EpaxosTest::testPrepareAcceptedCommandAgree(void) {
   // Repeat till only 1 server (leader) have accepted the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
@@ -713,12 +728,13 @@ int EpaxosTest::testPrepareAcceptedCommandAgree(void) {
   // Repeat till only 1 server (leader) have committed the command
   while (true) {
     dependent_cmds.insert(cmd);
-    config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+    config_->Start(CMD_LEADER, cmd, dkey);
     Coroutine::Sleep(time_to_sleep);
     for (int i = NSERVERS - SLOW_PATH_QUORUM + 1; i < NSERVERS; i++) {
       config_->Disconnect(i);
     }
     config_->Disconnect(CMD_LEADER);
+    config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
     auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
     Assert2(na <= SLOW_PATH_QUORUM, "unexpected number of accepted servers");
     auto nc = config_->NCommitted(replica_id, instance_no, NSERVERS);
@@ -774,7 +790,8 @@ int EpaxosTest::testPreparePreAcceptedCommandAgree(void) {
   config_->Disconnect(CMD_LEADER);
   // Start agreement in leader - will not replicate as leader is disconnected
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 1, "unexpected number of pre-accepted servers");
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -805,7 +822,8 @@ int EpaxosTest::testPreparePreAcceptedCommandAgree(void) {
   }
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 2, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -838,7 +856,8 @@ int EpaxosTest::testPreparePreAcceptedCommandAgree(void) {
   }
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == X+1, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -870,7 +889,8 @@ int EpaxosTest::testPreparePreAcceptedCommandAgree(void) {
   }
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
   dependent_cmds.insert(cmd);
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == X+1, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -915,7 +935,8 @@ int EpaxosTest::testPrepareNoopCommandAgree(void) {
   // Disconnect leader
   config_->Disconnect(CMD_LEADER);
   // Start agreement in leader - will not replicate as leader is disconnected
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   auto np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 1, "unexpected number of pre-accepted servers");
   auto na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -939,7 +960,8 @@ int EpaxosTest::testPrepareNoopCommandAgree(void) {
     config_->Disconnect((CMD_LEADER + i) % NSERVERS);
   }
   // Start agreement in leader - will replicate to only 1 replica as others are disconnected
-  config_->Start(CMD_LEADER, cmd, dkey, &replica_id, &instance_no);
+  config_->Start(CMD_LEADER, cmd, dkey);
+  config_->GetInstance(CMD_LEADER, cmd, &replica_id, &instance_no);
   np = config_->NPreAccepted(replica_id, instance_no, NSERVERS);
   Assert2(np == 2, "unexpected number of pre-accepted servers");
   na = config_->NAccepted(replica_id, instance_no, NSERVERS);
@@ -983,7 +1005,8 @@ class CAArgs {
 static void *doConcurrentAgreement(void *args) {
   CAArgs *caargs = (CAArgs *)args;
   uint64_t replica_id, instance_no;
-  caargs->config->Start(caargs->svr, caargs->cmd, caargs->dkey, &replica_id, &instance_no);
+  caargs->config->Start(caargs->svr, caargs->cmd, caargs->dkey);
+  caargs->config->GetInstance(caargs->svr, caargs->cmd, &replica_id, &instance_no);
   std::lock_guard<std::mutex> lock(*(caargs->mtx));
   caargs->retvals->push_back(make_pair(replica_id, instance_no));
   return nullptr;

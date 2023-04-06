@@ -67,7 +67,7 @@ void EpaxosTestConfig::SetCommittedLearnerAction(function<function<void(Marshall
 }
 #endif
 
-void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
+void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_
   auto cmdptr = std::make_shared<TpcCommitCommand>();
   auto vpd_p = std::make_shared<VecPieceData>();
@@ -77,7 +77,17 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey, uint64_t *replica_id
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  replicas[svr]->svr_->Start(cmdptr_m, dkey, replica_id, instance_no);
+  replicas[svr]->svr_->Start(cmdptr_m, dkey);
+}
+
+void EpaxosTestConfig::GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no) {
+  auto res = replicas[svr]->svr_->GetInstance(cmd);
+  while (res.first == -1) {
+    usleep(10000);
+    res = replicas[svr]->svr_->GetInstance(cmd);
+  }
+  *replica_id = res.first;
+  *instance_no = res.second;
 }
 
 void EpaxosTestConfig::GetState(int svr, 
@@ -340,7 +350,8 @@ int EpaxosTestConfig::DoAgreement(int cmd,
       // skip disconnected servers
       if (replicas[i]->svr_->IsDisconnected())
         continue;
-      Start(i, cmd, dkey, &replica_id, &instance_no);
+      Start(i, cmd, dkey);
+      GetInstance(i, cmd, &replica_id, &instance_no);
       Log_debug("starting cmd ldr=%d cmd=%d", replicas[i]->svr_->loc_id_, cmd); // TODO: Print instance and ballot
       break;
     }

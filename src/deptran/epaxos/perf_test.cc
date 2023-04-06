@@ -40,26 +40,26 @@ int EpaxosPerfTest::Run(void) {
       if (config_->GetRequestCount(svr) >= concurrent) return;
       int next_cmd = ++submitted_count;
       string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
-      uint64_t replica_id, instance_no;
       struct timeval t2;
       gettimeofday(&t2, NULL);
       finish_mtx_.lock();
       start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
       leader[next_cmd] = svr;
       finish_mtx_.unlock();
-      config_->Start(svr, next_cmd, dkey, &replica_id, &instance_no);
+      config_->Start(svr, next_cmd, dkey);
     });
   });
-  config_->SetCommittedLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
-    return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
+  config_->SetCommittedLearnerAction([this](int svr) {
+    return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-      if (leader[command.tx_id_] != svr) return;
+      finish_mtx_.lock();
+      int cmd_leader = leader[command.tx_id_]
+      pair<int, int> startime = start_time[command.tx_id_];
+      finish_mtx_.unlock();
+      if (cmd_leader!= svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
-      pair<int, int> startime = start_time[command.tx_id_];
-      // float time_taken = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       commit_res_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
-      // commit_res_times[command.tx_id_] = commit_res_times[command.tx_id_] ? min(time_taken, commit_res_times[command.tx_id_]) : time_taken;
     });
   });
   uint64_t start_rpc = config_->RpcTotal();
@@ -82,14 +82,13 @@ int EpaxosPerfTest::Run(void) {
     cmd = ++submitted_count;
     dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
     boost::asio::post(pool, [this, cmd, dkey, svr]() {
-      uint64_t replica_id, instance_no;
       struct timeval t;
       gettimeofday(&t, NULL);
       finish_mtx_.lock();
       start_time[cmd] = {t.tv_sec, t.tv_usec};
       leader[cmd] = svr;
       finish_mtx_.unlock();
-      config_->Start(svr, cmd, dkey, &replica_id, &instance_no);
+      config_->Start(svr, cmd, dkey);
     });
     svr++;
   }

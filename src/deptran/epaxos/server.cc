@@ -1,5 +1,8 @@
 #include "server.h"
 #include "frame.h"
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+#include "../classic/tpc_command.h"
+#endif
 
 
 namespace janus {
@@ -25,14 +28,26 @@ void EpaxosServer::Setup() {
       if (reqs.size() == 0) {
         lock.unlock();
         Coroutine::Sleep(1000);
-      } else {
-        EpaxosRequest req = reqs.front();
-        reqs.pop_front();
-        lock.unlock();
-        Coroutine::CreateRun([this, &req](){
-          StartPreAccept(req.cmd, req.dkey, req.ballot, req.replica_id, req.instance_no, req.leader_dep_instance, false);
-        });
+        continue;
       }
+      EpaxosRequest req = reqs.front();
+      reqs.pop_front();
+      int64_t leader_dep_instance = -1;
+      uint64_t replica_id = replica_id_;
+      uint64_t instance_no = next_instance_no;
+      next_instance_no = next_instance_no + 1;
+      if (dkey_deps[req.dkey].count(replica_id_)) {
+        leader_dep_instance = dkey_deps[req.dkey][replica_id_];
+      }
+      dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
+      lock.unlock();
+      EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
+      #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+      SetInstance(req.cmd, replica_id, instance_no);
+      #endif
+      Coroutine::CreateRun([this, &req, ballot, replica_id, instance_no, leader_dep_instance](){
+        StartPreAccept(req.cmd, req.dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+      });
     }
   });
 
@@ -81,15 +96,15 @@ void EpaxosServer::Setup() {
       if (prepare_reqs.size() == 0) {
         lock.unlock();
         Coroutine::Sleep(10000);
-      } else {
-        auto req = prepare_reqs.front();
-        prepare_reqs.pop_front();
-        lock.unlock();
-        Coroutine::CreateRun([this, &req](){
-          PrepareTillCommitted(req.first, req.second);
-          StartExecution(req.first, req.second);
-        });
+        continue;
       }
+      auto req = prepare_reqs.front();
+      prepare_reqs.pop_front();
+      lock.unlock();
+      Coroutine::CreateRun([this, &req](){
+        PrepareTillCommitted(req.first, req.second);
+        StartExecution(req.first, req.second);
+      });
     }
   });
   #endif
@@ -99,26 +114,37 @@ void EpaxosServer::Setup() {
       Client Request Handlers      *
 ************************************/
 
-void EpaxosServer::Start(shared_ptr<Marshallable> cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no) {
-  EpaxosRequest req = CreateEpaxosRequest(cmd, dkey);
-  *replica_id = req.replica_id;
-  *instance_no = req.instance_no;
-  Log_debug("Received request in server: %d for dkey: %s replica: %d instance: %d", site_id_, dkey.c_str(), req.replica_id, req.instance_no);
+void EpaxosServer::Start(shared_ptr<Marshallable> cmd, string dkey) {
+  Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
   std::lock_guard<std::recursive_mutex> lock(mtx_);
-  reqs.push_back(req);
+  reqs.push_back(EpaxosRequest(cmd, dkey));
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   inprocess_reqs++;
   #endif
 }
 
 #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+void EpaxosServer::SetInstance(shared_ptr<Marshallable> cmd, uint64_t replica_id, uint64_t instance_no) {
+  auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  instance[command.tx_id_] = make_pair(replica_id, instance_no);
+}
+
+pair<int64_t, int64_t> EpaxosServer::GetInstance(int cmd) {
+  std::unique_lock<std::recursive_mutex> lock(mtx_);
+  if (instance.count(cmd) == 0) {
+    return make_pair(-1, -1);
+  }
+  return instance[cmd];
+}
+
 void EpaxosServer::GetState(uint64_t replica_id, 
-                uint64_t instance_no, 
-                shared_ptr<Marshallable> *cmd, 
-                string *dkey,
-                uint64_t *seq, 
-                unordered_map<uint64_t, uint64_t> *deps, 
-                status_t *state) {
+                            uint64_t instance_no, 
+                            shared_ptr<Marshallable> *cmd, 
+                            string *dkey,
+                            uint64_t *seq, 
+                            unordered_map<uint64_t, uint64_t> *deps, 
+                            status_t *state) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   *cmd = cmds[replica_id][instance_no].cmd;
   *dkey = cmds[replica_id][instance_no].dkey;
@@ -146,19 +172,6 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
   return make_pair(fast, slow);
 }
 #endif
-
-EpaxosRequest EpaxosServer::CreateEpaxosRequest(shared_ptr<Marshallable> cmd, string dkey) {
-  int64_t leader_dep_instance = -1;
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  uint64_t instance_no = next_instance_no;
-  next_instance_no = next_instance_no + 1;
-  if (dkey_deps[dkey].count(replica_id_)) {
-    leader_dep_instance = dkey_deps[dkey][replica_id_];
-  }
-  dkey_deps[dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
-  EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
-  return EpaxosRequest(cmd, dkey, ballot, replica_id_, instance_no, leader_dep_instance);
-}
 
 /***********************************
        Phase 1: Pre-accept         *

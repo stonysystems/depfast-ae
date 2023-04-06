@@ -63,7 +63,10 @@ class EpaxosTestConfig {
   #endif
 
   // Calls Start() to specified server
-  void Start(int svr, int cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+  void Start(int svr, int cmd, string dkey);
+
+  // Calls GetInstance() to specified server
+  void GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no);
 
   // Get state of the command at an instance replica_id.instance_no in a specified server
   void GetState(int svr, 

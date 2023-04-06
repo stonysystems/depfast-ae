@@ -91,23 +91,10 @@ class EpaxosRequest {
  public:
   shared_ptr<Marshallable> cmd;
   string dkey;
-  EpaxosBallot ballot;
-  uint64_t replica_id;
-  uint64_t instance_no;
-  int64_t leader_dep_instance;
 
-  EpaxosRequest(shared_ptr<Marshallable> cmd, 
-                string dkey, 
-                EpaxosBallot& ballot, 
-                uint64_t replica_id, 
-                uint64_t instance_no, 
-                int64_t leader_dep_instance) {
+  EpaxosRequest(shared_ptr<Marshallable> cmd, string dkey) {
     this->cmd = cmd;
     this->dkey = dkey;
-    this->ballot = ballot;
-    this->replica_id = replica_id;
-    this->instance_no = instance_no;
-    this->leader_dep_instance = leader_dep_instance;
   }
 };
 
@@ -159,6 +146,7 @@ class EpaxosServer : public TxLogServer {
   unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
   unordered_set<string> in_process_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
   int inprocess_reqs = 0;
@@ -264,8 +252,10 @@ class EpaxosServer : public TxLogServer {
   /* Client request handlers */
 
 public:
-  void Start(shared_ptr<Marshallable> cmd, string dkey, uint64_t *replica_id, uint64_t *instance_no);
+  void Start(shared_ptr<Marshallable> cmd, string dkey);
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  void SetInstance(shared_ptr<Marshallable> cmd, uint64_t replica_id, uint64_t instance_no);
+  pair<int64_t, int64_t> GetInstance(int cmd);
   void GetState(uint64_t replica_id, 
                 uint64_t instance_no, 
                 shared_ptr<Marshallable> *cmd, 
