@@ -14,7 +14,10 @@ class EpaxosPerfTest {
   int submitted_count = 0;
   int finished_count = 0;
   std::mutex finish_mtx_;
-  std::condition_variable finish_exec_cond_;
+  std::condition_variable finish_cond_;
+  int concurrent;
+  int tot_req_num;
+  int conflict_perc;
   unordered_map<int, pair<int, int>> start_time;
   unordered_map<int, float> min_exec_times;
   unordered_map<int, float> max_exec_times;

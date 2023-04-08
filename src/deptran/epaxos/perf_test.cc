@@ -12,12 +12,12 @@ namespace janus {
 
 int EpaxosPerfTest::Run(void) {
   Print("START PERFORMANCE TESTS");
-  int concurrent = Config::GetConfig()->get_concurrent_txn();
-  int tot_req_num = Config::GetConfig()->get_tot_req();
-  int conflict_perc = Config::GetConfig()->get_conflict_perc();
+  concurrent = Config::GetConfig()->get_concurrent_txn();
+  tot_req_num = Config::GetConfig()->get_tot_req();
+  conflict_perc = Config::GetConfig()->get_conflict_perc();
 
-  config_->SetCustomLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
-    return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
+  config_->SetCustomLearnerAction([this](int svr) {
+    return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       struct timeval t1;
       gettimeofday(&t1, NULL);
@@ -31,12 +31,13 @@ int EpaxosPerfTest::Run(void) {
         leader_exec_times[command.tx_id_] = time_taken;
       };
       finish_mtx_.unlock();
+      // start next command
       if (submitted_count >= tot_req_num) {
         if (config_->GetRequestCount(svr) == 0) {
           finish_mtx_.lock();
           finished_count++;
           if (finished_count == NSERVERS) {
-            finish_exec_cond_.notify_all();
+            finish_cond_.notify_all();
           }
           finish_mtx_.unlock();
         }
@@ -65,9 +66,12 @@ int EpaxosPerfTest::Run(void) {
       if (cmd_leader != svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
+      finish_mtx_.lock();
       leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
+      finish_mtx_.unlock();
     });
   });
+
   uint64_t start_rpc = config_->RpcTotal();
   int threads = min(concurrent, 100);
   boost::asio::thread_pool pool(threads);
@@ -102,7 +106,7 @@ int EpaxosPerfTest::Run(void) {
   pool.join();
 
   std::unique_lock<std::mutex> lk(finish_mtx_);
-  finish_exec_cond_.wait(lk);
+  finish_cond_.wait(lk);
   gettimeofday(&t2, NULL);
   int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
   int tot_exec_usec_ = t2.tv_usec - t1.tv_usec;
@@ -133,7 +137,7 @@ int EpaxosPerfTest::Run(void) {
   }
   out_file << endl;
   out_file.close();
-  Print("Execution throughput: %lf", tot_req_num / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000));
+  Print("Throughput: %lf", tot_req_num / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000));
   return 0;
 }
 
