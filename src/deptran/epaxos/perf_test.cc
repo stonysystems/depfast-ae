@@ -15,23 +15,28 @@ int EpaxosPerfTest::Run(void) {
   int concurrent = Config::GetConfig()->get_concurrent_txn();
   int tot_req_num = Config::GetConfig()->get_tot_req();
   int conflict_perc = Config::GetConfig()->get_conflict_perc();
+
   config_->SetCustomLearnerAction([this, conflict_perc, concurrent, tot_req_num](int svr) {
     return ([this, conflict_perc, concurrent, tot_req_num, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
+      int cmd_leader = leader[command.tx_id_];
       pair<int, int> startime = start_time[command.tx_id_];
       float time_taken = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
-      min_res_times[command.tx_id_] = min_res_times[command.tx_id_] ? min(time_taken, min_res_times[command.tx_id_]) : time_taken;
-      max_res_times[command.tx_id_] = max_res_times[command.tx_id_] ? max(time_taken, max_res_times[command.tx_id_]) : time_taken;
+      min_exec_times[command.tx_id_] = min_exec_times[command.tx_id_] ? min(time_taken, min_exec_times[command.tx_id_]) : time_taken;
+      max_exec_times[command.tx_id_] = max_exec_times[command.tx_id_] ? max(time_taken, max_exec_times[command.tx_id_]) : time_taken;
+      if (cmd_leader == svr) {
+        leader_exec_times[command.tx_id_] = time_taken;
+      };
       finish_mtx_.unlock();
       if (submitted_count >= tot_req_num) {
         if (config_->GetRequestCount(svr) == 0) {
           finish_mtx_.lock();
           finished_count++;
           if (finished_count == NSERVERS) {
-            finish_cond_.notify_all();
+            finish_exec_cond_.notify_all();
           }
           finish_mtx_.unlock();
         }
@@ -49,6 +54,7 @@ int EpaxosPerfTest::Run(void) {
       config_->Start(svr, next_cmd, dkey);
     });
   });
+  
   config_->SetCommittedLearnerAction([this](int svr) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
@@ -59,7 +65,7 @@ int EpaxosPerfTest::Run(void) {
       if (cmd_leader != svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
-      commit_res_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
+      leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
     });
   });
   uint64_t start_rpc = config_->RpcTotal();
@@ -94,11 +100,12 @@ int EpaxosPerfTest::Run(void) {
   }
   Log_info("waiting for submission threads.");
   pool.join();
+
   std::unique_lock<std::mutex> lk(finish_mtx_);
-  finish_cond_.wait(lk);
+  finish_exec_cond_.wait(lk);
   gettimeofday(&t2, NULL);
-  int tot_sec_ = t2.tv_sec - t1.tv_sec;
-  int tot_usec_ = t2.tv_usec - t1.tv_usec;
+  int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
+  int tot_exec_usec_ = t2.tv_usec - t1.tv_usec;
   Log_info("execution done.");
   #ifdef CPU_PROFILE
   ProfilerStop();
@@ -108,24 +115,25 @@ int EpaxosPerfTest::Run(void) {
   Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
   Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   ofstream out_file;
-  out_file.open("./plots/epaxos/max_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
-  for (pair<int, float> t : max_res_times) {
+  out_file.open("./plots/epaxos/latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
+  for (pair<int, float> t : max_exec_times) {
     out_file << t.second << ",";
   }
-  out_file.close();
-  out_file.open("./plots/epaxos/min_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
-  for (pair<int, float> t : min_res_times) {
+  out_file << endl;
+  for (pair<int, float> t : min_exec_times) {
+    out_file << t.second << ",";
+  }
+  out_file << endl;
+  for (pair<int, float> t : leader_exec_times) {
+    out_file << t.second << ",";
+  }
+  out_file << endl;
+  for (pair<int, float> t : leader_commit_times) {
     out_file << t.second << ",";
   }
   out_file << endl;
   out_file.close();
-  out_file.open("./plots/epaxos/commit_latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
-  for (pair<int, float> t : commit_res_times) {
-    out_file << t.second << ",";
-  }
-  out_file << endl;
-  out_file.close();
-  Print("Throughput: %lf", tot_req_num / (tot_sec_ + ((float)tot_usec_) / 1000000));
+  Print("Execution throughput: %lf", tot_req_num / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000));
   return 0;
 }
 

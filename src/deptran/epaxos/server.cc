@@ -126,12 +126,10 @@ void EpaxosServer::Start(shared_ptr<Marshallable> cmd, string dkey) {
 #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 void EpaxosServer::SetInstance(shared_ptr<Marshallable> cmd, uint64_t replica_id, uint64_t instance_no) {
   auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   instance[command.tx_id_] = make_pair(replica_id, instance_no);
 }
 
 pair<int64_t, int64_t> EpaxosServer::GetInstance(int cmd) {
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   if (instance.count(cmd) == 0) {
     return make_pair(-1, -1);
   }
@@ -145,7 +143,6 @@ void EpaxosServer::GetState(uint64_t replica_id,
                             uint64_t *seq, 
                             unordered_map<uint64_t, uint64_t> *deps, 
                             status_t *state) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   *cmd = cmds[replica_id][instance_no].cmd;
   *dkey = cmds[replica_id][instance_no].dkey;
   *deps = cmds[replica_id][instance_no].deps;
@@ -160,7 +157,6 @@ void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) {
 }
 
 void EpaxosServer::PauseExecution(bool pause) {
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
   pause_execution = pause;
 }
 
@@ -867,9 +863,10 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
 
 int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
+  received_till[replica_id] = max(received_till[replica_id], instance_no);
+  while (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
       && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    PrepareTillCommitted(replica_id, instance_no);
+    Coroutine::Sleep(1000);
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     return 1;
@@ -917,18 +914,17 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
 
 // Should be called only after command at that instance is committed
 void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
-  Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
-  std::unique_lock<std::recursive_mutex> lock(mtx_);
   #ifdef EPAXOS_TEST_CORO
   if (pause_execution) return;
   #endif
-  lock.unlock();
-  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
+  Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
-  while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) > 0) {
-    Coroutine::Sleep(10000);
+  while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) != 0) {
+    Coroutine::Sleep(1000);
   }
+  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
   in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
   // Execute
   EpaxosGraph graph = EpaxosGraph();
