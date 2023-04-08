@@ -15,7 +15,7 @@ int EpaxosPerfTest::Run(void) {
   concurrent = Config::GetConfig()->get_concurrent_txn();
   tot_req_num = Config::GetConfig()->get_tot_req();
   conflict_perc = Config::GetConfig()->get_conflict_perc();
-
+  submitted_count = 0;
   config_->SetCustomLearnerAction([this](int svr) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);

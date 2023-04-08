@@ -11,7 +11,7 @@ class EpaxosPerfTest {
  private:
   EpaxosTestConfig *config_;
   uint64_t init_rpcs_;
-  int submitted_count = 0;
+  atomic<int> submitted_count;
   int finished_count = 0;
   std::mutex finish_mtx_;
   std::condition_variable finish_cond_;
