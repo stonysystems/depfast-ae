@@ -63,16 +63,15 @@ void EpaxosServer::Setup() {
       }
       #endif
       auto received_till_ = this->received_till;
-      auto prepared_till_ = this->prepared_till;
       lock.unlock();
 
       for (auto itr : received_till_) {
         uint64_t replica_id = itr.first;
         uint64_t received_till_instance_no = itr.second;
-        uint64_t instance_no = prepared_till_.count(replica_id) ? prepared_till_[replica_id] + 1 : 0;
+        uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() {
-            Coroutine::Sleep(2000000);
+            Coroutine::Sleep(300000);
             PrepareTillCommitted(replica_id, instance_no);
             #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
@@ -82,10 +81,8 @@ void EpaxosServer::Setup() {
           instance_no++;
         }
       }
-      lock.lock();
-      this->prepared_till = received_till_;
-      lock.unlock();
       Coroutine::Sleep(10);
+      prepared_till = received_till_;
     }
   });
 
@@ -838,23 +835,16 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
 void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
   // Wait till concurrent prepare succeeds
   Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-  while (cmds[replica_id][instance_no].preparing) {
-    Log_debug("Waiting for replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-    Coroutine::Sleep(10000);
-  }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
       || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     return;
   }
-  cmds[replica_id][instance_no].preparing = true;
   // Repeat till prepare succeeds
   bool committed = StartPrepare(replica_id, instance_no);
   while (!committed) {
     Coroutine::Sleep(100000 + (rand() % 50000));
     committed = StartPrepare(replica_id, instance_no);
   }
-  // Mark preparing
-  cmds[replica_id][instance_no].preparing = false;
 }
 
 /***********************************
