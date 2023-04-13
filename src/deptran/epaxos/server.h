@@ -188,7 +188,6 @@ class EpaxosServer : public TxLogServer {
   // returns 0 if noop, 1 if executed, 2 if added to graph
   int CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph);
   void StartExecution(uint64_t replica_id, uint64_t instance_no);
-  void StartExecutionAsync(uint64_t replica_id, uint64_t instance_no);
 
   void FindTryPreAcceptConflict(shared_ptr<Marshallable> cmd, 
                                 string dkey, 

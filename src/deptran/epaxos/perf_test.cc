@@ -131,7 +131,6 @@ int EpaxosPerfTest::Run(void) {
   out_file << fastpath_percentage << endl;
   out_file << rpc_count << endl;
   out_file.close();
-  config_->PrintTime();
   Print("Fastpath Percentage: %lf", fastpath_percentage);
   Print("Total RPC count: %ld", rpc_count);
   Print("Throughput: %lf", throughput);

@@ -459,22 +459,26 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
     }
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
-    // Execute
-    StartExecutionAsync(replica_id, instance_no);
   }
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
-  auto ev = commo()->SendCommit(site_id_, 
-                                partition_id_, 
-                                ballot.epoch, 
-                                ballot.ballot_no, 
-                                ballot.replica_id,
-                                replica_id,
-                                instance_no, 
-                                cmd, 
-                                dkey, 
-                                seq, 
-                                deps);
+  Coroutine::CreateRun([this, replica_id, instance_no, ballot, &cmd, dkey, seq, deps](){
+    auto ev = commo()->SendCommit(site_id_, 
+                                  partition_id_, 
+                                  ballot.epoch, 
+                                  ballot.ballot_no, 
+                                  ballot.replica_id,
+                                  replica_id,
+                                  instance_no, 
+                                  cmd, 
+                                  dkey, 
+                                  seq, 
+                                  deps);
+  });
+  // Execute
+  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
+    StartExecution(replica_id, instance_no);
+  }
   return true;
 }
 
@@ -508,7 +512,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
   // Execute
-  StartExecutionAsync(replica_id, instance_no);
+  StartExecution(replica_id, instance_no);
 }
 
 /***********************************
@@ -910,10 +914,10 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   #endif
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
+  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) != 0) {
     Coroutine::Sleep(1000);
   }
-  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
   in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
   // Execute
@@ -939,12 +943,6 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   if (cmds[replica_id][instance_no].cmd->kind_ != MarshallDeputy::CMD_NOOP) {
     in_process_dkeys.erase(cmds[replica_id][instance_no].dkey);
   }
-}
-
-void EpaxosServer::StartExecutionAsync(uint64_t replica_id, uint64_t instance_no) {
-  Coroutine::CreateRun([this, replica_id, instance_no](){
-    StartExecution(replica_id, instance_no);
-  });
 }
 
 /***********************************
