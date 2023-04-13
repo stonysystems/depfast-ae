@@ -19,17 +19,15 @@ int EpaxosPerfTest::Run(void) {
   config_->SetCustomLearnerAction([this](int svr) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      finish_mtx_.lock();
+      int cmd_leader = leader[command.tx_id_];
+      finish_mtx_.unlock();
+      if (cmd_leader != svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
-      int cmd_leader = leader[command.tx_id_];
       pair<int, int> startime = start_time[command.tx_id_];
-      float time_taken = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
-      min_exec_times[command.tx_id_] = min_exec_times[command.tx_id_] ? min(time_taken, min_exec_times[command.tx_id_]) : time_taken;
-      max_exec_times[command.tx_id_] = max_exec_times[command.tx_id_] ? max(time_taken, max_exec_times[command.tx_id_]) : time_taken;
-      if (cmd_leader == svr) {
-        leader_exec_times[command.tx_id_] = time_taken;
-      };
+      leader_exec_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
       // start next command
       if (submitted_count >= tot_req_num) {
@@ -61,12 +59,12 @@ int EpaxosPerfTest::Run(void) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
       finish_mtx_.lock();
       int cmd_leader = leader[command.tx_id_];
-      pair<int, int> startime = start_time[command.tx_id_];
       finish_mtx_.unlock();
       if (cmd_leader != svr) return;
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
+      pair<int, int> startime = start_time[command.tx_id_];
       leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
     });
@@ -114,20 +112,10 @@ int EpaxosPerfTest::Run(void) {
   #ifdef CPU_PROFILE
   ProfilerStop();
   #endif
-
+  
   Print("PERFORMANCE TESTS COMPLETED");
-  Print("Fastpath Percentage: %lf", config_->GetFastpathPercent());
-  Print("Total RPC count: %ld", config_->RpcTotal() - start_rpc);
   ofstream out_file;
   out_file.open("./plots/epaxos/latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
-  for (pair<int, float> t : max_exec_times) {
-    out_file << t.second << ",";
-  }
-  out_file << endl;
-  for (pair<int, float> t : min_exec_times) {
-    out_file << t.second << ",";
-  }
-  out_file << endl;
   for (pair<int, float> t : leader_exec_times) {
     out_file << t.second << ",";
   }
@@ -136,8 +124,17 @@ int EpaxosPerfTest::Run(void) {
     out_file << t.second << ",";
   }
   out_file << endl;
+  float throughput = tot_req_num / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000);
+  int rpc_count = config_->RpcTotal() - start_rpc;
+  float fastpath_percentage = config_->GetFastpathPercent();
+  out_file << throughput << endl;
+  out_file << fastpath_percentage << endl;
+  out_file << rpc_count << endl;
   out_file.close();
-  Print("Throughput: %lf", tot_req_num / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000));
+  config_->PrintTime();
+  Print("Fastpath Percentage: %lf", fastpath_percentage);
+  Print("Total RPC count: %ld", rpc_count);
+  Print("Throughput: %lf", throughput);
   return 0;
 }
 
