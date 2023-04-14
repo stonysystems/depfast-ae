@@ -462,17 +462,17 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
   }
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
-  auto ev = commo()->SendCommit(site_id_, 
-                                partition_id_, 
-                                ballot.epoch, 
-                                ballot.ballot_no, 
-                                ballot.replica_id,
-                                replica_id,
-                                instance_no, 
-                                cmd, 
-                                dkey, 
-                                seq, 
-                                deps);
+  commo()->SendCommit(site_id_, 
+                      partition_id_, 
+                      ballot.epoch, 
+                      ballot.ballot_no, 
+                      ballot.replica_id,
+                      replica_id,
+                      instance_no, 
+                      cmd, 
+                      dkey, 
+                      seq, 
+                      deps);
   // Execute
   if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
     StartExecution(replica_id, instance_no);
