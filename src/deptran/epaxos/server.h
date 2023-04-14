@@ -67,6 +67,7 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
+  shared_ptr<IntEvent> committed_ev = Reactor::CreateSpEvent<IntEvent>(1);
 
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
