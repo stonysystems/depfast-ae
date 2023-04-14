@@ -27,6 +27,9 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
                                         uint64_t* updated_seq,
                                         unordered_map_uint64_pair* updated_deps,
                                         rrr::DeferredReply* defer) {
+  #ifdef WIDE_AREA
+  Coroutine::Sleep(WIDE_AREA_DELAY);
+  #endif
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
   EpaxosPreAcceptReply reply = svr_->OnPreAcceptRequest(cmd, dkey, ballot, seq, deps, leader_replica_id, instance_no);
@@ -58,6 +61,9 @@ void EpaxosServiceImpl::HandleAccept(const epoch_t& epoch,
                                      ballot_t* highest_seen_ballot_no,
                                      uint64_t* highest_seen_replica_id,
                                      rrr::DeferredReply* defer) {
+  #ifdef WIDE_AREA
+  Coroutine::Sleep(WIDE_AREA_DELAY);
+  #endif
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
   EpaxosAcceptReply reply = svr_->OnAcceptRequest(cmd, dkey, ballot, seq, deps, leader_replica_id, instance_no);
@@ -84,6 +90,9 @@ void EpaxosServiceImpl::HandleCommit(const epoch_t& epoch,
                                      const unordered_map_uint64_uint64_t& deps,
                                      bool_t* status,
                                      rrr::DeferredReply* defer) {
+  #ifdef WIDE_AREA
+  Coroutine::Sleep(WIDE_AREA_DELAY);
+  #endif
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
   svr_->OnCommitRequest(cmd, dkey, ballot, seq, deps, leader_replica_id, instance_no);
@@ -112,6 +121,9 @@ void EpaxosServiceImpl::HandleTryPreAccept(const epoch_t& epoch,
                                            uint64_t* conflict_replica_id,
                                            uint64_t* conflict_instance_no,
                                            rrr::DeferredReply* defer) {
+  #ifdef WIDE_AREA
+  Coroutine::Sleep(WIDE_AREA_DELAY);
+  #endif
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
   EpaxosTryPreAcceptReply reply = svr_->OnTryPreAcceptRequest(cmd, dkey, ballot, seq, deps, leader_replica_id, instance_no);
@@ -145,6 +157,9 @@ void EpaxosServiceImpl::HandlePrepare(const epoch_t& epoch,
                                       ballot_t* highest_seen_ballot_no,
                                       uint64_t* highest_seen_replica_id,
                                       rrr::DeferredReply* defer) {
+  #ifdef WIDE_AREA
+  Coroutine::Sleep(WIDE_AREA_DELAY);
+  #endif
   EpaxosBallot ballot(epoch, ballot_no, ballot_replica_id);
   EpaxosPrepareReply reply = svr_->OnPrepareRequest(ballot, leader_replica_id, instance_no);
   *status = reply.status;

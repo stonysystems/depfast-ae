@@ -314,7 +314,7 @@ class EpaxosCommo : public Communicator {
              const uint64_t& seq,
              const unordered_map<uint64_t, uint64_t>& deps);
 
-  shared_ptr<QuorumEvent>
+  void
   SendCommit(const siteid_t& site_id,
              const parid_t& par_id,
              const epoch_t& epoch,

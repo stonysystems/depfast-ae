@@ -26,9 +26,6 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
   int n_total = NSERVERS - 1;
   int fast_path_quorum = FAST_PATH_QUORUM - 1;
   int slow_path_quorum = SLOW_PATH_QUORUM - 1;
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(n_total, is_recovery, fast_path_quorum, slow_path_quorum);
   for (auto& p : proxies) {
       if (p.first == site_id) {
@@ -91,9 +88,6 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - 1;
   int quorum = SLOW_PATH_QUORUM - 1;
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   auto ev = Reactor::CreateSpEvent<EpaxosAcceptQuorumEvent>(n_total, quorum);
   for (auto& p : proxies) {
     if (p.first == site_id) {
@@ -135,7 +129,7 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
   return ev;
 }
 
-shared_ptr<QuorumEvent>
+void
 EpaxosCommo::SendCommit(const siteid_t& site_id,
                         const parid_t& par_id,
                         const epoch_t& epoch,
@@ -148,20 +142,12 @@ EpaxosCommo::SendCommit(const siteid_t& site_id,
                         const uint64_t& seq,
                         const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS - 1;
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
-  auto ev = Reactor::CreateSpEvent<QuorumEvent>(n_total, n_total);
   for (auto& p : proxies) {
     if (p.first == site_id) {
       continue;
     }
     EpaxosProxy *proxy = (EpaxosProxy*) p.second;
     FutureAttr fuattr;
-    fuattr.callback = [ev](Future* fu) {
-      ev->VoteYes();
-    };
     MarshallDeputy md_cmd(cmd);
     Call_Async(proxy, 
                 Commit, 
@@ -176,7 +162,7 @@ EpaxosCommo::SendCommit(const siteid_t& site_id,
                 deps, 
                 fuattr);
   }
-  return ev;
+  return;
 }
 
 shared_ptr<EpaxosTryPreAcceptQuorumEvent> 
@@ -195,9 +181,6 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - preaccepted_sites.size();
   int quorum = (NSERVERS/2) - preaccepted_sites.size();
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(n_total, quorum);
   for (auto& p : proxies) {
       if (p.first == site_id || p.first == leader_replica_id || preaccepted_sites.count(p.first) != 0) {
@@ -254,9 +237,6 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - 1;
   int quorum = SLOW_PATH_QUORUM - 1;
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   auto ev = Reactor::CreateSpEvent<EpaxosPrepareQuorumEvent>(n_total, quorum);
   for (auto& p : proxies) {
     siteid_t curr_site_id = p.first;
