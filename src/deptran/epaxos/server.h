@@ -146,12 +146,12 @@ class EpaxosServer : public TxLogServer {
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
-  bool pause_execution = false;
+  bool pause_execution = true;
   int inprocess_reqs = 0;
   int fast = 0;
   int slow = 0;
   #endif
-  int rpc_timeout = 20000000;
+  int rpc_timeout = 1000000;
 
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable> cmd, string dkey);
   bool StartPreAccept(shared_ptr<Marshallable> cmd, 
