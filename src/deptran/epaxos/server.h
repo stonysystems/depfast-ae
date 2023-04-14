@@ -151,7 +151,7 @@ class EpaxosServer : public TxLogServer {
   int fast = 0;
   int slow = 0;
   #endif
-  int rpc_timeout = 20000000;
+  int rpc_timeout = 1000000;
 
   EpaxosRequest CreateEpaxosRequest(shared_ptr<Marshallable> cmd, string dkey);
   bool StartPreAccept(shared_ptr<Marshallable> cmd, 

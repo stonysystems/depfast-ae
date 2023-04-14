@@ -83,7 +83,7 @@ void EpaxosServer::Setup() {
           instance_no++;
         }
       }
-      Coroutine::Sleep(10);
+      Coroutine::Sleep(1000);
       prepared_till = received_till_;
     }
   });
@@ -92,7 +92,7 @@ void EpaxosServer::Setup() {
   Coroutine::CreateRun([this](){
     while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
-      if (prepare_reqs.size() == 0) {
+      if (prepare_reqs.empty()) {
         lock.unlock();
         Coroutine::Sleep(10000);
         continue;
@@ -910,7 +910,7 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) != 0) {
     if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
-    Coroutine::Sleep(10);
+    Coroutine::Sleep(1000);
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
   in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
