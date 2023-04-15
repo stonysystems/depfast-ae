@@ -46,7 +46,7 @@ void EpaxosServer::Setup() {
         #if defined(EPAXOS_TEST_CORO)
         SetInstance(req.cmd, replica_id, instance_no);
         #endif
-        Coroutine::CreateRun([this, &req, ballot, replica_id, instance_no, leader_dep_instance](){
+        Coroutine::CreateRun([this, req, ballot, replica_id, instance_no, leader_dep_instance](){
           StartPreAccept(req.cmd, req.dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
         });
       }
@@ -83,8 +83,8 @@ void EpaxosServer::Setup() {
           instance_no++;
         }
       }
-      Coroutine::Sleep(1000);
       prepared_till = received_till_;
+      Coroutine::Sleep(1000);
     }
   });
 
@@ -100,7 +100,7 @@ void EpaxosServer::Setup() {
       auto req = prepare_reqs.front();
       prepare_reqs.pop_front();
       lock.unlock();
-      Coroutine::CreateRun([this, &req](){
+      Coroutine::CreateRun([this, req](){
         PrepareTillCommitted(req.first, req.second);
         StartExecution(req.first, req.second);
       });
@@ -461,7 +461,6 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
     }
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
-    cmds[replica_id][instance_no].committed_ev->Set(1);
   }
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
@@ -507,7 +506,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
-  cmds[replica_id][instance_no].committed_ev->Set(1);
   #ifdef EPAXOS_PERF_TEST_CORO
   commit_next_(*cmd);
   #endif
@@ -698,10 +696,6 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
 ************************************/
 
 bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
-      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    return true;
-  }
   // Get ballot = highest seen ballot
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
@@ -839,17 +833,15 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
 }
 
 void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
-  // Wait till concurrent prepare succeeds
-  Log_debug("Prepare till committed replica: %d instance: %d in replica: %d", replica_id, instance_no, replica_id_);
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
-      || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    return;
-  }
   // Repeat till prepare succeeds
-  bool committed = StartPrepare(replica_id, instance_no);
+  bool committed = false;
   while (!committed) {
-    Coroutine::Sleep(200000 + (rand() % 50000));
+    if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
+        || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+      return;
+    }
     committed = StartPrepare(replica_id, instance_no);
+    Coroutine::Sleep(200000 + (rand() % 50000));
   }
 }
 
@@ -860,7 +852,10 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
 int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   received_till[replica_id] = max(received_till[replica_id], instance_no);
-  cmds[replica_id][instance_no].committed_ev->Wait();
+  while (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
+         && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
+    Coroutine::Sleep(10);
+  }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return 1;
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return 0;
   shared_ptr<EpaxosVertex> child = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
@@ -942,7 +937,7 @@ void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
 ************************************/
 
 template<class ClassT>
-void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& replica_id, uint64_t& instance_no) {
   EpaxosBallot highest_seen_ballot = cmds[replica_id][instance_no].highest_seen;
   for (auto reply : replies) {
     EpaxosBallot ballot(reply.epoch, reply.ballot_no, reply.replica_id);
@@ -968,7 +963,7 @@ EpaxosServer::MergeAttributes(vector<EpaxosPreAcceptReply>& replies) {
   return make_pair(seq, deps);
 }
 
-bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t> deps) {
+bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t>& deps) {
   unordered_set<uint64_t> committed_deps;
   for (auto itr : deps) {
     uint64_t replica_id = itr.first;
@@ -994,12 +989,12 @@ bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replie
   return deps.size() == committed_deps.size();
 }
 
-void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,
-                                            string dkey, 
-                                            uint64_t replica_id, 
-                                            uint64_t instance_no, 
-                                            uint64_t seq, 
-                                            unordered_map<uint64_t, uint64_t> deps) {
+void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable>& cmd,
+                                            string& dkey, 
+                                            uint64_t& replica_id, 
+                                            uint64_t& instance_no, 
+                                            uint64_t& seq, 
+                                            unordered_map<uint64_t, uint64_t>& deps) {
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   if (cmd->kind_ == MarshallDeputy::CMD_NOOP) {
     return;

@@ -67,8 +67,7 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
-  shared_ptr<IntEvent> committed_ev = Reactor::CreateSpEvent<IntEvent>(1);
-
+  
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
     dkey = NOOP_DKEY;
@@ -200,16 +199,16 @@ class EpaxosServer : public TxLogServer {
                                 uint64_t *conflict_replica_id, 
                                 uint64_t *conflict_instance_no);
   template<class ClassT>
-  void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t replica_id, uint64_t instance_no);
+  void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& replica_id, uint64_t& instance_no);
   pair<uint64_t, unordered_map<uint64_t, uint64_t>>
   MergeAttributes(vector<EpaxosPreAcceptReply>& replies);
-  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t> deps);
-  void UpdateInternalAttributes(shared_ptr<Marshallable> &cmd,
-                                string dkey, 
-                                uint64_t replica_id, 
-                                uint64_t instance_no, 
-                                uint64_t seq, 
-                                unordered_map<uint64_t, uint64_t> deps);
+  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t>& deps);
+  void UpdateInternalAttributes(shared_ptr<Marshallable>& cmd,
+                                string& dkey, 
+                                uint64_t& replica_id, 
+                                uint64_t& instance_no, 
+                                uint64_t& seq, 
+                                unordered_map<uint64_t, uint64_t>& deps);
 
   /* RPC handlers */
 
