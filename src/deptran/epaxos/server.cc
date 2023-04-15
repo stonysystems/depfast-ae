@@ -858,7 +858,7 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no,
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   while (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
          && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    Coroutine::Sleep(10);
+    Coroutine::Sleep(1000);
   }
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return 1;
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return 0;

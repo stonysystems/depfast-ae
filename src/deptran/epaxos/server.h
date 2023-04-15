@@ -74,7 +74,7 @@ class EpaxosCommand {
     state = EpaxosCommandState::NOT_STARTED;
   }
 
-  EpaxosCommand(shared_ptr<Marshallable> cmd, string dkey, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot highest_seen, EpaxosCommandState state) {
+  EpaxosCommand(shared_ptr<Marshallable>& cmd, string& dkey, uint64_t& seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot& highest_seen, EpaxosCommandState& state) {
     this->cmd = cmd;
     this->dkey = dkey;
     this->seq = seq;
@@ -89,7 +89,7 @@ class EpaxosRequest {
   shared_ptr<Marshallable> cmd;
   string dkey;
 
-  EpaxosRequest(shared_ptr<Marshallable> cmd, string dkey) {
+  EpaxosRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
     this->cmd = cmd;
     this->dkey = dkey;
   }
@@ -104,7 +104,7 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
   uint64_t replica_id;
   uint64_t instance_no;
 
-  EpaxosVertex(EpaxosCommand *cmd, uint64_t replica_id, uint64_t instance_no) : EVertex() {
+  EpaxosVertex(EpaxosCommand *cmd, uint64_t& replica_id, uint64_t& instance_no) : EVertex() {
     this->cmd = cmd;
     this->replica_id = replica_id;
     this->instance_no = instance_no;
@@ -115,7 +115,7 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
     return id_;
   }
 
-  bool isFirstInSCC(shared_ptr<EpaxosVertex> &rhs) override {
+  bool isFirstInSCC(shared_ptr<EpaxosVertex>& rhs) override {
     if (this->cmd->seq == rhs->cmd->seq && this->replica_id == rhs->replica_id) {
       return this->instance_no < rhs->instance_no;
     }
