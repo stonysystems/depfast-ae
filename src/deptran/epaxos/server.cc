@@ -46,8 +46,9 @@ void EpaxosServer::Setup() {
         #if defined(EPAXOS_TEST_CORO)
         SetInstance(req.cmd, replica_id, instance_no);
         #endif
-        Coroutine::CreateRun([this, req, ballot, replica_id, instance_no, leader_dep_instance](){
-          StartPreAccept(req.cmd, req.dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+        Coroutine::CreateRun([this, req, ballot, replica_id, instance_no, leader_dep_instance]() mutable {
+          string dkey = req.dkey;
+          StartPreAccept(req.cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
         });
       }
       Coroutine::Sleep(1000);
@@ -73,7 +74,7 @@ void EpaxosServer::Setup() {
         uint64_t received_till_instance_no = itr.second;
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
-          Coroutine::CreateRun([this, replica_id, instance_no]() {
+          Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
             Coroutine::Sleep(300000);
             PrepareTillCommitted(replica_id, instance_no);
             #ifdef EPAXOS_TEST_CORO
@@ -100,7 +101,7 @@ void EpaxosServer::Setup() {
       auto req = prepare_reqs.front();
       prepare_reqs.pop_front();
       lock.unlock();
-      Coroutine::CreateRun([this, req](){
+      Coroutine::CreateRun([this, req]() mutable {
         PrepareTillCommitted(req.first, req.second);
         StartExecution(req.first, req.second);
       });
@@ -113,7 +114,7 @@ void EpaxosServer::Setup() {
       Client Request Handlers      *
 ************************************/
 
-void EpaxosServer::Start(shared_ptr<Marshallable> cmd, string dkey) {
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string& dkey) {
   Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   reqs.push_back(EpaxosRequest(cmd, dkey));
@@ -123,20 +124,20 @@ void EpaxosServer::Start(shared_ptr<Marshallable> cmd, string dkey) {
 }
 
 #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
-void EpaxosServer::SetInstance(shared_ptr<Marshallable> cmd, uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::SetInstance(shared_ptr<Marshallable>& cmd, uint64_t& replica_id, uint64_t& instance_no) {
   auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
   instance[command.tx_id_] = make_pair(replica_id, instance_no);
 }
 
-pair<int64_t, int64_t> EpaxosServer::GetInstance(int cmd) {
+pair<int64_t, int64_t> EpaxosServer::GetInstance(int& cmd) {
   if (instance.count(cmd) == 0) {
     return make_pair(-1, -1);
   }
   return instance[cmd];
 }
 
-void EpaxosServer::GetState(uint64_t replica_id, 
-                            uint64_t instance_no, 
+void EpaxosServer::GetState(uint64_t& replica_id, 
+                            uint64_t& instance_no, 
                             shared_ptr<Marshallable> *cmd, 
                             string *dkey,
                             uint64_t *seq, 
@@ -149,7 +150,7 @@ void EpaxosServer::GetState(uint64_t replica_id,
   *state = cmds[replica_id][instance_no].state;
 }
 
-void EpaxosServer::Prepare(uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::Prepare(uint64_t& replica_id, uint64_t& instance_no) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   Log_debug("Received prepare request in server: %d for replica: %d instance: %d", site_id_, replica_id, instance_no);
   prepare_reqs.push_back(make_pair(replica_id, instance_no));
@@ -172,11 +173,11 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
        Phase 1: Pre-accept         *
 ************************************/
 
-bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable> cmd, 
-                                  string dkey, 
-                                  EpaxosBallot ballot, 
-                                  uint64_t replica_id,
-                                  uint64_t instance_no,
+bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd, 
+                                  string& dkey, 
+                                  EpaxosBallot& ballot, 
+                                  uint64_t& replica_id,
+                                  uint64_t& instance_no,
                                   int64_t leader_dep_instance,
                                   bool recovery) {
   Log_debug("Started pre-accept for request for replica: %d instance: %d dkey: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
@@ -255,9 +256,9 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable> cmd,
   return StartAccept(cmd, dkey, ballot, merged_res.first, merged_res.second, replica_id, instance_no);
 }
 
-EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable> cmd, 
+EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                                       string dkey, 
-                                                      EpaxosBallot ballot, 
+                                                      EpaxosBallot& ballot, 
                                                       uint64_t seq, 
                                                       unordered_map<uint64_t, uint64_t> deps, 
                                                       uint64_t replica_id, 
@@ -347,13 +348,13 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable> c
          Phase 2: Accept           *
 ************************************/
 
-bool EpaxosServer::StartAccept(shared_ptr<Marshallable> cmd, 
-                               string dkey, 
-                               EpaxosBallot ballot, 
-                               uint64_t seq,
-                               unordered_map<uint64_t, uint64_t> deps, 
-                               uint64_t replica_id, 
-                               uint64_t instance_no) {
+bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd, 
+                               string& dkey, 
+                               EpaxosBallot& ballot, 
+                               uint64_t& seq,
+                               unordered_map<uint64_t, uint64_t>& deps, 
+                               uint64_t& replica_id, 
+                               uint64_t& instance_no) {
   Log_debug("Started accept request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject old message - we have moved on
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
@@ -394,9 +395,9 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable> cmd,
   return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
 }
 
-EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable> cmd, 
+EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                                 string dkey, 
-                                                EpaxosBallot ballot, 
+                                                EpaxosBallot& ballot, 
                                                 uint64_t seq,
                                                 unordered_map<uint64_t, uint64_t> deps, 
                                                 uint64_t replica_id, 
@@ -435,13 +436,13 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable> cmd,
           Commit Phase             *
 ************************************/
 
-bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd, 
-                               string dkey, 
-                               EpaxosBallot ballot, 
-                               uint64_t seq,
-                               unordered_map<uint64_t, uint64_t> deps, 
-                               uint64_t replica_id, 
-                               uint64_t instance_no) {
+bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd, 
+                               string& dkey, 
+                               EpaxosBallot& ballot, 
+                               uint64_t& seq,
+                               unordered_map<uint64_t, uint64_t>& deps, 
+                               uint64_t& replica_id, 
+                               uint64_t& instance_no) {
   Log_debug("Started commit request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   if (!ballot.isGreaterOrEqual(cmds[replica_id][instance_no].highest_seen)) {
     ballot = cmds[replica_id][instance_no].highest_seen;
@@ -482,9 +483,9 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable> cmd,
   return true;
 }
 
-void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd, 
+void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd, 
                                    string dkey, 
-                                   EpaxosBallot ballot, 
+                                   EpaxosBallot& ballot, 
                                    uint64_t seq,
                                    unordered_map<uint64_t, uint64_t> deps, 
                                    uint64_t replica_id, 
@@ -518,15 +519,15 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable> cmd,
 /***********************************
        TryPreAccept Phase          *
 ************************************/
-bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable> cmd, 
-                                     string dkey, 
-                                     EpaxosBallot ballot, 
-                                     uint64_t seq,
-                                     unordered_map<uint64_t, uint64_t> deps, 
-                                     uint64_t replica_id, 
-                                     uint64_t instance_no,
+bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
+                                     string& dkey, 
+                                     EpaxosBallot& ballot, 
+                                     uint64_t& seq,
+                                     unordered_map<uint64_t, uint64_t>& deps, 
+                                     uint64_t& replica_id, 
+                                     uint64_t& instance_no,
                                      int64_t leader_dep_instance,
-                                     unordered_set<siteid_t> preaccepted_sites) {
+                                     unordered_set<siteid_t>& preaccepted_sites) {
   Log_debug("Started try-pre-accept for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Reject old message - we have moved on
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::ACCEPTED
@@ -631,9 +632,9 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable> cmd,
   return false;
 }
 
-EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshallable> cmd, 
+EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                                             string dkey, 
-                                                            EpaxosBallot ballot, 
+                                                            EpaxosBallot& ballot, 
                                                             uint64_t seq, 
                                                             unordered_map<uint64_t, uint64_t> deps, 
                                                             uint64_t replica_id, 
@@ -695,7 +696,7 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
          Prepare Phase             *
 ************************************/
 
-bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
+bool EpaxosServer::StartPrepare(uint64_t& replica_id, uint64_t& instance_no) {
   // Get ballot = highest seen ballot
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   // Create prepare reply from self
@@ -801,10 +802,13 @@ bool EpaxosServer::StartPrepare(uint64_t replica_id, uint64_t instance_no) {
   }
   // No pre-accepted replies - start phase pre-accept with NO_OP
   Log_debug("Prepare - No pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  return StartAccept(NOOP_CMD, NOOP_DKEY, ballot, 0, unordered_map<uint64_t, uint64_t>(), replica_id, instance_no);
+  uint64_t seq = 0;
+  unordered_map<uint64_t, uint64_t> deps;
+  string noop_dkey = NOOP_DKEY;
+  return StartAccept(NOOP_CMD, noop_dkey, ballot, seq, deps, replica_id, instance_no);
 }
 
-EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t replica_id, uint64_t instance_no) {
+EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot& ballot, uint64_t replica_id, uint64_t instance_no) {
   Log_debug("Received prepare request for replica: %d instance: %d in replica: %d for ballot: %d from new leader: %d", replica_id, instance_no, replica_id_, ballot.ballot_no, ballot.replica_id);
   shared_ptr<Marshallable> NOOP_CMD = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
   EpaxosPrepareReply reply(true, NOOP_CMD, NOOP_DKEY, 0, unordered_map<uint64_t, uint64_t>(), EpaxosCommandState::NOT_STARTED, replica_id_, 0, -1, 0);
@@ -832,7 +836,7 @@ EpaxosPrepareReply EpaxosServer::OnPrepareRequest(EpaxosBallot ballot, uint64_t 
   return reply;
 }
 
-void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance_no) {
   // Repeat till prepare succeeds
   bool committed = false;
   while (!committed) {
@@ -849,7 +853,7 @@ void EpaxosServer::PrepareTillCommitted(uint64_t replica_id, uint64_t instance_n
         Execution Phase            *
 ************************************/
 
-int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, EpaxosGraph *graph) {
+int EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no, EpaxosGraph *graph) {
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   while (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
@@ -876,7 +880,8 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
           prev_instance_no--;
           continue;
         }
-        PrepareTillCommitted(dreplica_id, prev_instance_no);
+        uint64_t possible_instance_no = prev_instance_no;
+        PrepareTillCommitted(dreplica_id, possible_instance_no);
         dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
         if (dep_dkey == dkey) {
           break;
@@ -884,7 +889,8 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
         prev_instance_no--;
       }
       if (prev_instance_no < 0) continue;
-      status = CreateEpaxosGraph(dreplica_id, prev_instance_no, graph);
+      uint64_t possible_instance_no = prev_instance_no;
+      status = CreateEpaxosGraph(dreplica_id, possible_instance_no, graph);
       dinstance_no = prev_instance_no;
     }
     if (status == 1) continue;
@@ -895,7 +901,7 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t replica_id, uint64_t instance_no, E
 }
 
 // Should be called only after command at that instance is committed
-void EpaxosServer::StartExecution(uint64_t replica_id, uint64_t instance_no) {
+void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
   #ifdef EPAXOS_TEST_CORO
   if (pause_execution) return;
@@ -1009,12 +1015,12 @@ void EpaxosServer::UpdateInternalAttributes(shared_ptr<Marshallable>& cmd,
   dkey_deps[dkey][replica_id] = max(dkey_deps[dkey][replica_id], instance_no);
 }
 
-void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable> cmd, 
-                                            string dkey, 
-                                            uint64_t seq,
-                                            unordered_map<uint64_t, uint64_t> deps, 
-                                            uint64_t replica_id, 
-                                            uint64_t instance_no,
+void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
+                                            string& dkey, 
+                                            uint64_t& seq,
+                                            unordered_map<uint64_t, uint64_t>& deps, 
+                                            uint64_t& replica_id, 
+                                            uint64_t& instance_no,
                                             EpaxosTryPreAcceptStatus *conflict_state,
                                             uint64_t *conflict_replica_id, 
                                             uint64_t *conflict_instance_no) {
