@@ -182,10 +182,9 @@ class EpaxosServer : public TxLogServer {
                          uint64_t& instance_no,
                          int64_t leader_dep_instance,
                          unordered_set<siteid_t>& preaccepted_sites);
-  void PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance_no);
   bool StartPrepare(uint64_t& replica_id, uint64_t& instance_no);
-  // returns 0 if noop, 1 if executed, 2 if added to graph
-  int CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no, EpaxosGraph *graph);
+  void PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance_no);
+  shared_ptr<EpaxosGraph> CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no);
   void StartExecution(uint64_t& replica_id, uint64_t& instance_no);
 
   void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 

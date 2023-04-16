@@ -856,54 +856,59 @@ void EpaxosServer::PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance
         Execution Phase            *
 ************************************/
 
-int EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no, EpaxosGraph *graph) {
+shared_ptr<EpaxosGraph> EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no) {
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  received_till[replica_id] = max(received_till[replica_id], instance_no);
-  while (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED
-         && cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    Coroutine::Sleep(1000);
-  }
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return 1;
-  if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return 0;
-  shared_ptr<EpaxosVertex> child = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
-  bool exists = graph->FindOrCreateVertex(child);
-  if (exists) return 2;
-  auto deps = child->cmd->deps;
-  string dkey = child->cmd->dkey;
+  shared_ptr<EpaxosGraph> graph = make_shared<EpaxosGraph>();
+  stack<shared_ptr<EpaxosVertex>> stk;
 
-  for (auto itr : deps) {
-    uint64_t dreplica_id = itr.first;
-    uint64_t dinstance_no = itr.second;
-    int status = CreateEpaxosGraph(dreplica_id, dinstance_no, graph);
-    if (status == 0) {
-      int64_t prev_instance_no = dinstance_no - 1;
-      while (prev_instance_no >= 0) {
-        string dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
-        if (dep_dkey != NOOP_DKEY && dep_dkey != dkey) {
-          prev_instance_no--;
-          continue;
-        }
-        while (cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::COMMITTED
-               && cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::EXECUTED) {
-          Coroutine::Sleep(1000);
-        }
-        dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
-        if (dep_dkey == dkey) {
-          break;
-        }
-        prev_instance_no--;
+  shared_ptr<EpaxosVertex> v = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
+  graph->FindOrCreateVertex(v);
+  stk.push(v);
+
+  while (!stk.empty()){
+    shared_ptr<EpaxosVertex> child = stk.top();
+    stk.pop();
+    auto deps = child->cmd->deps;
+    string dkey = child->cmd->dkey;
+    for (auto itr : deps) {
+      uint64_t dreplica_id = itr.first;
+      uint64_t dinstance_no = itr.second;
+      received_till[dreplica_id] = max(received_till[dreplica_id], dinstance_no);
+      while (cmds[dreplica_id][dinstance_no].state != EpaxosCommandState::COMMITTED
+             && cmds[dreplica_id][dinstance_no].state != EpaxosCommandState::EXECUTED) {
+        Coroutine::Sleep(1000);
       }
-      if (prev_instance_no < 0) continue;
-      uint64_t possible_instance_no = prev_instance_no;
-      status = CreateEpaxosGraph(dreplica_id, possible_instance_no, graph);
-      dinstance_no = prev_instance_no;
+      if (cmds[dreplica_id][dinstance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
+        int64_t prev_instance_no = dinstance_no - 1;
+        while (prev_instance_no >= 0) {
+          string dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
+          if (dep_dkey != NOOP_DKEY && dep_dkey != dkey) {
+            prev_instance_no--;
+            continue;
+          }
+          while (cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::COMMITTED
+                 && cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::EXECUTED) {
+            Coroutine::Sleep(1000);
+          }
+          dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
+          if (dep_dkey == dkey) {
+            break;
+          }
+          prev_instance_no--;
+        }
+        if (prev_instance_no < 0) continue;
+        dinstance_no = prev_instance_no;
+      }
+      if (cmds[dreplica_id][dinstance_no].state == EpaxosCommandState::EXECUTED) continue;
+      shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
+      bool exists = graph->FindOrCreateVertex(parent);
+      graph->FindOrCreateParentEdge(child, parent);
+      if (exists) continue;
+      stk.push(parent);
     }
-    if (status == 1) continue;
-    shared_ptr<EpaxosVertex> parent = make_shared<EpaxosVertex>(&cmds[dreplica_id][dinstance_no], dreplica_id, dinstance_no);
-    graph->FindOrCreateParentEdge(child, parent);
   }
-  return 2;
-}
+  return graph;
+} 
 
 // Should be called only after command at that instance is committed
 void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
@@ -921,9 +926,8 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
   in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
   // Execute
-  EpaxosGraph graph = EpaxosGraph();
-  CreateEpaxosGraph(replica_id, instance_no, &graph);
-  auto sorted_vertices = graph.GetSortedVertices();
+  shared_ptr<EpaxosGraph> graph = CreateEpaxosGraph(replica_id, instance_no);
+  auto sorted_vertices = graph->GetSortedVertices();
   for (auto vertex : sorted_vertices) {
     if (vertex->cmd->state != EpaxosCommandState::EXECUTED) {
       vertex->cmd->state = EpaxosCommandState::EXECUTED;
