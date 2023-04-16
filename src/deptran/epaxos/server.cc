@@ -42,6 +42,7 @@ void EpaxosServer::Setup() {
           leader_dep_instance = dkey_deps[req.dkey][replica_id_];
         }
         dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
+        received_till[replica_id_] = max(received_till[replica_id_], instance_no);
         EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
         #if defined(EPAXOS_TEST_CORO)
         SetInstance(req.cmd, replica_id, instance_no);
@@ -58,17 +59,17 @@ void EpaxosServer::Setup() {
   // Explicity prepare uncommitted commands
   Coroutine::CreateRun([this](){
     while(true) {
-      std::unique_lock<std::recursive_mutex> lock(mtx_);
       #ifdef EPAXOS_TEST_CORO
+      std::unique_lock<std::recursive_mutex> lock(mtx_);
       if (pause_execution) { 
         lock.unlock();
         Coroutine::Sleep(10000);
         continue;
       }
-      #endif
-      auto received_till_ = this->received_till;
       lock.unlock();
+      #endif
 
+      auto received_till_ = this->received_till;
       for (auto itr : received_till_) {
         uint64_t replica_id = itr.first;
         uint64_t received_till_instance_no = itr.second;
@@ -82,10 +83,12 @@ void EpaxosServer::Setup() {
             #endif
           });
           instance_no++;
+          Coroutine::Sleep(10);
         }
+        Coroutine::Sleep(10);
       }
       prepared_till = received_till_;
-      Coroutine::Sleep(1000);
+      Coroutine::Sleep(10);
     }
   });
 
