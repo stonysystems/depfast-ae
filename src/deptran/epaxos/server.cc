@@ -883,8 +883,10 @@ int EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no,
           prev_instance_no--;
           continue;
         }
-        uint64_t possible_instance_no = prev_instance_no;
-        PrepareTillCommitted(dreplica_id, possible_instance_no);
+        while (cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::COMMITTED
+               && cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::EXECUTED) {
+          Coroutine::Sleep(1000);
+        }
         dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
         if (dep_dkey == dkey) {
           break;
