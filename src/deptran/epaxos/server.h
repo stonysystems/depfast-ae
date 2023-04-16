@@ -73,15 +73,7 @@ class EpaxosCommand {
     dkey = NOOP_DKEY;
     state = EpaxosCommandState::NOT_STARTED;
   }
-
-  EpaxosCommand(shared_ptr<Marshallable>& cmd, string& dkey, uint64_t& seq, unordered_map<uint64_t, uint64_t>& deps, EpaxosBallot& highest_seen, EpaxosCommandState& state) {
-    this->cmd = cmd;
-    this->dkey = dkey;
-    this->seq = seq;
-    this->deps = deps;
-    this->highest_seen = highest_seen;
-    this->state = state;
-  }
+  
 };
 
 class EpaxosRequest {

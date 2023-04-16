@@ -29,9 +29,17 @@ class EGraph {
   unordered_map<uint64_t, shared_ptr<V>> vertices;
   unordered_map<uint64_t, vector<shared_ptr<V>> > scc_vertices;
   unordered_map<uint64_t, unordered_set<uint64_t>> parents;
+  vector<shared_ptr<V>> sorted_vertices;
 
  public:
   EGraph(){}
+  
+  ~EGraph(){
+    vertices.clear();
+    scc_vertices.clear();
+    parents.clear();
+    sorted_vertices.clear();
+  }
 
  private:
   void AddVertex(shared_ptr<V> &v) {
@@ -100,7 +108,7 @@ class EGraph {
       return v1->isFirstInSCC(v2);
     });
     for (auto &vertex : scc) {
-      scc_vertices[vertex->id()] = scc;
+      sorted_vertices.push_back(vertex);
     }
   }
 
@@ -146,14 +154,6 @@ class EGraph {
  public:
   vector<shared_ptr<V>> GetSortedVertices() {
     PopulateSCCs();
-    unordered_map<uint64_t, bool> visited;
-    vector<shared_ptr<V>> sorted_vertices;
-    for (auto itr : vertices) {
-      uint64_t id = itr.first;
-      if (!visited[id]) {
-        TopologicalSortUtil(id, visited, sorted_vertices);
-      }
-    }
     return sorted_vertices;
   }
 
