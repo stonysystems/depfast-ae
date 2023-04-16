@@ -856,16 +856,16 @@ void EpaxosServer::PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance
         Execution Phase            *
 ************************************/
 
-shared_ptr<EpaxosGraph> EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no) {
+unique_ptr<EpaxosGraph> EpaxosServer::CreateEpaxosGraph(uint64_t& replica_id, uint64_t& instance_no) {
   Log_debug("Adding to graph replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-  shared_ptr<EpaxosGraph> graph = make_shared<EpaxosGraph>();
+  unique_ptr<EpaxosGraph> graph = make_unique<EpaxosGraph>();
   stack<shared_ptr<EpaxosVertex>> stk;
 
   shared_ptr<EpaxosVertex> v = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
   graph->FindOrCreateVertex(v);
   stk.push(v);
 
-  while (!stk.empty()){
+  while (!stk.empty()) {
     shared_ptr<EpaxosVertex> child = stk.top();
     stk.pop();
     auto deps = child->cmd->deps;
