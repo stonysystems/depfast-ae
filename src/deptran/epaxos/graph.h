@@ -31,6 +31,12 @@ class EGraph {
   unordered_map<uint64_t, unordered_set<uint64_t>> parents;
   vector<shared_ptr<V>> sorted_vertices;
 
+  unordered_map<uint64_t, int> disc;
+  unordered_map<uint64_t, int> low;
+  unordered_map<uint64_t, bool> in_stk;
+  stack<uint64_t> stk;
+  int time;
+
  public:
   EGraph(){}
   
@@ -72,19 +78,14 @@ class EGraph {
   }
 
  private:
-  void FindSCC(uint64_t id,
-               unordered_map<uint64_t, int> &disc,
-               unordered_map<uint64_t, int> &low,
-               unordered_map<uint64_t, bool> &in_stk,
-               stack<uint64_t> &stk,
-               int *time) {
-    *time = *time + 1;
-    disc[id] = low[id] = *time;
+  void FindSCC(uint64_t id) {
+    time++;
+    disc[id] = low[id] = time;
     stk.push(id);
     in_stk[id] = true;
     for (auto parent_id : parents[id]) {
       if (disc[parent_id] == -1) {
-        FindSCC(parent_id, disc, low, in_stk, stk, time);
+        FindSCC(parent_id);
         low[id] = min(low[id], low[parent_id]);
       } else if (in_stk[parent_id]) {
         low[id] = min(low[id], disc[parent_id]);
@@ -114,23 +115,16 @@ class EGraph {
 
   // uses tarjan's algorithm for finding SCC
   void PopulateSCCs() {
-    unordered_map<uint64_t, int> disc;
-    unordered_map<uint64_t, int> low;
-    unordered_map<uint64_t, bool> in_stk;
-    stack<uint64_t> stk;
-    int time = 0;
-
     for (auto itr : vertices) {
       uint64_t id = itr.first;
       disc[id] = -1;
       low[id] = -1;
-      in_stk[id] = false;
     }
 
     for (auto itr : vertices) {
       uint64_t id = itr.first;
       if (disc[id] == -1) {
-        FindSCC(id, disc, low, in_stk, stk, &time);
+        FindSCC(id);
       }
     }
   }
