@@ -26,66 +26,36 @@ class EVertex {
 template<typename V>
 class EGraph {
  private:
-  unordered_map<uint64_t, shared_ptr<V>> vertices;
-  unordered_map<uint64_t, vector<shared_ptr<V>> > scc_vertices;
-  unordered_map<uint64_t, unordered_set<uint64_t>> parents;
-  vector<shared_ptr<V>> sorted_vertices;
+  function<void(shared_ptr<V>&)> exec;
+  function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_parents;
 
   unordered_map<uint64_t, int> disc;
   unordered_map<uint64_t, int> low;
   unordered_map<uint64_t, bool> in_stk;
-  stack<uint64_t> stk;
+  stack<shared_ptr<V>> stk;
   int time;
 
  public:
   EGraph(){}
   
   ~EGraph(){
-    vertices.clear();
-    scc_vertices.clear();
-    parents.clear();
-    sorted_vertices.clear();
+    disc.clear();
+    low.clear();
+    in_stk.clear();
   }
 
  private:
-  void AddVertex(shared_ptr<V> &v) {
-    vertices[v->id()] = v;
-  }
-
-  void AddParentEdge(shared_ptr<V> &v, shared_ptr<V> &parent) {
-    parents[v->id()].insert(parent->id());
-  }
-
- public:
-  // returns true if already existed
-  virtual bool FindOrCreateVertex(shared_ptr<V> &v) {
-    if (vertices.count(v->id())) {
-      return true;
-    }
-    this->AddVertex(v);
-    return false;
-  }
-
-  virtual bool FindOrCreateParentEdge(shared_ptr<V> &v, shared_ptr<V> &parent) {
-    if (!vertices.count(v->id())) {
-      verify(0);
-    }
-    if (parents[v->id()].count(parent->id())) {
-      return true;
-    }
-    this->AddParentEdge(v, parent);
-    return false;
-  }
-
- private:
-  void FindSCC(uint64_t id) {
+  void FindSCC(shared_ptr<V>& child) {
     time++;
+    uint64_t id = child->id();
     disc[id] = low[id] = time;
-    stk.push(id);
+    stk.push(child);
     in_stk[id] = true;
-    for (auto parent_id : parents[id]) {
-      if (disc[parent_id] == -1) {
-        FindSCC(parent_id);
+    for (auto &parent : get_parents(child)) {
+      uint64_t parent_id = parent->id();
+      if (disc.count(parent_id) == 0) {
+        disc[parent_id] = -1;
+        FindSCC(parent);
         low[id] = min(low[id], low[parent_id]);
       } else if (in_stk[parent_id]) {
         low[id] = min(low[id], disc[parent_id]);
@@ -94,63 +64,32 @@ class EGraph {
 
     vector<shared_ptr<V>> scc;
     if (low[id] == disc[id]) {
-      while (stk.top() != id) {
-        uint64_t poppedId = stk.top();
-        scc.push_back(vertices[poppedId]);
-        in_stk[poppedId] = false;
+      while (stk.top()->id() != id) {
+        shared_ptr<V>& poppedV = stk.top();
+        scc.push_back(poppedV);
+        in_stk[poppedV->id()] = false;
         stk.pop();
       }
-      uint64_t poppedId = stk.top();
-      scc.push_back(vertices[poppedId]);
-      in_stk[poppedId] = false;
+      shared_ptr<V>& poppedV = stk.top();
+      scc.push_back(poppedV);
+      in_stk[poppedV->id()] = false;
       stk.pop();
     }
-    sort(scc.begin(), scc.end(), [](shared_ptr<V> &v1, shared_ptr<V> &v2) -> bool {
+    sort(scc.begin(), scc.end(), [](shared_ptr<V>& v1, shared_ptr<V>& v2) -> bool {
       return v1->isFirstInSCC(v2);
     });
     for (auto &vertex : scc) {
-      sorted_vertices.push_back(vertex);
-    }
-  }
-
-  // uses tarjan's algorithm for finding SCC
-  void PopulateSCCs() {
-    for (auto itr : vertices) {
-      uint64_t id = itr.first;
-      disc[id] = -1;
-      low[id] = -1;
-    }
-
-    for (auto itr : vertices) {
-      uint64_t id = itr.first;
-      if (disc[id] == -1) {
-        FindSCC(id);
-      }
-    }
-  }
-
-  void TopologicalSortUtil(uint64_t id, unordered_map<uint64_t, bool> &visited, vector<shared_ptr<V>> &que) {
-    for (auto scc_v : scc_vertices[id]) {
-      visited[scc_v->id()] = true;
-    }
-    for (auto scc_v : scc_vertices[id]) {
-      for (auto parent_id : parents[scc_v->id()]) {
-        if(!visited[parent_id]) {
-          TopologicalSortUtil(parent_id, visited, que);
-        }
-      }
-    }
-    for (auto scc_v : scc_vertices[id]) {
-      que.push_back(scc_v);
+      exec(vertex);
     }
   }
 
  public:
-  vector<shared_ptr<V>> GetSortedVertices() {
-    PopulateSCCs();
-    return sorted_vertices;
+  void Execute(shared_ptr<V>& vertex, function<void(shared_ptr<V>&)> exec, function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_parents) {
+    this->exec = exec;
+    this->get_parents = get_parents;
+    int time = 0;
+    FindSCC(vertex);
   }
-
 };
 
 }
