@@ -76,7 +76,7 @@ void EpaxosServer::Setup() {
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
-            Coroutine::Sleep(300000);
+            cmds[replica_id][instance_no].committed_ev->WaitUntilGreaterOrEqualThan(1, 300000);
             PrepareTillCommitted(replica_id, instance_no);
             #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
@@ -466,6 +466,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   }
+  cmds[replica_id][instance_no].committed_ev->Set(1);
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
   commo()->SendCommit(site_id_, 
@@ -510,6 +511,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
+  cmds[replica_id][instance_no].committed_ev->Set(1);
   #ifdef EPAXOS_PERF_TEST_CORO
   commit_next_(*cmd);
   #endif
@@ -865,10 +867,7 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
     received_till[dreplica_id] = max(received_till[dreplica_id], dinstance_no);
-    while (cmds[dreplica_id][dinstance_no].state != EpaxosCommandState::COMMITTED
-            && cmds[dreplica_id][dinstance_no].state != EpaxosCommandState::EXECUTED) {
-      Coroutine::Sleep(1000);
-    }
+    cmds[dreplica_id][dinstance_no].committed_ev->WaitUntilGreaterOrEqualThan(1);
     if (cmds[dreplica_id][dinstance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
       int64_t prev_instance_no = dinstance_no - 1;
       while (prev_instance_no >= 0) {
@@ -877,10 +876,7 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
           prev_instance_no--;
           continue;
         }
-        while (cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::COMMITTED
-                && cmds[dreplica_id][prev_instance_no].state != EpaxosCommandState::EXECUTED) {
-          Coroutine::Sleep(1000);
-        }
+        cmds[dreplica_id][prev_instance_no].committed_ev->WaitUntilGreaterOrEqualThan(1);
         dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
         if (dep_dkey == dkey) {
           break;
@@ -1043,7 +1039,7 @@ void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd,
       // the instance cannot be a dependency for itself
       if (deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) continue;
       // command not seen by the server yet
-      EpaxosCommand e_cmd = cmds[dreplica_id][dinstance_no];
+      EpaxosCommand& e_cmd = cmds[dreplica_id][dinstance_no];
       if (e_cmd.state == EpaxosCommandState::NOT_STARTED) continue;
       // command not interefering (case 6.i in proof)
       if (e_cmd.dkey != dkey) continue;
