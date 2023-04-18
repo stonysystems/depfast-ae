@@ -6,6 +6,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <map>
+#include <stack>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -238,6 +239,13 @@ class SharedIntEvent {
   bool WaitUntilGreaterOrEqualThan(int x, int timeout=0);
 };
 
+class SharedPubSubEvent {
+ public:
+  int tot_events_{};
+  std::stack<shared_ptr<IntEvent>> events_{};
+  void NotifyOne();
+  void Wait();
+};
 
 class NeverEvent: public Event {
  public:

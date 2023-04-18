@@ -76,7 +76,7 @@ void EpaxosServer::Setup() {
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
-            cmds[replica_id][instance_no].committed_ev->WaitUntilGreaterOrEqualThan(1, 300000);
+            cmds[replica_id][instance_no].committed_ev.WaitUntilGreaterOrEqualThan(1, 300000);
             PrepareTillCommitted(replica_id, instance_no);
             #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
@@ -466,7 +466,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   }
-  cmds[replica_id][instance_no].committed_ev->Set(1);
+  cmds[replica_id][instance_no].committed_ev.Set(1);
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
   commo()->SendCommit(site_id_, 
@@ -511,7 +511,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
-  cmds[replica_id][instance_no].committed_ev->Set(1);
+  cmds[replica_id][instance_no].committed_ev.Set(1);
   #ifdef EPAXOS_PERF_TEST_CORO
   commit_next_(*cmd);
   #endif
@@ -867,7 +867,7 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
     received_till[dreplica_id] = max(received_till[dreplica_id], dinstance_no);
-    cmds[dreplica_id][dinstance_no].committed_ev->WaitUntilGreaterOrEqualThan(1);
+    cmds[dreplica_id][dinstance_no].committed_ev.WaitUntilGreaterOrEqualThan(1);
     if (cmds[dreplica_id][dinstance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
       int64_t prev_instance_no = dinstance_no - 1;
       while (prev_instance_no >= 0) {
@@ -876,7 +876,7 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
           prev_instance_no--;
           continue;
         }
-        cmds[dreplica_id][prev_instance_no].committed_ev->WaitUntilGreaterOrEqualThan(1);
+        cmds[dreplica_id][prev_instance_no].committed_ev.WaitUntilGreaterOrEqualThan(1);
         dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
         if (dep_dkey == dkey) {
           break;
@@ -915,12 +915,15 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
-  while (in_process_dkeys.count(cmds[replica_id][instance_no].dkey) != 0) {
+  string &dkey = cmds[replica_id][instance_no].dkey;
+  while (in_process_dkeys.count(dkey) != 0) {
     if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
     Coroutine::Sleep(1000);
   }
-  if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
-  in_process_dkeys.insert(cmds[replica_id][instance_no].dkey);
+  if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    return;
+  }
+  in_process_dkeys.insert(dkey);
   // Execute
   unique_ptr<EpaxosGraph> graph = make_unique<EpaxosGraph>();
   shared_ptr<EpaxosVertex> vertex = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
@@ -934,7 +937,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
                   });
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Free lock to execute next command of same dkey
-  in_process_dkeys.erase(cmds[replica_id][instance_no].dkey);
+  in_process_dkeys.erase(dkey);
 }
 
 /***********************************

@@ -212,6 +212,28 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
+void SharedPubSubEvent::NotifyOne() {
+  while(!events_.empty()) {
+    auto ev = events_.top();
+    events_.pop();
+    if (ev->status_ <= Event::WAIT) {
+      tot_events_--;
+      ev->Set(1);
+      break;
+    }
+  }
+}
+
+void SharedPubSubEvent::Wait() {
+  tot_events_++;
+  if (tot_events_ == 1) {
+    return;
+  }
+  auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
+  events_.push(sp_ev);
+  sp_ev->Wait();
+}
+
 int SharedIntEvent::Set(const int& v) {
   auto ret = value_;
   value_ = v;

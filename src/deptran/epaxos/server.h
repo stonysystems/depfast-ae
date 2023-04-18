@@ -67,7 +67,7 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
-  unique_ptr<SharedIntEvent> committed_ev = make_unique<SharedIntEvent>();
+  SharedIntEvent committed_ev{};
   
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());

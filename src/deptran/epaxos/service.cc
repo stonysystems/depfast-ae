@@ -41,9 +41,7 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
   *updated_deps = reply.deps;
   Log_debug("Return pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d, acceptor_replica_id: %d as status: %d", 
             leader_replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, svr_->site_id_, reply.status);
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
+
   defer->reply();
 }
 
@@ -73,9 +71,6 @@ void EpaxosServiceImpl::HandleAccept(const epoch_t& epoch,
   *highest_seen_replica_id = reply.replica_id;
   Log_debug("Return accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d, acceptor_replica_id: %d as status: %d", 
             leader_replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, svr_->site_id_, reply.status);
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   defer->reply();
 }
 
@@ -99,9 +94,6 @@ void EpaxosServiceImpl::HandleCommit(const epoch_t& epoch,
   *status = true;
   Log_debug("Return commit reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d, acceptor_replica_id: %d", 
             leader_replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, svr_->site_id_);
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   defer->reply();
 }
 
@@ -135,9 +127,6 @@ void EpaxosServiceImpl::HandleTryPreAccept(const epoch_t& epoch,
   *conflict_instance_no = reply.conflict_instance_no;
   Log_debug("Return try-pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d as status: %d", 
             leader_replica_id, instance_no, dkey.c_str(), reply.ballot_no, ballot.replica_id, reply.status);
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   defer->reply();
 }
 
@@ -174,9 +163,6 @@ void EpaxosServiceImpl::HandlePrepare(const epoch_t& epoch,
   *highest_seen_replica_id = reply.replica_id;
   Log_debug("Return prepare reply for replica: %d instance: %d dep_key: %s with acceptor_replica_id: %d ballot: %d leader: %d as status: %d cmd_state: %d", 
             leader_replica_id, instance_no, reply.dkey.c_str(), reply.acceptor_replica_id, reply.ballot_no, ballot.replica_id, reply.status, reply.cmd_state);
-  #ifdef WIDE_AREA
-  Coroutine::Sleep(WIDE_AREA_DELAY);
-  #endif
   defer->reply();
 }
 

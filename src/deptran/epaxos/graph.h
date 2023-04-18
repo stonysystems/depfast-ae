@@ -45,7 +45,7 @@ class EGraph {
   }
 
  private:
-  void FindSCC(shared_ptr<V>& child) {
+  void ExecuteSCC(shared_ptr<V>& child) {
     time++;
     uint64_t id = child->id();
     disc[id] = low[id] = time;
@@ -55,7 +55,7 @@ class EGraph {
       uint64_t parent_id = parent->id();
       if (disc.count(parent_id) == 0) {
         disc[parent_id] = -1;
-        FindSCC(parent);
+        ExecuteSCC(parent);
         low[id] = min(low[id], low[parent_id]);
       } else if (in_stk[parent_id]) {
         low[id] = min(low[id], disc[parent_id]);
@@ -88,7 +88,7 @@ class EGraph {
     this->exec = exec;
     this->get_parents = get_parents;
     int time = 0;
-    FindSCC(vertex);
+    ExecuteSCC(vertex);
   }
 };
 
