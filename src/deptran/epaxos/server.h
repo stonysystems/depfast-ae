@@ -134,7 +134,7 @@ class EpaxosServer : public TxLogServer {
   unordered_map<uint64_t, uint64_t> received_till;
   unordered_map<uint64_t, uint64_t> prepared_till;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
-  unordered_set<string> in_process_dkeys;
+  unordered_map<string, PubSubEvent> in_process_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;

@@ -916,14 +916,11 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   string &dkey = cmds[replica_id][instance_no].dkey;
-  while (in_process_dkeys.count(dkey) != 0) {
-    if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) return;
-    Coroutine::Sleep(1000);
-  }
+  in_process_dkeys[dkey].Wait();
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
+    in_process_dkeys[dkey].NotifyOne();
     return;
   }
-  in_process_dkeys.insert(dkey);
   // Execute
   unique_ptr<EpaxosGraph> graph = make_unique<EpaxosGraph>();
   shared_ptr<EpaxosVertex> vertex = make_shared<EpaxosVertex>(&cmds[replica_id][instance_no], replica_id, instance_no);
@@ -937,7 +934,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
                   });
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Free lock to execute next command of same dkey
-  in_process_dkeys.erase(dkey);
+  in_process_dkeys[dkey].NotifyOne();
 }
 
 /***********************************

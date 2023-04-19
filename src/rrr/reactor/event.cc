@@ -212,25 +212,26 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
-void SharedPubSubEvent::NotifyOne() {
-  while(!events_.empty()) {
-    auto ev = events_.top();
-    events_.pop();
-    if (ev->status_ <= Event::WAIT) {
+void PubSubEvent::NotifyOne() {
+  for (auto itr = events_.begin(); itr != events_.end(); itr++) {
+    if ((*itr)->status_ <= Event::WAIT) {
+      auto sp_ev = *itr;
+      events_.erase(itr);
       tot_events_--;
-      ev->Set(1);
-      break;
+      sp_ev->Set(1);
+      return;
     }
   }
+  tot_events_--;
 }
 
-void SharedPubSubEvent::Wait() {
+void PubSubEvent::Wait() {
   tot_events_++;
   if (tot_events_ == 1) {
     return;
   }
-  auto sp_ev =  Reactor::CreateSpEvent<IntEvent>();
-  events_.push(sp_ev);
+  auto sp_ev = Reactor::CreateSpEvent<IntEvent>(1);
+  events_.insert(events_.end(), sp_ev);
   sp_ev->Wait();
 }
 
