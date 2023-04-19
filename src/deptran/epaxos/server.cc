@@ -518,7 +518,9 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
   // Execute
-  StartExecution(replica_id, instance_no);
+  Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
+    StartExecution(replica_id, instance_no);
+  });
 }
 
 /***********************************

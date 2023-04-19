@@ -138,7 +138,7 @@ class EpaxosServer : public TxLogServer {
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
-  bool pause_execution = true;
+  bool pause_execution = false;
   int inprocess_reqs = 0;
   int fast = 0;
   int slow = 0;
