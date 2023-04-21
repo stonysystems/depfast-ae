@@ -916,7 +916,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   string &dkey = cmds[replica_id][instance_no].dkey;
-  in_process_dkeys[dkey].Wait();
+  in_process_dkeys[dkey].Wait(5);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     in_process_dkeys[dkey].NotifyOne();
     return;

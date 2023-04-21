@@ -225,9 +225,9 @@ void PubSubEvent::NotifyOne() {
   tot_events_--;
 }
 
-void PubSubEvent::Wait() {
+void PubSubEvent::Wait(int concurrency) {
   tot_events_++;
-  if (tot_events_ == 1) {
+  if (tot_events_ <= concurrency) {
     return;
   }
   auto sp_ev = Reactor::CreateSpEvent<IntEvent>(1);

@@ -243,7 +243,7 @@ class PubSubEvent {
   int tot_events_{};
   list<shared_ptr<IntEvent>> events_{};
   void NotifyOne();
-  void Wait();
+  void Wait(int concurrency);
 };
 
 class NeverEvent: public Event {

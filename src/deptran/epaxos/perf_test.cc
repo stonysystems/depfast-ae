@@ -114,13 +114,17 @@ int EpaxosPerfTest::Run(void) {
   #endif
   
   Print("PERFORMANCE TESTS COMPLETED");
+  vector<float> exec_times;
+  vector<float> commit_times;
   ofstream out_file;
   out_file.open("./plots/epaxos/latencies_" + to_string(concurrent) + "_"  + to_string(tot_req_num) + "_" + to_string(conflict_perc) + ".csv");
   for (pair<int, float> t : leader_exec_times) {
+    exec_times.push_back(t.second);
     out_file << t.second << ",";
   }
   out_file << endl;
   for (pair<int, float> t : leader_commit_times) {
+    commit_times.push_back(t.second);
     out_file << t.second << ",";
   }
   out_file << endl;
@@ -131,6 +135,18 @@ int EpaxosPerfTest::Run(void) {
   out_file << fastpath_percentage << endl;
   out_file << rpc_count << endl;
   out_file.close();
+  sort(commit_times.begin(), commit_times.end());
+  sort(exec_times.begin(), exec_times.end());
+  Print("Commit Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
+  commit_times[(commit_times.size() - 1) * 0.5],
+  commit_times[(commit_times.size() - 1) * 0.9],
+  commit_times[(commit_times.size() - 1) * 0.99],
+  commit_times[commit_times.size() - 1]);
+  Print("Execution Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
+  exec_times[(exec_times.size() - 1) * 0.5],
+  exec_times[(exec_times.size() - 1) * 0.9],
+  exec_times[(exec_times.size() - 1) * 0.99],
+  exec_times[exec_times.size() - 1]);
   Print("Fastpath Percentage: %lf", fastpath_percentage);
   Print("Total RPC count: %ld", rpc_count);
   Print("Throughput: %lf", throughput);
