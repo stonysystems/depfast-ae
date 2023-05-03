@@ -121,9 +121,6 @@ void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string& dkey) {
   Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   reqs.push_back(EpaxosRequest(cmd, dkey));
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
-  inprocess_reqs++;
-  #endif
 }
 
 #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
@@ -161,10 +158,6 @@ void EpaxosServer::Prepare(uint64_t& replica_id, uint64_t& instance_no) {
 
 void EpaxosServer::PauseExecution(bool pause) {
   pause_execution = pause;
-}
-
-int EpaxosServer::GetRequestCount() {
-  return inprocess_reqs;
 }
 
 pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
@@ -896,11 +889,6 @@ void EpaxosServer::Execute(shared_ptr<EpaxosVertex> vertex) {
   if (vertex->cmd->state == EpaxosCommandState::EXECUTED) return;
   vertex->cmd->state = EpaxosCommandState::EXECUTED;
   Log_debug("Executed replica: %d instance: %d in replica: %d", vertex->replica_id, vertex->instance_no, replica_id_); 
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
-  if (vertex->replica_id == replica_id_) {
-    inprocess_reqs--;
-  }
-  #endif
   app_next_(*(vertex->cmd->cmd));
   // Update executed_till
   executed_till[vertex->cmd->dkey][vertex->replica_id] = max(executed_till[vertex->cmd->dkey][vertex->replica_id], vertex->instance_no);
@@ -909,14 +897,14 @@ void EpaxosServer::Execute(shared_ptr<EpaxosVertex> vertex) {
 // Should be called only after command at that instance is committed
 void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
-  #ifdef EPAXOS_TEST_CORO
+  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_EVENTUAL_TEST)
   if (pause_execution) return;
   #endif
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Stop execution of next command of same dkey
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   string &dkey = cmds[replica_id][instance_no].dkey;
-  in_process_dkeys[dkey].Wait(5);
+  in_process_dkeys[dkey].Wait(1);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
     in_process_dkeys[dkey].NotifyOne();
     return;

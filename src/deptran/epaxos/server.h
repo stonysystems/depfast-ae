@@ -139,7 +139,6 @@ class EpaxosServer : public TxLogServer {
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
-  int inprocess_reqs = 0;
   int fast = 0;
   int slow = 0;
   #endif
@@ -253,7 +252,6 @@ public:
                 status_t *state);
   void Prepare(uint64_t& replica_id, uint64_t& instance_no);
   void PauseExecution(bool pause);
-  int GetRequestCount();
   pair<int, int> GetFastAndSlowPathCount();
   #endif
 

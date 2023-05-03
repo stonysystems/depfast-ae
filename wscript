@@ -58,6 +58,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('', '--enable-epaxos-perf-test', dest='enable_epaxos_perf_test',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-epaxos-eventual-test', dest='enable_epaxos_eventual_test',
+                   default=False, action='store_true')
     opt.add_option('', '--enable-wide-area', dest='enable_wide_area',
                    default=False, action='store_true')
     opt.parse_args();
@@ -319,6 +321,9 @@ def _enable_epaxos_perf_test(conf):
     if Options.options.enable_epaxos_perf_test:
         Logs.pprint("PINK", "Epaxos performance testing coroutine enabled")
         conf.env.append_value("CXXFLAGS", "-DEPAXOS_PERF_TEST_CORO")
+    if Options.options.enable_epaxos_eventual_test:
+        Logs.pprint("PINK", "Eventual consistency testing enabled")
+        conf.env.append_value("CXXFLAGS", "-DEPAXOS_EVENTUAL_TEST")
     if Options.options.enable_wide_area:
         Logs.pprint("PINK", "Wide area testing enabled")
         conf.env.append_value("CXXFLAGS", "-DWIDE_AREA")

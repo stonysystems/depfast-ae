@@ -115,10 +115,6 @@ vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
   return committed_cmds[svr];
 }
 
-int EpaxosTestConfig::GetRequestCount(int svr) {
-  return replicas[svr]->svr_->GetRequestCount();
-}
-
 double EpaxosTestConfig::GetFastpathPercent() {
   double fast = 0, slow = 0;
   for (int svr = 0; svr < NSERVERS; svr++) {

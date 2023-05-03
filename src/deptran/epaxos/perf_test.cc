@@ -11,6 +11,9 @@ namespace janus {
 #ifdef EPAXOS_PERF_TEST_CORO
 
 int EpaxosPerfTest::Run(void) {
+  #ifdef EPAXOS_EVENTUAL_TEST
+  config_->PauseExecution(true);
+  #endif
   Print("START PERFORMANCE TESTS");
   concurrent = Config::GetConfig()->get_concurrent_txn();
   tot_req_num = Config::GetConfig()->get_tot_req();
@@ -26,12 +29,14 @@ int EpaxosPerfTest::Run(void) {
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
+      inprocess_reqs[svr]--;
+      int x = submitted_count;
       pair<int, int> startime = start_time[command.tx_id_];
       leader_exec_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
       // start next command
       if (submitted_count >= tot_req_num) {
-        if (config_->GetRequestCount(svr) == 0) {
+        if (inprocess_reqs[svr] == 0) {
           finish_mtx_.lock();
           finished_count++;
           if (finished_count == NSERVERS) {
@@ -41,7 +46,7 @@ int EpaxosPerfTest::Run(void) {
         }
         return;
       };
-      if (config_->GetRequestCount(svr) >= concurrent) return;
+      if (inprocess_reqs[svr] >= concurrent) return;
       int next_cmd = ++submitted_count;
       string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
       struct timeval t2;
@@ -49,6 +54,7 @@ int EpaxosPerfTest::Run(void) {
       finish_mtx_.lock();
       start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
       leader[next_cmd] = svr;
+      inprocess_reqs[svr]++;
       finish_mtx_.unlock();
       config_->Start(svr, next_cmd, dkey);
     });
@@ -64,9 +70,37 @@ int EpaxosPerfTest::Run(void) {
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
+      #ifdef EPAXOS_EVENTUAL_TEST
+      inprocess_reqs[svr]--;
+      #endif
       pair<int, int> startime = start_time[command.tx_id_];
       leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
+      #ifdef EPAXOS_EVENTUAL_TEST
+      // start next command
+      if (submitted_count >= tot_req_num) {
+        if (inprocess_reqs[svr] == 0) {
+          finish_mtx_.lock();
+          finished_count++;
+          if (finished_count == NSERVERS) {
+            finish_cond_.notify_all();
+          }
+          finish_mtx_.unlock();
+        }
+        return;
+      };
+      if (inprocess_reqs[svr] >= concurrent) return;
+      int next_cmd = ++submitted_count;
+      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
+      struct timeval t2;
+      gettimeofday(&t2, NULL);
+      finish_mtx_.lock();
+      start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
+      leader[next_cmd] = svr;
+      inprocess_reqs[svr]++;
+      finish_mtx_.unlock();
+      config_->Start(svr, next_cmd, dkey);
+      #endif
     });
   });
 
@@ -95,6 +129,7 @@ int EpaxosPerfTest::Run(void) {
       finish_mtx_.lock();
       start_time[cmd] = {t.tv_sec, t.tv_usec};
       leader[cmd] = svr;
+      inprocess_reqs[svr]++;
       finish_mtx_.unlock();
       config_->Start(svr, cmd, dkey);
     });
@@ -105,6 +140,7 @@ int EpaxosPerfTest::Run(void) {
 
   std::unique_lock<std::mutex> lk(finish_mtx_);
   finish_cond_.wait(lk);
+  lk.unlock();
   gettimeofday(&t2, NULL);
   int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
   int tot_exec_usec_ = t2.tv_usec - t1.tv_usec;
@@ -142,11 +178,13 @@ int EpaxosPerfTest::Run(void) {
   commit_times[(commit_times.size() - 1) * 0.9],
   commit_times[(commit_times.size() - 1) * 0.99],
   commit_times[commit_times.size() - 1]);
+  #ifndef EPAXOS_EVENTUAL_TEST
   Print("Execution Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
   exec_times[(exec_times.size() - 1) * 0.5],
   exec_times[(exec_times.size() - 1) * 0.9],
   exec_times[(exec_times.size() - 1) * 0.99],
   exec_times[exec_times.size() - 1]);
+  #endif
   Print("Fastpath Percentage: %lf", fastpath_percentage);
   Print("Total RPC count: %ld", rpc_count);
   Print("Throughput: %lf", throughput);

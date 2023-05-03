@@ -22,6 +22,7 @@ class EpaxosPerfTest {
   unordered_map<int, float> leader_exec_times;
   unordered_map<int, float> leader_commit_times;
   unordered_map<int, int> leader;
+  unordered_map<int, int> inprocess_reqs;
 
  public:
   EpaxosPerfTest(EpaxosTestConfig *config) : config_(config) {}
