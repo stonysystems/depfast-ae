@@ -30,8 +30,7 @@ void EpaxosServer::Setup() {
         Coroutine::Sleep(1000);
         continue;
       }
-      list<EpaxosRequest> pending_reqs = reqs;
-      reqs = list<EpaxosRequest>();
+      list<EpaxosRequest> pending_reqs = std::move(reqs);
       lock.unlock();
       for (EpaxosRequest req : pending_reqs) {
         int64_t leader_dep_instance = -1;
@@ -52,7 +51,7 @@ void EpaxosServer::Setup() {
           StartPreAccept(req.cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
         });
       }
-      Coroutine::Sleep(1000);
+      Coroutine::Sleep(5000);
     }
   });
 
