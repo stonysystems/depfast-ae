@@ -12,9 +12,10 @@ namespace janus {
 #define WIDE_AREA_DELAY 40000 + (rand() % 10000)
 
 enum EpaxosPreAcceptStatus {
-  FAILED = 0,
-  IDENTICAL = 1,
-  NON_IDENTICAL = 2
+  NOT_INITIALIZED = 0,
+  FAILED = 1,
+  IDENTICAL = 2,
+  NON_IDENTICAL = 3
 };
 
 class EpaxosPreAcceptReply {
@@ -24,7 +25,12 @@ class EpaxosPreAcceptReply {
   ballot_t ballot_no;
   uint64_t replica_id;
   uint64_t seq;
-  unordered_map<uint64_t, pair<uint64_t, bool_t>> deps;
+  unordered_map<uint64_t, uint64_t> deps;
+  unordered_set<uint64_t> committed_deps;
+
+  EpaxosPreAcceptReply() {
+    status = EpaxosPreAcceptStatus::NOT_INITIALIZED;
+  }
 
   EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
     this->status = status;
@@ -33,13 +39,14 @@ class EpaxosPreAcceptReply {
     this->replica_id = replica_id;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, unordered_map<uint64_t, pair<uint64_t, bool_t>>& deps) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
     this->status = status;
     this->epoch = epoch;
     this->ballot_no = ballot_no;
     this->replica_id = replica_id;
     this->seq = seq;
     this->deps = deps;
+    this->committed_deps = committed_deps;
   }
 };
 
@@ -50,23 +57,40 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   int fast_path_quorum_;
   int slow_path_quorum_;
   bool is_recovery;
+  bool thrifty;
+  bool all_equal;
  public:
+  EpaxosPreAcceptReply eq_reply;
   vector<EpaxosPreAcceptReply> replies;
 
-  EpaxosPreAcceptQuorumEvent(int n_total_, bool is_recovery, int fast_path_quorum, int slow_path_quorum) : QuorumEvent(n_total_, n_total_) {
+  EpaxosPreAcceptQuorumEvent(int n_total_, bool thrifty, bool is_recovery, int fast_path_quorum, int slow_path_quorum) : QuorumEvent(n_total_, n_total_) {
     this->is_recovery = is_recovery;
     this->fast_path_quorum_ = fast_path_quorum;
     this->slow_path_quorum_ = slow_path_quorum;
+    this->thrifty = thrifty;
+    this->all_equal = true;
   }
 
   void VoteIdentical(EpaxosPreAcceptReply& reply) {
     n_voted_identical_++;
+    if (eq_reply.status == EpaxosPreAcceptStatus::NOT_INITIALIZED) {
+      eq_reply = reply;
+    } else if (thrifty && (reply.seq != eq_reply.seq || reply.deps != eq_reply.deps)) {
+      all_equal = false;
+    }
     replies.push_back(reply);
     this->QuorumEvent::VoteYes();
   }
 
   void VoteNonIdentical(EpaxosPreAcceptReply& reply) {
     n_voted_nonidentical_++;
+    if (thrifty) {
+      if (eq_reply.status == EpaxosPreAcceptStatus::NOT_INITIALIZED) {
+        eq_reply = reply;
+      } else if (reply.seq != eq_reply.seq || reply.deps != eq_reply.deps) {
+        all_equal = false;
+      }
+    }
     replies.push_back(reply);
     this->QuorumEvent::VoteYes();
   }
@@ -77,12 +101,16 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   }
 
   bool FastPath() {
-    return !is_recovery && n_voted_identical_ >= fast_path_quorum_;
+    return !is_recovery 
+           && ((!thrifty && n_voted_identical_ >= fast_path_quorum_)
+               || (thrifty && all_equal && (n_voted_nonidentical_ + n_voted_identical_ >= fast_path_quorum_)));
   }
 
   bool SlowPath() {
-    return (is_recovery && n_voted_yes_ >= slow_path_quorum_) 
-           || ((n_voted_yes_ >= slow_path_quorum_) && ((n_voted_nonidentical_ + n_voted_no_) > (n_total_-fast_path_quorum_)));
+    return (n_voted_yes_ >= slow_path_quorum_) 
+            && (is_recovery
+                || (!thrifty && (n_voted_nonidentical_ + n_voted_no_) > (n_total_ - fast_path_quorum_))
+                || (thrifty && (!all_equal || n_voted_no_ > 0)));
   }
 
   bool Yes() override {
@@ -90,7 +118,7 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   }
 
   bool No() override {
-    return n_voted_no_ > (n_total_-slow_path_quorum_);
+    return n_voted_no_ > (n_total_ - slow_path_quorum_);
   }
 };
 
@@ -286,6 +314,12 @@ class EpaxosCommo : public Communicator {
   EpaxosCommo() = delete;
   EpaxosCommo(PollMgr*);
 
+  #ifdef THRIFTY
+  bool thrifty = true;
+  #else
+  bool thrifty = false;
+  #endif
+  
   shared_ptr<EpaxosPreAcceptQuorumEvent> 
   SendPreAccept(const siteid_t& site_id,
                 const parid_t& par_id,

@@ -15,7 +15,7 @@ class EpaxosServiceImpl : public EpaxosService {
   EpaxosServer* svr_;
   EpaxosServiceImpl(TxLogServer* sched);
 
-  RpcHandler(PreAccept, 15,
+  RpcHandler(PreAccept, 16,
              const epoch_t&, epoch,
              const ballot_t&, ballot_no,
              const uint64_t&, ballot_replica_id,
@@ -30,13 +30,15 @@ class EpaxosServiceImpl : public EpaxosService {
              ballot_t*, highest_seen_ballot_no,
              uint64_t*, highest_seen_replica_id,
              uint64_t*, updated_seq,
-             unordered_map_uint64_pair*, updated_deps) {
+             unordered_map_uint64_uint64_t*, updated_deps,
+             unordered_set<uint64_t>*, committed_deps) {
     *status = EpaxosPreAcceptStatus::FAILED;
     *highest_seen_epoch = 0;
     *highest_seen_ballot_no = -1;
     *highest_seen_replica_id = 0;
     *updated_seq = 0;
-    *updated_deps = unordered_map<uint64_t, pair<uint64_t, bool_t>>();
+    *updated_deps = unordered_map<uint64_t, uint64_t>();
+    *committed_deps = unordered_set<uint64_t>();
   }
 
   RpcHandler(Accept, 13,

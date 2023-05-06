@@ -1,0 +1,29 @@
+# Mode: just epaxos replication
+
+mode:
+  cc: none # concurrency control
+  ab: epaxos # atomic broadcast
+  read_only: occ
+  batch: false
+  retry: 20
+  ongoing: 1 # per client
+
+# Sites: 1 server, 7 replicas
+site:
+  server:
+    - ["s101:8101", "s102:8102", "s103:8103", "s104:8104", "s105:8105", "s106:8106", "s107:8107"]
+  client: # each line is a partition
+    - ["c01"]
+    
+process:
+  s101: localhost
+  s102: localhost
+  s103: localhost
+  s104: localhost
+  s105: localhost
+  s106: localhost
+  s107: localhost
+  c01: localhost
+
+host:
+  localhost: 127.0.0.1

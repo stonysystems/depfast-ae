@@ -174,7 +174,7 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
     if (exec_orders[svr].size() > exec_orders[longest_svr].size()) {
       longest_svr = svr;
     }
-    Log_debug("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
+    Log_info("Executed %d/%d cmds in server: %d", exec_orders[svr].size(), dependent_cmds.size(), svr);
     verify(exec_orders[svr].size() > 0); // atleast some commands are executed
   }
   for (int svr = 0; svr < NSERVERS; svr++) {

@@ -24,51 +24,60 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                            const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - 1;
+  if (thrifty) {
+    n_total = FAST_PATH_QUORUM - 1;
+  }
   int fast_path_quorum = FAST_PATH_QUORUM - 1;
   int slow_path_quorum = SLOW_PATH_QUORUM - 1;
-  auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(n_total, is_recovery, fast_path_quorum, slow_path_quorum);
-  for (auto& p : proxies) {
-      if (p.first == site_id) {
-        continue;
+  auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(n_total, thrifty, is_recovery, fast_path_quorum, slow_path_quorum);
+  int sent = 0;
+  int id = site_id;
+  while (proxies.size() != 0 && sent < n_total) {
+    id = (id + 1) % proxies.size();
+    if (proxies[id].first == site_id) {
+      continue;
+    }
+    sent++;
+    EpaxosProxy *proxy = (EpaxosProxy*) proxies[id].second;
+    FutureAttr fuattr;
+    fuattr.callback = [ev](Future* fu) {
+      status_t status;
+      fu->get_reply() >> status;
+      epoch_t highest_seen_epoch;
+      ballot_t highest_seen_ballot_no;
+      uint64_t highest_seen_replica_id;
+      uint64_t updated_seq;
+      unordered_map<uint64_t, uint64_t> updated_deps;
+      unordered_set<uint64_t> committed_deps;
+      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps >> committed_deps;
+      EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
+                                  highest_seen_epoch, 
+                                  highest_seen_ballot_no, 
+                                  highest_seen_replica_id, 
+                                  updated_seq, 
+                                  updated_deps,
+                                  committed_deps);
+      if (status == EpaxosPreAcceptStatus::IDENTICAL) {
+        ev->VoteIdentical(reply);
+      } else if (status == EpaxosPreAcceptStatus::NON_IDENTICAL) {
+        ev->VoteNonIdentical(reply);
+      } else {
+        ev->VoteNo(reply);
       }
-      EpaxosProxy *proxy = (EpaxosProxy*) p.second;
-      FutureAttr fuattr;
-      fuattr.callback = [ev](Future* fu) {
-        status_t status;
-        fu->get_reply() >> status;
-        epoch_t highest_seen_epoch;
-        ballot_t highest_seen_ballot_no;
-        uint64_t highest_seen_replica_id;
-        uint64_t updated_seq;
-        unordered_map<uint64_t, pair<uint64_t, bool_t>> updated_deps;
-        fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps;
-        EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
-                                   highest_seen_epoch, 
-                                   highest_seen_ballot_no, 
-                                   highest_seen_replica_id, 
-                                   updated_seq, 
-                                   updated_deps);
-        if (status == EpaxosPreAcceptStatus::IDENTICAL) {
-          ev->VoteIdentical(reply);
-        } else if (status == EpaxosPreAcceptStatus::NON_IDENTICAL) {
-          ev->VoteNonIdentical(reply);
-        } else {
-          ev->VoteNo(reply);
-        }
-      };
-      MarshallDeputy md_cmd(cmd);
-      Call_Async(proxy, 
-                 PreAccept, 
-                 epoch, 
-                 ballot_no, 
-                 ballot_replica_id,
-                 leader_replica_id, 
-                 instance_no,
-                 md_cmd,
-                 dkey,
-                 seq, 
-                 deps, 
-                 fuattr);
+    };
+    MarshallDeputy md_cmd(cmd);
+    Call_Async(proxy, 
+                PreAccept, 
+                epoch, 
+                ballot_no, 
+                ballot_replica_id,
+                leader_replica_id, 
+                instance_no,
+                md_cmd,
+                dkey,
+                seq, 
+                deps, 
+                fuattr);
   }
   return ev;
 }
@@ -87,13 +96,20 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
                         const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - 1;
+  if (thrifty) {
+    n_total = NSERVERS/2;
+  }
   int quorum = SLOW_PATH_QUORUM - 1;
   auto ev = Reactor::CreateSpEvent<EpaxosAcceptQuorumEvent>(n_total, quorum);
-  for (auto& p : proxies) {
-    if (p.first == site_id) {
+  int sent = 0;
+  int id = site_id;
+  while (proxies.size() != 0 && sent < n_total) {
+    id = (id + 1) % proxies.size();
+    if (proxies[id].first == site_id) {
       continue;
     }
-    EpaxosProxy *proxy = (EpaxosProxy*) p.second;
+    sent++;
+    EpaxosProxy *proxy = (EpaxosProxy*) proxies[id].second;
     FutureAttr fuattr;
     fuattr.callback = [ev](Future* fu) {
       bool_t status;
@@ -236,14 +252,21 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
                          const uint64_t& instance_no) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_total = NSERVERS - 1;
+  if (thrifty) {
+    n_total = FAST_PATH_QUORUM - 1;
+  }
   int quorum = SLOW_PATH_QUORUM - 1;
   auto ev = Reactor::CreateSpEvent<EpaxosPrepareQuorumEvent>(n_total, quorum);
-  for (auto& p : proxies) {
-    siteid_t curr_site_id = p.first;
-    if (curr_site_id == site_id) {
+  int sent = 0;
+  int id = site_id;
+  while (proxies.size() != 0 && sent < n_total) {
+    id = (id + 1) % proxies.size();
+    if (proxies[id].first == site_id) {
       continue;
     }
-    EpaxosProxy *proxy = (EpaxosProxy*) p.second;
+    sent++;
+    siteid_t curr_site_id = proxies[id].first;
+    EpaxosProxy *proxy = (EpaxosProxy*) proxies[id].second;
     FutureAttr fuattr;
     fuattr.callback = [ev, curr_site_id](Future* fu) {
       bool_t status;

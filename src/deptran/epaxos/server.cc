@@ -234,12 +234,12 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success via fast path quorum
-  if (ev->FastPath() && ballot.isDefault() && AllDependenciesCommitted(ev->replies, deps)) {
+  if (ev->FastPath() && ballot.isDefault() && AllDependenciesCommitted(ev->replies, ev->eq_reply.deps)) {
     #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
     fast++;
     #endif
     Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
-    return StartCommit(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
+    return StartCommit(cmd, dkey, ballot, ev->eq_reply.seq, ev->eq_reply.deps, replica_id, instance_no);
   }
   // Success via slow path quorum
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
@@ -284,31 +284,31 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
     return reply;
   }
   // Initialise attributes
-  uint64_t merged_seq = dkey_seq[dkey] + 1;
-  merged_seq = max(merged_seq, seq);
-  if (merged_seq > seq) {
-    status = EpaxosPreAcceptStatus::NON_IDENTICAL;
-  }
+  uint64_t merged_seq = seq;
   auto merged_deps = deps;
-  for (auto itr : dkey_deps[dkey]) {
-    uint64_t dreplica_id = itr.first;
-    uint64_t dinstance_no = itr.second;
-    if (dreplica_id == replica_id) continue;
-    if (merged_deps.count(dreplica_id) == 0 || dinstance_no > merged_deps[dreplica_id]) {
-      merged_deps[dreplica_id] = dinstance_no;
+  if (cmd->kind_ != MarshallDeputy::CMD_NOOP) {
+    merged_seq = max(merged_seq, dkey_seq[dkey] + 1);
+    if (merged_seq > seq) {
       status = EpaxosPreAcceptStatus::NON_IDENTICAL;
+    }
+    for (auto itr : dkey_deps[dkey]) {
+      uint64_t dreplica_id = itr.first;
+      uint64_t dinstance_no = itr.second;
+      if (dreplica_id == replica_id) continue;
+      if (merged_deps.count(dreplica_id) == 0 || dinstance_no > merged_deps[dreplica_id]) {
+        merged_deps[dreplica_id] = dinstance_no;
+        status = EpaxosPreAcceptStatus::NON_IDENTICAL;
+      }
     }
   }
   // Set committed status for deps
-  unordered_map<uint64_t, pair<uint64_t, bool_t>> deps_with_status;
+  unordered_set<uint64_t> committed_deps;
   for (auto itr : merged_deps) {
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
     if (cmds[dreplica_id][dinstance_no].state == EpaxosCommandState::COMMITTED
         || cmds[dreplica_id][dinstance_no].state == EpaxosCommandState::EXECUTED) {
-      deps_with_status[dreplica_id] = {dinstance_no, true};
-    } else {
-      deps_with_status[dreplica_id] = {dinstance_no, false};
+      committed_deps.insert(dreplica_id);
     }
   }
   // Eq state not set if ballot is not default ballot
@@ -335,7 +335,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   }
   received_till[replica_id] = max(received_till[replica_id], instance_no);
   // Reply
-  EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id, merged_seq, deps_with_status);
+  EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id, merged_seq, merged_deps, committed_deps);
   return reply;
 }
 
@@ -778,7 +778,7 @@ bool EpaxosServer::StartPrepare(uint64_t& replica_id, uint64_t& instance_no) {
     return StartAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no);
   }
   // N/2 identical pre-accepted replies for default ballot
-  if (!leader_replied && identical_preaccepted_sites.size() >= NSERVERS/2) {
+  if (!leader_replied && identical_preaccepted_sites.size() >= NSERVERS/2 && (commo()->thrifty || rec_command.cmd_state == EpaxosCommandState::PRE_ACCEPTED_EQ)) {
     Log_debug("Prepare - Majority identical pre-accepted cmd found for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
     UpdateInternalAttributes(rec_command.cmd, rec_command.dkey, replica_id, instance_no, rec_command.seq, rec_command.deps);
     return StartAccept(rec_command.cmd, rec_command.dkey, ballot, rec_command.seq, rec_command.deps, replica_id, instance_no);
@@ -948,7 +948,7 @@ EpaxosServer::MergeAttributes(vector<EpaxosPreAcceptReply>& replies) {
     seq = max(seq, reply.seq);
     for (auto itr : reply.deps) {
       uint64_t dreplica_id = itr.first;
-      uint64_t dinstance_no = itr.second.first;
+      uint64_t dinstance_no = itr.second;
       deps[dreplica_id] = max(deps[dreplica_id], dinstance_no);
     }
   }
@@ -957,23 +957,21 @@ EpaxosServer::MergeAttributes(vector<EpaxosPreAcceptReply>& replies) {
 
 bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t>& deps) {
   unordered_set<uint64_t> committed_deps;
+  for (int i = 0; i < replies.size(); i++) {
+    for (auto dreplica_id : replies[i].committed_deps) {
+      bool_t dinstance_no = replies[i].deps[dreplica_id];
+      if(deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) {
+        committed_deps.insert(dreplica_id);
+      }
+    }
+  }
   for (auto itr : deps) {
     uint64_t replica_id = itr.first;
     uint64_t instance_no = itr.second;
-    if(cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED 
+    if(committed_deps.count(replica_id) == 0) {
+      if (cmds[replica_id][instance_no].state == EpaxosCommandState::COMMITTED
        || cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-      committed_deps.insert(replica_id);
-    }
-  }
-  for (int i = 0; i < replies.size(); i++) {
-    if (replies[i].status != EpaxosPreAcceptStatus::IDENTICAL) {
-      continue;
-    }
-    for (auto itr : replies[i].deps) {
-      uint64_t dreplica_id = itr.first;
-      bool_t dstatus = itr.second.second;
-      if(dstatus) {
-        committed_deps.insert(dreplica_id);
+        committed_deps.insert(replica_id);
       }
     }
   }
