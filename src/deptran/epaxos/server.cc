@@ -18,7 +18,7 @@ EpaxosServer::~EpaxosServer() {}
 ************************************/
 
 void EpaxosServer::Setup() {
-  // Future Work: Give unique replica id on restarts (by storing old replica_id persistently and new_replica_id = old_replica_id + N)
+  // Future Work: Give unique replica id on restarts (store old replica_id persistently and new_replica_id = old_replica_id + N)
   replica_id_ = site_id_;
 
   // Process requests
@@ -33,25 +33,11 @@ void EpaxosServer::Setup() {
       list<EpaxosRequest> pending_reqs = std::move(reqs);
       lock.unlock();
       for (EpaxosRequest req : pending_reqs) {
-        int64_t leader_dep_instance = -1;
-        uint64_t replica_id = replica_id_;
-        uint64_t instance_no = next_instance_no;
-        next_instance_no = next_instance_no + 1;
-        if (dkey_deps[req.dkey].count(replica_id_)) {
-          leader_dep_instance = dkey_deps[req.dkey][replica_id_];
-        }
-        dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
-        received_till[replica_id_] = max(received_till[replica_id_], instance_no);
-        EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
-        #if defined(EPAXOS_TEST_CORO)
-        SetInstance(req.cmd, replica_id, instance_no);
-        #endif
-        Coroutine::CreateRun([this, req, ballot, replica_id, instance_no, leader_dep_instance]() mutable {
-          string dkey = req.dkey;
-          StartPreAccept(req.cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+        Coroutine::CreateRun([this, req]() mutable {
+          HandleRequest(req);
         });
       }
-      Coroutine::Sleep(5000);
+      Coroutine::Sleep(1000);
     }
   });
 
@@ -164,6 +150,26 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
 }
 #endif
 
+void EpaxosServer::HandleRequest(EpaxosRequest &req) {
+  // Pause execution to prevent livelock
+  in_process_dkeys[req.dkey].Wait(50);
+  int64_t leader_dep_instance = -1;
+  uint64_t replica_id = replica_id_;
+  uint64_t instance_no = next_instance_no;
+  next_instance_no = next_instance_no + 1;
+  if (dkey_deps[req.dkey].count(replica_id_)) {
+    leader_dep_instance = dkey_deps[req.dkey][replica_id_];
+  }
+  dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
+  received_till[replica_id_] = max(received_till[replica_id_], instance_no);
+  EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
+  #if defined(EPAXOS_TEST_CORO)
+  SetInstance(req.cmd, replica_id, instance_no);
+  #endif
+  StartPreAccept(req.cmd, req.dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+}
+
+
 /***********************************
        Phase 1: Pre-accept         *
 ************************************/
@@ -227,6 +233,9 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
   // Process pre-accept replies
   Log_debug("Started pre-accept reply processing for replica: %d instance: %d dkey: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
+  if (!recovery) {
+    in_process_dkeys[dkey].NotifyOne();
+  }
   // Fail if timeout/no-majority
   if (ev->status_ == Event::TIMEOUT || ev->No()) {
     Log_debug("Pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -903,9 +912,9 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   string &dkey = cmds[replica_id][instance_no].dkey;
-  in_process_dkeys[dkey].Wait(1);
+  in_exec_dkeys[dkey].Wait(1);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    in_process_dkeys[dkey].NotifyOne();
+    in_exec_dkeys[dkey].NotifyOne();
     return;
   }
   // Execute
@@ -921,7 +930,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
                   });
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Free lock to execute next command of same dkey
-  in_process_dkeys[dkey].NotifyOne();
+  in_exec_dkeys[dkey].NotifyOne();
 }
 
 /***********************************
