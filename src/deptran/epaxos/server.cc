@@ -152,7 +152,7 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
 
 void EpaxosServer::HandleRequest(EpaxosRequest &req) {
   // Pause execution to prevent livelock
-  in_process_dkeys[req.dkey].Wait(50);
+  in_process_dkeys[req.dkey].Wait(125 / NSERVERS);
   int64_t leader_dep_instance = -1;
   uint64_t replica_id = replica_id_;
   uint64_t instance_no = next_instance_no;
