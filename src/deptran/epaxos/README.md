@@ -74,6 +74,17 @@ For example,
 build/deptran_server -f config/epaxos_5r.yml -n 10 -T 1000 -o 2 > log.txt
 ```
 
+## Output
+The performance test output for each run will be stored in `root/plots/epaxos` folder as csv file with name format `latencies_<concurrency>_<total-requests>_<conflict-percentage>.csv`. The csv file can be imported to jupyter notebook for further analysis and graph generations. The csv file contains following data -
+* Line 1: Comma seperated leader commit latencies of all commands
+* Line 2: Comma seperated leader execution latencies of all commands
+* Line 3: Average throughput 
+* Line 4: Percentage of requests that took fast-path to commit
+* Line 5: Total number of RPC calls
+
+## Jupyter Notebook Code
+The jupyter notebook code used for output analysis and graph creation is stored in `root/src/deptran/epaxos/jupyter-notebook` folder. You can import the file to your local jupyter-notebook and adjust the file path, total requests, concurrency and throughput values in the code as per your need.
+
 # Weak Consistency
 Weak consistency was simulated by executing a request as soon as it is committed without checking the dependency graphs. 
 
