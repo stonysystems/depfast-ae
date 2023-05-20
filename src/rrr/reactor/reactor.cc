@@ -193,7 +193,12 @@ void Reactor::Loop(bool infinite, bool check_timeout) {
       } else {
         verify(event.status_ == Event::TIMEOUT);
       }
-
+      #ifdef EPAXOS_PERF_TEST_CORO
+      // Ignore events of coroutines that are completed: TEMPORARY FIX
+      if (!*(sp_coro->up_boost_coro_task_)) {
+        continue;
+      }
+      #endif
       ContinueCoro(sp_coro);
     }
 
