@@ -143,9 +143,13 @@ class EpaxosServer : public TxLogServer {
   int fast = 0;
   int slow = 0;
   #endif
+  #ifdef WIDE_AREA
+  int rpc_timeout = 5000000;
+  #else
   int rpc_timeout = 2000000;
+  #endif
 
-  void HandleRequest(EpaxosRequest &req);
+  void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey);
   bool StartPreAccept(shared_ptr<Marshallable>& cmd, 
                       string& dkey, 
                       EpaxosBallot& ballot, 

@@ -6,7 +6,11 @@
 
 namespace janus {
 
+#ifdef EPAXOS_TEST_CORO
+#define NSERVERS 7
+#else
 #define NSERVERS 5
+#endif
 #define FAST_PATH_QUORUM ((NSERVERS/2)+(((NSERVERS/2)+1)/2))
 #define SLOW_PATH_QUORUM ((NSERVERS/2) + 1)
 #define WIDE_AREA_DELAY 40000 + (rand() % 10000)

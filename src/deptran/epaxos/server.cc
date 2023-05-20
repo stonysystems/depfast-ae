@@ -32,12 +32,29 @@ void EpaxosServer::Setup() {
       }
       list<EpaxosRequest> pending_reqs = std::move(reqs);
       lock.unlock();
+      #ifdef BATCHING
+      unordered_map<string, shared_ptr<TpcBatchCommand>> dkey_reqs;
       for (EpaxosRequest req : pending_reqs) {
-        Coroutine::CreateRun([this, req]() mutable {
-          HandleRequest(req);
+        if (dkey_reqs.count(req.dkey) == 0) {
+          dkey_reqs[req.dkey] = make_shared<TpcBatchCommand>();
+        }
+        dkey_reqs[req.dkey]->AddCmd(make_shared<TpcCommitCommand>(dynamic_cast<TpcCommitCommand&>(*(req.cmd))));
+      }
+      for (auto itr : dkey_reqs) {
+        string dkey = itr.first;
+        shared_ptr<Marshallable> cmd = dynamic_pointer_cast<Marshallable>(itr.second);
+        Coroutine::CreateRun([this, cmd, dkey]() mutable {
+          HandleRequest(cmd, dkey);
         });
       }
-      Coroutine::Sleep(1000);
+      #else
+      for (EpaxosRequest req : pending_reqs) {
+        Coroutine::CreateRun([this, req]() mutable {
+          HandleRequest(req.cmd, req.dkey);
+        });
+      }
+      #endif
+      Coroutine::Sleep(10);
     }
   });
 
@@ -150,23 +167,23 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
 }
 #endif
 
-void EpaxosServer::HandleRequest(EpaxosRequest &req) {
+void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
   // Pause execution to prevent livelock
-  in_process_dkeys[req.dkey].Wait(125 / NSERVERS);
+  in_process_dkeys[dkey].Wait(125 / NSERVERS);
   int64_t leader_dep_instance = -1;
   uint64_t replica_id = replica_id_;
   uint64_t instance_no = next_instance_no;
   next_instance_no = next_instance_no + 1;
-  if (dkey_deps[req.dkey].count(replica_id_)) {
-    leader_dep_instance = dkey_deps[req.dkey][replica_id_];
+  if (dkey_deps[dkey].count(replica_id_)) {
+    leader_dep_instance = dkey_deps[dkey][replica_id_];
   }
-  dkey_deps[req.dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
+  dkey_deps[dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
   received_till[replica_id_] = max(received_till[replica_id_], instance_no);
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   #if defined(EPAXOS_TEST_CORO)
-  SetInstance(req.cmd, replica_id, instance_no);
+  SetInstance(cmd, replica_id, instance_no);
   #endif
-  StartPreAccept(req.cmd, req.dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
+  StartPreAccept(cmd, dkey, ballot, replica_id, instance_no, leader_dep_instance, false);
 }
 
 
@@ -462,7 +479,14 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     cmds[replica_id][instance_no].deps = deps;
     #ifdef EPAXOS_PERF_TEST_CORO
     if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
+      #ifdef BATCHING
+      TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
+      for (auto cmd_ : bc.cmds_) {
+        commit_next_(*cmd_);
+      }
+      #else
       commit_next_(*cmd);
+      #endif
     }
     #endif
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
@@ -514,7 +538,14 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
   cmds[replica_id][instance_no].committed_ev.Set(1);
   #ifdef EPAXOS_PERF_TEST_CORO
+  #ifdef BATCHING
+  TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
+  for (auto cmd_ : bc.cmds_) {
+    commit_next_(*cmd_);
+  }
+  #else
   commit_next_(*cmd);
+  #endif
   #endif
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
@@ -896,8 +927,15 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
 void EpaxosServer::Execute(shared_ptr<EpaxosVertex> vertex) {
   if (vertex->cmd->state == EpaxosCommandState::EXECUTED) return;
   vertex->cmd->state = EpaxosCommandState::EXECUTED;
-  Log_debug("Executed replica: %d instance: %d in replica: %d", vertex->replica_id, vertex->instance_no, replica_id_); 
+  Log_debug("Executed replica: %d instance: %d in replica: %d", vertex->replica_id, vertex->instance_no, replica_id_);
+  #ifdef BATCHING
+  TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*(vertex->cmd->cmd));
+  for (auto cmd_ : bc.cmds_) {
+    app_next_(*cmd_);
+  }
+  #else
   app_next_(*(vertex->cmd->cmd));
+  #endif
   // Update executed_till
   executed_till[vertex->cmd->dkey][vertex->replica_id] = max(executed_till[vertex->cmd->dkey][vertex->replica_id], vertex->instance_no);
 }

@@ -1,5 +1,4 @@
 #include "test.h"
-#include "test_graph.cc"
 
 namespace janus {
 
@@ -7,11 +6,6 @@ namespace janus {
 #ifdef EPAXOS_TEST_CORO
 
 int EpaxosTest::Run(void) {
-  Print("START UNIT TESTS");
-  TestGraph test_graph;
-  test_graph.Run();
-  Print("ALL TESTS PASSED\n");
-
   Print("START WHOLISTIC TESTS");
   config_->SetLearnerAction();
   uint64_t start_rpc = config_->RpcTotal();

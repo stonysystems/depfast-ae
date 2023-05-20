@@ -64,6 +64,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('', '--enable-thrifty', dest='enable_thrifty',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-batching', dest='enable_batching',
+                   default=False, action='store_true')
     opt.parse_args();
 
 def configure(conf):
@@ -90,8 +92,7 @@ def configure(conf):
     _enable_simulate_wan(conf)
     _enable_db_checksum(conf)
     _enable_leaksan(conf)
-    _enable_epaxos_test(conf)
-    _enable_epaxos_perf_test(conf)
+    _enable_epaxos(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -314,15 +315,10 @@ def _enable_ipc(conf):
         Logs.pprint("PINK", "Use IPC instead of network socket")
         conf.env.append_value("CXXFLAGS", "-DUSE_IPC")
 
-def _enable_epaxos_test(conf):
+def _enable_epaxos(conf):
     if Options.options.enable_epaxos_test:
         Logs.pprint("PINK", "Epaxos testing coroutine enabled")
         conf.env.append_value("CXXFLAGS", "-DEPAXOS_TEST_CORO")
-    if Options.options.enable_thrifty:
-        Logs.pprint("PINK", "Thrifty enabled")
-        conf.env.append_value("CXXFLAGS", "-DTHRIFTY")
-
-def _enable_epaxos_perf_test(conf):
     if Options.options.enable_epaxos_perf_test:
         Logs.pprint("PINK", "Epaxos performance testing coroutine enabled")
         conf.env.append_value("CXXFLAGS", "-DEPAXOS_PERF_TEST_CORO")
@@ -332,6 +328,9 @@ def _enable_epaxos_perf_test(conf):
     if Options.options.enable_thrifty:
         Logs.pprint("PINK", "Thrifty enabled")
         conf.env.append_value("CXXFLAGS", "-DTHRIFTY")
+    if Options.options.enable_batching:
+        Logs.pprint("PINK", "Batching enabled")
+        conf.env.append_value("CXXFLAGS", "-DBATCHING")
     if Options.options.enable_wide_area:
         Logs.pprint("PINK", "Wide area testing enabled")
         conf.env.append_value("CXXFLAGS", "-DWIDE_AREA")
