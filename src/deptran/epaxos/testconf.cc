@@ -180,25 +180,32 @@ bool EpaxosTestConfig::ExecutedInSameOrder(unordered_set<uint64_t> dependent_cmd
   for (int svr = 0; svr < NSERVERS; svr++) {
     for (int i = 0; i < exec_orders[svr].size(); i++) {
       if (exec_orders[svr][i] != exec_orders[longest_svr][i]) {
-        Log_debug("Execution order for cmd: %d is different in server: %d from longest %d", exec_orders[svr][i], svr, longest_svr);
+        Log_info("Execution order for cmd: %d is different in server: %d from longest %d", exec_orders[svr][i], svr, longest_svr);
         string cmds = vector_to_string(exec_orders[longest_svr]);
-        int i = 0;
-        while (i + 100 <= cmds.size()){
-          Log_debug("Longest: %s", cmds.substr(i, 100).c_str());
-          i += 100;
+        int j = 0;
+        while (j + 100 <= cmds.size()){
+          Log_info("Longest: %s", cmds.substr(j, 100).c_str());
+          j += 100;
         }
-        Log_debug("Longest: %s", cmds.substr(i, cmds.size()).c_str());
+        Log_info("Longest: %s", cmds.substr(j, cmds.size()).c_str());
         cmds = vector_to_string(exec_orders[svr]);
-        i = 0;
-        while (i + 100 <= cmds.size()){
-          Log_debug("Got: %s", cmds.substr(i, 100).c_str());
-          i += 100;
+        j = 0;
+        while (j + 100 <= cmds.size()){
+          Log_info("Got: %s", cmds.substr(j, 100).c_str());
+          j += 100;
         }
-        Log_debug("Got: %s", cmds.substr(i, cmds.size()).c_str());
+        Log_info("Got: %s", cmds.substr(j, cmds.size()).c_str());
         return false;
       }
     }
   }
+  string cmds = vector_to_string(exec_orders[longest_svr]);
+  int i = 0;
+  while (i + 100 <= cmds.size()){
+    Log_info("Execution order: %s", cmds.substr(i, 100).c_str());
+    i += 100;
+  }
+  Log_info("Execution order: %s", cmds.substr(i, cmds.size()).c_str());
   return true;
 }
 
