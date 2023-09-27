@@ -74,6 +74,14 @@ For example,
 build/deptran_server -f config/epaxos_5r.yml -n 10 -T 1000 -o 2 > log.txt
 ```
 
+Here, concurrency refers to maximum how many requests will be concurrently processed by the system. So for example, if concurrency is 100 then at any point of time maximum 100 requests will be in-progress. New request will be started only when an in-progress request gets executed by the leader.
+
+The total-requests refers to total number of requests that will be send in the test. 
+
+The conflict-percentage denotes the percentage of interfering commands. Command interference is simulated by sending requests with same dependency key. For example, if conflict-percentage is 2, then 2%of the commands will target the same dependency key, while rest 98% of the commands will target unique keys. This is similar to how the Epaxos paper simulates command interference.
+
+The generated logs will go to the log.txt file. By default, the log level is INFO. To change the log level to debug add -d option while compiling. But it is not preferred to enable debug level during performance tests as large number of file writes will reduce the throughput significantly.
+
 ## Output
 The performance test output for each run will be stored in `root/plots/epaxos` folder as csv file with name format `latencies_<concurrency>_<total-requests>_<conflict-percentage>.csv`. The csv file can be imported to jupyter notebook for further analysis and graph generations. The csv file contains following data -
 * Line 1: Comma seperated leader commit latencies of all commands
