@@ -106,7 +106,7 @@ int EpaxosPerfTest::Run(void) {
   });
 
   uint64_t start_rpc = config_->RpcTotal();
-  int threads = min(concurrent, 100);
+  int threads = min(concurrent, 60);
   boost::asio::thread_pool pool(threads);
   Log_info("Perf test args - concurrent: %d conflicts: %d tot_req_num: %d", concurrent, conflict_perc, tot_req_num);
 
