@@ -78,16 +78,12 @@ void EpaxosServer::Setup() {
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
-            cmds[replica_id][instance_no].committed_ev.WaitUntilGreaterOrEqualThan(1, 300000);
+            cmds[replica_id][instance_no].committed_ev.WaitUntilGreaterOrEqualThan(1, this->commit_timeout);
             PrepareTillCommitted(replica_id, instance_no);
-            #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
-            #endif
           });
           instance_no++;
-          Coroutine::Sleep(10);
         }
-        Coroutine::Sleep(10);
       }
       prepared_till = received_till_;
       Coroutine::Sleep(10);
@@ -505,10 +501,6 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
                       dkey, 
                       seq, 
                       deps);
-  // Execute
-  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    StartExecution(replica_id, instance_no);
-  }
   return true;
 }
 
@@ -549,8 +541,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   #endif
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
-  // Execute
-  StartExecution(replica_id, instance_no);
 }
 
 /***********************************
@@ -902,7 +892,8 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
     cmds[dreplica_id][dinstance_no].committed_ev.WaitUntilGreaterOrEqualThan(1);
     if (cmds[dreplica_id][dinstance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) {
       int64_t prev_instance_no = dinstance_no - 1;
-      while (prev_instance_no >= 0) {
+      int64_t last_instance = 0;
+      while (prev_instance_no >= last_instance) {
         string dep_dkey = cmds[dreplica_id][prev_instance_no].dkey;
         if (dep_dkey != NOOP_DKEY && dep_dkey != dkey) {
           prev_instance_no--;
@@ -915,7 +906,7 @@ vector<shared_ptr<EpaxosVertex>> EpaxosServer::GetDependencies(shared_ptr<Epaxos
         }
         prev_instance_no--;
       }
-      if (prev_instance_no < 0) continue;
+      if (prev_instance_no < last_instance) continue;
       dinstance_no = prev_instance_no;
     }
     if (cmds[dreplica_id][dinstance_no].state == EpaxosCommandState::EXECUTED) continue;

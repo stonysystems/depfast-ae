@@ -145,8 +145,10 @@ class EpaxosServer : public TxLogServer {
   #endif
   #ifdef WIDE_AREA
   int rpc_timeout = 5000000;
+  int commit_timeout = 5000000;
   #else
   int rpc_timeout = 2000000;
+  int commit_timeout = 2000000;
   #endif
 
   void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey);
