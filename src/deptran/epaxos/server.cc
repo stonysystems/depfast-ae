@@ -472,26 +472,25 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     cmds[replica_id][instance_no].highest_accepted = ballot;
   }
   // Commit command if not committed
-  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
+  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED &&
+      cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
     cmds[replica_id][instance_no].cmd = cmd;
     cmds[replica_id][instance_no].dkey = dkey;
     cmds[replica_id][instance_no].seq = seq;
     cmds[replica_id][instance_no].deps = deps;
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
     #ifdef EPAXOS_PERF_TEST_CORO
-    if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
-      #ifdef BATCHING
-      TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
-      for (auto cmd_ : bc.cmds_) {
-        commit_next_(*cmd_);
-      }
-      #else
-      commit_next_(*cmd);
-      #endif
+    #ifdef BATCHING
+    TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
+    for (auto cmd_ : bc.cmds_) {
+      commit_next_(*cmd_);
     }
+    #else
+    commit_next_(*cmd);
     #endif
+    #endif
+    cmds[replica_id][instance_no].committed_ev.Set(1);
   }
-  cmds[replica_id][instance_no].committed_ev.Set(1);
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Send async commit request to all
   commo()->SendCommit(site_id_, 
