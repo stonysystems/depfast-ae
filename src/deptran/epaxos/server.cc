@@ -474,6 +474,18 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     cmds[replica_id][instance_no].seq = seq;
     cmds[replica_id][instance_no].deps = deps;
     cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
+    #ifdef EPAXOS_PERF_TEST_CORO
+    if (cmds[replica_id][instance_no].state != EpaxosCommandState::COMMITTED) {
+      #ifdef BATCHING
+      TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
+      for (auto cmd_ : bc.cmds_) {
+        commit_next_(*cmd_);
+      }
+      #else
+      commit_next_(*cmd);
+      #endif
+    }
+    #endif
   }
   cmds[replica_id][instance_no].committed_ev.Set(1);
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -516,6 +528,16 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].highest_seen = ballot;
   cmds[replica_id][instance_no].highest_accepted = ballot;
   cmds[replica_id][instance_no].state = EpaxosCommandState::COMMITTED;
+  #ifdef EPAXOS_PERF_TEST_CORO
+  #ifdef BATCHING
+  TpcBatchCommand bc = dynamic_cast<TpcBatchCommand&>(*cmd);
+  for (auto cmd_ : bc.cmds_) {
+    commit_next_(*cmd_);
+  }
+  #else
+  commit_next_(*cmd);
+  #endif
+  #endif
   cmds[replica_id][instance_no].committed_ev.Set(1);
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
