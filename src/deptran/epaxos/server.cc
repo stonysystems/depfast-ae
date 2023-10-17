@@ -938,8 +938,8 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   in_exec_dkeys[dkey].Wait(1);
   // in_exec_dkeys[dkey].WaitIfGreater(replica_id, instance_no);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    // in_exec_dkeys[dkey].NotifyOne();
-    in_exec_dkeys[dkey].Reset(replica_id, instance_no);
+    in_exec_dkeys[dkey].NotifyOne();
+    // in_exec_dkeys[dkey].Reset(replica_id, instance_no);
     return;
   }
   // Execute
