@@ -121,6 +121,65 @@ class EpaxosVertex: public EVertex<EpaxosVertex> {
 
 class EpaxosGraph: public EGraph<EpaxosVertex> {};
 
+class InstanceEvent : public IntEvent {
+ public:
+  uint64_t replica_{};
+  uint64_t instance_{};
+
+  InstanceEvent(uint64_t replica, uint64_t instance): IntEvent() {
+    replica_ = replica;
+    instance_ = instance;
+  }
+
+};
+
+class ExecutionEvent {
+ public:
+  list<shared_ptr<InstanceEvent>> events_{};
+  std::map<uint64_t, uint64_t> curr_max;
+  std::map<uint64_t, std::vector<uint64_t>> higher_instances;
+
+  void WaitIfGreater(uint64_t replica, uint64_t instance) {
+    if (curr_max[replica] == 0 || instance <= curr_max[replica]) {
+      higher_instances[replica].push_back(instance);
+      curr_max[replica] = instance;
+      return;
+    }
+    auto sp_ev = Reactor::CreateSpEvent<InstanceEvent>(replica, instance);
+    events_.insert(events_.end(), sp_ev);
+    sp_ev->Wait();
+    curr_max[replica] = instance;
+    higher_instances[replica].push_back(instance);
+  }
+
+  void Reset(uint64_t replica, uint64_t instance) {
+    higher_instances[replica].erase(find(higher_instances[replica].begin(), higher_instances[replica].end(), instance));
+    if (curr_max[replica] == instance) {
+      if (higher_instances[replica].size() == 0) {
+        curr_max[replica] = 0;
+      } else {
+        curr_max[replica] = *min_element(begin(higher_instances[replica]), end(higher_instances[replica]));
+      }
+    }
+    if (higher_instances[replica].size() == 0) {
+      auto itr = events_.begin(); 
+      while (itr != events_.end()) {
+        if ((*itr)->status_ <= Event::WAIT) {
+          if ((*itr)->replica_ == replica && (curr_max[(*itr)->replica_] == 0 || (*itr)->instance_ <= curr_max[(*itr)->replica_])) {
+            auto sp_ev = *itr;
+            events_.erase(itr++);
+            sp_ev->Set(1);
+          } else {
+            itr++;
+          }
+        } else {
+          itr++;
+        }
+      }
+    }
+  }
+};
+
 class EpaxosServer : public TxLogServer {
  private:
   uint64_t replica_id_;
@@ -136,6 +195,7 @@ class EpaxosServer : public TxLogServer {
   unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
   unordered_map<string, PubSubEvent> in_process_dkeys;
   unordered_map<string, PubSubEvent> in_exec_dkeys;
+  // unordered_map<string, ExecutionEvent> in_exec_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;

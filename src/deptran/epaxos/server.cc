@@ -80,14 +80,10 @@ void EpaxosServer::Setup() {
           Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
             cmds[replica_id][instance_no].committed_ev.WaitUntilGreaterOrEqualThan(1, 300000);
             PrepareTillCommitted(replica_id, instance_no);
-            #ifdef EPAXOS_TEST_CORO
             StartExecution(replica_id, instance_no);
-            #endif
           });
           instance_no++;
-          Coroutine::Sleep(10);
         }
-        Coroutine::Sleep(10);
       }
       prepared_till = received_till_;
       Coroutine::Sleep(10);
@@ -169,7 +165,6 @@ pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
 
 void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
   // Pause execution to prevent livelock
-  in_process_dkeys[dkey].Wait(125 / NSERVERS);
   int64_t leader_dep_instance = -1;
   uint64_t replica_id = replica_id_;
   uint64_t instance_no = next_instance_no;
@@ -250,9 +245,6 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
   // Process pre-accept replies
   Log_debug("Started pre-accept reply processing for replica: %d instance: %d dkey: %s with leader_dep_instance: %d ballot: %d leader: %d by replica: %d", 
             replica_id, instance_no, dkey.c_str(), leader_dep_instance, ballot.ballot_no, ballot.replica_id, replica_id_);
-  if (!recovery) {
-    in_process_dkeys[dkey].NotifyOne();
-  }
   // Fail if timeout/no-majority
   if (ev->status_ == Event::TIMEOUT || ev->No()) {
     Log_debug("Pre-accept failed for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
@@ -504,10 +496,6 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
                       dkey, 
                       seq, 
                       deps);
-  // Execute
-  if (cmds[replica_id][instance_no].state != EpaxosCommandState::EXECUTED) {
-    StartExecution(replica_id, instance_no);
-  }
   return true;
 }
 
@@ -548,8 +536,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   cmds[replica_id][instance_no].committed_ev.Set(1);
   // Update internal attributes
   UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq, deps);
-  // Execute
-  StartExecution(replica_id, instance_no);
 }
 
 /***********************************
@@ -950,8 +936,10 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   if (cmds[replica_id][instance_no].cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
   string &dkey = cmds[replica_id][instance_no].dkey;
   in_exec_dkeys[dkey].Wait(1);
+  // in_exec_dkeys[dkey].WaitIfGreater(replica_id, instance_no);
   if (cmds[replica_id][instance_no].state == EpaxosCommandState::EXECUTED) {
-    in_exec_dkeys[dkey].NotifyOne();
+    // in_exec_dkeys[dkey].NotifyOne();
+    in_exec_dkeys[dkey].Reset(replica_id, instance_no);
     return;
   }
   // Execute
@@ -968,6 +956,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   Log_debug("Completed replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);
   // Free lock to execute next command of same dkey
   in_exec_dkeys[dkey].NotifyOne();
+  // in_exec_dkeys[dkey].Reset(replica_id, instance_no);
 }
 
 /***********************************
