@@ -23,16 +23,14 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                            const uint64_t& seq,
                            const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS - 1;
+  int n_to_send = NSERVERS - 1;
   if (thrifty) {
-    n_total = FAST_PATH_QUORUM - 1;
+    n_to_send = FAST_PATH_QUORUM - 1;
   }
-  int fast_path_quorum = FAST_PATH_QUORUM - 1;
-  int slow_path_quorum = SLOW_PATH_QUORUM - 1;
-  auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(n_total, thrifty, is_recovery, fast_path_quorum, slow_path_quorum);
+  auto ev = Reactor::CreateSpEvent<EpaxosPreAcceptQuorumEvent>(thrifty, is_recovery);
   int sent = 0;
   int id = site_id;
-  while (proxies.size() != 0 && sent < n_total) {
+  while (proxies.size() != 0 && sent < n_to_send) {
     id = (id + 1) % proxies.size();
     if (proxies[id].first == site_id) {
       continue;
@@ -95,15 +93,14 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
                         const uint64_t& seq,
                         const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS - 1;
+  int n_to_send = NSERVERS - 1;
   if (thrifty) {
-    n_total = NSERVERS/2;
+    n_to_send = SLOW_PATH_QUORUM - 1;
   }
-  int quorum = SLOW_PATH_QUORUM - 1;
-  auto ev = Reactor::CreateSpEvent<EpaxosAcceptQuorumEvent>(n_total, quorum);
+  auto ev = Reactor::CreateSpEvent<EpaxosAcceptQuorumEvent>(thrifty);
   int sent = 0;
   int id = site_id;
-  while (proxies.size() != 0 && sent < n_total) {
+  while (proxies.size() != 0 && sent < n_to_send) {
     id = (id + 1) % proxies.size();
     if (proxies[id].first == site_id) {
       continue;
@@ -195,9 +192,7 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
                               const uint64_t& seq,
                               const unordered_map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS - preaccepted_sites.size();
-  int quorum = (NSERVERS/2) - preaccepted_sites.size();
-  auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(n_total, quorum);
+  auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(preaccepted_sites.size() + 1); // preaccepted_sites do not contain current server, so +1 added for it
   for (auto& p : proxies) {
       if (p.first == site_id || p.first == leader_replica_id || preaccepted_sites.count(p.first) != 0) {
         continue;
@@ -251,15 +246,14 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
                          const uint64_t& leader_replica_id,
                          const uint64_t& instance_no) {
   auto proxies = rpc_par_proxies_[par_id];
-  int n_total = NSERVERS - 1;
+  int n_to_send = NSERVERS - 1;
   if (thrifty) {
-    n_total = FAST_PATH_QUORUM - 1;
+    n_to_send = FAST_PATH_QUORUM - 1;
   }
-  int quorum = SLOW_PATH_QUORUM - 1;
-  auto ev = Reactor::CreateSpEvent<EpaxosPrepareQuorumEvent>(n_total, quorum);
+  auto ev = Reactor::CreateSpEvent<EpaxosPrepareQuorumEvent>(thrifty);
   int sent = 0;
   int id = site_id;
-  while (proxies.size() != 0 && sent < n_total) {
+  while (proxies.size() != 0 && sent < n_to_send) {
     id = (id + 1) % proxies.size();
     if (proxies[id].first == site_id) {
       continue;

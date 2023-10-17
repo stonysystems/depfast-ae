@@ -67,10 +67,10 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
   EpaxosPreAcceptReply eq_reply;
   vector<EpaxosPreAcceptReply> replies;
 
-  EpaxosPreAcceptQuorumEvent(int n_total_, bool thrifty, bool is_recovery, int fast_path_quorum, int slow_path_quorum) : QuorumEvent(n_total_, n_total_) {
+  EpaxosPreAcceptQuorumEvent(bool thrifty, bool is_recovery) : QuorumEvent(thrifty ? FAST_PATH_QUORUM - 1 : NSERVERS - 1, thrifty ? FAST_PATH_QUORUM - 1 : NSERVERS - 1) {
     this->is_recovery = is_recovery;
-    this->fast_path_quorum_ = fast_path_quorum;
-    this->slow_path_quorum_ = slow_path_quorum;
+    this->fast_path_quorum_ = FAST_PATH_QUORUM - 1;
+    this->slow_path_quorum_ = SLOW_PATH_QUORUM - 1;
     this->thrifty = thrifty;
     this->all_equal = true;
   }
@@ -143,8 +143,9 @@ class EpaxosAcceptReply {
 
 class EpaxosAcceptQuorumEvent : public QuorumEvent {
  public:
-  using QuorumEvent::QuorumEvent;
   vector<EpaxosAcceptReply> replies;
+
+  EpaxosAcceptQuorumEvent(bool thrifty) : QuorumEvent(thrifty ? FAST_PATH_QUORUM - 1 : NSERVERS - 1, SLOW_PATH_QUORUM - 1) {}
 
   void VoteYes(EpaxosAcceptReply& reply) {
     replies.push_back(reply);
@@ -196,9 +197,10 @@ class EpaxosTryPreAcceptQuorumEvent : public QuorumEvent {
   bool voted_committed_conflict_ = false;
   bool voted_moved_on_ = false;
  public:
-  using QuorumEvent::QuorumEvent;
   vector<EpaxosTryPreAcceptReply> replies;
 
+  EpaxosTryPreAcceptQuorumEvent(int preaccepted_site_count) : QuorumEvent(NSERVERS - preaccepted_site_count, SLOW_PATH_QUORUM - preaccepted_site_count) {}
+ 
   void VoteYes(EpaxosTryPreAcceptReply& reply) {
     switch(reply.status) {
       case EpaxosTryPreAcceptStatus::NO_CONFLICT:
@@ -296,9 +298,10 @@ class EpaxosPrepareReply {
 
 class EpaxosPrepareQuorumEvent : public QuorumEvent {
  public:
-  using QuorumEvent::QuorumEvent;
   vector<EpaxosPrepareReply> replies;
   unordered_map<uint64_t, siteid_t> replicaid_siteid_map;
+
+  EpaxosPrepareQuorumEvent(bool thrifty) : QuorumEvent(thrifty ? FAST_PATH_QUORUM - 1 : NSERVERS - 1, SLOW_PATH_QUORUM - 1) {}
 
   void VoteYes(siteid_t site_id, EpaxosPrepareReply& reply) {
     replies.push_back(reply);
