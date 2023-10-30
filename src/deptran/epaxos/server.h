@@ -58,7 +58,10 @@ class EpaxosBallot {
   }
 };
 
-class EpaxosCommand {
+class EpaxosCommand : public EVertex<EpaxosCommand> {
+ private:
+  uint64_t id_;
+
  public:
   shared_ptr<Marshallable> cmd;
   string dkey;
@@ -67,15 +70,36 @@ class EpaxosCommand {
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
+  uint64_t replica_id;
+  uint64_t instance_no;
   SharedIntEvent committed_ev{};
   
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
     dkey = NOOP_DKEY;
     state = EpaxosCommandState::NOT_STARTED;
+    id_ = 0;
   }
   
+  uint64_t id() override {
+    if (id_ == 0) {
+      id_ = replica_id << 32 | instance_no;
+    }
+    return id_;
+  }
+
+  bool isFirstInSCC(shared_ptr<EpaxosCommand>& rhs) override {
+    if (this->seq == rhs->seq && this->replica_id == rhs->replica_id) {
+      return this->instance_no < rhs->instance_no;
+    }
+    if (this->seq == rhs->seq) {
+      return this->replica_id < rhs->replica_id;
+    }
+    return this->seq < rhs->seq;
+  }
 };
+
+class EpaxosGraph: public EGraph<EpaxosCommand> {};
 
 class EpaxosRequest {
  public:
@@ -87,39 +111,6 @@ class EpaxosRequest {
     this->dkey = dkey;
   }
 };
-
-class EpaxosVertex: public EVertex<EpaxosVertex> {
- private:
-  uint64_t id_;
-
- public:
-  EpaxosCommand *cmd;
-  uint64_t replica_id;
-  uint64_t instance_no;
-
-  EpaxosVertex(EpaxosCommand *cmd, uint64_t& replica_id, uint64_t& instance_no) : EVertex() {
-    this->cmd = cmd;
-    this->replica_id = replica_id;
-    this->instance_no = instance_no;
-    this->id_ = replica_id << 32 | instance_no;
-  }
-
-  uint64_t id() override {
-    return id_;
-  }
-
-  bool isFirstInSCC(shared_ptr<EpaxosVertex>& rhs) override {
-    if (this->cmd->seq == rhs->cmd->seq && this->replica_id == rhs->replica_id) {
-      return this->instance_no < rhs->instance_no;
-    }
-    if (this->cmd->seq == rhs->cmd->seq) {
-      return this->replica_id < rhs->replica_id;
-    }
-    return this->cmd->seq < rhs->cmd->seq;
-  }
-};
-
-class EpaxosGraph: public EGraph<EpaxosVertex> {};
 
 class InstanceEvent : public IntEvent {
  public:
@@ -185,7 +176,7 @@ class EpaxosServer : public TxLogServer {
   uint64_t replica_id_;
   epoch_t curr_epoch = 1;
   uint64_t next_instance_no = 0;
-  unordered_map<uint64_t, unordered_map<uint64_t, EpaxosCommand>> cmds;
+  unordered_map<uint64_t, unordered_map<uint64_t, shared_ptr<EpaxosCommand>>> cmds;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> dkey_deps;
   unordered_map<string, uint64_t> dkey_seq;
   unordered_map<uint64_t, unordered_map<uint64_t, pair<uint64_t, uint64_t>>> deferred;
@@ -244,8 +235,8 @@ class EpaxosServer : public TxLogServer {
   void PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance_no);
   void StartExecution(uint64_t& replica_id, uint64_t& instance_no);
 
-  vector<shared_ptr<EpaxosVertex>> GetDependencies(shared_ptr<EpaxosVertex>& vertex);
-  void Execute(shared_ptr<EpaxosVertex> vertex);
+  vector<shared_ptr<EpaxosCommand>> GetDependencies(shared_ptr<EpaxosCommand>& vertex);
+  void Execute(shared_ptr<EpaxosCommand>& vertex);
   void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
                                 string& dkey, 
                                 uint64_t& seq,
@@ -266,6 +257,7 @@ class EpaxosServer : public TxLogServer {
                                 uint64_t& instance_no, 
                                 uint64_t& seq, 
                                 unordered_map<uint64_t, uint64_t>& deps);
+  shared_ptr<EpaxosCommand> GetCommand(uint64_t replica_id, uint64_t instance_no);
 
   /* RPC handlers */
 
