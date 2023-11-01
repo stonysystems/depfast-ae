@@ -23,10 +23,15 @@ class EpaxosPerfTest {
   unordered_map<int, float> leader_commit_times;
   unordered_map<int, int> leader;
   unordered_map<int, int> inprocess_reqs;
+  unordered_map<int, std::condition_variable> cv;
 
  public:
   EpaxosPerfTest(EpaxosTestConfig *config) : config_(config) {}
   int Run(void);
+
+ private:
+  int enter(int svr);
+  void leave(int svr);
 
 };
 

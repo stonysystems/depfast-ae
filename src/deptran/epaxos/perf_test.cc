@@ -9,104 +9,93 @@ namespace janus {
 
 
 #ifdef EPAXOS_PERF_TEST_CORO
+int EpaxosPerfTest::enter(int svr) {
+  std::unique_lock<std::mutex> lock(finish_mtx_);
+  while (inprocess_reqs[svr] >= concurrent) {
+    cv[svr].wait(lock);
+  }
+  if (submitted_count == tot_req_num) {
+    return -1;
+  }
+  inprocess_reqs[svr]++;
+  return ++submitted_count;
+}
+
+void EpaxosPerfTest::leave(int svr) {
+  std::unique_lock<std::mutex> lock(finish_mtx_);
+  inprocess_reqs[svr]--;
+  if (inprocess_reqs[svr] < concurrent) {
+    cv[svr].notify_one();
+  }
+}
 
 int EpaxosPerfTest::Run(void) {
   #ifdef EPAXOS_EVENTUAL_TEST
   config_->PauseExecution(true);
   #endif
+
   Print("START PERFORMANCE TESTS");
   concurrent = Config::GetConfig()->get_concurrent_txn();
   tot_req_num = Config::GetConfig()->get_tot_req();
   conflict_perc = Config::GetConfig()->get_conflict_perc();
   Print("Concurrent: %d, TotalRequests: %d, Conflict: %d", concurrent, tot_req_num, conflict_perc);
+
   submitted_count = 0;
   config_->SetCustomLearnerAction([this](int svr) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      // exit if not leader
       finish_mtx_.lock();
       int cmd_leader = leader[command.tx_id_];
       finish_mtx_.unlock();
       if (cmd_leader != svr) return;
+      // measure req latency
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
-      inprocess_reqs[svr]--;
-      int x = submitted_count;
       pair<int, int> startime = start_time[command.tx_id_];
       leader_exec_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
-      // start next command
-      if (submitted_count >= tot_req_num) {
+      // mark req as finished
+      leave(svr);
+      // mark svr as done (if all done) 
+      if (submitted_count == tot_req_num) {
+        finish_mtx_.lock();
         if (inprocess_reqs[svr] == 0) {
-          finish_mtx_.lock();
           finished_count++;
           if (finished_count == NSERVERS) {
             finish_cond_.notify_all();
           }
-          finish_mtx_.unlock();
         }
-        return;
-      };
-      if (inprocess_reqs[svr] >= concurrent) return;
-      int next_cmd = ++submitted_count;
-      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
-      struct timeval t2;
-      gettimeofday(&t2, NULL);
-      finish_mtx_.lock();
-      start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
-      leader[next_cmd] = svr;
-      inprocess_reqs[svr]++;
-      finish_mtx_.unlock();
-      config_->Start(svr, next_cmd, dkey);
+        finish_mtx_.unlock();
+      }
     });
   });
   
   config_->SetCommittedLearnerAction([this](int svr) {
     return ([this, svr](Marshallable& cmd) {
       auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+      // exit if not leader
       finish_mtx_.lock();
       int cmd_leader = leader[command.tx_id_];
       finish_mtx_.unlock();
       if (cmd_leader != svr) return;
+      // measure req latency
       struct timeval t1;
       gettimeofday(&t1, NULL);
       finish_mtx_.lock();
-      #ifdef EPAXOS_EVENTUAL_TEST
-      inprocess_reqs[svr]--;
-      #endif
       pair<int, int> startime = start_time[command.tx_id_];
       leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
       finish_mtx_.unlock();
       #ifdef EPAXOS_EVENTUAL_TEST
-      // start next command
-      if (submitted_count >= tot_req_num) {
-        if (inprocess_reqs[svr] == 0) {
-          finish_mtx_.lock();
-          finished_count++;
-          if (finished_count == NSERVERS) {
-            finish_cond_.notify_all();
-          }
-          finish_mtx_.unlock();
-        }
-        return;
-      };
-      if (inprocess_reqs[svr] >= concurrent) return;
-      int next_cmd = ++submitted_count;
-      string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
-      struct timeval t2;
-      gettimeofday(&t2, NULL);
-      finish_mtx_.lock();
-      start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
-      leader[next_cmd] = svr;
-      inprocess_reqs[svr]++;
-      finish_mtx_.unlock();
-      config_->Start(svr, next_cmd, dkey);
+      // mark req as finished
+      leave(svr);
       #endif
     });
   });
 
   uint64_t start_rpc = config_->RpcTotal();
-  int threads = min(concurrent, 60);
+  int threads = NSERVERS;
   boost::asio::thread_pool pool(threads);
   Log_info("Perf test args - concurrent: %d conflicts: %d tot_req_num: %d", concurrent, conflict_perc, tot_req_num);
 
@@ -117,24 +106,23 @@ int EpaxosPerfTest::Run(void) {
   #endif
   struct timeval t1, t2;
   gettimeofday(&t1, NULL);
-  int svr = 0;
-  int cmd;
-  string dkey;
-  for (int i = 1; i <= concurrent; i++) {
-    svr = svr % NSERVERS;
-    cmd = ++submitted_count;
-    dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(cmd);
-    boost::asio::post(pool, [this, cmd, dkey, svr]() {
-      struct timeval t;
-      gettimeofday(&t, NULL);
-      finish_mtx_.lock();
-      start_time[cmd] = {t.tv_sec, t.tv_usec};
-      leader[cmd] = svr;
-      inprocess_reqs[svr]++;
-      finish_mtx_.unlock();
-      config_->Start(svr, cmd, dkey);
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    boost::asio::post(pool, [this, svr]() {
+      while (submitted_count < tot_req_num) {
+        int next_cmd = enter(svr);
+        if (next_cmd == -1) break;
+        string dkey = ((rand() % 100) < conflict_perc) ? "0" : to_string(next_cmd);
+        // mark start time
+        finish_mtx_.lock();
+        struct timeval t2;
+        gettimeofday(&t2, NULL);
+        start_time[next_cmd] = {t2.tv_sec, t2.tv_usec};
+        leader[next_cmd] = svr;
+        finish_mtx_.unlock();
+        // start
+        config_->Start(svr, next_cmd, dkey);
+      }
     });
-    svr++;
   }
   Log_info("waiting for submission threads.");
   pool.join();
