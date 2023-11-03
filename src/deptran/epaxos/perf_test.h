@@ -14,6 +14,7 @@ class EpaxosPerfTest {
   atomic<int> submitted_count;
   int finished_count = 0;
   std::mutex finish_mtx_;
+  std::mutex metrics_mtx_;
   std::condition_variable finish_cond_;
   int concurrent;
   int tot_req_num;
