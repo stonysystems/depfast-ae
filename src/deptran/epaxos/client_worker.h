@@ -23,6 +23,7 @@ class EpaxosClientWorker : public ClientWorker {
   void Work() override {
     testconfig_ = new EpaxosTestConfig(EpaxosFrame::replicas_);  // todo: destroy
 
+    #ifdef EPAXOS_PERF_TEST_CORO
     Print("START PERFORMANCE TESTS");
     n_concurrent_ = Config::GetConfig()->get_concurrent_txn();
     tot_req_num_ = Config::GetConfig()->get_tot_req();
@@ -125,23 +126,18 @@ class EpaxosClientWorker : public ClientWorker {
   //          static_cast<float>(num_txn.load()) / Config::GetConfig()->get_duration());
   // fflush(stderr);
   // fflush(stdout);
+    #endif
 
-
-    // Coroutine::CreateRun([this] () {
-    //   auto testconfig = new EpaxosTestConfig(EpaxosFrame::replicas_);
-    //   #ifdef EPAXOS_TEST_CORO
-    //   EpaxosTest test(testconfig);
-    //   test.Run();
-    //   #endif
-    //   #ifdef EPAXOS_PERF_TEST_CORO
-    //   EpaxosPerfTest perf_test(testconfig);
-    //   perf_test.Run();
-    //   #endif
-    //   Coroutine::Sleep(10);
-    //   testconfig->Shutdown();
-    //   Reactor::GetReactor()->looping_ = false;
-    // });
-    // Reactor::GetReactor()->Loop(true, true);
+    #ifdef EPAXOS_TEST_CORO
+    Coroutine::CreateRun([this] () {
+      EpaxosTest test(testconfig_);
+      test.Run();
+      Coroutine::Sleep(10);
+      testconfig_->Shutdown();
+      Reactor::GetReactor()->looping_ = false;
+    });
+    Reactor::GetReactor()->Loop(true, true);
+    #endif
   }
 };
 

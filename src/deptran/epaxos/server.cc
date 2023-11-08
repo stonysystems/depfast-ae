@@ -78,7 +78,7 @@ void EpaxosServer::Setup() {
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
         while (instance_no <= received_till_instance_no) {
           Coroutine::CreateRun([this, replica_id, instance_no]() mutable {
-            GetCommand(replica_id, instance_no)->committed_ev.WaitUntilGreaterOrEqualThan(1, 300000);
+            GetCommand(replica_id, instance_no)->committed_ev.WaitUntilGreaterOrEqualThan(1, commit_timeout);
             PrepareTillCommitted(replica_id, instance_no);
             StartExecution(replica_id, instance_no);
           });
