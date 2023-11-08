@@ -24,14 +24,20 @@ void EpaxosServer::Setup() {
   // Process requests
   Coroutine::CreateRun([this](){
     while(true) {
+      #ifdef EPAXOS_TEST_CORO
       std::unique_lock<std::recursive_mutex> lock(mtx_);
+      #endif
       if (reqs.empty()) {
+        #ifdef EPAXOS_TEST_CORO
         lock.unlock();
+        #endif
         Coroutine::Sleep(1000);
         continue;
       }
       list<EpaxosRequest> pending_reqs = std::move(reqs);
+      #ifdef EPAXOS_TEST_CORO
       lock.unlock();
+      #endif
       #ifdef BATCHING
       unordered_map<string, shared_ptr<TpcBatchCommand>> dkey_reqs;
       for (EpaxosRequest req : pending_reqs) {
@@ -115,9 +121,11 @@ void EpaxosServer::Setup() {
       Client Request Handlers      *
 ************************************/
 
-void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string& dkey) {
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
+  #ifdef EPAXOS_TEST_CORO
   std::lock_guard<std::recursive_mutex> lock(mtx_);
+  #endif
   reqs.push_back(EpaxosRequest(cmd, dkey));
 }
 

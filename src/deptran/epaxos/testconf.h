@@ -64,6 +64,7 @@ class EpaxosTestConfig {
 
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey);
+  void SendStart(int svr, int cmd, string dkey);
 
   // Calls GetInstance() to specified server
   void GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no);

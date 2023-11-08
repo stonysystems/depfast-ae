@@ -2,6 +2,10 @@ namespace janus;
 
 abstract service Epaxos {
 
+
+  defer Start(MarshallDeputy md_cmd,
+              string dkey);
+              
   defer PreAccept(epoch_t epoch,
                   ballot_t ballot_no,
                   uint64_t ballot_replica_id,

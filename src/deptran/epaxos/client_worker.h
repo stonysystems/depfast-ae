@@ -88,7 +88,7 @@ class EpaxosClientWorker : public ClientWorker {
           // gettimeofday(&t2, NULL);
           // start_time[cmd] = {t2.tv_sec, t2.tv_usec};
           // leader[cmd] = svr;
-          testconfig_->Start(svr, cmd, dkey);
+          testconfig_->SendStart(svr, cmd, dkey);
         }
         n_ceased_client_.Set(n_ceased_client_.value_+1);
       });

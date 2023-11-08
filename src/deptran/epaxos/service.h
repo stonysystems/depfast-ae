@@ -15,6 +15,10 @@ class EpaxosServiceImpl : public EpaxosService {
   EpaxosServer* svr_;
   EpaxosServiceImpl(TxLogServer* sched);
 
+  RpcHandler(Start, 2,
+             const MarshallDeputy&, md_cmd,
+             const string&, dkey) {}
+
   RpcHandler(PreAccept, 16,
              const epoch_t&, epoch,
              const ballot_t&, ballot_no,

@@ -1,6 +1,7 @@
 #include "testconf.h"
 #include "marshallable.h"
 #include "../classic/tpc_command.h"
+#include "epaxos_rpc.h"
 
 namespace janus {
 
@@ -78,6 +79,26 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
   replicas[svr]->svr_->Start(cmdptr_m, dkey);
+}
+
+void EpaxosTestConfig::SendStart(int svr, int cmd, string dkey) {
+  // Construct an empty TpcCommitCommand containing cmd as its tx_id_
+  auto cmdptr = std::make_shared<TpcCommitCommand>();
+  auto vpd_p = std::make_shared<VecPieceData>();
+  vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
+  cmdptr->tx_id_ = cmd;
+  cmdptr->cmd_ = vpd_p;
+  auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
+  // call Start()
+  Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
+  auto proxies = replicas[svr]->commo_->rpc_par_proxies_[0];
+  for (auto& p : proxies) {
+    if (p.first != svr) continue;
+    EpaxosProxy *proxy = (EpaxosProxy*) p.second;
+    MarshallDeputy md_cmd(cmdptr_m);
+    auto f = proxy->async_Start(md_cmd, dkey);
+    Future::safe_release(f);
+  }
 }
 
 void EpaxosTestConfig::GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no) {

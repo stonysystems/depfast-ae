@@ -11,6 +11,14 @@ EpaxosServiceImpl::EpaxosServiceImpl(TxLogServer *sched) : svr_((EpaxosServer*)s
 	srand(curr_time.tv_nsec);
 }
 
+void EpaxosServiceImpl::HandleStart(const MarshallDeputy& md_cmd,
+                                    const string& dkey,
+                                    rrr::DeferredReply* defer) {
+  shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
+  svr_->Start(cmd, dkey);
+  defer->reply();
+}
+
 void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
                                         const ballot_t& ballot_no,
                                         const uint64_t& ballot_replica_id,

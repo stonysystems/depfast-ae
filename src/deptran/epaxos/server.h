@@ -264,6 +264,7 @@ class EpaxosServer : public TxLogServer {
   /* RPC handlers */
 
  public:
+  void Start(shared_ptr<Marshallable>& cmd, string dkey);
   EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                           string dkey, 
                                           EpaxosBallot& ballot, 
@@ -299,7 +300,6 @@ class EpaxosServer : public TxLogServer {
   /* Client request handlers */
 
 public:
-  void Start(shared_ptr<Marshallable>& cmd, string& dkey);
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   void SetInstance(shared_ptr<Marshallable>& cmd, uint64_t& replica_id, uint64_t& instance_no);
   pair<int64_t, int64_t> GetInstance(int& cmd);
