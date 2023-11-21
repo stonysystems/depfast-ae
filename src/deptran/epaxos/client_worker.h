@@ -13,7 +13,7 @@ class EpaxosClientWorker : public ClientWorker {
   uint32_t n_concurrent_;
   uint32_t tot_req_num_;
   uint32_t conflict_perc_;
-  uint32_t client_max_undone_{500};
+  uint32_t client_max_undone_{1500}; // 3R (non-thrifty = 500 and thrifty = 1500) 5R (non-thrifty = 1000 and thrifty = 1500)
   EpaxosTestConfig* testconfig_;
 
  public:
@@ -30,6 +30,7 @@ class EpaxosClientWorker : public ClientWorker {
     conflict_perc_ = Config::GetConfig()->get_conflict_perc();
     Print("Concurrent: %d, TotalRequests: %d, Conflict: %d", n_concurrent_, tot_req_num_, conflict_perc_);
     n_tx_done_ = 0;
+    uint64_t start_rpc = testconfig_->RpcTotal();
 
     testconfig_->SetCustomLearnerAction([this](int svr) {
       return ([this, svr](Marshallable& cmd) {
@@ -100,14 +101,12 @@ class EpaxosClientWorker : public ClientWorker {
     poll_mgr_->add(dynamic_pointer_cast<Job>(std::make_shared<OneTimeJob>([this](){
       Log_info("wait for all virtual clients to stop issuing new requests.");
       n_ceased_client_.WaitUntilGreaterOrEqualThan(n_concurrent_, (duration+500)*1000000);
-      // Log_info("wait for all outstanding requests to finish.");
-      // n_tx_done_.WaitUntilGreaterOrEqualThan(n_tx_issued_);
       all_done_ = 1;
     })));
     while (all_done_ == 0 || n_tx_done_ < tot_req_num_) {
-      Log_info("wait for finish... n_ceased_cleints: %d, n_issued: %d, n_done: %d, n_created_coordinator: %d",
+      Log_info("wait for finish... n_ceased_cleints: %d, n_issued: %d, n_done: %d",
                 (int) n_ceased_client_.value_, (int) n_tx_issued_,
-                (int) n_tx_done_, (int) created_coordinators_.size());
+                (int) n_tx_done_);
       sleep(1);
     }
     struct timeval t2;
@@ -115,17 +114,12 @@ class EpaxosClientWorker : public ClientWorker {
     int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
     int tot_exec_usec_ = t2.tv_usec - t1.tv_usec;
     float throughput = tot_req_num_ / (tot_exec_sec_ + ((float)tot_exec_usec_) / 1000000);
+    int rpc_count = testconfig_->RpcTotal() - start_rpc;
+    float fastpath_percentage = testconfig_->GetFastpathPercent();
+    Print("Fastpath Percentage: %lf", fastpath_percentage);
+    Print("Total RPC count: %ld", rpc_count);
     Print("Throughput: %lf", throughput);
     Log_info("PERF TEST COMPLETED");
-
-  // Log_info("Finish:\nTotal: %u, Commit: %u, Attempts: %u, Running for %u, Throughput: %.2f\n",
-  //          num_txn.load(),
-  //          success.load(),
-  //          num_try.load(),
-  //          Config::GetConfig()->get_duration(),
-  //          static_cast<float>(num_txn.load()) / Config::GetConfig()->get_duration());
-  // fflush(stderr);
-  // fflush(stdout);
     #endif
 
     #ifdef EPAXOS_TEST_CORO
