@@ -184,7 +184,6 @@ class EpaxosServer : public TxLogServer {
   unordered_map<uint64_t, uint64_t> received_till;
   unordered_map<uint64_t, uint64_t> prepared_till;
   unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
-  unordered_map<string, PubSubEvent> in_process_dkeys;
   unordered_map<string, PubSubEvent> in_exec_dkeys;
   // unordered_map<string, ExecutionEvent> in_exec_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
@@ -199,7 +198,7 @@ class EpaxosServer : public TxLogServer {
   int commit_timeout = 5000000;
   #else
   int rpc_timeout = 2000000;
-  int commit_timeout = 3000000;
+  int commit_timeout = 300000;
   #endif
 
   void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey);
@@ -257,8 +256,7 @@ class EpaxosServer : public TxLogServer {
                                 string& dkey, 
                                 uint64_t& replica_id, 
                                 uint64_t& instance_no, 
-                                uint64_t& seq, 
-                                unordered_map<uint64_t, uint64_t>& deps);
+                                uint64_t& seq);
   shared_ptr<EpaxosCommand> GetCommand(uint64_t replica_id, uint64_t instance_no);
 
   /* RPC handlers */
