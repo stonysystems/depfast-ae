@@ -56,13 +56,6 @@ Wide-area testing is simulated by sleeping for 40-50 ms before and after process
 python3 waf configure build --enable-epaxos-perf-test --enable-wide-area
 ```
 
-### Enable batching
-When batching is enabled all requests (belonging to the same dependency key) received in 10 microseconds are batched together into a single request. This is different from the batching implemented by Epaxos paper. In the paper all requests (irrespective of dependency key) received in 5 milliseconds are batched together into a single request.
-
-```
-python3 waf configure build --enable-epaxos-perf-test --enable-batching
-```
-
 ## To run
 
 ```
@@ -93,19 +86,3 @@ The performance test output for each run will be stored in `root/plots/epaxos` f
 ## Jupyter Notebook Code
 The jupyter notebook code used for output analysis and graph creation is stored in `root/src/deptran/epaxos/jupyter-notebook` folder. You can import the file to your local jupyter-notebook and adjust the file path, total requests, concurrency and throughput values in the code as per your need.
 
-# Weak Consistency
-Weak consistency was simulated by executing a request as soon as it is committed without checking the dependency graphs. 
-
-NOTE: This is not an ideal implementation but rather a simulation.
-
-## To compile
-
-```
-python3 waf configure build --enable-epaxos-perf-test --enable-epaxos-eventual-test
-```
-
-## To run
-
-```
-build/deptran_server -f config/epaxos_5r.yml -n <concurrency> -T <total-requests> -o <conflict-percentage> > log.txt
-```

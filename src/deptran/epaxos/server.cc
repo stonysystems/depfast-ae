@@ -921,7 +921,7 @@ void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& vertex) {
 // Should be called only after command at that instance is committed
 void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   // Stop execution of next command of same dkey
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_EVENTUAL_TEST)
+  #ifdef EPAXOS_TEST_CORO
   if (pause_execution) return;
   #endif
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, replica_id_);

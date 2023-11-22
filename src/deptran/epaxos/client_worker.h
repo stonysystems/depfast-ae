@@ -1,13 +1,14 @@
 #pragma once
 
 #include "../client_worker.h"
-#include "perf_test.h"
 #include "test.h"
+#ifdef CPU_PROFILE
+#include <gperftools/profiler.h>
+#endif
 
 namespace janus {
 
 class EpaxosClientWorker : public ClientWorker {
-  // SharedIntEvent n_tx_done_{};
   atomic<uint32_t> n_tx_done_;
   uint32_t n_tx_issued_{0};
   uint32_t n_concurrent_;
@@ -38,11 +39,6 @@ class EpaxosClientWorker : public ClientWorker {
         int leader = command.tx_id_ % NSERVERS;
         if (svr != leader) return;
         n_tx_done_++;
-  //     // exit if not leader
-  //     metrics_mtx_.lock();
-  //     int cmd_leader = leader[command.tx_id_];
-  //     metrics_mtx_.unlock();
-  //     if (cmd_leader != svr) return;
   //     // measure req latency
   //     struct timeval t1;
   //     gettimeofday(&t1, NULL);
@@ -55,12 +51,9 @@ class EpaxosClientWorker : public ClientWorker {
     
     testconfig_->SetCommittedLearnerAction([this](int svr) {
       return ([this, svr](Marshallable& cmd) {
-        // auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-  //     // exit if not leader
-  //     metrics_mtx_.lock();
-  //     int cmd_leader = leader[command.tx_id_];
-  //     metrics_mtx_.unlock();
-  //     if (cmd_leader != svr) return;
+        auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
+        int leader = command.tx_id_ % NSERVERS;
+        if (svr != leader) return;
   //     // measure req latency
   //     struct timeval t1;
   //     gettimeofday(&t1, NULL);
@@ -70,6 +63,12 @@ class EpaxosClientWorker : public ClientWorker {
   //     metrics_mtx_.unlock();
       });
     });
+
+    #ifdef CPU_PROFILE
+    char prof_file[1024];
+    Config::GetConfig()->GetProfilePath(prof_file);
+    ProfilerStart(prof_file);
+    #endif
 
     for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
       auto sp_job = std::make_shared<OneTimeJob>([this, n_tx] () {
@@ -103,12 +102,18 @@ class EpaxosClientWorker : public ClientWorker {
       n_ceased_client_.WaitUntilGreaterOrEqualThan(n_concurrent_, (duration+500)*1000000);
       all_done_ = 1;
     })));
+
     while (all_done_ == 0 || n_tx_done_ < tot_req_num_) {
       Log_info("wait for finish... n_ceased_cleints: %d, n_issued: %d, n_done: %d",
                 (int) n_ceased_client_.value_, (int) n_tx_issued_,
                 (int) n_tx_done_);
       sleep(1);
     }
+
+    #ifdef CPU_PROFILE
+    ProfilerStop();
+    #endif
+
     struct timeval t2;
     gettimeofday(&t2, NULL);
     int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
