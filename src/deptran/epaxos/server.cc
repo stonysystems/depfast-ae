@@ -989,7 +989,7 @@ bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replie
   for (int i = 0; i < replies.size(); i++) {
     for (auto dreplica_id : replies[i].committed_deps) {
       bool_t dinstance_no = replies[i].deps[dreplica_id];
-      if(deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) {
+      if(deps.count(dreplica_id) && deps[dreplica_id] <= dinstance_no) {
         committed_deps.insert(dreplica_id);
       }
     }
