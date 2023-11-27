@@ -56,8 +56,7 @@ void EpaxosServer::Setup() {
       lock.unlock();
       #endif
 
-      auto received_till_ = this->received_till;
-      for (auto itr : received_till_) {
+      for (auto itr : this->received_till) {
         uint64_t replica_id = itr.first;
         uint64_t received_till_instance_no = itr.second;
         uint64_t instance_no = prepared_till.count(replica_id) ? prepared_till[replica_id] + 1 : 0;
@@ -70,7 +69,7 @@ void EpaxosServer::Setup() {
           instance_no++;
         }
       }
-      prepared_till = received_till_;
+      prepared_till = this->received_till;
       Coroutine::Sleep(10);
     }
   });
@@ -168,7 +167,6 @@ void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
     leader_dep_instance = dkey_deps[dkey][replica_id_];
   }
   dkey_deps[dkey][replica_id_] = instance_no; // Important - otherwise next command may not have dependency on this command
-  received_till[replica_id_] = max(received_till[replica_id_], instance_no);
   EpaxosBallot ballot = EpaxosBallot(curr_epoch, 0, replica_id_);
   #if defined(EPAXOS_TEST_CORO)
   SetInstance(cmd, replica_id, instance_no);
@@ -690,14 +688,7 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
   ecmd->highest_accepted = ballot;
   ecmd->state = EpaxosCommandState::PRE_ACCEPTED;
   // Update internal attributes
-  if (cmd->kind_ != MarshallDeputy::CMD_NOOP) {
-    dkey_seq[dkey] = ecmd->seq;
-    int64_t leader_dep_instance = max(dkey_deps[dkey][replica_id], instance_no);
-    dkey_deps[dkey] = ecmd->deps;
-    dkey_deps[dkey][replica_id] = leader_dep_instance;
-    received_till[replica_id] = max(received_till[replica_id], dkey_deps[dkey][replica_id]);
-  }
-  received_till[replica_id] = max(received_till[replica_id], instance_no);
+  UpdateInternalAttributes(cmd, dkey, replica_id, instance_no, seq);
   // Reply
   EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::NO_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
   return reply;
