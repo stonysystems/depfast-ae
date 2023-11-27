@@ -105,6 +105,10 @@ void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   reqs.push_back(EpaxosRequest(cmd, dkey));
   #else
+  #ifdef EPAXOS_PERF_TEST_CORO
+  auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
+  start_times[command.tx_id_].start();
+  #endif
   Coroutine::CreateRun([this, cmd, dkey]() mutable {
     HandleRequest(cmd, dkey);
   });
@@ -151,6 +155,10 @@ void EpaxosServer::PauseExecution(bool pause) {
 
 pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
   return make_pair(fast, slow);
+}
+
+pair<vector<float>, vector<float>> EpaxosServer::GetLatencies() {
+  return make_pair(commit_times, exec_times);
 }
 #endif
 
@@ -463,6 +471,10 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     ecmd->deps = deps;
     ecmd->state = EpaxosCommandState::COMMITTED;
     #ifdef EPAXOS_PERF_TEST_CORO
+    if (replica_id == replica_id_) {
+      auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
+      commit_times.push_back(start_times[command.tx_id_].elapsed());
+    }
     commit_next_(*cmd);
     #endif
     ecmd->committed_ev.Set(1);
@@ -890,6 +902,12 @@ void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& vertex) {
   if (vertex->state == EpaxosCommandState::EXECUTED) return;
   vertex->state = EpaxosCommandState::EXECUTED;
   Log_debug("Executed replica: %d instance: %d in replica: %d", vertex->replica_id, vertex->instance_no, replica_id_);
+  #ifdef EPAXOS_PERF_TEST_CORO
+  if (vertex->replica_id == replica_id_) {
+    auto& command = dynamic_cast<TpcCommitCommand&>(*(vertex->cmd));
+    exec_times.push_back(start_times[command.tx_id_].elapsed());
+  }
+  #endif
   app_next_(*(vertex->cmd));
   // Update executed_till
   executed_till[vertex->dkey][vertex->replica_id] = max(executed_till[vertex->dkey][vertex->replica_id], vertex->instance_no);

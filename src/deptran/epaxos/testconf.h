@@ -91,6 +91,9 @@ class EpaxosTestConfig {
   // Return number of in-process requests
   double GetFastpathPercent();
 
+  // Return the commit and execution latencies (at leader) of all commands
+  pair<vector<float>, vector<float>> GetLatencies();
+
   // Returns 1 if n servers executed the command
   int NExecuted(uint64_t tx_id, int n);
 

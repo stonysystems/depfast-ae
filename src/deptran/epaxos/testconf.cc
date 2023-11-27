@@ -146,6 +146,17 @@ double EpaxosTestConfig::GetFastpathPercent() {
   return (fast*100)/(fast+slow);
 }
 
+pair<vector<float>, vector<float>> EpaxosTestConfig::GetLatencies() {
+  vector<float> commit_times;
+  vector<float> exec_times;
+  for (int svr = 0; svr < NSERVERS; svr++) {
+    auto latencies = replicas[svr]->svr_->GetLatencies();
+    commit_times.insert(commit_times.end(), latencies.first.begin(), latencies.first.end());
+    exec_times.insert(exec_times.end(), latencies.second.begin(), latencies.second.end());
+  }
+  return make_pair(commit_times, exec_times);
+}
+
 int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {
   auto start = chrono::steady_clock::now();
   int ne = 0;

@@ -187,13 +187,16 @@ class EpaxosServer : public TxLogServer {
   unordered_map<string, PubSubEvent> in_exec_dkeys;
   // unordered_map<string, ExecutionEvent> in_exec_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  unordered_map<uint64_t, Timer> start_times;
+  vector<float> commit_times;
+  vector<float> exec_times;
   unordered_map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
   int fast = 0;
   int slow = 0;
   #endif
-  #ifdef WIDE_AREA
+  #if defined(WIDE_AREA) || defined(EPAXOS_PERF_TEST_CORO)
   int rpc_timeout = 5000000;
   int commit_timeout = 5000000;
   #else
@@ -311,6 +314,7 @@ public:
   void Prepare(uint64_t& replica_id, uint64_t& instance_no);
   void PauseExecution(bool pause);
   pair<int, int> GetFastAndSlowPathCount();
+  pair<vector<float>, vector<float>> GetLatencies();
   #endif
 
   /* Do not modify this class below here */

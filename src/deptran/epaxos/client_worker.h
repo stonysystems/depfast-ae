@@ -39,28 +39,11 @@ class EpaxosClientWorker : public ClientWorker {
         int leader = command.tx_id_ % NSERVERS;
         if (svr != leader) return;
         n_tx_done_++;
-  //     // measure req latency
-  //     struct timeval t1;
-  //     gettimeofday(&t1, NULL);
-  //     metrics_mtx_.lock();
-  //     pair<int, int> startime = start_time[command.tx_id_];
-  //     leader_exec_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
-  //     metrics_mtx_.unlock();
       });
     });
     
     testconfig_->SetCommittedLearnerAction([this](int svr) {
       return ([this, svr](Marshallable& cmd) {
-        auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-        int leader = command.tx_id_ % NSERVERS;
-        if (svr != leader) return;
-  //     // measure req latency
-  //     struct timeval t1;
-  //     gettimeofday(&t1, NULL);
-  //     metrics_mtx_.lock();
-  //     pair<int, int> startime = start_time[command.tx_id_];
-  //     leader_commit_times[command.tx_id_] = t1.tv_sec - startime.first + ((float)(t1.tv_usec - startime.second)) / 1000000;
-  //     metrics_mtx_.unlock();
       });
     });
 
@@ -84,10 +67,6 @@ class EpaxosClientWorker : public ClientWorker {
           int cmd = n_tx_issued_;
           int svr = cmd % NSERVERS;
           string dkey = (RandomGenerator::rand(0, 100) < conflict_perc_) ? "0" : to_string(cmd);
-          // struct timeval t2;
-          // gettimeofday(&t2, NULL);
-          // start_time[cmd] = {t2.tv_sec, t2.tv_usec};
-          // leader[cmd] = svr;
           testconfig_->SendStart(svr, cmd, dkey);
         }
         n_ceased_client_.Set(n_ceased_client_.value_+1);
@@ -114,6 +93,7 @@ class EpaxosClientWorker : public ClientWorker {
     ProfilerStop();
     #endif
 
+    // Print Fastpath Percentage, Total RPC count and Throughput
     struct timeval t2;
     gettimeofday(&t2, NULL);
     int tot_exec_sec_ = t2.tv_sec - t1.tv_sec;
@@ -124,6 +104,40 @@ class EpaxosClientWorker : public ClientWorker {
     Print("Fastpath Percentage: %lf", fastpath_percentage);
     Print("Total RPC count: %ld", rpc_count);
     Print("Throughput: %lf", throughput);
+
+    // Print latency percentiles
+    auto latencies = testconfig_->GetLatencies();
+    vector<float> commit_times = latencies.first;
+    vector<float> exec_times = latencies.second;
+    sort(commit_times.begin(), commit_times.end());
+    sort(exec_times.begin(), exec_times.end());
+    Print("Commit Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
+    commit_times[(commit_times.size() - 1) * 0.5],
+    commit_times[(commit_times.size() - 1) * 0.9],
+    commit_times[(commit_times.size() - 1) * 0.99],
+    commit_times[commit_times.size() - 1]);
+    Print("Execution Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
+    exec_times[(exec_times.size() - 1) * 0.5],
+    exec_times[(exec_times.size() - 1) * 0.9],
+    exec_times[(exec_times.size() - 1) * 0.99],
+    exec_times[exec_times.size() - 1]);
+
+    // Write everything to file
+    ofstream out_file;
+    out_file.open("./plots/epaxos/latencies_" + to_string(n_concurrent_) + "_"  + to_string(tot_req_num_) + "_" + to_string(conflict_perc_) + ".csv"); 
+    for (auto t : exec_times) {
+      out_file << t << ",";
+    }
+    out_file << endl;
+    for (auto t : commit_times) {
+      out_file << t << ",";
+    }
+    out_file << endl;
+    out_file << throughput << endl;
+    out_file << fastpath_percentage << endl;
+    out_file << rpc_count << endl;
+    out_file.close();
+
     Log_info("PERF TEST COMPLETED");
     #endif
 
