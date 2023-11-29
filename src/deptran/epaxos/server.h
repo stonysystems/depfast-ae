@@ -66,7 +66,7 @@ class EpaxosCommand : public EVertex<EpaxosCommand> {
   shared_ptr<Marshallable> cmd;
   string dkey;
   uint64_t seq;
-  unordered_map<uint64_t, uint64_t> deps;
+  map<uint64_t, uint64_t> deps;
   EpaxosCommandState state;
   EpaxosBallot highest_seen;
   EpaxosBallot highest_accepted;
@@ -176,21 +176,21 @@ class EpaxosServer : public TxLogServer {
   uint64_t replica_id_;
   epoch_t curr_epoch = 1;
   uint64_t next_instance_no = 0;
-  unordered_map<uint64_t, unordered_map<uint64_t, shared_ptr<EpaxosCommand>>> cmds;
-  unordered_map<string, unordered_map<uint64_t, uint64_t>> dkey_deps;
-  unordered_map<string, uint64_t> dkey_seq;
-  unordered_map<uint64_t, unordered_map<uint64_t, pair<uint64_t, uint64_t>>> deferred;
+  map<uint64_t, map<uint64_t, shared_ptr<EpaxosCommand>>> cmds;
+  map<string, map<uint64_t, uint64_t>> dkey_deps;
+  map<string, uint64_t> dkey_seq;
+  map<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>> deferred;
   list<EpaxosRequest> reqs;
-  unordered_map<uint64_t, uint64_t> received_till;
-  unordered_map<uint64_t, uint64_t> prepared_till;
-  unordered_map<string, unordered_map<uint64_t, uint64_t>> executed_till;
-  unordered_map<string, PubSubEvent> in_exec_dkeys;
-  // unordered_map<string, ExecutionEvent> in_exec_dkeys;
+  map<uint64_t, uint64_t> received_till;
+  map<uint64_t, uint64_t> prepared_till;
+  map<string, map<uint64_t, uint64_t>> executed_till;
+  map<string, PubSubEvent> in_exec_dkeys;
+  // map<string, ExecutionEvent> in_exec_dkeys;
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
-  unordered_map<uint64_t, Timer> start_times;
+  map<uint64_t, Timer> start_times;
   vector<float> commit_times;
   vector<float> exec_times;
-  unordered_map<int, pair<uint64_t, uint64_t>> instance;
+  map<int, pair<uint64_t, uint64_t>> instance;
   list<pair<uint64_t, uint64_t>> prepare_reqs;
   bool pause_execution = false;
   int fast = 0;
@@ -216,21 +216,21 @@ class EpaxosServer : public TxLogServer {
                    string& dkey, 
                    EpaxosBallot& ballot, 
                    uint64_t& seq,
-                   unordered_map<uint64_t, uint64_t>& deps, 
+                   map<uint64_t, uint64_t>& deps, 
                    uint64_t& replica_id, 
                    uint64_t& instance_no);
   bool StartCommit(shared_ptr<Marshallable>& cmd, 
                    string& dkey, 
                    EpaxosBallot& ballot, 
                    uint64_t& seq,
-                   unordered_map<uint64_t, uint64_t>& deps, 
+                   map<uint64_t, uint64_t>& deps, 
                    uint64_t& replica_id, 
                    uint64_t& instance_no);
   bool StartTryPreAccept(shared_ptr<Marshallable>& cmd, 
                          string& dkey, 
                          EpaxosBallot& ballot, 
                          uint64_t& seq,
-                         unordered_map<uint64_t, uint64_t>& deps, 
+                         map<uint64_t, uint64_t>& deps, 
                          uint64_t& replica_id, 
                          uint64_t& instance_no,
                          int64_t leader_dep_instance,
@@ -244,7 +244,7 @@ class EpaxosServer : public TxLogServer {
   void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
                                 string& dkey, 
                                 uint64_t& seq,
-                                unordered_map<uint64_t, uint64_t>& deps, 
+                                map<uint64_t, uint64_t>& deps, 
                                 uint64_t& replica_id, 
                                 uint64_t& instance_no,
                                 EpaxosTryPreAcceptStatus *conflict_state,
@@ -252,9 +252,9 @@ class EpaxosServer : public TxLogServer {
                                 uint64_t *conflict_instance_no);
   template<class ClassT>
   void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& replica_id, uint64_t& instance_no);
-  pair<uint64_t, unordered_map<uint64_t, uint64_t>>
+  pair<uint64_t, map<uint64_t, uint64_t>>
   MergeAttributes(vector<EpaxosPreAcceptReply>& replies);
-  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, unordered_map<uint64_t, uint64_t>& deps);
+  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& deps);
   void UpdateInternalAttributes(shared_ptr<Marshallable>& cmd,
                                 string& dkey, 
                                 uint64_t& replica_id, 
@@ -270,28 +270,28 @@ class EpaxosServer : public TxLogServer {
                                           string dkey, 
                                           EpaxosBallot& ballot, 
                                           uint64_t seq, 
-                                          unordered_map<uint64_t, uint64_t> deps, 
+                                          map<uint64_t, uint64_t> deps, 
                                           uint64_t replica_id, 
                                           uint64_t instance_no);
   EpaxosAcceptReply OnAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                     string dkey, 
                                     EpaxosBallot& ballot, 
                                     uint64_t seq, 
-                                    unordered_map<uint64_t, uint64_t> deps, 
+                                    map<uint64_t, uint64_t> deps, 
                                     uint64_t replica_id, 
                                     uint64_t instance_no);
   void OnCommitRequest(shared_ptr<Marshallable>& cmd, 
                        string dkey, 
                        EpaxosBallot& ballot, 
                        uint64_t seq, 
-                       unordered_map<uint64_t, uint64_t> deps, 
+                       map<uint64_t, uint64_t> deps, 
                        uint64_t replica_id, 
                        uint64_t instance_no);
   EpaxosTryPreAcceptReply OnTryPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                                 string dkey, 
                                                 EpaxosBallot& ballot, 
                                                 uint64_t seq, 
-                                                unordered_map<uint64_t, uint64_t> deps, 
+                                                map<uint64_t, uint64_t> deps, 
                                                 uint64_t replica_id, 
                                                 uint64_t instance_no);
   EpaxosPrepareReply OnPrepareRequest(EpaxosBallot& ballot, 
@@ -309,7 +309,7 @@ public:
                 shared_ptr<Marshallable> *cmd, 
                 string *dkey,
                 uint64_t *seq, 
-                unordered_map<uint64_t, uint64_t> *deps, 
+                map<uint64_t, uint64_t> *deps, 
                 status_t *state);
   void Prepare(uint64_t& replica_id, uint64_t& instance_no);
   void PauseExecution(bool pause);

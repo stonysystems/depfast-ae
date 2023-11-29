@@ -14,13 +14,13 @@ abstract service Epaxos {
                   MarshallDeputy md_cmd,
                   string dkey,
                   uint64_t seq,
-                  unordered_map<uint64_t,uint64_t> deps |
+                  map<uint64_t,uint64_t> deps |
                   status_t status,
                   epoch_t highest_seen_epoch,
                   ballot_t highest_seen_ballot_no,
                   uint64_t highest_seen_replica_id,
                   uint64_t updated_seq,
-                  unordered_map<uint64_t,uint64_t> updated_deps,
+                  map<uint64_t,uint64_t> updated_deps,
                   unordered_set<uint64_t> committed_deps);
                        
   defer Accept(epoch_t epoch,
@@ -31,7 +31,7 @@ abstract service Epaxos {
                MarshallDeputy md_cmd,
                string dkey,
                uint64_t seq,
-               unordered_map<uint64_t,uint64_t> deps |
+               map<uint64_t,uint64_t> deps |
                bool_t status,
                epoch_t highest_seen_epoch,
                ballot_t highest_seen_ballot_no,
@@ -45,7 +45,7 @@ abstract service Epaxos {
                MarshallDeputy md_cmd,
                string dkey,
                uint64_t seq,
-               unordered_map<uint64_t,uint64_t> deps |
+               map<uint64_t,uint64_t> deps |
                bool_t status);
   
   defer TryPreAccept(epoch_t epoch,
@@ -56,7 +56,7 @@ abstract service Epaxos {
                      MarshallDeputy md_cmd,
                      string dkey,
                      uint64_t seq,
-                     unordered_map<uint64_t,uint64_t> deps |
+                     map<uint64_t,uint64_t> deps |
                      status_t status,
                      epoch_t highest_seen_epoch,
                      ballot_t highest_seen_ballot_no,
@@ -73,7 +73,7 @@ abstract service Epaxos {
                 MarshallDeputy md_cmd,
                 string dkey,
                 uint64_t seq,
-                unordered_map<uint64_t, uint64_t> deps,
+                map<uint64_t, uint64_t> deps,
                 status_t cmd_state,
                 uint64_t acceptor_replica_id,
                 epoch_t highest_seen_epoch,

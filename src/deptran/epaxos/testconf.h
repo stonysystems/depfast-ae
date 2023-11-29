@@ -30,7 +30,7 @@ extern std::chrono::_V2::system_clock::time_point _test_starttime_g;
 #define Passed() \
         Print("TEST %d Passed (time taken: %d s)", _test_id_g, (std::chrono::system_clock::now() - _test_starttime_g)/1000000000);
 
-extern string map_to_string(unordered_map<uint64_t, uint64_t> m);
+extern string map_to_string(map<uint64_t, uint64_t> m);
 
 class EpaxosTestConfig {
 
@@ -76,7 +76,7 @@ class EpaxosTestConfig {
                 shared_ptr<Marshallable> *cmd, 
                 string *string,
                 uint64_t *seq, 
-                unordered_map<uint64_t, uint64_t> *deps, 
+                map<uint64_t, uint64_t> *deps, 
                 status_t *state);
 
   // Calls Prepare() to specified server
@@ -128,7 +128,7 @@ class EpaxosTestConfig {
                  bool *cno_op, 
                  string *cdkey, 
                  uint64_t *cseq, 
-                 unordered_map<uint64_t, uint64_t> *cdeps);
+                 map<uint64_t, uint64_t> *cdeps);
 
   // Returns number of servers accepted the command 
   int NAccepted(uint64_t replica_id, uint64_t instance_no, int n);
@@ -156,7 +156,7 @@ class EpaxosTestConfig {
                   bool *cno_op, 
                   string *cdkey, 
                   uint64_t *cseq, 
-                  unordered_map<uint64_t, uint64_t> *cdeps);
+                  map<uint64_t, uint64_t> *cdeps);
 
   // Disconnects server from rest of servers
   void Disconnect(int svr);

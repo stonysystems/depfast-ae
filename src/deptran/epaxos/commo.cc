@@ -21,7 +21,7 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                            const shared_ptr<Marshallable>& cmd,
                            const string& dkey,
                            const uint64_t& seq,
-                           const unordered_map<uint64_t, uint64_t>& deps) {
+                           const map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_to_send = NSERVERS - 1;
   if (thrifty) {
@@ -45,7 +45,7 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
       ballot_t highest_seen_ballot_no;
       uint64_t highest_seen_replica_id;
       uint64_t updated_seq;
-      unordered_map<uint64_t, uint64_t> updated_deps;
+      map<uint64_t, uint64_t> updated_deps;
       unordered_set<uint64_t> committed_deps;
       fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps >> committed_deps;
       EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
@@ -91,7 +91,7 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
                         const shared_ptr<Marshallable>& cmd,
                         const string& dkey,
                         const uint64_t& seq,
-                        const unordered_map<uint64_t, uint64_t>& deps) {
+                        const map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_to_send = NSERVERS - 1;
   if (thrifty) {
@@ -153,7 +153,7 @@ EpaxosCommo::SendCommit(const siteid_t& site_id,
                         const shared_ptr<Marshallable>& cmd,
                         const string& dkey,
                         const uint64_t& seq,
-                        const unordered_map<uint64_t, uint64_t>& deps) {
+                        const map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   for (auto& p : proxies) {
     if (p.first == site_id) {
@@ -190,7 +190,7 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
                               const shared_ptr<Marshallable>& cmd,
                               const string& dkey,
                               const uint64_t& seq,
-                              const unordered_map<uint64_t, uint64_t>& deps) {
+                              const map<uint64_t, uint64_t>& deps) {
   auto proxies = rpc_par_proxies_[par_id];
   auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(preaccepted_sites.size() + 1); // preaccepted_sites do not contain current server, so +1 added for it
   for (auto& p : proxies) {
@@ -268,7 +268,7 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
       MarshallDeputy md_cmd;
       string dkey;
       uint64_t seq;
-      unordered_map<uint64_t, uint64_t> deps;
+      map<uint64_t, uint64_t> deps;
       status_t cmd_state;
       uint64_t acceptor_replica_id;
       epoch_t highest_seen_epoch;

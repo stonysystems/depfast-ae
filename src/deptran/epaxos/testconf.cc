@@ -10,7 +10,7 @@ namespace janus {
 int _test_id_g = 0;
 std::chrono::_V2::system_clock::time_point _test_starttime_g;
 
-string map_to_string(unordered_map<uint64_t, uint64_t> m) {
+string map_to_string(map<uint64_t, uint64_t> m) {
   string result = "";
   for (auto itr : m) {
     result += to_string(itr.first) + ":" + to_string(itr.second) + ", ";
@@ -117,7 +117,7 @@ void EpaxosTestConfig::GetState(int svr,
                                 shared_ptr<Marshallable> *cmd, 
                                 string *dkey,
                                 uint64_t *seq, 
-                                unordered_map<uint64_t, uint64_t> *deps, 
+                                map<uint64_t, uint64_t> *deps, 
                                 status_t *state) {
   replicas[svr]->svr_->GetState(replica_id, instance_no, cmd, dkey, seq, deps, state);
 }
@@ -246,7 +246,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id, uint64_t instance_no, int 
   bool cnoop;
   string cdkey;
   uint64_t cseq;
-  unordered_map<uint64_t, uint64_t> cdeps;
+  map<uint64_t, uint64_t> cdeps;
   return NCommitted(replica_id, instance_no, n, &cnoop, &cdkey, &cseq, &cdeps);
 }
 
@@ -256,7 +256,7 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
                                   bool *cnoop, 
                                   string *cdkey, 
                                   uint64_t *cseq, 
-                                  unordered_map<uint64_t, uint64_t> *cdeps) {
+                                  map<uint64_t, uint64_t> *cdeps) {
   auto start = chrono::steady_clock::now();
   int nc = 0;
   while ((chrono::steady_clock::now() - start) < chrono::seconds{2}) {
@@ -264,13 +264,13 @@ int EpaxosTestConfig::NCommitted(uint64_t replica_id,
     int committed_cmd_kind;
     string committed_dkey;
     uint64_t committed_seq;
-    unordered_map<uint64_t, uint64_t> committed_deps;
+    map<uint64_t, uint64_t> committed_deps;
     nc = 0;
     for (int j=0; j< NSERVERS; j++) {
       shared_ptr<Marshallable> cmd_;
       string dkey_;
       uint64_t seq_;
-      unordered_map<uint64_t, uint64_t> deps_;
+      map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
       if (state_ == EpaxosCommandState::COMMITTED || state_ == EpaxosCommandState::EXECUTED) {
@@ -324,7 +324,7 @@ int EpaxosTestConfig::NAccepted(uint64_t replica_id, uint64_t instance_no, int n
       shared_ptr<Marshallable> cmd_;
       string dkey_;
       uint64_t seq_;
-      unordered_map<uint64_t, uint64_t> deps_;
+      map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
       if (state_ == EpaxosCommandState::ACCEPTED ) {
@@ -350,7 +350,7 @@ int EpaxosTestConfig::NPreAccepted(uint64_t replica_id, uint64_t instance_no, in
       shared_ptr<Marshallable> cmd_;
       string dkey_;
       uint64_t seq_;
-      unordered_map<uint64_t, uint64_t> deps_;
+      map<uint64_t, uint64_t> deps_;
       status_t state_;
       GetState(j, replica_id, instance_no, &cmd_, &dkey_, &seq_, &deps_, &state_);
       if (state_ == EpaxosCommandState::PRE_ACCEPTED || state_ == EpaxosCommandState::PRE_ACCEPTED_EQ) {
@@ -374,7 +374,7 @@ int EpaxosTestConfig::DoAgreement(int cmd,
                                   bool *cnoop, 
                                   string *cdkey, 
                                   uint64_t *cseq, 
-                                  unordered_map<uint64_t, uint64_t> *cdeps) {
+                                  map<uint64_t, uint64_t> *cdeps) {
   Log_debug("Doing 1 round of Epaxos agreement");
   auto start = chrono::steady_clock::now();
   while ((chrono::steady_clock::now() - start) < chrono::seconds{10}) {

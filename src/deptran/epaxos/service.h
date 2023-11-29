@@ -28,20 +28,20 @@ class EpaxosServiceImpl : public EpaxosService {
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
-             const unordered_map_uint64_uint64_t&, deps,
+             const map_uint64_uint64_t&, deps,
              status_t*, status,
              epoch_t*, highest_seen_epoch,
              ballot_t*, highest_seen_ballot_no,
              uint64_t*, highest_seen_replica_id,
              uint64_t*, updated_seq,
-             unordered_map_uint64_uint64_t*, updated_deps,
+             map_uint64_uint64_t*, updated_deps,
              unordered_set<uint64_t>*, committed_deps) {
     *status = EpaxosPreAcceptStatus::FAILED;
     *highest_seen_epoch = 0;
     *highest_seen_ballot_no = -1;
     *highest_seen_replica_id = 0;
     *updated_seq = 0;
-    *updated_deps = unordered_map<uint64_t, uint64_t>();
+    *updated_deps = map<uint64_t, uint64_t>();
     *committed_deps = unordered_set<uint64_t>();
   }
 
@@ -54,7 +54,7 @@ class EpaxosServiceImpl : public EpaxosService {
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
-             const unordered_map_uint64_uint64_t&, deps,
+             const map_uint64_uint64_t&, deps,
              bool_t*, status,
              epoch_t*, highest_seen_epoch,
              ballot_t*, highest_seen_ballot_no,
@@ -74,7 +74,7 @@ class EpaxosServiceImpl : public EpaxosService {
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
-             const unordered_map_uint64_uint64_t&, deps,
+             const map_uint64_uint64_t&, deps,
              bool_t*, status) {
     *status = false;
   }
@@ -88,7 +88,7 @@ class EpaxosServiceImpl : public EpaxosService {
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
-             const unordered_map_uint64_uint64_t&, deps,
+             const map_uint64_uint64_t&, deps,
              status_t*, status,
              epoch_t*, highest_seen_epoch,
              ballot_t*, highest_seen_ballot_no,
@@ -113,7 +113,7 @@ class EpaxosServiceImpl : public EpaxosService {
              MarshallDeputy*, md_cmd,
              string*, dkey,
              uint64_t*, seq,
-             unordered_map_uint64_uint64_t*, deps,
+             map_uint64_uint64_t*, deps,
              status_t*, cmd_state,
              uint64_t*, acceptor_replica_id,
              epoch_t*, highest_seen_epoch,
@@ -123,7 +123,7 @@ class EpaxosServiceImpl : public EpaxosService {
     *md_cmd = MarshallDeputy(dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>()));
     *dkey = "";
     *seq = 0;
-    *deps = unordered_map<uint64_t, uint64_t>();
+    *deps = map<uint64_t, uint64_t>();
     *cmd_state = EpaxosCommandState::NOT_STARTED;
     *acceptor_replica_id = 0;
     *highest_seen_epoch = 0;

@@ -29,7 +29,7 @@ class EpaxosPreAcceptReply {
   ballot_t ballot_no;
   uint64_t replica_id;
   uint64_t seq;
-  unordered_map<uint64_t, uint64_t> deps;
+  map<uint64_t, uint64_t> deps;
   unordered_set<uint64_t> committed_deps;
 
   EpaxosPreAcceptReply() {
@@ -43,7 +43,7 @@ class EpaxosPreAcceptReply {
     this->replica_id = replica_id;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, unordered_map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
     this->status = status;
     this->epoch = epoch;
     this->ballot_no = ballot_no;
@@ -258,7 +258,7 @@ class EpaxosPrepareReply {
   shared_ptr<Marshallable> cmd;
   string dkey;
   uint64_t seq;
-  unordered_map<uint64_t, uint64_t> deps;
+  map<uint64_t, uint64_t> deps;
   status_t cmd_state;
   uint64_t acceptor_replica_id;
   epoch_t epoch;
@@ -277,7 +277,7 @@ class EpaxosPrepareReply {
                      shared_ptr<Marshallable> cmd,
                      string dkey,
                      uint64_t seq,
-                     unordered_map<uint64_t, uint64_t> deps,
+                     map<uint64_t, uint64_t> deps,
                      status_t cmd_state,
                      uint64_t acceptor_replica_id,
                      epoch_t epoch,
@@ -299,7 +299,7 @@ class EpaxosPrepareReply {
 class EpaxosPrepareQuorumEvent : public QuorumEvent {
  public:
   vector<EpaxosPrepareReply> replies;
-  unordered_map<uint64_t, siteid_t> replicaid_siteid_map;
+  map<uint64_t, siteid_t> replicaid_siteid_map;
 
   EpaxosPrepareQuorumEvent(bool thrifty) : QuorumEvent(thrifty ? FAST_PATH_QUORUM - 1 : NSERVERS - 1, SLOW_PATH_QUORUM - 1) {}
 
@@ -339,7 +339,7 @@ class EpaxosCommo : public Communicator {
                 const shared_ptr<Marshallable>& cmd,
                 const string& dkey,
                 const uint64_t& seq,
-                const unordered_map<uint64_t, uint64_t>& deps);
+                const map<uint64_t, uint64_t>& deps);
 
   
   shared_ptr<EpaxosAcceptQuorumEvent>
@@ -353,7 +353,7 @@ class EpaxosCommo : public Communicator {
              const shared_ptr<Marshallable>& cmd,
              const string& dkey,
              const uint64_t& seq,
-             const unordered_map<uint64_t, uint64_t>& deps);
+             const map<uint64_t, uint64_t>& deps);
 
   void
   SendCommit(const siteid_t& site_id,
@@ -366,7 +366,7 @@ class EpaxosCommo : public Communicator {
              const shared_ptr<Marshallable>& cmd,
              const string& dkey,
              const uint64_t& seq,
-             const unordered_map<uint64_t, uint64_t>& deps);
+             const map<uint64_t, uint64_t>& deps);
   
   shared_ptr<EpaxosTryPreAcceptQuorumEvent> 
   SendTryPreAccept(const siteid_t& site_id,
@@ -380,7 +380,7 @@ class EpaxosCommo : public Communicator {
                    const shared_ptr<Marshallable>& cmd,
                    const string& dkey,
                    const uint64_t& seq,
-                   const unordered_map<uint64_t, uint64_t>& deps);
+                   const map<uint64_t, uint64_t>& deps);
 
   shared_ptr<EpaxosPrepareQuorumEvent>
   SendPrepare(const siteid_t& site_id,
