@@ -35,14 +35,14 @@ class EpaxosServiceImpl : public EpaxosService {
              uint64_t*, highest_seen_replica_id,
              uint64_t*, updated_seq,
              map_uint64_uint64_t*, updated_deps,
-             unordered_set<uint64_t>*, committed_deps) {
+             map_uint64_uint64_t*, committed_till) {
     *status = EpaxosPreAcceptStatus::FAILED;
     *highest_seen_epoch = 0;
     *highest_seen_ballot_no = -1;
     *highest_seen_replica_id = 0;
     *updated_seq = 0;
     *updated_deps = map<uint64_t, uint64_t>();
-    *committed_deps = unordered_set<uint64_t>();
+    *committed_till = map<uint64_t, uint64_t>();
   }
 
   RpcHandler(Accept, 13,

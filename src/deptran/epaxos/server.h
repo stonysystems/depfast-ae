@@ -131,7 +131,7 @@ class EpaxosServer : public TxLogServer {
   map<string, QueueEvent> exec_limiter;
 
   #ifdef EPAXOS_TEST_CORO
-  int commit_timeout = 300000;
+  int commit_timeout = 3000000;
   int rpc_timeout = 2000000;
   #else
   int commit_timeout = 10000000; // 10 seconds
@@ -193,7 +193,8 @@ class EpaxosServer : public TxLogServer {
   void MergeAttributes(vector<EpaxosPreAcceptReply>& replies, uint64_t *seq, map<uint64_t, uint64_t> *deps);
   vector<shared_ptr<EpaxosCommand>> GetDependencies(shared_ptr<EpaxosCommand>& ecmd);
   void Execute(shared_ptr<EpaxosCommand>& ecmd);
-  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& deps);
+  void UpdateCommittedTill(uint64_t& replica_id, uint64_t& instance_no);
+  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps);
   void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
                                 string& dkey, 
                                 uint64_t& seq,

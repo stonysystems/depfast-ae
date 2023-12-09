@@ -21,7 +21,7 @@ abstract service Epaxos {
                   uint64_t highest_seen_replica_id,
                   uint64_t updated_seq,
                   map<uint64_t,uint64_t> updated_deps,
-                  unordered_set<uint64_t> committed_deps);
+                  map<uint64_t, uint64_t> committed_till);
                        
   defer Accept(epoch_t epoch,
                ballot_t ballot_no,

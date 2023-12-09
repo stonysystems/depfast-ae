@@ -34,7 +34,7 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
                                         uint64_t* highest_seen_replica_id,
                                         uint64_t* updated_seq,
                                         map_uint64_uint64_t* updated_deps,
-                                        unordered_set<uint64_t>* committed_deps,
+                                        map_uint64_uint64_t* committed_till,
                                         rrr::DeferredReply* defer) {
   #ifdef WIDE_AREA
   Coroutine::Sleep(WIDE_AREA_DELAY);
@@ -48,7 +48,7 @@ void EpaxosServiceImpl::HandlePreAccept(const epoch_t& epoch,
   *highest_seen_replica_id = reply.replica_id;
   *updated_seq = reply.seq;
   *updated_deps = reply.deps;
-  *committed_deps = reply.committed_deps;
+  *committed_till = reply.committed_till;
   Log_debug("Return pre-accept reply for replica: %d instance: %d dep_key: %s with ballot: %d leader: %d, acceptor_replica_id: %d as status: %d", 
             leader_replica_id, instance_no, dkey.c_str(), ballot.ballot_no, ballot.replica_id, svr_->site_id_, reply.status);
   #ifdef WIDE_AREA

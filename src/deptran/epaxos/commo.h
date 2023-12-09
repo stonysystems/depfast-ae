@@ -30,7 +30,7 @@ class EpaxosPreAcceptReply {
   uint64_t replica_id;
   uint64_t seq;
   map<uint64_t, uint64_t> deps;
-  unordered_set<uint64_t> committed_deps;
+  map<uint64_t, uint64_t> committed_till;
 
   EpaxosPreAcceptReply() {
     status = EpaxosPreAcceptStatus::NOT_INITIALIZED;
@@ -43,14 +43,14 @@ class EpaxosPreAcceptReply {
     this->replica_id = replica_id;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, map<uint64_t, uint64_t>& deps, map<uint64_t, uint64_t>& committed_till) {
     this->status = status;
     this->epoch = epoch;
     this->ballot_no = ballot_no;
     this->replica_id = replica_id;
     this->seq = seq;
     this->deps = deps;
-    this->committed_deps = committed_deps;
+    this->committed_till = committed_till;
   }
 };
 

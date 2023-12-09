@@ -46,15 +46,15 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
       uint64_t highest_seen_replica_id;
       uint64_t updated_seq;
       map<uint64_t, uint64_t> updated_deps;
-      unordered_set<uint64_t> committed_deps;
-      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps >> committed_deps;
+      map<uint64_t, uint64_t> committed_till;
+      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps >> committed_till;
       EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
                                   highest_seen_epoch, 
                                   highest_seen_ballot_no, 
                                   highest_seen_replica_id, 
                                   updated_seq, 
                                   updated_deps,
-                                  committed_deps);
+                                  committed_till);
       if (status == EpaxosPreAcceptStatus::IDENTICAL) {
         ev->VoteIdentical(reply);
       } else if (status == EpaxosPreAcceptStatus::NON_IDENTICAL) {
