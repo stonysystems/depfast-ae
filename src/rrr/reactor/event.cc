@@ -212,6 +212,23 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
+void QueueEvent::Notify() {
+  tot_events_--;
+  if (tot_events_ == 0) return;
+  function<void(void)> &f = events_.front();
+  events_.pop_front();
+  Coroutine::CreateRun(f);
+}
+
+void QueueEvent::Add(function<void(void)> f) {
+  if (tot_events_ == 0) {
+    tot_events_++;
+    Coroutine::CreateRun(f);
+    return;
+  }
+  events_.push_back(f);
+}
+
 void PubSubEvent::NotifyOne() {
   for (auto itr = events_.begin(); itr != events_.end(); itr++) {
     if ((*itr)->status_ <= Event::WAIT) {

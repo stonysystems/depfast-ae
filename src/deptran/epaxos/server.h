@@ -112,80 +112,32 @@ class EpaxosRequest {
   }
 };
 
-class InstanceEvent : public IntEvent {
- public:
-  uint64_t replica_{};
-  uint64_t instance_{};
-
-  InstanceEvent(uint64_t replica, uint64_t instance): IntEvent() {
-    replica_ = replica;
-    instance_ = instance;
-  }
-
-};
-
-class ExecutionEvent {
- public:
-  list<shared_ptr<InstanceEvent>> events_{};
-  std::map<uint64_t, uint64_t> curr_max;
-  std::map<uint64_t, std::vector<uint64_t>> higher_instances;
-
-  void WaitIfGreater(uint64_t replica, uint64_t instance) {
-    if (curr_max[replica] == 0 || instance <= curr_max[replica]) {
-      higher_instances[replica].push_back(instance);
-      curr_max[replica] = instance;
-      return;
-    }
-    auto sp_ev = Reactor::CreateSpEvent<InstanceEvent>(replica, instance);
-    events_.insert(events_.end(), sp_ev);
-    sp_ev->Wait();
-    curr_max[replica] = instance;
-    higher_instances[replica].push_back(instance);
-  }
-
-  void Reset(uint64_t replica, uint64_t instance) {
-    higher_instances[replica].erase(find(higher_instances[replica].begin(), higher_instances[replica].end(), instance));
-    if (curr_max[replica] == instance) {
-      if (higher_instances[replica].size() == 0) {
-        curr_max[replica] = 0;
-      } else {
-        curr_max[replica] = *min_element(begin(higher_instances[replica]), end(higher_instances[replica]));
-      }
-    }
-    if (higher_instances[replica].size() == 0) {
-      auto itr = events_.begin(); 
-      while (itr != events_.end()) {
-        if ((*itr)->status_ <= Event::WAIT) {
-          if ((*itr)->replica_ == replica && (curr_max[(*itr)->replica_] == 0 || (*itr)->instance_ <= curr_max[(*itr)->replica_])) {
-            auto sp_ev = *itr;
-            events_.erase(itr++);
-            sp_ev->Set(1);
-          } else {
-            itr++;
-          }
-        } else {
-          itr++;
-        }
-      }
-    }
-  }
-};
-
 class EpaxosServer : public TxLogServer {
  private:
-  uint64_t replica_id_;
+  uint64_t curr_replica_id;
   epoch_t curr_epoch = 1;
   uint64_t next_instance_no = 0;
   map<uint64_t, map<uint64_t, shared_ptr<EpaxosCommand>>> cmds;
   map<string, map<uint64_t, uint64_t>> dkey_deps;
   map<string, uint64_t> dkey_seq;
   map<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>> deferred;
+
   list<EpaxosRequest> reqs;
   map<uint64_t, uint64_t> received_till;
   map<uint64_t, uint64_t> prepared_till;
+  map<uint64_t, uint64_t> committed_till;
   map<string, map<uint64_t, uint64_t>> executed_till;
   map<string, PubSubEvent> in_exec_dkeys;
-  // map<string, ExecutionEvent> in_exec_dkeys;
+  map<string, QueueEvent> exec_limiter;
+
+  #ifdef EPAXOS_TEST_CORO
+  int commit_timeout = 300000;
+  int rpc_timeout = 2000000;
+  #else
+  int commit_timeout = 10000000; // 10 seconds
+  int rpc_timeout = 5000000; // 5 seconds
+  #endif
+
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   map<uint64_t, Timer> start_times;
   vector<float> commit_times;
@@ -196,13 +148,6 @@ class EpaxosServer : public TxLogServer {
   int fast = 0;
   int slow = 0;
   #endif
-  #if defined(WIDE_AREA) || defined(EPAXOS_PERF_TEST_CORO)
-  int rpc_timeout = 5000000;
-  int commit_timeout = 5000000;
-  #else
-  int rpc_timeout = 2000000;
-  int commit_timeout = 300000;
-  #endif
 
   void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey);
   bool StartPreAccept(shared_ptr<Marshallable>& cmd, 
@@ -210,7 +155,7 @@ class EpaxosServer : public TxLogServer {
                       EpaxosBallot& ballot, 
                       uint64_t& replica_id, 
                       uint64_t& instance_no,
-                      int64_t leader_dep_instance,
+                      int64_t leader_prev_dep_instance_no,
                       bool recovery);
   bool StartAccept(shared_ptr<Marshallable>& cmd, 
                    string& dkey, 
@@ -233,14 +178,22 @@ class EpaxosServer : public TxLogServer {
                          map<uint64_t, uint64_t>& deps, 
                          uint64_t& replica_id, 
                          uint64_t& instance_no,
-                         int64_t leader_dep_instance,
+                         int64_t leader_prev_dep_instance_no,
                          unordered_set<siteid_t>& preaccepted_sites);
   bool StartPrepare(uint64_t& replica_id, uint64_t& instance_no);
   void PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance_no);
   void StartExecution(uint64_t& replica_id, uint64_t& instance_no);
 
-  vector<shared_ptr<EpaxosCommand>> GetDependencies(shared_ptr<EpaxosCommand>& vertex);
-  void Execute(shared_ptr<EpaxosCommand>& vertex);
+  /* Helpers */
+
+  shared_ptr<EpaxosCommand> GetCommand(uint64_t replica_id, uint64_t instance_no);
+  template<class ClassT> void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& replica_id, uint64_t& instance_no);
+  void GetLatestAttributes(string& dkey, uint64_t& leader_replica_id, int64_t& leader_prev_dep_instance_no, uint64_t *seq, map<uint64_t, uint64_t> *deps);
+  void UpdateAttributes(string& dkey, uint64_t& replica_id, uint64_t& instance_no, uint64_t& seq);
+  void MergeAttributes(vector<EpaxosPreAcceptReply>& replies, uint64_t *seq, map<uint64_t, uint64_t> *deps);
+  vector<shared_ptr<EpaxosCommand>> GetDependencies(shared_ptr<EpaxosCommand>& ecmd);
+  void Execute(shared_ptr<EpaxosCommand>& ecmd);
+  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& deps);
   void FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd, 
                                 string& dkey, 
                                 uint64_t& seq,
@@ -250,17 +203,6 @@ class EpaxosServer : public TxLogServer {
                                 EpaxosTryPreAcceptStatus *conflict_state,
                                 uint64_t *conflict_replica_id, 
                                 uint64_t *conflict_instance_no);
-  template<class ClassT>
-  void UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& replica_id, uint64_t& instance_no);
-  pair<uint64_t, map<uint64_t, uint64_t>>
-  MergeAttributes(vector<EpaxosPreAcceptReply>& replies);
-  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& deps);
-  void UpdateInternalAttributes(shared_ptr<Marshallable>& cmd,
-                                string& dkey, 
-                                uint64_t& replica_id, 
-                                uint64_t& instance_no, 
-                                uint64_t& seq);
-  shared_ptr<EpaxosCommand> GetCommand(uint64_t replica_id, uint64_t instance_no);
 
   /* RPC handlers */
 
