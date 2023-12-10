@@ -305,16 +305,8 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
       }
     }
   }
-  // Set committed status for deps
-  unordered_set<uint64_t> committed_deps;
-  for (auto itr : merged_deps) {
-    uint64_t dreplica_id = itr.first;
-    uint64_t dinstance_no = itr.second;
-    auto state = GetCommand(dreplica_id, dinstance_no)->state;
-    if (state == EpaxosCommandState::COMMITTED || state == EpaxosCommandState::EXECUTED) {
-      committed_deps.insert(dreplica_id);
-    }
-  }
+  // Get list of replicas with committed deps
+  unordered_set<uint64_t> committed_deps = GetCommittedDependencies(merged_deps);
   // Eq state not set if ballot is not default ballot
   if (!ballot.isDefault()) {
     status = EpaxosPreAcceptStatus::NON_IDENTICAL;
@@ -329,7 +321,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   ecmd->state = status == EpaxosPreAcceptStatus::IDENTICAL ? 
                                         EpaxosCommandState::PRE_ACCEPTED_EQ : 
                                         EpaxosCommandState::PRE_ACCEPTED;
-  // Update internal attributes
+  // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, merged_seq);
   // Reply
   EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id, merged_seq, merged_deps, committed_deps);
@@ -365,7 +357,7 @@ bool EpaxosServer::StartAccept(shared_ptr<Marshallable>& cmd,
   ecmd->highest_seen = ballot;
   ecmd->highest_accepted = ballot;
   ecmd->state = EpaxosCommandState::ACCEPTED;
-  // Update internal attributes
+  // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
   // Send accept requests
   auto ev = commo()->SendAccept(site_id_, 
@@ -424,7 +416,7 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd,
   ecmd->highest_seen = ballot;
   ecmd->highest_accepted = ballot;
   ecmd->state = EpaxosCommandState::ACCEPTED;
-  // Update internal attributes
+  // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
   // Reply
   EpaxosAcceptReply reply(true, ballot.epoch, ballot.ballot_no, ballot.replica_id);
@@ -467,8 +459,10 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     commit_next_(*cmd);
     #endif
     ecmd->committed_ev.Set(1);
-    // Update internal attributes
+    // Update attributes
     UpdateAttributes(dkey, replica_id, instance_no, seq);
+    // Update committed till
+    UpdateCommittedTill(replica_id, instance_no);
   }
   Log_debug("Committed replica: %d instance: %d by replica: %d", replica_id, instance_no, curr_replica_id);
   // Send async commit request to all
@@ -516,8 +510,10 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   commit_next_(*cmd);
   #endif
   ecmd->committed_ev.Set(1);
-  // Update internal attributes
+  // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
+  // Update committed till
+  UpdateCommittedTill(replica_id, instance_no);
 }
 
 /***********************************
@@ -683,7 +679,7 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
   ecmd->highest_seen = ballot;
   ecmd->highest_accepted = ballot;
   ecmd->state = EpaxosCommandState::PRE_ACCEPTED;
-  // Update internal attributes
+  // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
   // Reply
   EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::NO_CONFLICT, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
@@ -940,28 +936,47 @@ void EpaxosServer::UpdateHighestSeenBallot(vector<ClassT>& replies, uint64_t& re
   ecmd->highest_seen = highest_seen_ballot;
 }
 
-bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& deps) {
-  unordered_set<uint64_t> committed_deps;
+void EpaxosServer::UpdateCommittedTill(uint64_t& replica_id, uint64_t& instance_no) {
+  if ((instance_no == 0 && committed_till.count(replica_id) == 0) || instance_no == committed_till[replica_id] + 1) {
+    uint64_t committed_till_instance_no = instance_no;
+    while (committed_till_instance_no <= received_till[replica_id] && GetCommand(replica_id, committed_till_instance_no)->state >= EpaxosCommandState::COMMITTED) {
+      committed_till_instance_no++;
+    }
+    committed_till[replica_id] = committed_till_instance_no - 1;
+  }
+}
+
+bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps) {
+  map<uint64_t, uint64_t> merged_committed_till = committed_till;
   for (int i = 0; i < replies.size(); i++) {
-    for (auto dreplica_id : replies[i].committed_deps) {
-      bool_t dinstance_no = replies[i].deps[dreplica_id];
-      if(deps.count(dreplica_id) && deps[dreplica_id] == dinstance_no) {
-        committed_deps.insert(dreplica_id);
-      }
+    for (uint64_t dreplica_id : replies[i].committed_deps) {
+      uint64_t dinstance_no = replies[i].deps[dreplica_id];
+      merged_committed_till[dreplica_id] = max(merged_committed_till[dreplica_id], dinstance_no);
     }
   }
-  for (auto itr : deps) {
-    uint64_t replica_id = itr.first;
-    uint64_t instance_no = itr.second;
-    if(committed_deps.count(replica_id) == 0) {
-      auto state = GetCommand(replica_id, instance_no)->state;
-      if (state == EpaxosCommandState::COMMITTED || state == EpaxosCommandState::EXECUTED) {
-        committed_deps.insert(replica_id);
-      }
+  bool all_committed = true;
+  for (auto itr : merged_deps) {
+    uint64_t dreplica_id = itr.first;
+    uint64_t dinstance_no = itr.second;
+    if (merged_committed_till.count(dreplica_id) == 0 || merged_committed_till[dreplica_id] < dinstance_no) {
+      all_committed = false;
+      break;
     }
   }
-  Log_debug("Committed in %d, but actually %d", committed_deps.size(), deps.size());
-  return deps.size() == committed_deps.size();
+  Log_debug("All committed %d", all_committed);
+  return all_committed;
+}
+
+unordered_set<uint64_t> EpaxosServer::GetCommittedDependencies(map<uint64_t, uint64_t>& merged_deps) {
+  unordered_set<uint64_t> committed_deps;
+  for (auto itr : merged_deps) {
+    uint64_t dreplica_id = itr.first;
+    uint64_t dinstance_no = itr.second;
+    if (committed_till.count(dreplica_id) != 0 && committed_till[dreplica_id] >= dinstance_no) {
+      committed_deps.insert(dreplica_id);
+    }
+  }
+  return committed_deps;
 }
 
 void EpaxosServer::GetLatestAttributes(string& dkey, uint64_t& leader_replica_id, int64_t& leader_prev_dep_instance_no, uint64_t *seq, map<uint64_t, uint64_t> *deps) {
