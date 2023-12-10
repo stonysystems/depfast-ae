@@ -290,7 +290,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
   // Initialise attributes
   uint64_t merged_seq = seq;
   auto merged_deps = deps;
-  if (cmd->kind_ != MarshallDeputy::CMD_NOOP) {
+  if (dkey != NOOP_DKEY) {
     merged_seq = max(merged_seq, dkey_seq[dkey] + 1);
     if (merged_seq > seq) {
       status = EpaxosPreAcceptStatus::NON_IDENTICAL;
@@ -846,52 +846,42 @@ void EpaxosServer::PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance
         Execution Phase            *
 ************************************/
 
-vector<shared_ptr<EpaxosCommand>> EpaxosServer::GetDependencies(shared_ptr<EpaxosCommand>& vertex) {
-  vector<shared_ptr<EpaxosCommand>> dep_vertices;
-  auto deps = vertex->deps;
-  string dkey = vertex->dkey;
-  for (auto itr : deps) {
-    string dkey = vertex->dkey;
+vector<shared_ptr<EpaxosCommand>> EpaxosServer::GetDependencies(shared_ptr<EpaxosCommand>& ecmd) {
+  vector<shared_ptr<EpaxosCommand>> deps;
+  for (auto itr : ecmd->deps) {
     uint64_t dreplica_id = itr.first;
     uint64_t dinstance_no = itr.second;
-    received_till[dreplica_id] = max(received_till[dreplica_id], dinstance_no);
     GetCommand(dreplica_id, dinstance_no)->committed_ev.WaitUntilGreaterOrEqualThan(1);
-    if (GetCommand(dreplica_id, dinstance_no)->cmd->kind_ == MarshallDeputy::CMD_NOOP) {
-      int64_t prev_instance_no = dinstance_no - 1;
-      while (prev_instance_no >= 0) {
-        shared_ptr<EpaxosCommand> prev_cmd = GetCommand(dreplica_id, prev_instance_no);
-        string dep_dkey = prev_cmd->dkey;
-        if (prev_cmd->dkey != NOOP_DKEY && prev_cmd->dkey != dkey) {
-          prev_instance_no--;
-          continue;
-        }
-        prev_cmd->committed_ev.WaitUntilGreaterOrEqualThan(1);
-        if (prev_cmd->dkey == dkey) {
-          break;
-        }
+    int64_t prev_instance_no = dinstance_no;
+    while (prev_instance_no >= 0) {
+      shared_ptr<EpaxosCommand> prev_cmd = GetCommand(dreplica_id, prev_instance_no);
+      if (prev_cmd->dkey != NOOP_DKEY && prev_cmd->dkey != ecmd->dkey) {
         prev_instance_no--;
+        continue;
       }
-      if (prev_instance_no < 0) continue;
-      dinstance_no = prev_instance_no;
+      prev_cmd->committed_ev.WaitUntilGreaterOrEqualThan(1);
+      if (prev_cmd->dkey == ecmd->dkey) break;
+      prev_instance_no--;
     }
-    if (GetCommand(dreplica_id, dinstance_no)->state == EpaxosCommandState::EXECUTED) continue;
-    dep_vertices.push_back(GetCommand(dreplica_id, dinstance_no));
+    if (prev_instance_no < 0) continue;
+    if (GetCommand(dreplica_id, prev_instance_no)->state == EpaxosCommandState::EXECUTED) continue;
+    deps.push_back(GetCommand(dreplica_id, prev_instance_no));
   }
-  return dep_vertices;
+  return deps;
 }
 
-void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& vertex) {
-  vertex->state = EpaxosCommandState::EXECUTED;
-  Log_debug("Executed replica: %d instance: %d in replica: %d", vertex->replica_id, vertex->instance_no, curr_replica_id);
+void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& ecmd) {
+  ecmd->state = EpaxosCommandState::EXECUTED;
+  Log_debug("Executed replica: %d instance: %d in replica: %d", ecmd->replica_id, ecmd->instance_no, curr_replica_id);
   #ifdef EPAXOS_PERF_TEST_CORO
-  if (vertex->replica_id == curr_replica_id) {
-    auto& command = dynamic_cast<TpcCommitCommand&>(*(vertex->cmd));
+  if (ecmd->replica_id == curr_replica_id) {
+    auto& command = dynamic_cast<TpcCommitCommand&>(*(ecmd->cmd));
     exec_times.push_back(start_times[command.tx_id_].elapsed());
   }
   #endif
-  app_next_(*(vertex->cmd));
+  app_next_(*(ecmd->cmd));
   // Update executed_till
-  executed_till[vertex->dkey][vertex->replica_id] = max(executed_till[vertex->dkey][vertex->replica_id], vertex->instance_no);
+  executed_till[ecmd->dkey][ecmd->replica_id] = max(executed_till[ecmd->dkey][ecmd->replica_id], ecmd->instance_no);
 }
 
 // Should be called only after command at that instance is committed
@@ -903,7 +893,7 @@ void EpaxosServer::StartExecution(uint64_t& replica_id, uint64_t& instance_no) {
   Log_debug("Received execution request for replica: %d instance: %d by replica: %d", replica_id, instance_no, curr_replica_id);
   shared_ptr<EpaxosCommand> ecmd = GetCommand(replica_id, instance_no);
   // Stop execution of next command of same dkey
-  if (ecmd->cmd->kind_ == MarshallDeputy::CMD_NOOP) return;
+  if (ecmd->dkey == NOOP_DKEY) return;
   string &dkey = ecmd->dkey;
   in_exec_dkeys[dkey].Wait(1);
   if (ecmd->state == EpaxosCommandState::EXECUTED) {
