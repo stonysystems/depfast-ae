@@ -193,10 +193,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
             replica_id, instance_no, dkey.c_str(), leader_prev_dep_instance_no, ballot.ballot_no, ballot.replica_id, curr_replica_id);
   shared_ptr<EpaxosCommand> ecmd = GetCommand(replica_id, instance_no);
   // Reject old message - we have moved on
-  if (ecmd->state == EpaxosCommandState::ACCEPTED
-      || ecmd->state == EpaxosCommandState::COMMITTED
-      || ecmd->state == EpaxosCommandState::EXECUTED
-      || !ballot.isGreaterOrEqual(ecmd->highest_seen)) {
+  if (ecmd->state >= EpaxosCommandState::ACCEPTED || !ballot.isGreaterOrEqual(ecmd->highest_seen)) {
     return false;
   }
   // Get latest attributes
@@ -284,9 +281,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
      - If already accepted in this replica then it means it was pre-accepted by some majority non-identically and accepted by the 
        leader. So prepare should have tried to accept this message again. So reject it so that prepare will try again.
        If new cmd is NOOP, then it will overwrite the accept when commit request comes. */
-  if (ecmd->state == EpaxosCommandState::ACCEPTED 
-      || ecmd->state == EpaxosCommandState::COMMITTED
-      || ecmd->state == EpaxosCommandState::EXECUTED) {
+  if (ecmd->state >= EpaxosCommandState::ACCEPTED) {
     status = EpaxosPreAcceptStatus::FAILED;
     ecmd->highest_seen = ballot;
     EpaxosPreAcceptReply reply(status, ballot.epoch, ballot.ballot_no, ballot.replica_id);
@@ -415,8 +410,7 @@ EpaxosAcceptReply EpaxosServer::OnAcceptRequest(shared_ptr<Marshallable>& cmd,
   // Accept command
   /* - If already committed or executed in this replica then it is just an delayed message so fail it (same as ignore). 
      - If already accepted in this replica then it can be still overwritten because majority haven't agreed to it identically. */
-  if (ecmd->state == EpaxosCommandState::COMMITTED 
-      || ecmd->state == EpaxosCommandState::EXECUTED) {
+  if (ecmd->state >= EpaxosCommandState::COMMITTED) {
     ecmd->highest_seen = ballot;
     EpaxosAcceptReply reply(false, ballot.epoch, ballot.ballot_no, ballot.replica_id);
     return reply;
@@ -457,7 +451,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     ecmd->highest_accepted = ballot;
   }
   // Commit command if not committed
-  if (ecmd->state != EpaxosCommandState::EXECUTED && ecmd->state != EpaxosCommandState::COMMITTED) {
+  if (ecmd->state < EpaxosCommandState::COMMITTED) {
     ecmd->replica_id = replica_id;
     ecmd->instance_no = instance_no;
     ecmd->cmd = cmd;
@@ -506,7 +500,7 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
     ballot = ecmd->highest_seen;
   }
   // Commit command if not committed
-  if (ecmd->state == EpaxosCommandState::COMMITTED || ecmd->state == EpaxosCommandState::EXECUTED) {
+  if (ecmd->state >= EpaxosCommandState::COMMITTED) {
     return;
   }
   ecmd->replica_id = replica_id;
@@ -541,10 +535,7 @@ bool EpaxosServer::StartTryPreAccept(shared_ptr<Marshallable>& cmd,
   Log_debug("Started try-pre-accept for replica: %d instance: %d by replica: %d", replica_id, instance_no, curr_replica_id);
   shared_ptr<EpaxosCommand> ecmd = GetCommand(replica_id, instance_no);
   // Reject old message - we have moved on
-  if (ecmd->state == EpaxosCommandState::ACCEPTED
-      || ecmd->state == EpaxosCommandState::COMMITTED
-      || ecmd->state == EpaxosCommandState::EXECUTED
-      || !ballot.isGreaterOrEqual(ecmd->highest_seen)) {
+  if (ecmd->state >= EpaxosCommandState::ACCEPTED || !ballot.isGreaterOrEqual(ecmd->highest_seen)) {
     return false;
   }
   // Add self reply
@@ -662,9 +653,7 @@ EpaxosTryPreAcceptReply EpaxosServer::OnTryPreAcceptRequest(shared_ptr<Marshalla
     return reply;
   }
   // Reject old messages - we have moved on
-  if (ecmd->state == EpaxosCommandState::ACCEPTED
-      || ecmd->state == EpaxosCommandState::COMMITTED
-      || ecmd->state == EpaxosCommandState::EXECUTED) {
+  if (ecmd->state >= EpaxosCommandState::ACCEPTED) {
     ecmd->highest_seen = ballot;
     EpaxosTryPreAcceptReply reply(EpaxosTryPreAcceptStatus::MOVED_ON, ballot.epoch, ballot.ballot_no, ballot.replica_id, 0, 0);
     return reply;
@@ -753,7 +742,7 @@ bool EpaxosServer::StartPrepare(uint64_t& replica_id, uint64_t& instance_no) {
     if (!reply.status || reply.cmd_state == EpaxosCommandState::NOT_STARTED) continue;
     EpaxosBallot reply_ballot = EpaxosBallot(reply.epoch, reply.ballot_no, reply.replica_id);
     // Atleast one commited reply
-    if (reply.cmd_state == EpaxosCommandState::COMMITTED || reply.cmd_state == EpaxosCommandState::EXECUTED) {
+    if (reply.cmd_state >= EpaxosCommandState::COMMITTED) {
       Log_debug("Prepare - committed cmd found for replica: %d instance: %d by replica: %d from acceptor: %d", replica_id, instance_no, curr_replica_id, reply.acceptor_replica_id);
       return StartCommit(reply.cmd, reply.dkey, ballot, reply.seq, reply.deps, replica_id, instance_no);
     }
@@ -847,7 +836,7 @@ void EpaxosServer::PrepareTillCommitted(uint64_t& replica_id, uint64_t& instance
   bool committed = false;
   while (!committed) {
     auto state = GetCommand(replica_id, instance_no)->state;
-    if (state == EpaxosCommandState::COMMITTED || state == EpaxosCommandState::EXECUTED) return;
+    if (state >= EpaxosCommandState::COMMITTED) return;
     committed = StartPrepare(replica_id, instance_no);
     Coroutine::Sleep(200000 + (rand() % 50000));
   }
@@ -1062,7 +1051,7 @@ void EpaxosServer::FindTryPreAcceptConflict(shared_ptr<Marshallable>& cmd,
                                                  || dep_ecmd->state == EpaxosCommandState::PRE_ACCEPTED_EQ)))) {
         *conflict_replica_id = dreplica_id;
         *conflict_instance_no = dinstance_no;
-        if (dep_ecmd->state == EpaxosCommandState::COMMITTED || dep_ecmd->state == EpaxosCommandState::EXECUTED) {
+        if (dep_ecmd->state >= EpaxosCommandState::COMMITTED) {
           *conflict_state = EpaxosTryPreAcceptStatus::COMMITTED_CONFLICT;
         } else {
           *conflict_state = EpaxosTryPreAcceptStatus::UNCOMMITTED_CONFLICT;
