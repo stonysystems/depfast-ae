@@ -331,7 +331,6 @@ class EpaxosCommo : public Communicator {
   void
   SendCommit(const siteid_t& site_id,
              const parid_t& par_id,
-             const ballot_t& ballot,
              const uint64_t& replica_id,
              const uint64_t& instance_no,
              const shared_ptr<Marshallable>& cmd,

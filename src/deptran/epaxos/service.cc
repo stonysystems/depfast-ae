@@ -75,8 +75,7 @@ void EpaxosServiceImpl::HandleAccept(const ballot_t& ballot,
   defer->reply();
 }
 
-void EpaxosServiceImpl::HandleCommit(const ballot_t& ballot,
-                                     const uint64_t& replica_id,
+void EpaxosServiceImpl::HandleCommit(const uint64_t& replica_id,
                                      const uint64_t& instance_no,
                                      const MarshallDeputy& md_cmd,
                                      const string& dkey,
@@ -88,10 +87,10 @@ void EpaxosServiceImpl::HandleCommit(const ballot_t& ballot,
   Coroutine::Sleep(WIDE_AREA_DELAY);
   #endif
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
-  svr_->OnCommitRequest(cmd, dkey, ballot, seq, deps, replica_id, instance_no);
+  svr_->OnCommitRequest(cmd, dkey, seq, deps, replica_id, instance_no);
   *status = true;
-  Log_debug("Return commit reply for replica: %d instance: %d dep_key: %s with ballot: %d acceptor_replica_id: %d", 
-            replica_id, instance_no, dkey.c_str(), ballot, svr_->site_id_);
+  Log_debug("Return commit reply for replica: %d instance: %d dep_key: %s acceptor_replica_id: %d", 
+            replica_id, instance_no, dkey.c_str(), svr_->site_id_);
   #ifdef WIDE_AREA
   Coroutine::Sleep(WIDE_AREA_DELAY);
   #endif

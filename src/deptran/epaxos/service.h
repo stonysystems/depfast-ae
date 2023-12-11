@@ -53,8 +53,7 @@ class EpaxosServiceImpl : public EpaxosService {
     *highest_seen = -1;
   }
 
-  RpcHandler(Commit, 8,
-             const ballot_t&, ballot,
+  RpcHandler(Commit, 7,
              const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,

@@ -29,8 +29,7 @@ abstract service Epaxos {
                bool_t status,
                ballot_t highest_seen);
 
-  defer Commit(ballot_t ballot,
-               uint64_t replica_id,
+  defer Commit(uint64_t replica_id,
                uint64_t instance_no,
                MarshallDeputy md_cmd,
                string dkey,

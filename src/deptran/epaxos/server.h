@@ -129,7 +129,6 @@ class EpaxosServer : public TxLogServer {
                    uint64_t& instance_no);
   bool StartCommit(shared_ptr<Marshallable>& cmd, 
                    string& dkey, 
-                   ballot_t& ballot, 
                    uint64_t& seq,
                    map<uint64_t, uint64_t>& deps, 
                    uint64_t& replica_id, 
@@ -194,7 +193,6 @@ class EpaxosServer : public TxLogServer {
                                     uint64_t instance_no);
   void OnCommitRequest(shared_ptr<Marshallable>& cmd, 
                        string dkey, 
-                       ballot_t ballot, 
                        uint64_t seq, 
                        map<uint64_t, uint64_t> deps, 
                        uint64_t replica_id, 
