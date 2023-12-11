@@ -27,13 +27,13 @@ template<typename V>
 class EGraph {
  private:
   function<void(shared_ptr<V>&)> exec;
-  function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_parents;
+  function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_dependencies;
 
   unordered_map<uint64_t, int> disc;
   unordered_map<uint64_t, int> low;
   unordered_map<uint64_t, bool> in_stk;
   stack<shared_ptr<V>> stk;
-  int time;
+  int time = 0;
 
  public:
   EGraph(){}
@@ -45,20 +45,20 @@ class EGraph {
   }
 
  private:
-  void ExecuteSCC(shared_ptr<V>& child) {
+  void ExecuteSCC(shared_ptr<V>& vertex) {
     time++;
-    uint64_t id = child->id();
+    uint64_t id = vertex->id();
     disc[id] = low[id] = time;
-    stk.push(child);
+    stk.push(vertex);
     in_stk[id] = true;
-    for (auto &parent : get_parents(child)) {
-      uint64_t parent_id = parent->id();
-      if (disc.count(parent_id) == 0) {
-        disc[parent_id] = -1;
-        ExecuteSCC(parent);
-        low[id] = min(low[id], low[parent_id]);
-      } else if (in_stk[parent_id]) {
-        low[id] = min(low[id], disc[parent_id]);
+    for (auto &dep_vertex : get_dependencies(vertex)) {
+      uint64_t dep_vertex_id = dep_vertex->id();
+      if (disc.count(dep_vertex_id) == 0) {
+        disc[dep_vertex_id] = -1;
+        ExecuteSCC(dep_vertex);
+        low[id] = min(low[id], low[dep_vertex_id]);
+      } else if (in_stk[dep_vertex_id]) {
+        low[id] = min(low[id], disc[dep_vertex_id]);
       }
     }
 
@@ -84,10 +84,9 @@ class EGraph {
   }
 
  public:
-  void Execute(shared_ptr<V>& vertex, function<void(shared_ptr<V>&)> exec, function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_parents) {
+  void Execute(shared_ptr<V>& vertex, function<void(shared_ptr<V>&)> exec, function<vector<shared_ptr<V>>(shared_ptr<V>&)> get_dependencies) {
     this->exec = exec;
-    this->get_parents = get_parents;
-    int time = 0;
+    this->get_dependencies = get_dependencies;
     ExecuteSCC(vertex);
   }
 };
