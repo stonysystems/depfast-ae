@@ -19,57 +19,43 @@ class EpaxosServiceImpl : public EpaxosService {
              const MarshallDeputy&, md_cmd,
              const string&, dkey) {}
 
-  RpcHandler(PreAccept, 16,
-             const epoch_t&, epoch,
-             const ballot_t&, ballot_no,
-             const uint64_t&, ballot_replica_id,
-             const uint64_t&, leader_replica_id,
+  RpcHandler(PreAccept, 12,
+             const ballot_t&, ballot,
+             const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
              const map_uint64_uint64_t&, deps,
              status_t*, status,
-             epoch_t*, highest_seen_epoch,
-             ballot_t*, highest_seen_ballot_no,
-             uint64_t*, highest_seen_replica_id,
+             ballot_t*, highest_seen,
              uint64_t*, updated_seq,
              map_uint64_uint64_t*, updated_deps,
              unordered_set<uint64_t>*, committed_deps) {
     *status = EpaxosPreAcceptStatus::FAILED;
-    *highest_seen_epoch = 0;
-    *highest_seen_ballot_no = -1;
-    *highest_seen_replica_id = 0;
+    *highest_seen = -1;
     *updated_seq = 0;
     *updated_deps = map<uint64_t, uint64_t>();
     *committed_deps = unordered_set<uint64_t>();
   }
 
-  RpcHandler(Accept, 13,
-             const epoch_t&, epoch,
-             const ballot_t&, ballot_no,
-             const uint64_t&, ballot_replica_id,
-             const uint64_t&, leader_replica_id,
+  RpcHandler(Accept, 9,
+             const ballot_t&, ballot,
+             const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
              const map_uint64_uint64_t&, deps,
              bool_t*, status,
-             epoch_t*, highest_seen_epoch,
-             ballot_t*, highest_seen_ballot_no,
-             uint64_t*, highest_seen_replica_id) {
+             ballot_t*, highest_seen) {
     *status = false;
-    *highest_seen_epoch = 0;
-    *highest_seen_ballot_no = -1;
-    *highest_seen_replica_id = 0;
+    *highest_seen = -1;
   }
 
-  RpcHandler(Commit, 10,
-             const epoch_t&, epoch,
-             const ballot_t&, ballot_no,
-             const uint64_t&, ballot_replica_id,
-             const uint64_t&, leader_replica_id,
+  RpcHandler(Commit, 8,
+             const ballot_t&, ballot,
+             const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
@@ -79,35 +65,27 @@ class EpaxosServiceImpl : public EpaxosService {
     *status = false;
   }
 
-  RpcHandler(TryPreAccept, 15,
-             const epoch_t&,epoch,
-             const ballot_t&, ballot_no,
-             const uint64_t&, ballot_replica_id,
-             const uint64_t&, leader_replica_id,
+  RpcHandler(TryPreAccept, 11,
+             const ballot_t&, ballot,
+             const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              const MarshallDeputy&, md_cmd,
              const string&, dkey,
              const uint64_t&, seq,
              const map_uint64_uint64_t&, deps,
              status_t*, status,
-             epoch_t*, highest_seen_epoch,
-             ballot_t*, highest_seen_ballot_no,
-             uint64_t*, highest_seen_replica_id,
+             ballot_t*, highest_seen,
              uint64_t*, conflict_replica_id,
              uint64_t*, conflict_instance_no) {
     *status = EpaxosTryPreAcceptStatus::REJECTED;
-    *highest_seen_epoch = 0;
-    *highest_seen_ballot_no = -1;
-    *highest_seen_replica_id = 0;
+    *highest_seen = -1;
     *conflict_replica_id = 0;
     *conflict_instance_no = 0;
   }
 
-  RpcHandler(Prepare, 15,
-             const epoch_t&,epoch,
-             const ballot_t&, ballot_no,
-             const uint64_t&, ballot_replica_id,
-             const uint64_t&, leader_replica_id,
+  RpcHandler(Prepare, 11,
+             const ballot_t&, ballot,
+             const uint64_t&, replica_id,
              const uint64_t&, instance_no,
              bool_t*, status,
              MarshallDeputy*, md_cmd,
@@ -116,9 +94,7 @@ class EpaxosServiceImpl : public EpaxosService {
              map_uint64_uint64_t*, deps,
              status_t*, cmd_state,
              uint64_t*, acceptor_replica_id,
-             epoch_t*, highest_seen_epoch,
-             ballot_t*, highest_seen_ballot_no,
-             uint64_t*, highest_seen_replica_id) {
+             ballot_t*, highest_seen) {
     *status = false;
     *md_cmd = MarshallDeputy(dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>()));
     *dkey = "";
@@ -126,9 +102,7 @@ class EpaxosServiceImpl : public EpaxosService {
     *deps = map<uint64_t, uint64_t>();
     *cmd_state = EpaxosCommandState::NOT_STARTED;
     *acceptor_replica_id = 0;
-    *highest_seen_epoch = 0;
-    *highest_seen_ballot_no = -1;
-    *highest_seen_replica_id = 0;
+    *highest_seen = -1;
   }
   
 };

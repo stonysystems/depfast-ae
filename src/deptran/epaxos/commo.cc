@@ -1,6 +1,5 @@
 
 #include "commo.h"
-#include "epaxos_rpc.h"
 #include "macros.h"
 
 
@@ -13,10 +12,8 @@ shared_ptr<EpaxosPreAcceptQuorumEvent>
 EpaxosCommo::SendPreAccept(const siteid_t& site_id,
                            const parid_t& par_id,
                            const bool& is_recovery,
-                           const epoch_t& epoch,
-                           const ballot_t& ballot_no,
-                           const uint64_t& ballot_replica_id,
-                           const uint64_t& leader_replica_id,
+                           const ballot_t& ballot,
+                           const uint64_t& replica_id,
                            const uint64_t& instance_no,
                            const shared_ptr<Marshallable>& cmd,
                            const string& dkey,
@@ -40,18 +37,13 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
     FutureAttr fuattr;
     fuattr.callback = [ev](Future* fu) {
       status_t status;
-      fu->get_reply() >> status;
-      epoch_t highest_seen_epoch;
-      ballot_t highest_seen_ballot_no;
-      uint64_t highest_seen_replica_id;
+      ballot_t highest_seen;
       uint64_t updated_seq;
       map<uint64_t, uint64_t> updated_deps;
       unordered_set<uint64_t> committed_deps;
-      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id >> updated_seq >> updated_deps >> committed_deps;
+      fu->get_reply() >> status >> highest_seen >> updated_seq >> updated_deps >> committed_deps;
       EpaxosPreAcceptReply reply(static_cast<EpaxosPreAcceptStatus>(status), 
-                                  highest_seen_epoch, 
-                                  highest_seen_ballot_no, 
-                                  highest_seen_replica_id, 
+                                  highest_seen, 
                                   updated_seq, 
                                   updated_deps,
                                   committed_deps);
@@ -66,10 +58,8 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
     MarshallDeputy md_cmd(cmd);
     Call_Async(proxy, 
                 PreAccept, 
-                epoch, 
-                ballot_no, 
-                ballot_replica_id,
-                leader_replica_id, 
+                ballot,
+                replica_id, 
                 instance_no,
                 md_cmd,
                 dkey,
@@ -83,10 +73,8 @@ EpaxosCommo::SendPreAccept(const siteid_t& site_id,
 shared_ptr<EpaxosAcceptQuorumEvent>
 EpaxosCommo::SendAccept(const siteid_t& site_id,
                         const parid_t& par_id,
-                        const epoch_t& epoch,
-                        const ballot_t& ballot_no,
-                        const uint64_t& ballot_replica_id,
-                        const uint64_t& leader_replica_id,
+                        const ballot_t& ballot,
+                        const uint64_t& replica_id,
                         const uint64_t& instance_no,
                         const shared_ptr<Marshallable>& cmd,
                         const string& dkey,
@@ -110,15 +98,9 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
     FutureAttr fuattr;
     fuattr.callback = [ev](Future* fu) {
       bool_t status;
-      fu->get_reply() >> status;
-      epoch_t highest_seen_epoch;
-      ballot_t highest_seen_ballot_no;
-      uint64_t highest_seen_replica_id;
-      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id;
-      EpaxosAcceptReply reply(status, 
-                              highest_seen_epoch, 
-                              highest_seen_ballot_no, 
-                              highest_seen_replica_id);
+      ballot_t highest_seen;
+      fu->get_reply() >> status >> highest_seen;
+      EpaxosAcceptReply reply(status, highest_seen);
       if (status) {
         ev->VoteYes(reply);
       } else {
@@ -127,11 +109,9 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
     };
     MarshallDeputy md_cmd(cmd);
     Call_Async(proxy, 
-                Accept, 
-                epoch, 
-                ballot_no, 
-                ballot_replica_id, 
-                leader_replica_id, 
+                Accept,
+                ballot, 
+                replica_id, 
                 instance_no, 
                 md_cmd, 
                 dkey,
@@ -145,10 +125,8 @@ EpaxosCommo::SendAccept(const siteid_t& site_id,
 void
 EpaxosCommo::SendCommit(const siteid_t& site_id,
                         const parid_t& par_id,
-                        const epoch_t& epoch,
-                        const ballot_t& ballot_no,
-                        const uint64_t& ballot_replica_id,
-                        const uint64_t& leader_replica_id,
+                        const ballot_t& ballot,
+                        const uint64_t& replica_id,
                         const uint64_t& instance_no,
                         const shared_ptr<Marshallable>& cmd,
                         const string& dkey,
@@ -164,10 +142,8 @@ EpaxosCommo::SendCommit(const siteid_t& site_id,
     MarshallDeputy md_cmd(cmd);
     Call_Async(proxy, 
                 Commit, 
-                epoch, 
-                ballot_no, 
-                ballot_replica_id,
-                leader_replica_id,
+                ballot,
+                replica_id,
                 instance_no, 
                 md_cmd, 
                 dkey,
@@ -182,10 +158,8 @@ shared_ptr<EpaxosTryPreAcceptQuorumEvent>
 EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
                               const parid_t& par_id,
                               const unordered_set<siteid_t>& preaccepted_sites,
-                              const epoch_t& epoch,
-                              const ballot_t& ballot_no,
-                              const uint64_t& ballot_replica_id,
-                              const uint64_t& leader_replica_id,
+                              const ballot_t& ballot,
+                              const uint64_t& replica_id,
                               const uint64_t& instance_no,
                               const shared_ptr<Marshallable>& cmd,
                               const string& dkey,
@@ -194,24 +168,19 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
   auto proxies = rpc_par_proxies_[par_id];
   auto ev = Reactor::CreateSpEvent<EpaxosTryPreAcceptQuorumEvent>(preaccepted_sites.size() + 1); // preaccepted_sites do not contain current server, so +1 added for it
   for (auto& p : proxies) {
-      if (p.first == site_id || p.first == leader_replica_id || preaccepted_sites.count(p.first) != 0) {
+      if (p.first == site_id || p.first == replica_id || preaccepted_sites.count(p.first) != 0) {
         continue;
       }
       EpaxosProxy *proxy = (EpaxosProxy*) p.second;
       FutureAttr fuattr;
       fuattr.callback = [ev](Future* fu) {
         status_t status;
-        epoch_t highest_seen_epoch;
-        ballot_t highest_seen_ballot_no;
-        uint64_t highest_seen_replica_id;
+        ballot_t highest_seen;
         uint64_t conflict_replica_id;
         uint64_t conflict_instance_no;
-        fu->get_reply() >> status >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id;
-        fu->get_reply() >> conflict_replica_id >> conflict_instance_no;
+        fu->get_reply() >> status >> highest_seen >> conflict_replica_id >> conflict_instance_no;
         EpaxosTryPreAcceptReply reply(static_cast<EpaxosTryPreAcceptStatus>(status), 
-                                      highest_seen_epoch, 
-                                      highest_seen_ballot_no, 
-                                      highest_seen_replica_id,
+                                      highest_seen,
                                       conflict_replica_id,
                                       conflict_instance_no);
         if (status != EpaxosTryPreAcceptStatus::REJECTED) {
@@ -223,10 +192,8 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
       MarshallDeputy md_cmd(cmd);
       Call_Async(proxy, 
                  TryPreAccept, 
-                 epoch, 
-                 ballot_no, 
-                 ballot_replica_id,
-                 leader_replica_id, 
+                 ballot,
+                 replica_id, 
                  instance_no, 
                  md_cmd, 
                  dkey,
@@ -240,10 +207,8 @@ EpaxosCommo::SendTryPreAccept(const siteid_t& site_id,
 shared_ptr<EpaxosPrepareQuorumEvent>
 EpaxosCommo::SendPrepare(const siteid_t& site_id,
                          const parid_t& par_id,
-                         const epoch_t& epoch,
-                         const ballot_t& ballot_no,
-                         const uint64_t& ballot_replica_id,
-                         const uint64_t& leader_replica_id,
+                         const ballot_t& ballot,
+                         const uint64_t& replica_id,
                          const uint64_t& instance_no) {
   auto proxies = rpc_par_proxies_[par_id];
   int n_to_send = NSERVERS - 1;
@@ -264,18 +229,14 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
     FutureAttr fuattr;
     fuattr.callback = [ev, curr_site_id](Future* fu) {
       bool_t status;
-      fu->get_reply() >> status;
       MarshallDeputy md_cmd;
       string dkey;
       uint64_t seq;
       map<uint64_t, uint64_t> deps;
       status_t cmd_state;
       uint64_t acceptor_replica_id;
-      epoch_t highest_seen_epoch;
-      ballot_t highest_seen_ballot_no;
-      uint64_t highest_seen_replica_id;
-      fu->get_reply() >> md_cmd >> dkey >> seq >> deps >> cmd_state >> acceptor_replica_id;
-      fu->get_reply() >> highest_seen_epoch >> highest_seen_ballot_no >> highest_seen_replica_id;
+      ballot_t highest_seen;
+      fu->get_reply() >> status >> md_cmd >> dkey >> seq >> deps >> cmd_state >> acceptor_replica_id >> highest_seen;
       shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
       EpaxosPrepareReply reply(status, 
                                cmd, 
@@ -284,9 +245,7 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
                                deps,
                                cmd_state,
                                acceptor_replica_id,
-                               highest_seen_epoch,
-                               highest_seen_ballot_no,
-                               highest_seen_replica_id);
+                               highest_seen);
       if (status) {
         ev->VoteYes(curr_site_id, reply);
       } else {
@@ -295,10 +254,8 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
     };
     Call_Async(proxy, 
                 Prepare, 
-                epoch, 
-                ballot_no, 
-                ballot_replica_id,
-                leader_replica_id,
+                ballot,
+                replica_id,
                 instance_no, 
                 fuattr);
   }

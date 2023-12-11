@@ -2,6 +2,7 @@
 
 #include "../__dep__.h"
 #include "../communicator.h"
+#include "epaxos_rpc.h"
 
 
 namespace janus {
@@ -25,9 +26,7 @@ enum EpaxosPreAcceptStatus {
 class EpaxosPreAcceptReply {
  public:
   EpaxosPreAcceptStatus status;
-  epoch_t epoch;
-  ballot_t ballot_no;
-  uint64_t replica_id;
+  ballot_t ballot;
   uint64_t seq;
   map<uint64_t, uint64_t> deps;
   unordered_set<uint64_t> committed_deps;
@@ -36,18 +35,14 @@ class EpaxosPreAcceptReply {
     status = EpaxosPreAcceptStatus::NOT_INITIALIZED;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, ballot_t ballot) {
     this->status = status;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
+    this->ballot = ballot;
   }
 
-  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id, uint64_t seq, map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
+  EpaxosPreAcceptReply(EpaxosPreAcceptStatus status, ballot_t ballot, uint64_t seq, map<uint64_t, uint64_t>& deps, unordered_set<uint64_t>& committed_deps) {
     this->status = status;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
+    this->ballot = ballot;
     this->seq = seq;
     this->deps = deps;
     this->committed_deps = committed_deps;
@@ -129,15 +124,11 @@ class EpaxosPreAcceptQuorumEvent : public QuorumEvent {
 class EpaxosAcceptReply {
  public:
   bool_t status;
-  epoch_t epoch;
-  ballot_t ballot_no;
-  uint64_t replica_id;
+  ballot_t ballot;
 
-  EpaxosAcceptReply(bool_t status, epoch_t epoch, ballot_t ballot_no, uint64_t replica_id) {
+  EpaxosAcceptReply(bool_t status, ballot_t ballot) {
     this->status = status;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
+    this->ballot = ballot;
   }
 };
 
@@ -169,22 +160,16 @@ enum EpaxosTryPreAcceptStatus {
 class EpaxosTryPreAcceptReply {
  public:
   EpaxosTryPreAcceptStatus status;
-  epoch_t epoch;
-  ballot_t ballot_no;
-  uint64_t replica_id;
+  ballot_t ballot;
   uint64_t conflict_replica_id;
   uint64_t conflict_instance_no;
 
   EpaxosTryPreAcceptReply(EpaxosTryPreAcceptStatus status,
-                          epoch_t epoch, 
-                          ballot_t ballot_no, 
-                          uint64_t replica_id,
+                          ballot_t ballot,
                           uint64_t conflict_replica_id, 
                           uint64_t conflict_instance_no) {
     this->status = status;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
+    this->ballot = ballot;
     this->conflict_replica_id = conflict_replica_id;
     this->conflict_instance_no = conflict_instance_no;
   }
@@ -261,16 +246,12 @@ class EpaxosPrepareReply {
   map<uint64_t, uint64_t> deps;
   status_t cmd_state;
   uint64_t acceptor_replica_id;
-  epoch_t epoch;
-  ballot_t ballot_no;
-  uint64_t replica_id;
+  ballot_t ballot;
 
   EpaxosPrepareReply() {
     status = false;
     cmd_state = 0;
-    epoch = 0;
-    ballot_no = -1;
-    replica_id = 0;
+    ballot = -1;
   }
 
   EpaxosPrepareReply(bool_t status,
@@ -280,9 +261,7 @@ class EpaxosPrepareReply {
                      map<uint64_t, uint64_t> deps,
                      status_t cmd_state,
                      uint64_t acceptor_replica_id,
-                     epoch_t epoch,
-                     ballot_t ballot_no,
-                     uint64_t replica_id) {
+                     ballot_t ballot) {
     this->status = status;
     this->cmd = cmd;
     this->dkey = dkey;
@@ -290,9 +269,7 @@ class EpaxosPrepareReply {
     this->deps = deps;
     this->cmd_state = cmd_state;
     this->acceptor_replica_id = acceptor_replica_id;
-    this->epoch = epoch;
-    this->ballot_no = ballot_no;
-    this->replica_id = replica_id;
+    this->ballot = ballot;
   }
 };
 
@@ -331,10 +308,8 @@ class EpaxosCommo : public Communicator {
   SendPreAccept(const siteid_t& site_id,
                 const parid_t& par_id,
                 const bool& is_recovery,
-                const epoch_t& epoch,
-                const ballot_t& ballot_no,
-                const uint64_t& ballot_replica_id,
-                const uint64_t& leader_replica_id,
+                const ballot_t& ballot,
+                const uint64_t& replica_id,
                 const uint64_t& instance_no,
                 const shared_ptr<Marshallable>& cmd,
                 const string& dkey,
@@ -345,10 +320,8 @@ class EpaxosCommo : public Communicator {
   shared_ptr<EpaxosAcceptQuorumEvent>
   SendAccept(const siteid_t& site_id,
              const parid_t& par_id,
-             const epoch_t& epoch,
-             const ballot_t& ballot_no,
-             const uint64_t& ballot_replica_id,
-             const uint64_t& leader_replica_id,
+             const ballot_t& ballot,
+             const uint64_t& replica_id,
              const uint64_t& instance_no,
              const shared_ptr<Marshallable>& cmd,
              const string& dkey,
@@ -358,10 +331,8 @@ class EpaxosCommo : public Communicator {
   void
   SendCommit(const siteid_t& site_id,
              const parid_t& par_id,
-             const epoch_t& epoch,
-             const ballot_t& ballot_no,
-             const uint64_t& ballot_replica_id,
-             const uint64_t& leader_replica_id,
+             const ballot_t& ballot,
+             const uint64_t& replica_id,
              const uint64_t& instance_no,
              const shared_ptr<Marshallable>& cmd,
              const string& dkey,
@@ -372,10 +343,8 @@ class EpaxosCommo : public Communicator {
   SendTryPreAccept(const siteid_t& site_id,
                    const parid_t& par_id,
                    const unordered_set<siteid_t>& preaccepted_sites,
-                   const epoch_t& epoch,
-                   const ballot_t& ballot_no,
-                   const uint64_t& ballot_replica_id,
-                   const uint64_t& leader_replica_id,
+                   const ballot_t& ballot,
+                   const uint64_t& replica_id,
                    const uint64_t& instance_no,
                    const shared_ptr<Marshallable>& cmd,
                    const string& dkey,
@@ -385,10 +354,8 @@ class EpaxosCommo : public Communicator {
   shared_ptr<EpaxosPrepareQuorumEvent>
   SendPrepare(const siteid_t& site_id,
               const parid_t& par_id,
-              const epoch_t& epoch,
-              const ballot_t& ballot_no,
-              const uint64_t& ballot_replica_id,
-              const uint64_t& leader_replica_id,
+              const ballot_t& ballot,
+              const uint64_t& replica_id,
               const uint64_t& instance_no);
                      
   /* Do not modify this class below here */
