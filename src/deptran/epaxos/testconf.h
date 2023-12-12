@@ -4,7 +4,7 @@
 
 namespace janus {
 
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
 
 // slow network connections have latency up to 26 milliseconds
 #define MAXSLOW 27
@@ -64,7 +64,6 @@ class EpaxosTestConfig {
 
   // Calls Start() to specified server
   void Start(int svr, int cmd, string dkey);
-  void SendStart(int svr, int cmd, string dkey, function<void(void)> callback);
 
   // Calls GetInstance() to specified server
   void GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no);

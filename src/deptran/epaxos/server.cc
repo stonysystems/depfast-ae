@@ -21,8 +21,8 @@ void EpaxosServer::Setup() {
   // Future Work: Increment epoch and give unique replica id on restarts (store old replica_id persistently and new_replica_id = old_replica_id + N)
   curr_replica_id = site_id_;
 
-  // Process requests from queue (for tests)
   #ifdef EPAXOS_TEST_CORO
+  // Process requests from queue
   Coroutine::CreateRun([this](){
     while(true) {
       std::unique_lock<std::recursive_mutex> lock(mtx_);
@@ -41,6 +41,25 @@ void EpaxosServer::Setup() {
         });
       }
       Coroutine::Sleep(10);
+    }
+  });
+
+  // Prepare requests from prepare queue
+  Coroutine::CreateRun([this](){
+    while(true) {
+      std::unique_lock<std::recursive_mutex> lock(mtx_);
+      if (prepare_reqs.empty()) {
+        lock.unlock();
+        Coroutine::Sleep(10000);
+        continue;
+      }
+      auto req = prepare_reqs.front();
+      prepare_reqs.pop_front();
+      lock.unlock();
+      Coroutine::CreateRun([this, req]() mutable {
+        PrepareTillCommitted(req.first, req.second);
+        StartExecution(req.first, req.second);
+      });
     }
   });
   #endif
@@ -76,42 +95,13 @@ void EpaxosServer::Setup() {
       Coroutine::Sleep(10);
     }
   });
-
-  // Prepare requests from prepare queue (for tests)
-  #ifdef EPAXOS_TEST_CORO
-  Coroutine::CreateRun([this](){
-    while(true) {
-      std::unique_lock<std::recursive_mutex> lock(mtx_);
-      if (prepare_reqs.empty()) {
-        lock.unlock();
-        Coroutine::Sleep(10000);
-        continue;
-      }
-      auto req = prepare_reqs.front();
-      prepare_reqs.pop_front();
-      lock.unlock();
-      Coroutine::CreateRun([this, req]() mutable {
-        PrepareTillCommitted(req.first, req.second);
-        StartExecution(req.first, req.second);
-      });
-    }
-  });
-  #endif
 }
+
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
 
 /***********************************
-      Client Request Handlers      *
+      Test Request Handlers      *
 ************************************/
-void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, const function<void()> &cb) {
-  Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
-  #ifdef EPAXOS_PERF_TEST_CORO
-  auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
-  start_times[command.tx_id_].start();
-  #endif
-  HandleRequest(cmd, dkey, cb);
-}
-
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 
 void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
   Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
@@ -165,9 +155,18 @@ pair<vector<float>, vector<float>> EpaxosServer::GetLatencies() {
 }
 #endif
 
-/***********************************
-       Phase 1: Pre-accept         *
-************************************/
+/***********************************************
+            Client Request Handlers            *
+************************************************/
+
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, const function<void()> &cb) {
+  Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
+  #ifdef EPAXOS_SERVER_METRICS_COLLECTION
+  auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
+  start_times[command.tx_id_].start();
+  #endif
+  HandleRequest(cmd, dkey, cb);
+}
 
 void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey, const function<void()> &cb) {
   int64_t leader_prev_dep_instance_no = -1;
@@ -183,6 +182,10 @@ void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey, co
   GetCommand(curr_replica_id, curr_instance_no)->callback = cb;
   StartPreAccept(cmd, dkey, ballot, curr_replica_id, curr_instance_no, leader_prev_dep_instance_no, false);
 }
+
+/***********************************
+       Phase 1: Pre-accept         *
+************************************/
 
 bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd, 
                                   string& dkey, 
@@ -237,14 +240,14 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
   }
   // Success via fast path quorum
   if (ev->FastPath() && IsInitialBallot(ballot) && AllDependenciesCommitted(ev->replies, ev->eq_reply.deps)) {
-    #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+    #ifdef EPAXOS_SERVER_METRICS_COLLECTION
     fast++;
     #endif
     Log_debug("Fastpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, curr_replica_id);
     return StartCommit(cmd, dkey, ev->eq_reply.seq, ev->eq_reply.deps, replica_id, instance_no);
   }
   // Success via slow path quorum
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  #ifdef EPAXOS_SERVER_METRICS_COLLECTION
   slow++;
   #endif
   Log_debug("Slowpath for replica: %d instance: %d by replica: %d", replica_id, instance_no, curr_replica_id);
@@ -428,7 +431,7 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
     ecmd->seq = seq;
     ecmd->deps = deps;
     ecmd->state = EpaxosCommandState::COMMITTED;
-    #ifdef EPAXOS_PERF_TEST_CORO
+    #ifdef EPAXOS_SERVER_METRICS_COLLECTION
     if (replica_id == curr_replica_id) {
       auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
       commit_times.push_back(start_times[command.tx_id_].elapsed());
@@ -473,6 +476,12 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   ecmd->deps = deps;
   ecmd->state = EpaxosCommandState::COMMITTED;
   ecmd->committed_ev.Set(1);
+  #ifdef EPAXOS_SERVER_METRICS_COLLECTION
+  if (replica_id == curr_replica_id) {
+    auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
+    commit_times.push_back(start_times[command.tx_id_].elapsed());
+  }
+  #endif
   // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
   // Update committed till
@@ -812,7 +821,7 @@ void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& ecmd) {
   ecmd->state = EpaxosCommandState::EXECUTED;
   Log_debug("Executed replica: %d instance: %d in replica: %d", ecmd->replica_id, ecmd->instance_no, curr_replica_id);
   if (ecmd->replica_id == curr_replica_id) {
-    #ifdef EPAXOS_PERF_TEST_CORO
+    #ifdef EPAXOS_SERVER_METRICS_COLLECTION
     auto& command = dynamic_cast<TpcCommitCommand&>(*(ecmd->cmd));
     exec_times.push_back(start_times[command.tx_id_].elapsed());
     #endif

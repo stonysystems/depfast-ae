@@ -10,15 +10,11 @@ namespace janus {
 
 class EpaxosFrame : public Frame {
  private:
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   static std::mutex epaxos_test_mutex_;
   static uint16_t n_replicas_;
-  #endif
 
  public:
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   static EpaxosFrame *replicas_[NSERVERS];
-  #endif
   EpaxosCommo *commo_ = nullptr;
   EpaxosServer *svr_ = nullptr;
 

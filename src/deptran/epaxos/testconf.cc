@@ -5,7 +5,7 @@
 
 namespace janus {
 
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
 
 int _test_id_g = 0;
 std::chrono::_V2::system_clock::time_point _test_starttime_g;
@@ -79,19 +79,6 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
   replicas[svr]->svr_->Start(cmdptr_m, dkey);
-}
-
-void EpaxosTestConfig::SendStart(int svr, int cmd, string dkey, function<void(void)> callback) {
-  // Construct an empty TpcCommitCommand containing cmd as its tx_id_
-  auto cmdptr = std::make_shared<TpcCommitCommand>();
-  auto vpd_p = std::make_shared<VecPieceData>();
-  vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
-  cmdptr->tx_id_ = cmd;
-  cmdptr->cmd_ = vpd_p;
-  auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
-  // call Start()
-  Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  return replicas[svr]->commo_->SendStart(svr, 0, cmdptr_m, dkey, callback);
 }
 
 void EpaxosTestConfig::GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no) {

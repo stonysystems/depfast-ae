@@ -45,15 +45,11 @@ class EpaxosCoordinator : public Coordinator {
   void DoTxAsync(TxRequest &req) override {}
 
   void Submit(shared_ptr<Marshallable> &cmd,
-              const std::function<void()> &func = []() {},
+              const std::function<void()> &commit_callback = []() {},
               const std::function<void()> &exe_callback = []() {}) override;
-
-  void Commit();
 
   void Reset() override {}
   void Restart() override { verify(0); }
-
-  void GotoNextPhase();
 };
 
 } //namespace janus

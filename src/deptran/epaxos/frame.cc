@@ -3,17 +3,14 @@
 #include "frame.h"
 #include "server.h"
 #include "service.h"
-#include "test.h"
 
 namespace janus {
 
 REG_FRAME(MODE_EPAXOS, vector<string>({"epaxos"}), EpaxosFrame);
 
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
 std::mutex EpaxosFrame::epaxos_test_mutex_;
 uint16_t EpaxosFrame::n_replicas_ = 0;
 EpaxosFrame *EpaxosFrame::replicas_[NSERVERS];
-#endif
 
 EpaxosFrame::EpaxosFrame(int mode) : Frame(mode) {}
 
@@ -27,14 +24,11 @@ TxLogServer *EpaxosFrame::CreateScheduler() {
   }
   Log_debug("create epaxos sched loc: %d", this->site_info_->locale_id);
 
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
   epaxos_test_mutex_.lock();
   verify(n_replicas_ < NSERVERS);
   replicas_[this->site_info_->id] = this;
   n_replicas_++;
   epaxos_test_mutex_.unlock();
-  #endif
-
   return svr_;
 }
 
