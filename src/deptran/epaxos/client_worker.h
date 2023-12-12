@@ -2,6 +2,7 @@
 
 #include "../client_worker.h"
 #include "test.h"
+#include <random>
 #ifdef CPU_PROFILE
 #include <gperftools/profiler.h>
 #endif
@@ -32,11 +33,22 @@ class EpaxosClientWorker : public ClientWorker {
     Print("Concurrent: %d, TotalRequests: %d, Conflict: %d", n_concurrent_, tot_req_num_, conflict_perc_);
     n_tx_done_ = 0;
     uint64_t start_rpc = testconfig_->RpcTotal();
+    // Fill cmd-leader info
+    vector<int> cmd_leader(tot_req_num_ + 100000);
+    vector<string> dkeys(tot_req_num_ + 100000);
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<int> leader_distribution(0, NSERVERS - 1);
+    uniform_int_distribution<int> conflict_distribution(0, 99);
+    for (int i = 0; i < cmd_leader.size(); i++) {
+        cmd_leader[i] = leader_distribution(gen);
+        dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "CONFLICT_KEY" : to_string(i);
+    }
 
-    testconfig_->SetCustomLearnerAction([this](int svr) {
-      return ([this, svr](Marshallable& cmd) {
+    testconfig_->SetCustomLearnerAction([this, &cmd_leader](int svr) {
+      return ([this, svr, &cmd_leader](Marshallable& cmd) {
         auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-        int leader = command.tx_id_ % NSERVERS;
+        int leader = cmd_leader[command.tx_id_];
         if (svr != leader) return;
         n_tx_done_++;
       });
@@ -54,7 +66,7 @@ class EpaxosClientWorker : public ClientWorker {
     #endif
 
     for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
-      auto sp_job = std::make_shared<OneTimeJob>([this, n_tx] () {
+      auto sp_job = std::make_shared<OneTimeJob>([this, n_tx, &cmd_leader, &dkeys] () {
         // this wait tries to avoid launching clients all at once, especially for open-loop clients.
         Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
         while (n_tx_issued_ < tot_req_num_) {
@@ -65,8 +77,8 @@ class EpaxosClientWorker : public ClientWorker {
           }
           n_tx_issued_++;
           int cmd = n_tx_issued_;
-          int svr = cmd % NSERVERS;
-          string dkey = (RandomGenerator::rand(0, 100) < conflict_perc_) ? "0" : to_string(cmd);
+          int svr = cmd_leader[cmd];
+          string dkey = dkeys[cmd];
           testconfig_->SendStart(svr, cmd, dkey);
         }
         n_ceased_client_.Set(n_ceased_client_.value_+1);
