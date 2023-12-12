@@ -4,7 +4,6 @@
 #include "server.h"
 #include "service.h"
 #include "test.h"
-#include "perf_test.h"
 
 namespace janus {
 

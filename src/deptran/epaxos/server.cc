@@ -35,7 +35,9 @@ void EpaxosServer::Setup() {
       lock.unlock();
       for (EpaxosRequest req : pending_reqs) {
         Coroutine::CreateRun([this, req]() mutable {
-          HandleRequest(req.cmd, req.dkey);
+          HandleRequest(req.cmd, req.dkey, [this, req]() {
+            app_next_(*(req.cmd));
+          });
         });
       }
       Coroutine::Sleep(10);
@@ -100,24 +102,23 @@ void EpaxosServer::Setup() {
 /***********************************
       Client Request Handlers      *
 ************************************/
-
-void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey, const function<void()> &cb) {
   Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
-  #ifdef EPAXOS_TEST_CORO
-  std::lock_guard<std::recursive_mutex> lock(mtx_);
-  reqs.push_back(EpaxosRequest(cmd, dkey));
-  #else
   #ifdef EPAXOS_PERF_TEST_CORO
   auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
   start_times[command.tx_id_].start();
   #endif
-  Coroutine::CreateRun([this, cmd, dkey]() mutable {
-    HandleRequest(cmd, dkey);
-  });
-  #endif
+  HandleRequest(cmd, dkey, cb);
 }
 
 #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+
+void EpaxosServer::Start(shared_ptr<Marshallable>& cmd, string dkey) {
+  Log_debug("Received request in server: %d for dkey: %s", site_id_, dkey.c_str());
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
+  reqs.push_back(EpaxosRequest(cmd, dkey));
+}
+
 void EpaxosServer::SetInstance(shared_ptr<Marshallable>& cmd, uint64_t& replica_id, uint64_t& instance_no) {
   auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
   instance[command.tx_id_] = make_pair(replica_id, instance_no);
@@ -168,7 +169,7 @@ pair<vector<float>, vector<float>> EpaxosServer::GetLatencies() {
        Phase 1: Pre-accept         *
 ************************************/
 
-void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
+void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey, const function<void()> &cb) {
   int64_t leader_prev_dep_instance_no = -1;
   uint64_t curr_instance_no = next_instance_no++;
   ballot_t ballot = GetInitialBallot();
@@ -179,6 +180,7 @@ void EpaxosServer::HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey) {
   #if defined(EPAXOS_TEST_CORO)
   SetInstance(cmd, curr_replica_id, curr_instance_no);
   #endif
+  GetCommand(curr_replica_id, curr_instance_no)->callback = cb;
   StartPreAccept(cmd, dkey, ballot, curr_replica_id, curr_instance_no, leader_prev_dep_instance_no, false);
 }
 
@@ -431,7 +433,6 @@ bool EpaxosServer::StartCommit(shared_ptr<Marshallable>& cmd,
       auto& command = dynamic_cast<TpcCommitCommand&>(*cmd);
       commit_times.push_back(start_times[command.tx_id_].elapsed());
     }
-    commit_next_(*cmd);
     #endif
     ecmd->committed_ev.Set(1);
     // Update attributes
@@ -471,9 +472,6 @@ void EpaxosServer::OnCommitRequest(shared_ptr<Marshallable>& cmd,
   ecmd->seq = seq;
   ecmd->deps = deps;
   ecmd->state = EpaxosCommandState::COMMITTED;
-  #ifdef EPAXOS_PERF_TEST_CORO
-  commit_next_(*cmd);
-  #endif
   ecmd->committed_ev.Set(1);
   // Update attributes
   UpdateAttributes(dkey, replica_id, instance_no, seq);
@@ -813,13 +811,18 @@ vector<shared_ptr<EpaxosCommand>> EpaxosServer::GetDependencies(shared_ptr<Epaxo
 void EpaxosServer::Execute(shared_ptr<EpaxosCommand>& ecmd) {
   ecmd->state = EpaxosCommandState::EXECUTED;
   Log_debug("Executed replica: %d instance: %d in replica: %d", ecmd->replica_id, ecmd->instance_no, curr_replica_id);
-  #ifdef EPAXOS_PERF_TEST_CORO
   if (ecmd->replica_id == curr_replica_id) {
+    #ifdef EPAXOS_PERF_TEST_CORO
     auto& command = dynamic_cast<TpcCommitCommand&>(*(ecmd->cmd));
     exec_times.push_back(start_times[command.tx_id_].elapsed());
+    #endif
+    ecmd->callback();
+  }
+  #ifdef EPAXOS_TEST_CORO
+  else {
+    app_next_(*(ecmd->cmd));
   }
   #endif
-  app_next_(*(ecmd->cmd));
   // Update executed_till
   executed_till[ecmd->dkey][ecmd->replica_id] = max(executed_till[ecmd->dkey][ecmd->replica_id], ecmd->instance_no);
 }

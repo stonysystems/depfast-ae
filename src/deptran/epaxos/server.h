@@ -34,6 +34,7 @@ class EpaxosCommand : public EVertex<EpaxosCommand> {
   uint64_t replica_id;
   uint64_t instance_no;
   SharedIntEvent committed_ev{};
+  function<void()> callback;
   
   EpaxosCommand() {
     cmd = dynamic_pointer_cast<Marshallable>(make_shared<TpcNoopCommand>());
@@ -112,7 +113,7 @@ class EpaxosServer : public TxLogServer {
   int slow = 0;
   #endif
 
-  void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey);
+  void HandleRequest(shared_ptr<Marshallable>& cmd, string& dkey, const function<void()> &cb);
   bool StartPreAccept(shared_ptr<Marshallable>& cmd, 
                       string& dkey, 
                       ballot_t& ballot, 
@@ -176,7 +177,7 @@ class EpaxosServer : public TxLogServer {
   /* RPC handlers */
 
  public:
-  void Start(shared_ptr<Marshallable>& cmd, string dkey);
+  void Start(shared_ptr<Marshallable>& cmd, string dkey, const function<void()> &cb);
   EpaxosPreAcceptReply OnPreAcceptRequest(shared_ptr<Marshallable>& cmd, 
                                           string dkey, 
                                           ballot_t ballot, 
@@ -212,6 +213,7 @@ class EpaxosServer : public TxLogServer {
 
 public:
   #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+  void Start(shared_ptr<Marshallable>& cmd, string dkey);
   void SetInstance(shared_ptr<Marshallable>& cmd, uint64_t& replica_id, uint64_t& instance_no);
   pair<int64_t, int64_t> GetInstance(int& cmd);
   void GetState(uint64_t& replica_id, 

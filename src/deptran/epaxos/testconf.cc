@@ -81,7 +81,7 @@ void EpaxosTestConfig::Start(int svr, int cmd, string dkey) {
   replicas[svr]->svr_->Start(cmdptr_m, dkey);
 }
 
-void EpaxosTestConfig::SendStart(int svr, int cmd, string dkey) {
+void EpaxosTestConfig::SendStart(int svr, int cmd, string dkey, function<void(void)> callback) {
   // Construct an empty TpcCommitCommand containing cmd as its tx_id_
   auto cmdptr = std::make_shared<TpcCommitCommand>();
   auto vpd_p = std::make_shared<VecPieceData>();
@@ -91,14 +91,7 @@ void EpaxosTestConfig::SendStart(int svr, int cmd, string dkey) {
   auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
   // call Start()
   Log_debug("Starting agreement on svr %d for cmd id %d", svr, cmdptr->tx_id_);
-  auto proxies = replicas[svr]->commo_->rpc_par_proxies_[0];
-  for (auto& p : proxies) {
-    if (p.first != svr) continue;
-    EpaxosProxy *proxy = (EpaxosProxy*) p.second;
-    MarshallDeputy md_cmd(cmdptr_m);
-    auto f = proxy->async_Start(md_cmd, dkey);
-    Future::safe_release(f);
-  }
+  return replicas[svr]->commo_->SendStart(svr, 0, cmdptr_m, dkey, callback);
 }
 
 void EpaxosTestConfig::GetInstance(int svr, int cmd, uint64_t *replica_id, uint64_t *instance_no) {

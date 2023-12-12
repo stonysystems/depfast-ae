@@ -10,8 +10,7 @@
 namespace janus {
 
 class EpaxosClientWorker : public ClientWorker {
-  atomic<uint32_t> n_tx_done_;
-  uint32_t n_tx_issued_{0};
+  atomic<int64_t> n_done_tx_;
   uint32_t n_concurrent_;
   uint32_t tot_req_num_;
   uint32_t conflict_perc_;
@@ -24,6 +23,7 @@ class EpaxosClientWorker : public ClientWorker {
   // This is called from a different thread.
   void Work() override {
     testconfig_ = new EpaxosTestConfig(EpaxosFrame::replicas_);  // todo: destroy
+    n_done_tx_ = 0;
 
     #ifdef EPAXOS_PERF_TEST_CORO
     Print("START PERFORMANCE TESTS");
@@ -31,33 +31,19 @@ class EpaxosClientWorker : public ClientWorker {
     tot_req_num_ = Config::GetConfig()->get_tot_req();
     conflict_perc_ = Config::GetConfig()->get_conflict_perc();
     Print("Concurrent: %d, TotalRequests: %d, Conflict: %d", n_concurrent_, tot_req_num_, conflict_perc_);
-    n_tx_done_ = 0;
     uint64_t start_rpc = testconfig_->RpcTotal();
+
     // Fill cmd-leader info
-    vector<int> cmd_leader(tot_req_num_ + 100000);
-    vector<string> dkeys(tot_req_num_ + 100000);
+    vector<int> cmd_leader(tot_req_num_);
+    vector<string> dkeys(tot_req_num_);
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<int> leader_distribution(0, NSERVERS - 1);
     uniform_int_distribution<int> conflict_distribution(0, 99);
     for (int i = 0; i < cmd_leader.size(); i++) {
         cmd_leader[i] = leader_distribution(gen);
-        dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "CONFLICT_KEY" : to_string(i);
+        dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "HOT_KEY" : to_string(i);
     }
-
-    testconfig_->SetCustomLearnerAction([this, &cmd_leader](int svr) {
-      return ([this, svr, &cmd_leader](Marshallable& cmd) {
-        auto& command = dynamic_cast<TpcCommitCommand&>(cmd);
-        int leader = cmd_leader[command.tx_id_];
-        if (svr != leader) return;
-        n_tx_done_++;
-      });
-    });
-    
-    testconfig_->SetCommittedLearnerAction([this](int svr) {
-      return ([this, svr](Marshallable& cmd) {
-      });
-    });
 
     #ifdef CPU_PROFILE
     char prof_file[1024];
@@ -70,16 +56,19 @@ class EpaxosClientWorker : public ClientWorker {
         // this wait tries to avoid launching clients all at once, especially for open-loop clients.
         Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
         while (n_tx_issued_ < tot_req_num_) {
-          auto n_undone_tx = n_tx_issued_ - n_tx_done_;
+          auto n_undone_tx = n_tx_issued_ - n_done_tx_;
           while (client_max_undone_ > 0 && n_undone_tx > client_max_undone_) {
             Reactor::CreateSpEvent<NeverEvent>()->Wait(1000);
-            n_undone_tx = n_tx_issued_ - n_tx_done_;
+            n_undone_tx = n_tx_issued_ - n_done_tx_;
           }
-          n_tx_issued_++;
+          if (n_tx_issued_ >= tot_req_num_) break;
           int cmd = n_tx_issued_;
           int svr = cmd_leader[cmd];
           string dkey = dkeys[cmd];
-          testconfig_->SendStart(svr, cmd, dkey);
+          n_tx_issued_++;
+          testconfig_->SendStart(svr, cmd, dkey, [this]() {
+            n_done_tx_++;
+          });
         }
         n_ceased_client_.Set(n_ceased_client_.value_+1);
       });
@@ -94,10 +83,9 @@ class EpaxosClientWorker : public ClientWorker {
       all_done_ = 1;
     })));
 
-    while (all_done_ == 0 || n_tx_done_ < tot_req_num_) {
+    while (all_done_ == 0 || n_done_tx_ < tot_req_num_) {
       Log_info("wait for finish... n_ceased_cleints: %d, n_issued: %d, n_done: %d",
-                (int) n_ceased_client_.value_, (int) n_tx_issued_,
-                (int) n_tx_done_);
+                (int) n_ceased_client_.value_, (int) n_tx_issued_, (int) sp_n_tx_done_.value_);
       sleep(1);
     }
 

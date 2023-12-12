@@ -304,6 +304,13 @@ class EpaxosCommo : public Communicator {
   bool thrifty = false;
   #endif
   
+  void 
+  SendStart(const siteid_t& site_id,
+            const parid_t& par_id, 
+            const shared_ptr<Marshallable>& cmd, 
+            const string& dkey,
+            const function<void(void)>& callback);
+
   shared_ptr<EpaxosPreAcceptQuorumEvent> 
   SendPreAccept(const siteid_t& site_id,
                 const parid_t& par_id,

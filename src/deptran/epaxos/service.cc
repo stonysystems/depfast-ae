@@ -15,8 +15,9 @@ void EpaxosServiceImpl::HandleStart(const MarshallDeputy& md_cmd,
                                     const string& dkey,
                                     rrr::DeferredReply* defer) {
   shared_ptr<Marshallable> cmd = const_cast<MarshallDeputy&>(md_cmd).sp_data_;
-  svr_->Start(cmd, dkey);
-  defer->reply();
+  Coroutine::CreateRun([this, defer, cmd, dkey]() mutable {
+    svr_->Start(cmd, dkey, std::bind(&rrr::DeferredReply::reply, defer));
+  });
 }
 
 void EpaxosServiceImpl::HandlePreAccept(const ballot_t& ballot,
