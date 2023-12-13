@@ -152,9 +152,9 @@ class EpaxosClientWorker : public ClientWorker {
     }
     // Print fast-path percentage
     float fastpath_percentage = ((float) fast * 100) / tot_req_num_;
-    Print("Fastpath Percentage: %lf", fastpath_percentage);
-    // Print latency percentiles
     if (commit_times.size() != 0) {
+      Print("Fastpath Percentage: %lf", fastpath_percentage);
+      // Print latency percentiles
       sort(commit_times.begin(), commit_times.end());
       sort(exec_times.begin(), exec_times.end());
       Print("Commit Latency p50: %lf, p90: %lf, p99: %lf, max: %lf", 
