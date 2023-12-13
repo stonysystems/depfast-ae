@@ -159,8 +159,8 @@ class EpaxosServer : public TxLogServer {
   vector<shared_ptr<EpaxosCommand>> GetDependencies(shared_ptr<EpaxosCommand>& ecmd);
   void Execute(shared_ptr<EpaxosCommand>& ecmd);
   void UpdateCommittedTill(uint64_t& replica_id, uint64_t& instance_no);
-  bool AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps);
-  unordered_set<uint64_t> GetCommittedDependencies(map<uint64_t, uint64_t>& merged_deps);
+  bool AreAllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps);
+  unordered_set<uint64_t> GetReplicasWithAllDependenciesCommitted(map<uint64_t, uint64_t>& merged_deps);
   bool IsInitialBallot(ballot_t& ballot) ;
   int CompareBallots(ballot_t& b1, ballot_t& b2);
   ballot_t GetInitialBallot();

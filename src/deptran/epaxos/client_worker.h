@@ -47,15 +47,24 @@ class EpaxosClientWorker : public ClientWorker {
     conflict_perc_ = Config::GetConfig()->get_conflict_perc();
     Print("Concurrent: %d, TotalRequests: %d, Conflict: %d", n_concurrent_, tot_req_num_, conflict_perc_);
 
-    // Fill cmd-leader info
+    // Precompute command leader, command and dependency-key
     vector<int> cmd_leader(tot_req_num_);
+    vector<shared_ptr<Marshallable>> cmds(tot_req_num_);
     vector<string> dkeys(tot_req_num_);
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<int> leader_distribution(0, NSERVERS - 1);
     uniform_int_distribution<int> conflict_distribution(0, 99);
     for (int i = 0; i < cmd_leader.size(); i++) {
+        // Construct an empty TpcCommitCommand containing cmd as its tx_id_
+        auto cmdptr = std::make_shared<TpcCommitCommand>();
+        auto vpd_p = std::make_shared<VecPieceData>();
+        vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
+        cmdptr->tx_id_ = i;
+        cmdptr->cmd_ = vpd_p;
+        auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
         cmd_leader[i] = leader_distribution(gen);
+        cmds[i] = cmdptr_m;
         dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "HOT_KEY" : to_string(i);
     }
 
@@ -66,7 +75,7 @@ class EpaxosClientWorker : public ClientWorker {
     #endif
 
     for (uint32_t n_tx = 0; n_tx < n_concurrent_; n_tx++) {
-      auto sp_job = std::make_shared<OneTimeJob>([this, n_tx, &cmd_leader, &dkeys] () {
+      auto sp_job = std::make_shared<OneTimeJob>([this, n_tx, &cmd_leader, &cmds, &dkeys] () {
         // this wait tries to avoid launching clients all at once, especially for open-loop clients.
         Reactor::CreateSpEvent<NeverEvent>()->Wait(RandomGenerator::rand(0, 1000000));
         while (n_tx_issued_ < tot_req_num_) {
@@ -76,19 +85,11 @@ class EpaxosClientWorker : public ClientWorker {
             n_undone_tx = n_tx_issued_ - n_done_tx_;
           }
           if (n_tx_issued_ >= tot_req_num_) break;
-          int cmd = n_tx_issued_;
-          int svr = cmd_leader[cmd];
-          string dkey = dkeys[cmd];
+          int svr = cmd_leader[n_tx_issued_];
+          string dkey = dkeys[n_tx_issued_];
+          auto cmd = cmds[n_tx_issued_];
           n_tx_issued_++;
-
-          // Construct an empty TpcCommitCommand containing cmd as its tx_id_
-          auto cmdptr = std::make_shared<TpcCommitCommand>();
-          auto vpd_p = std::make_shared<VecPieceData>();
-          vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
-          cmdptr->tx_id_ = cmd;
-          cmdptr->cmd_ = vpd_p;
-          auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
-          EpaxosFrame::replicas_[svr]->commo_->SendStart(svr, 0, cmdptr_m, dkey, [this]() {
+          EpaxosFrame::replicas_[svr]->commo_->SendStart(svr, 0, cmd, dkey, [this]() {
             n_done_tx_++;
           });
         }

@@ -239,7 +239,7 @@ bool EpaxosServer::StartPreAccept(shared_ptr<Marshallable>& cmd,
     return false;
   }
   // Success via fast path quorum
-  if (ev->FastPath() && IsInitialBallot(ballot) && AllDependenciesCommitted(ev->replies, ev->eq_reply.deps)) {
+  if (ev->FastPath() && IsInitialBallot(ballot) && AreAllDependenciesCommitted(ev->replies, ev->eq_reply.deps)) {
     #ifdef EPAXOS_SERVER_METRICS_COLLECTION
     fast++;
     #endif
@@ -304,7 +304,7 @@ EpaxosPreAcceptReply EpaxosServer::OnPreAcceptRequest(shared_ptr<Marshallable>& 
     }
   }
   // Get list of replicas with committed deps
-  unordered_set<uint64_t> committed_deps = GetCommittedDependencies(merged_deps);
+  unordered_set<uint64_t> committed_deps = GetReplicasWithAllDependenciesCommitted(merged_deps);
   // Eq state not set if ballot is not default ballot
   if (!IsInitialBallot(ballot)) {
     status = EpaxosPreAcceptStatus::NON_IDENTICAL;
@@ -901,7 +901,7 @@ void EpaxosServer::UpdateCommittedTill(uint64_t& replica_id, uint64_t& instance_
   }
 }
 
-bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps) {
+bool EpaxosServer::AreAllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replies, map<uint64_t, uint64_t>& merged_deps) {
   map<uint64_t, uint64_t> merged_committed_till = committed_till;
   for (int i = 0; i < replies.size(); i++) {
     for (uint64_t dreplica_id : replies[i].committed_deps) {
@@ -922,7 +922,7 @@ bool EpaxosServer::AllDependenciesCommitted(vector<EpaxosPreAcceptReply>& replie
   return all_committed;
 }
 
-unordered_set<uint64_t> EpaxosServer::GetCommittedDependencies(map<uint64_t, uint64_t>& merged_deps) {
+unordered_set<uint64_t> EpaxosServer::GetReplicasWithAllDependenciesCommitted(map<uint64_t, uint64_t>& merged_deps) {
   unordered_set<uint64_t> committed_deps;
   for (auto itr : merged_deps) {
     uint64_t dreplica_id = itr.first;
