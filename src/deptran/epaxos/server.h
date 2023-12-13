@@ -97,22 +97,23 @@ class EpaxosServer : public TxLogServer {
   #ifdef EPAXOS_TEST_CORO
   int commit_timeout = 300000;
   int rpc_timeout = 2000000;
+  map<int, pair<uint64_t, uint64_t>> instance;
+  list<pair<uint64_t, uint64_t>> prepare_reqs;
+  bool pause_execution = false;
   #else
   int commit_timeout = 10000000; // 10 seconds
   int rpc_timeout = 5000000; // 5 seconds
   #endif
 
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
+  // metrics
+ public:
   map<uint64_t, Timer> start_times;
-  vector<float> commit_times;
-  vector<float> exec_times;
-  map<int, pair<uint64_t, uint64_t>> instance;
-  list<pair<uint64_t, uint64_t>> prepare_reqs;
-  bool pause_execution = false;
+  vector<double> commit_times;
+  vector<double> exec_times;
   int fast = 0;
   int slow = 0;
-  #endif
 
+ private:
   void HandleRequest(shared_ptr<Marshallable>& cmd, 
                      string& dkey, 
                      const function<void()> &cb);
@@ -216,7 +217,7 @@ class EpaxosServer : public TxLogServer {
   /* Client request handlers */
 
 public:
-  #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
+  #ifdef EPAXOS_TEST_CORO
   void Start(shared_ptr<Marshallable>& cmd, string dkey);
   void SetInstance(shared_ptr<Marshallable>& cmd, uint64_t& replica_id, uint64_t& instance_no);
   pair<int64_t, int64_t> GetInstance(int& cmd);
@@ -229,8 +230,6 @@ public:
                 status_t *state);
   void Prepare(uint64_t& replica_id, uint64_t& instance_no);
   void PauseExecution(bool pause);
-  pair<int, int> GetFastAndSlowPathCount();
-  pair<vector<float>, vector<float>> GetLatencies();
   #endif
 
   /* Do not modify this class below here */

@@ -103,6 +103,15 @@ class EpaxosServiceImpl : public EpaxosService {
     *acceptor_replica_id = 0;
     *highest_seen = -1;
   }
+
+  RpcHandler(CollectMetrics, 3,
+             uint64_t*, fast_path_count,
+             vector<double>*, commit_times,
+             vector<double>*, exec_times) {
+    *fast_path_count = 0;
+    *commit_times = vector<double>();
+    *exec_times = vector<double>();
+  }
   
 };
 

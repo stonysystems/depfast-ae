@@ -363,7 +363,14 @@ class EpaxosCommo : public Communicator {
               const ballot_t& ballot,
               const uint64_t& replica_id,
               const uint64_t& instance_no);
-                     
+  
+shared_ptr<IntEvent>
+CollectMetrics(const siteid_t& site_id,
+               const parid_t& par_id, 
+               uint64_t *fast_path_count,
+               vector<double> *commit_times,
+               vector<double> *exec_times);
+                                  
   /* Do not modify this class below here */
 
  public:

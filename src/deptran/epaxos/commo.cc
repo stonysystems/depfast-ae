@@ -283,4 +283,29 @@ EpaxosCommo::SendPrepare(const siteid_t& site_id,
   return ev;
 }
 
+shared_ptr<IntEvent>
+EpaxosCommo::CollectMetrics(const siteid_t& site_id,
+               const parid_t& par_id, 
+               uint64_t *fast_path_count,
+               vector<double> *commit_times,
+               vector<double> *exec_times) {
+  auto proxies = rpc_par_proxies_[par_id];
+  auto ev = Reactor::CreateSpEvent<IntEvent>();
+  for (auto& p : proxies) {
+    if (p.first != site_id) continue;
+    EpaxosProxy *proxy = (EpaxosProxy*) p.second;
+    FutureAttr fuattr;
+    fuattr.callback = [ev, fast_path_count, commit_times, exec_times](Future* fu) {
+      fu->get_reply() >> *fast_path_count;
+      fu->get_reply() >> *commit_times;
+      fu->get_reply() >> *exec_times;
+      ev->Set(1);
+    };
+    Call_Async(proxy,
+               CollectMetrics, 
+               fuattr);
+  }
+  return ev;
+}
+
 } // namespace janus

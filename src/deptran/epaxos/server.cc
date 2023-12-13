@@ -1,6 +1,6 @@
 #include "server.h"
 #include "frame.h"
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
 #include "../classic/tpc_command.h"
 #endif
 
@@ -97,7 +97,7 @@ void EpaxosServer::Setup() {
   });
 }
 
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
+#ifdef EPAXOS_TEST_CORO
 
 /***********************************
       Test Request Handlers      *
@@ -146,13 +146,6 @@ void EpaxosServer::PauseExecution(bool pause) {
   pause_execution = pause;
 }
 
-pair<int, int> EpaxosServer::GetFastAndSlowPathCount() {
-  return make_pair(fast, slow);
-}
-
-pair<vector<float>, vector<float>> EpaxosServer::GetLatencies() {
-  return make_pair(commit_times, exec_times);
-}
 #endif
 
 /***********************************************

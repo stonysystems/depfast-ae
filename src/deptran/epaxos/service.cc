@@ -159,4 +159,14 @@ void EpaxosServiceImpl::HandlePrepare(const ballot_t& ballot,
   #endif
 }
 
+void EpaxosServiceImpl::HandleCollectMetrics(uint64_t* fast_path_count,
+                                             vector<double>* commit_times,
+                                             vector<double>* exec_times,
+                                             rrr::DeferredReply* defer) {
+  *fast_path_count = svr_->fast;
+  *commit_times = svr_->commit_times;
+  *exec_times = svr_->exec_times;
+  defer->reply();
+}
+                                        
 } // namespace janus;

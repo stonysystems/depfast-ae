@@ -5,7 +5,7 @@
 
 namespace janus {
 
-#if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_SERVER_METRICS_COLLECTION)
+#ifdef EPAXOS_TEST_CORO
 
 int _test_id_g = 0;
 std::chrono::_V2::system_clock::time_point _test_starttime_g;
@@ -114,27 +114,6 @@ void EpaxosTestConfig::PauseExecution(bool pause) {
 
 vector<int> EpaxosTestConfig::GetExecutedCommands(int svr) {
   return committed_cmds[svr];
-}
-
-double EpaxosTestConfig::GetFastpathPercent() {
-  double fast = 0, slow = 0;
-  for (int svr = 0; svr < NSERVERS; svr++) {
-    pair<int, int> res = replicas[svr]->svr_->GetFastAndSlowPathCount();
-    fast += res.first;
-    slow += res.second;
-  }
-  return (fast*100)/(fast+slow);
-}
-
-pair<vector<float>, vector<float>> EpaxosTestConfig::GetLatencies() {
-  vector<float> commit_times;
-  vector<float> exec_times;
-  for (int svr = 0; svr < NSERVERS; svr++) {
-    auto latencies = replicas[svr]->svr_->GetLatencies();
-    commit_times.insert(commit_times.end(), latencies.first.begin(), latencies.first.end());
-    exec_times.insert(exec_times.end(), latencies.second.begin(), latencies.second.end());
-  }
-  return make_pair(commit_times, exec_times);
 }
 
 int EpaxosTestConfig::NExecuted(uint64_t tx_id, int n) {

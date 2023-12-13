@@ -332,6 +332,8 @@ int main(int argc, char *argv[]) {
     wait_for_clients();
     failover_server_quit = true;
     Log_info("all clients have shut down.");
+  } else {
+    sleep(300); // To prevent servers from shutting down when client is ran as a different process
   }
 
 #ifdef DB_CHECKSUM
