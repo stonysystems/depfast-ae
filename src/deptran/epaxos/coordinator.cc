@@ -9,13 +9,14 @@
 namespace janus {
 
 EpaxosCoordinator::EpaxosCoordinator(uint32_t coo_id,
-                                         int32_t benchmark,
-                                         ClientControlServiceImpl* ccsi,
-                                         uint32_t thread_id)
+                                     int32_t benchmark,
+                                     ClientControlServiceImpl* ccsi,
+                                     uint32_t thread_id)
     : Coordinator(coo_id, benchmark, ccsi, thread_id) {
 }
 
 void EpaxosCoordinator::Submit(shared_ptr<Marshallable>& cmd,
+                               string &dkey,
                                const function<void()>& commit_callback,
                                const function<void()>& exe_callback) {
 	std::lock_guard<std::recursive_mutex> lock(mtx_);

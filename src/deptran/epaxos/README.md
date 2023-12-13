@@ -40,6 +40,12 @@ You can also adjust the percentage of conflicting requests by setting the `<conf
 python3 waf configure build --enable-epaxos-perf-test
 ```
 
+To show server-side metrics (Commit Latency, Execution Latency, Fast-Path Percentage, RPC Count)
+
+```
+python3 waf configure build --enable-epaxos-perf-test --enable-epaxos-server-metrics-collection
+```
+
 ### Enable thrifty
 When thrifty is enabled -
 * the pre-accept and prepare requests will be send only to fast-path quorum of replicas

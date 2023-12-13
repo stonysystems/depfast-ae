@@ -56,16 +56,16 @@ class EpaxosClientWorker : public ClientWorker {
     uniform_int_distribution<int> leader_distribution(0, NSERVERS - 1);
     uniform_int_distribution<int> conflict_distribution(0, 99);
     for (int i = 0; i < cmd_leader.size(); i++) {
-        // Construct an empty TpcCommitCommand containing cmd as its tx_id_
-        auto cmdptr = std::make_shared<TpcCommitCommand>();
-        auto vpd_p = std::make_shared<VecPieceData>();
-        vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
-        cmdptr->tx_id_ = i;
-        cmdptr->cmd_ = vpd_p;
-        auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
-        cmd_leader[i] = leader_distribution(gen);
-        cmds[i] = cmdptr_m;
-        dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "HOT_KEY" : to_string(i);
+      // Construct an empty TpcCommitCommand containing cmd as its tx_id_
+      auto cmdptr = std::make_shared<TpcCommitCommand>();
+      auto vpd_p = std::make_shared<VecPieceData>();
+      vpd_p->sp_vec_piece_data_ = std::make_shared<vector<shared_ptr<SimpleCommand>>>();
+      cmdptr->tx_id_ = i;
+      cmdptr->cmd_ = vpd_p;
+      auto cmdptr_m = dynamic_pointer_cast<Marshallable>(cmdptr);
+      cmd_leader[i] = i % NSERVERS;
+      cmds[i] = cmdptr_m;
+      dkeys[i] = (conflict_distribution(gen) < conflict_perc_) ? "HOT_KEY" : to_string(i);
     }
 
     #ifdef CPU_PROFILE
@@ -89,7 +89,8 @@ class EpaxosClientWorker : public ClientWorker {
           string dkey = dkeys[n_tx_issued_];
           auto cmd = cmds[n_tx_issued_];
           n_tx_issued_++;
-          EpaxosFrame::replicas_[svr]->commo_->SendStart(svr, 0, cmd, dkey, [this]() {
+          EpaxosCommo* epaxos_commo = dynamic_cast<EpaxosCommo*>(commo_);
+          epaxos_commo->SendStart(svr, 0, cmd, dkey, [this]() {
             n_done_tx_++;
           });
         }

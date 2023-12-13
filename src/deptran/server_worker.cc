@@ -229,13 +229,18 @@ void ServerWorker::SetupCommo() {
     rep_sched_->commo_ = rep_commo_;
     rep_commo_->rep_sched_ = rep_sched_;
   }
-  std::shared_ptr<OneTimeJob> sp_j  = std::make_shared<OneTimeJob>([this]() { 
+  std::shared_ptr<OneTimeJob> sp_j1  = std::make_shared<OneTimeJob>([this]() { 
+    if (tx_sched_) {
+      tx_sched_->Setup();
+    }
+  });
+  svr_poll_mgr_->add(sp_j1);
+  std::shared_ptr<OneTimeJob> sp_j2  = std::make_shared<OneTimeJob>([this]() { 
     if (rep_sched_) {
       rep_sched_->Setup();
     }
   });
-  auto sp_job = std::dynamic_pointer_cast<Job>(sp_j);
-  svr_poll_mgr_->add(sp_j);
+  svr_poll_mgr_->add(sp_j2);
 }
 
 void ServerWorker::Pause() {

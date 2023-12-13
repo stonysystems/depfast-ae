@@ -42,13 +42,13 @@ class EpaxosCoordinator : public Coordinator {
     return n_replica_;
   }
 
-  void DoTxAsync(TxRequest &req) override {}
-
   void Submit(shared_ptr<Marshallable> &cmd,
+              string &dkey,
               const std::function<void()> &commit_callback = []() {},
-              const std::function<void()> &exe_callback = []() {}) override;
+              const std::function<void()> &exe_callback = []() {});
 
   void Reset() override {}
+  void DoTxAsync(TxRequest &req) override {}
   void Restart() override { verify(0); }
 };
 
