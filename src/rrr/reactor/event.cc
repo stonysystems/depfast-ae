@@ -212,6 +212,46 @@ bool IntEvent::TestTrigger() {
   return false;
 }
 
+void QueueEvent::Notify() {
+  tot_events_--;
+  if (tot_events_ == 0) return;
+  function<void(void)> &f = events_.front();
+  events_.pop_front();
+  Coroutine::CreateRun(f);
+}
+
+void QueueEvent::Add(function<void(void)> f) {
+  if (tot_events_ == 0) {
+    tot_events_++;
+    Coroutine::CreateRun(f);
+    return;
+  }
+  events_.push_back(f);
+}
+
+void PubSubEvent::NotifyOne() {
+  for (auto itr = events_.begin(); itr != events_.end(); itr++) {
+    if ((*itr)->status_ <= Event::WAIT) {
+      auto sp_ev = *itr;
+      events_.erase(itr);
+      tot_events_--;
+      sp_ev->Set(1);
+      return;
+    }
+  }
+  tot_events_--;
+}
+
+void PubSubEvent::Wait(int concurrency) {
+  tot_events_++;
+  if (tot_events_ <= concurrency) {
+    return;
+  }
+  auto sp_ev = Reactor::CreateSpEvent<IntEvent>(1);
+  events_.insert(events_.end(), sp_ev);
+  sp_ev->Wait();
+}
+
 int SharedIntEvent::Set(const int& v) {
   auto ret = value_;
   value_ = v;

@@ -133,6 +133,7 @@ public:
     void update_mode(shared_ptr<Pollable>, int new_mode);
     void pause();
     void resume();
+    void slow(uint32_t sleep_usec);
 
     // Frequent Job
     void add(std::shared_ptr<Job> sp_job);

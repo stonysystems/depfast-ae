@@ -1,0 +1,68 @@
+namespace janus;
+
+abstract service Epaxos {
+
+
+  defer Start(MarshallDeputy md_cmd,
+              string dkey);
+              
+  defer PreAccept(ballot_t ballot,
+                  uint64_t replica_id,
+                  uint64_t instance_no,
+                  MarshallDeputy md_cmd,
+                  string dkey,
+                  uint64_t seq,
+                  map<uint64_t,uint64_t> deps |
+                  status_t status,
+                  ballot_t highest_seen,
+                  uint64_t updated_seq,
+                  map<uint64_t,uint64_t> updated_deps,
+                  unordered_set<uint64_t> committed_deps);
+                       
+  defer Accept(ballot_t ballot,
+               uint64_t replica_id,
+               uint64_t instance_no,
+               MarshallDeputy md_cmd,
+               string dkey,
+               uint64_t seq,
+               map<uint64_t,uint64_t> deps |
+               bool_t status,
+               ballot_t highest_seen);
+
+  defer Commit(uint64_t replica_id,
+               uint64_t instance_no,
+               MarshallDeputy md_cmd,
+               string dkey,
+               uint64_t seq,
+               map<uint64_t,uint64_t> deps |
+               bool_t status);
+  
+  defer TryPreAccept(ballot_t ballot,
+                     uint64_t replica_id,
+                     uint64_t instance_no,
+                     MarshallDeputy md_cmd,
+                     string dkey,
+                     uint64_t seq,
+                     map<uint64_t,uint64_t> deps |
+                     status_t status,
+                     ballot_t highest_seen,
+                     uint64_t conflict_replica_id,
+                     uint64_t conflict_instance_no);
+
+  defer Prepare(ballot_t ballot,
+                uint64_t replica_id,
+                uint64_t instance_no |
+                bool_t status,
+                MarshallDeputy md_cmd,
+                string dkey,
+                uint64_t seq,
+                map<uint64_t, uint64_t> deps,
+                status_t cmd_state,
+                uint64_t acceptor_replica_id,
+                ballot_t highest_seen);
+
+  defer CollectMetrics(|
+                       uint64_t fast_path_count,
+                       vector<double> commit_times,
+                       vector<double> exec_times);    
+}

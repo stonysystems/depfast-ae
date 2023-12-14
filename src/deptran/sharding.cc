@@ -39,7 +39,10 @@ Sharding::~Sharding() {
 }
 
 void Sharding::BuildTableInfoPtr() {
-  verify(tb_infos_.size() > 0);
+  if (tb_infos_.size() == 0) {
+    verify(!Config::GetConfig()->benchmark());
+    return;
+  }
   for (auto tbl_it = tb_infos_.begin(); tbl_it != tb_infos_.end(); tbl_it++ ) {
     auto &tbl = tbl_it->second;
     auto &columns = tbl.columns;

@@ -238,6 +238,21 @@ class SharedIntEvent {
   bool WaitUntilGreaterOrEqualThan(int x, int timeout=0);
 };
 
+class QueueEvent {
+ public:
+  int tot_events_{};
+  list<function<void(void)>> events_{};
+  void Notify();
+  void Add(function<void(void)> f);
+};
+
+class PubSubEvent {
+ public:
+  int tot_events_{};
+  list<shared_ptr<IntEvent>> events_{};
+  void NotifyOne();
+  void Wait(int concurrency);
+};
 
 class NeverEvent: public Event {
  public:

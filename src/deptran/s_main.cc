@@ -6,11 +6,12 @@
 #include "command_marshaler.h"
 #include "benchmark_control_rpc.h"
 #include "server_worker.h"
+#include "epaxos/client_worker.h"
 #include "../rrr/reactor/event.h"
 
 #ifdef CPU_PROFILE
-# include <gperftools/profiler.h>
-#endif // ifdef CPU_PROFILE
+#include <gperftools/profiler.h>
+#endif
 
 using namespace janus;
 
@@ -56,6 +57,15 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
 
   failover_triggers = new bool[client_sites.size()]() ;
   for (uint32_t client_id = 0; client_id < client_sites.size(); client_id++) {
+    #if defined(EPAXOS_TEST_CORO) || defined(EPAXOS_PERF_TEST_CORO)
+    ClientWorker* worker = new EpaxosClientWorker(client_id,
+                                                  client_sites[client_id],
+                                                  Config::GetConfig(),
+                                                  ccsi_g, nullptr, 
+                                                  &(failover_triggers[client_id]),
+                                                  &failover_server_quit,
+                                                  &failover_server_idx);
+    #else
     ClientWorker* worker = new ClientWorker(client_id,
                                             client_sites[client_id],
                                             Config::GetConfig(),
@@ -63,6 +73,7 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
                                             &(failover_triggers[client_id]),
                                             &failover_server_quit,
                                             &failover_server_idx);
+    #endif
     workers.push_back(worker);
     client_threads_g.push_back(std::thread(&ClientWorker::Work, worker));
     client_workers_g.push_back(std::unique_ptr<ClientWorker>(worker));
@@ -74,14 +85,14 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
   auto config = Config::GetConfig();
   Log_info("server enabled, number of sites: %d", server_sites.size());
   svr_workers_g.resize(server_sites.size(), ServerWorker());
-  int i=0;
   vector<std::thread> setup_ths;
-  for (auto& site_info : server_sites) {
-    setup_ths.push_back(std::thread([&site_info, &i, &config] () {
+  for (auto i = 0; i <server_sites.size(); i++) {
+    auto& site_info = server_sites[i]; 
+    setup_ths.push_back(std::thread([&site_info, i, &config] () {
       Log_info("launching site: %x, bind address %s",
                site_info.id,
                site_info.GetBindAddress().c_str());
-      auto& worker = svr_workers_g[i++];
+      auto& worker = svr_workers_g[i];
       worker.site_info_ = const_cast<Config::SiteInfo*>(&config->SiteById(site_info.id));
       worker.SetupBase();
       // register txn piece logic
@@ -321,6 +332,8 @@ int main(int argc, char *argv[]) {
     wait_for_clients();
     failover_server_quit = true;
     Log_info("all clients have shut down.");
+  } else {
+    sleep(300); // To prevent servers from shutting down when client is ran as a different process
   }
 
 #ifdef DB_CHECKSUM
@@ -361,8 +374,8 @@ int main(int argc, char *argv[]) {
 #endif // ifdef CPU_PROFILE
   fflush(stderr);
   fflush(stdout);
-  exit(0);
-  return 0;
+  // exit(0);
+  // return 0;
   // TODO, FIXME pending_future in rpc cause error.
   client_shutdown();
   server_shutdown();

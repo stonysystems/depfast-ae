@@ -74,6 +74,10 @@ void ServerWorker::SetupBase() {
 }
 
 void ServerWorker::PopTable() {
+  if (sharding_->tb_infos_.size() == 0) {
+    verify(!Config::GetConfig()->benchmark());
+    return;
+  }
   // populate table
   int ret = 0;
   // get all tables
@@ -134,7 +138,7 @@ void ServerWorker::SetupService() {
   int n_io_threads = 1;
   svr_poll_mgr_ = new rrr::PollMgr(n_io_threads, config->replica_proto_ == MODE_FPGA_RAFT);  // Raft needs a disk thread
   Reactor::GetReactor()->server_id_ = site_info_->id;
-//  svr_thread_pool_ = new rrr::ThreadPool(1);
+  // svr_thread_pool_ = new rrr::ThreadPool(1);
 
   // init service implementation
 
@@ -223,10 +227,20 @@ void ServerWorker::SetupCommo() {
       rep_commo_->loc_id_ = site_info_->locale_id;
     }
     rep_sched_->commo_ = rep_commo_;
-		rep_sched_->Setup();
-
     rep_commo_->rep_sched_ = rep_sched_;
   }
+  std::shared_ptr<OneTimeJob> sp_j1  = std::make_shared<OneTimeJob>([this]() { 
+    if (tx_sched_) {
+      tx_sched_->Setup();
+    }
+  });
+  svr_poll_mgr_->add(sp_j1);
+  std::shared_ptr<OneTimeJob> sp_j2  = std::make_shared<OneTimeJob>([this]() { 
+    if (rep_sched_) {
+      rep_sched_->Setup();
+    }
+  });
+  svr_poll_mgr_->add(sp_j2);
 }
 
 void ServerWorker::Pause() {
@@ -237,6 +251,10 @@ void ServerWorker::Pause() {
 void ServerWorker::Resume() {
   svr_poll_mgr_->resume();
   rep_sched_->Resume();
+}
+
+void ServerWorker::Slow(uint32_t sleep_usec) {
+  svr_poll_mgr_->slow(sleep_usec);
 }
 
 void ServerWorker::ShutDown() {

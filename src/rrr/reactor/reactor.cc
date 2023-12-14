@@ -44,6 +44,11 @@ Coroutine::CreateRun(std::function<void()> func, const char* file, int64_t line)
   return coro;
 }
 
+void Coroutine::Sleep(uint64_t microseconds) {
+  auto x = Reactor::CreateSpEvent<TimeoutEvent>(microseconds);
+  x->Wait();
+}
+
 std::shared_ptr<Reactor>
 Reactor::GetReactor() {
   if (!sp_reactor_th_) {
@@ -188,7 +193,12 @@ void Reactor::Loop(bool infinite, bool check_timeout) {
       } else {
         verify(event.status_ == Event::TIMEOUT);
       }
-
+      #ifdef EPAXOS_PERF_TEST_CORO
+      // Ignore events of coroutines that are completed: TEMPORARY FIX
+      if (!*(sp_coro->up_boost_coro_task_)) {
+        continue;
+      }
+      #endif
       ContinueCoro(sp_coro);
     }
 
@@ -316,7 +326,7 @@ void Reactor::ContinueCoro(std::shared_ptr<Coroutine> sp_coro) {
 
 	if (sp_coro->status_ == Coroutine::INIT) {
     sp_coro->Run();
-  } else {
+  } else if (sp_coro->status_ == Coroutine::PAUSED || sp_coro->status_ == Coroutine::RECYCLED) {
     // PAUSED or RECYCLED
     sp_coro->Continue();
   }
@@ -365,6 +375,7 @@ class PollMgr::PollThread {
   bool stop_flag_;
   bool pause_flag_;
   bool need_disk_ = false;
+  uint32_t sleep_usec_ = 0; // emulate slow
 
   static void* start_poll_loop(void* arg) {
     PollThread* thiz = (PollThread*) arg;
@@ -512,7 +523,13 @@ void PollMgr::PollThread::poll_loop() {
 	while (!stop_flag_) {
     TriggerJob();
     Reactor::GetReactor()->Loop(false, true);
-
+    if (pause_flag_) {
+      usleep(100000);
+      continue;
+    }
+    if (sleep_usec_ > 0) {
+      usleep(sleep_usec_);
+    }
     if (!need_disk_) {
 		poll_.Wait();
     } else {
@@ -684,7 +701,14 @@ void PollMgr::pause() {
 
 void PollMgr::resume() {
   for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].sleep_usec_ = 0;
     poll_threads_[idx].resume();
+  }
+}
+
+void PollMgr::slow(uint32_t sleep_usec) {
+  for (int idx = 0; idx < n_threads_; idx++) {
+    poll_threads_[idx].sleep_usec_ = sleep_usec;
   }
 }
 

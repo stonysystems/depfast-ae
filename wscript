@@ -54,6 +54,18 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-L', '--enable-leaksan', dest='leaksan',
                    default=False, action='store_true')
+    opt.add_option('', '--enable-epaxos-test', dest='enable_epaxos_test',
+                   default=False, action='store_true')
+    opt.add_option('', '--enable-epaxos-perf-test', dest='enable_epaxos_perf_test',
+                   default=False, action='store_true')
+    opt.add_option('', '--enable-epaxos-server-metrics-collection', dest='enable_epaxos_server_metrics_collection',
+                   default=False, action='store_true')
+    opt.add_option('', '--enable-wide-area', dest='enable_wide_area',
+                   default=False, action='store_true')
+    opt.add_option('', '--enable-thrifty', dest='enable_thrifty',
+                   default=False, action='store_true')
+    opt.add_option('', '--enable-batching', dest='enable_batching',
+                   default=False, action='store_true')
     opt.parse_args();
 
 def configure(conf):
@@ -80,6 +92,7 @@ def configure(conf):
     _enable_simulate_wan(conf)
     _enable_db_checksum(conf)
     _enable_leaksan(conf)
+    _enable_epaxos(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -302,6 +315,23 @@ def _enable_ipc(conf):
         Logs.pprint("PINK", "Use IPC instead of network socket")
         conf.env.append_value("CXXFLAGS", "-DUSE_IPC")
 
+def _enable_epaxos(conf):
+    if Options.options.enable_epaxos_test:
+        Logs.pprint("PINK", "Epaxos testing coroutine enabled")
+        conf.env.append_value("CXXFLAGS", "-DEPAXOS_TEST_CORO")
+    if Options.options.enable_epaxos_perf_test:
+        Logs.pprint("PINK", "Epaxos performance testing coroutine enabled")
+        conf.env.append_value("CXXFLAGS", "-DEPAXOS_PERF_TEST_CORO")
+    if Options.options.enable_thrifty:
+        Logs.pprint("PINK", "Thrifty enabled")
+        conf.env.append_value("CXXFLAGS", "-DTHRIFTY")
+    if Options.options.enable_epaxos_server_metrics_collection:
+        Logs.pprint("PINK", "Collecting server-side metrics enabled")
+        conf.env.append_value("CXXFLAGS", "-DEPAXOS_SERVER_METRICS_COLLECTION")
+    if Options.options.enable_wide_area:
+        Logs.pprint("PINK", "Wide area testing enabled")
+        conf.env.append_value("CXXFLAGS", "-DWIDE_AREA")
+
 def _enable_debug(conf):
     if Options.options.debug:
         Logs.pprint("PINK", "Debug support enabled")
@@ -322,7 +352,7 @@ def _properly_split(args):
         return args.split()
 
 def _gen_srpc_headers():
-    for srpc in glob.glob("deptran/*/*.rpc"):
+    for srpc in glob.glob("src/deptran/**/*.rpc"):
         target = os.path.splitext(srpc)[0]+'.h'
         _depend(target,
                 srpc,
