@@ -327,6 +327,7 @@ shared_ptr<Tx> Frame::CreateTx(epoch_t epoch, txnid_t tid,
       break;
     case MODE_MULTI_PAXOS:
     case MODE_FPGA_RAFT:
+    case MODE_CHAIN_RPC:
       break;
     case MODE_NONE:
     case MODE_NOTX:
@@ -458,8 +459,9 @@ map<string, int> &Frame::FrameNameToMode() {
       {"mdcc",          MODE_MDCC},
       {"multi_paxos",   MODE_MULTI_PAXOS},
       {"fpga_raft",     MODE_FPGA_RAFT},
+      {"chain_rpc",     MODE_CHAIN_RPC},
       {"epaxos",        MODE_NOT_READY},
-      {"rep_commit",    MODE_NOT_READY}
+      {"rep_commit",    MODE_NOT_READY} ,
   };
   return frame_name_mode_s;
 }

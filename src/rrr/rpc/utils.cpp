@@ -43,6 +43,7 @@ int find_open_port() {
 
     if (getaddrinfo("0.0.0.0", nullptr, nullptr, &local_addr) != 0) {
         Log_error("Failed to getaddrinfo");
+        ::close(fd); 
         return -1;
     }
 
@@ -59,6 +60,7 @@ int find_open_port() {
         memset(&addr, 0, sizeof(addr));
         if (getsockname(fd, (sockaddr*)&addr, &addrlen) != 0) {
             Log_error("Failed to get socket address");
+            ::close(fd); 
             return -1;
         }
 

@@ -77,6 +77,59 @@ abstract service FpgaRaft {
 }
 
 
+abstract service ChainRPC {
+	defer Heartbeat(uint64_t leaderPrevLogIndex,
+									DepId dep_id |
+									uint64_t followerPrevLogIndex);
+
+  defer Forward(MarshallDeputy cmd |
+                uint64_t cmt_idx );
+
+  defer Vote(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term|
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer Vote2FPGA(uint64_t lst_log_idx,
+                ballot_t lst_log_term,
+                parid_t par_id,
+                ballot_t cur_term |
+                ballot_t max_ballot,
+                bool_t vote_granted );
+
+  defer AppendEntries(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+											DepId dep_id,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+ 
+	defer AppendEntries2(uint64_t slot,
+                      ballot_t ballot,
+                      uint64_t leaderCurrentTerm,
+                      uint64_t leaderPrevLogIndex,
+                      uint64_t leaderPrevLogTerm,
+                      uint64_t leaderCommitIndex,
+											DepId dep_id,
+                      MarshallDeputy cmd |
+                      uint64_t followerAppendOK,
+                      uint64_t followerCurrentTerm,
+                      uint64_t followerLastLogIndex);
+
+  defer Decide(uint64_t slot,
+               ballot_t ballot,
+							 DepId dep_id,
+               MarshallDeputy cmd);
+}
+
+
 abstract service Copilot {
   defer Forward(MarshallDeputy cmd);
 

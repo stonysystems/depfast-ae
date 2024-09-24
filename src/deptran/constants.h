@@ -96,6 +96,7 @@ namespace janus {
 #define MODE_MENCIUS       (0x200)
 #define MODE_CAROUSEL (0x2000)
 #define MODE_FPGA_RAFT (0x400)
+#define MODE_CHAIN_RPC (0x8000)
 #define MODE_COPILOT        (0x4000)
 #define MODE_NOT_READY     (0x00)
 
