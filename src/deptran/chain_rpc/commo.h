@@ -217,6 +217,14 @@ friend class ChainRPCProxy;
 											 const i64 dep_id,
                        const ballot_t ballot,
                        const shared_ptr<Marshallable> cmd);
+
+
+  // Utility functions
+  // Execute on the leader
+  void _preAllocatePathsWithWeights() ;
+  void _getNextAvailablePath() ;
+  // According to the responsiveness of current path, update the weights of the paths
+  void _updatePathWeights() ;
 };
 
 } // namespace janus

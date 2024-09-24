@@ -68,6 +68,25 @@ class ChainRPCServiceImpl : public ChainRPCService {
                      uint64_t *followerLastLogIndex,
                      rrr::DeferredReply* defer) override;
 
+void AppendEntriesChain(const uint64_t& slot,
+                     const ballot_t& ballot,
+                     const uint64_t& leaderCurrentTerm,
+                     const uint64_t& leaderPrevLogIndex,
+                     const uint64_t& leaderPrevLogTerm,
+                     const uint64_t& leaderCommitIndex,
+										 const DepId& dep_id,
+                     const MarshallDeputy& cmd,
+                     const MarshallDeputy& uc,
+                     uint64_t *followerAppendOK,
+                     uint64_t *followerCurrentTerm,
+                     uint64_t *followerLastLogIndex,
+                     rrr::DeferredReply* defer) override;
+
+  void AccBack2LeaderChain(const uint64_t& slot, 
+                     const ballot_t& ballot, 
+                     const MarshallDeputy& uc, 
+                     rrr::DeferredReply* defer) override;
+
   void Decide(const uint64_t& slot,
               const ballot_t& ballot,
 							const DepId& dep_id,

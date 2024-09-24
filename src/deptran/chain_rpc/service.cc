@@ -55,24 +55,6 @@ void ChainRPCServiceImpl::Vote2FPGA(const uint64_t& lst_log_idx,
                     std::bind(&rrr::DeferredReply::reply, defer));
 }
 
-void ChainRPCServiceImpl::AppendEntries2(const uint64_t& slot,
-                                        const ballot_t& ballot,
-                                        const uint64_t& leaderCurrentTerm,
-                                        const uint64_t& leaderPrevLogIndex,
-                                        const uint64_t& leaderPrevLogTerm,
-                                        const uint64_t& leaderCommitIndex,
-																				const DepId& dep_id,
-                                        const MarshallDeputy& md_cmd,
-                                        uint64_t *followerAppendOK,
-                                        uint64_t *followerCurrentTerm,
-                                        uint64_t *followerLastLogIndex,
-                                        rrr::DeferredReply* defer) {
-	verify(sched_ != nullptr);
-	*followerAppendOK = 1;
-	defer->reply();
-
-}
-
 void ChainRPCServiceImpl::AppendEntries(const uint64_t& slot,
                                         const ballot_t& ballot,
                                         const uint64_t& leaderCurrentTerm,
@@ -119,6 +101,29 @@ void ChainRPCServiceImpl::AppendEntries(const uint64_t& slot,
 
   });
 	
+}
+
+// Chain version AppendEntries on the receiver side
+void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
+                                        const ballot_t& ballot,
+                                        const uint64_t& leaderCurrentTerm,
+                                        const uint64_t& leaderPrevLogIndex,
+                                        const uint64_t& leaderPrevLogTerm,
+                                        const uint64_t& leaderCommitIndex,
+																				const DepId& dep_id,
+                                        const MarshallDeputy& md_cmd,
+                                        const MarshallDeputy& uc,
+                                        uint64_t *followerAppendOK,
+                                        uint64_t *followerCurrentTerm,
+                                        uint64_t *followerLastLogIndex,
+                                        rrr::DeferredReply* defer) {
+
+
+}
+
+// Replicas return acculumated results to the leader.
+void ChainRPCServiceImpl::AccBack2LeaderChain(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& uc, rrr::DeferredReply* defer) {
+  
 }
 
 void ChainRPCServiceImpl::Decide(const uint64_t& slot,

@@ -14,6 +14,8 @@ namespace janus {
 
 uint64_t Communicator::global_id = 0;
 
+// TODO: This function is mainly called by the leader to connect all replicas.
+//       We should make all replicas can connect to each other in our ChainRPC.
 Communicator::Communicator(PollMgr* poll_mgr) {
   vector<string> addrs;
   if (poll_mgr == nullptr)
@@ -652,6 +654,7 @@ Communicator::SendAbort(Coordinator* coo,
 //  ___LogSent(pid, tid);
 #endif
 	TxData* cmd = (TxData*) coo->cmd_;
+  fprintf(stderr, "cmd_\n");
   int n_total = 1;
   auto n = cmd->GetPartitionIds().size();
   auto e = Reactor::CreateSpEvent<AndEvent>();

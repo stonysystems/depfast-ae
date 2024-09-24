@@ -138,6 +138,7 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
 
 }
 
+// TODO: updated the way to call this function, Try to minimize modifications as much as possible for later migiration to Rolis
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       siteid_t leader_site_id,
