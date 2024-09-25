@@ -385,10 +385,11 @@ void ChainRPCServer::StartTimer()
                                      uint64_t *followerCurrentTerm,
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
-        // Reactor::CreateSpEvent<NeverEvent>()->Wait(10*1000);
+        Log_info("OnAppendEntries");
 
         // TODO: check if a request is received earlier, if yes, not reject immediately instead,
         //   We optimistically expect it will be received within a timeout.
+        // Reactor::CreateSpEvent<NeverEvent>()->Wait(10*1000);
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
@@ -470,6 +471,9 @@ void ChainRPCServer::StartTimer()
 					usleep(25*1000);
 				}*/
         cb();
+        // shared_ptr<Marshallable> sp;
+        // OnCommit(0,0, sp); // We don't really use those parameters.
+        // fprintf(stderr, "OnCommit done\n");
     }
 
     void ChainRPCServer::OnForward(shared_ptr<Marshallable> &cmd, 

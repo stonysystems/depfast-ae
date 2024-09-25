@@ -214,7 +214,7 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        LeaderLearn();
+        LeaderLearn(); // TODO: try to eliminate this
       } else {
         // verify(0);
         // Forward(cmd_,commit_callback_) ;

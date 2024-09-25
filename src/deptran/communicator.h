@@ -82,7 +82,10 @@ class Communicator {
   TxLogServer *rep_sched_ = nullptr;
   locid_t loc_id_ = -1;
   map<siteid_t, shared_ptr<rrr::Client>> rpc_clients_{};
+  // Same as rpc_par_proxies_, but without the partitioning.
   map<siteid_t, ClassicProxy *> rpc_proxies_{};
+  // Each server process has its own communicator; each communicator preconnects to all servers.
+  // Note that, for each connnection has an unique rrr::Client object.
   map<parid_t, vector<SiteProxyPair>> rpc_par_proxies_{};
   map<parid_t, SiteProxyPair> leader_cache_ = {};
   unordered_map<uint64_t, pair<rrr::i64, rrr::i64>> outbound_{};

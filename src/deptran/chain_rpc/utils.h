@@ -16,7 +16,7 @@ namespace janus {
         int acc_ack_;
         int acc_rej_;
         // Path for the current request.
-        std::vector<int> path_;
+        std::vector<int> path_; // int is the loc_id
         // The current path index.
         int path_index_;
 

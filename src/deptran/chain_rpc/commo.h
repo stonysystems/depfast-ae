@@ -3,6 +3,7 @@
 #include "../__dep__.h"
 #include "../constants.h"
 #include "../communicator.h"
+#include <deque>
 
 namespace janus {
 
@@ -221,10 +222,14 @@ friend class ChainRPCProxy;
 
   // Utility functions
   // Execute on the leader
-  void _preAllocatePathsWithWeights() ;
-  void _getNextAvailablePath() ;
+  // par_id: [{path:[loc_id,...], weight:double, current idx in the path, uniq-id for this path},...]
+  unordered_map<parid_t, vector<std::tuple<vector<int>, double, int, int>>> pathsW_ ;
+  // We keep recent response times for each path for updating the weights.
+  unordered_map<parid_t, std::deque<double>> pathResponeTime_ ;
+  void _preAllocatePathsWithWeights();
+  int _getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
-  void _updatePathWeights() ;
+  void _updatePathWeights(int par_id, int i, double response_time) ;
 };
 
 } // namespace janus

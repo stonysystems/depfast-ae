@@ -32,6 +32,7 @@ Communicator::Communicator(PollMgr* poll_mgr) {
       auto result = ConnectToSite(si, std::chrono::milliseconds
           (CONNECT_TIMEOUT_MS));
       verify(result.first == SUCCESS);
+      Log_info("Connected to site %d", si.id);
       proxies.push_back(std::make_pair(si.id, result.second));
     }
     rpc_par_proxies_.insert(std::make_pair(par_id, proxies));

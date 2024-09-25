@@ -6,6 +6,9 @@
 #include "../procedure.h"
 #include "../command_marshaler.h"
 #include "../rcc_rpc.h"
+#include <vector>
+#include <algorithm>
+#include <deque>
 
 namespace janus {
 
@@ -151,6 +154,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t prevLogTerm,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
+  Log_info("BroadcastAppendEntries\n");
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
@@ -218,6 +222,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 		DepId di;
 		di.str = "dep";
 		di.id = dep_id;
+    // TODO: AppendEntries would not be called if the leader is the current leader
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
@@ -375,6 +380,95 @@ ChainRPCCommo::BroadcastVote2FPGA(parid_t par_id,
   return e;
 }
 
+std::vector<std::vector<int>> _generatePermutations(int n) {
+    std::vector<std::vector<int>> permutations;
+    std::vector<int> nums(n);
+    for(int i = 0; i < n; ++i) nums[i] = i + 1;
+    do {
+        permutations.push_back(nums);
+    } while(std::next_permutation(nums.begin(), nums.end()));
+    return permutations;
+}
 
+// Allocate the paths with equal weights
+// site_id is a global id for both servers and clients.
+// locale_id is a id within a replica group, we use locale_id to identify the path.
+void ChainRPCCommo::_preAllocatePathsWithWeights() {
+  auto config = Config::GetConfig();
+  vector<parid_t> partitions = config->GetAllPartitionIds();
+	Log_info("size of partitions: %d", partitions.size());
+  for (auto& par_id : partitions) {
+    auto site_infos = config->SitesByPartitionId(par_id);
+    int n = site_infos.size();
+
+    auto permutations = _generatePermutations(n-1);
+    double intial_w = 1.0 / permutations.size();
+
+    int id = 0;
+    for(const auto& perm : permutations) {
+        vector<int> path;
+        // The first node is always leader, and start from the leader.
+        path.push_back(0);
+        for(int num : perm) {
+            path.push_back(num);
+        }
+        pathsW_[par_id].push_back(std::make_tuple(path, intial_w, 0, id));
+        id++;
+    }
+  }
+}
+
+// Pickup one path based on weights.
+// Return: the index of the paths.
+int ChainRPCCommo::_getNextAvailablePath(int par_id) {
+  auto paths = pathsW_[par_id];
+
+  vector<double> weights;
+  for (auto& p : paths) {
+    weights.push_back(std::get<1>(p));
+  }
+
+  std::vector<double> cumulative;
+  cumulative.reserve(weights.size());
+  std::partial_sum(weights.begin(), weights.end(), std::back_inserter(cumulative));
+
+  // Generate a random number between 0 and 1
+  std::random_device rd;  // Seed for the random number engine
+  std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+  std::uniform_real_distribution<> dis(0.0, 1.0);
+  double rand_num = dis(gen);
+
+  // Find the index corresponding to the random number
+  auto it = std::lower_bound(cumulative.begin(), cumulative.end(), rand_num);
+  return std::distance(cumulative.begin(), it);
+}
+
+// Update the weight of cur_i-th path in the par_id partition based on response_time. 
+void ChainRPCCommo::_updatePathWeights(int par_id, int cur_i, double cur_response_time) {
+  std::deque<double> response_times = pathResponeTime_[par_id];
+  double tol = cur_response_time, cnt = 1;
+  for (int i=0; i<response_times.size(); i++) {
+    tol += response_times[i];
+    cnt++;
+  }
+  double avg = tol / cnt;
+  auto weights = vector<double>();
+  for (auto& p : pathsW_[par_id]) {
+    weights.push_back(std::get<1>(p));
+  }
+
+  // Update the i-th probability based on the latency comparison
+  // Normalize the probability array to ensure the sum is 1
+  double total = std::accumulate(weights.begin(), weights.end(), 0.0);
+  weights[cur_i] *= (avg / cur_response_time);
+  for (double& p : weights) {
+    p /= total;
+  }
+
+  // Write back the updated weights
+  for (int i=0; i<weights.size(); i++) {
+    std::get<1>(pathsW_[par_id][i]) = weights[i];
+  }
+}
 
 } // namespace janus
