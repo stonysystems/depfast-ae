@@ -265,6 +265,7 @@ void SchedulerClassic::DoAbort(Tx& tx_box) {
 }
 
 int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
+  fprintf(stderr, "CommitReplicated:%d\n", loc_id_);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto tx_id = tpc_commit_cmd.tx_id_;
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));
@@ -317,7 +318,8 @@ bool SchedulerClassic::CheckCommitted(Marshallable& tpc_commit_cmd) { //todo
   return (sp_tx->commit_result->IsReady());
 }
 
-void SchedulerClassic::Next(Marshallable& cmd) {
+// Execute the command
+void SchedulerClassic::Next(Marshallable& cmd) { // Execute command
   if (cmd.kind_ == MarshallDeputy::CMD_TPC_PREPARE) {
     auto& c = dynamic_cast<TpcPrepareCommand&>(cmd);
     PrepareReplicated(c);

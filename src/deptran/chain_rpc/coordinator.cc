@@ -148,6 +148,7 @@ void CoordinatorChainRPC::AppendEntries() {
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
     }
+    // TODO: do you need to retry here?
     else if (sp_quorum->No()) {
         verify(0);
         // TODO should become a follower if the term is smaller
@@ -163,6 +164,7 @@ void CoordinatorChainRPC::AppendEntries() {
 }
 
 void CoordinatorChainRPC::Commit() {
+  verify(0);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   commit_callback_();
   Log_debug("fpga-raft broadcast commit for partition: %d, slot %d",

@@ -326,6 +326,8 @@ int main(int argc, char *argv[]) {
 #ifdef DB_CHECKSUM
   sleep(90); // hopefully servers can finish hanging RPCs in 90 seconds.
 #endif
+  // TODO: FIXME: hb_rpc_server_ is not initializedin multiple processes setup.
+  sleep(100);
 
   for (auto& worker : svr_workers_g) {
     worker.WaitForShutdown();

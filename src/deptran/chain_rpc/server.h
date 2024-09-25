@@ -178,6 +178,7 @@ class ChainRPCServer : public TxLogServer {
 		instance->ballot = ballot;
 
     if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
+      /*
       auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
       auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
 			vector<struct KeyValue> kv_vector;
@@ -197,14 +198,15 @@ class ChainRPCServer : public TxLogServer {
 			
 			struct timespec begin, end;
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
-      de->Wait();
+      de->Wait();*/
 			//clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("Time of Write: %d", end.tv_nsec - begin.tv_nsec);
     } else {
+      /*
 			int value = -1;
 			int value_;
 			// auto de = IO::write(filename, &value, sizeof(int), 1);
-			struct timespec begin, end;
+			struct timespec begin, end;*/
 			//clock_gettime(CLOCK_MONOTONIC, &begin);
       // de->Wait();
 			//clock_gettime(CLOCK_MONOTONIC, &end);
