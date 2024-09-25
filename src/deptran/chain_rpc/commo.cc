@@ -9,11 +9,18 @@
 #include <vector>
 #include <algorithm>
 #include <deque>
+#include "utils.h"
 
 namespace janus {
 
+static int volatile xx =
+    MarshallDeputy::RegInitializer(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC,
+                                   []() -> Marshallable* {
+                                     return new ControlUnit;
+                                   });
+
 ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
-//  verify(poll != nullptr);
+  _preAllocatePathsWithWeights();
 }
 
 shared_ptr<ChainRPCForwardQuorumEvent> ChainRPCCommo::SendForward(parid_t par_id, 
@@ -141,8 +148,111 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
 
 }
 
-// TODO: Update the way to call this function, 
-// Try to minimize modifications as much as possible for later migiration to Rolis
+#ifdef CHAIN_RPC_ENABLED
+shared_ptr<ChainRPCAppendQuorumEvent>
+ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
+                                      siteid_t leader_site_id,
+                                      slotid_t slot_id,
+                                      i64 dep_id,
+                                      ballot_t ballot,
+                                      bool isLeader,
+                                      uint64_t currentTerm,
+                                      uint64_t prevLogIndex,
+                                      uint64_t prevLogTerm,
+                                      uint64_t commitIndex,
+                                      shared_ptr<Marshallable> cmd) {
+  Log_info("BroadcastAppendEntries-ChainVersion\n");
+
+  verify(pathsW[par_id].size() > 0);
+  int pathId = getNextAvailablePath(par_id);
+  vector<int> path = std::get<0>(pathsW[par_id][pathId]);
+
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+  auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
+  auto proxies = rpc_par_proxies_[par_id];
+
+  WAN_WAIT;
+
+  for (int i=0; i<proxies.size(); i++) {
+    auto &p = proxies[i];
+    auto follower_id = p.first;
+    auto proxy = (ChainRPCProxy*) p.second;
+    auto cli_it = rpc_clients_.find(follower_id);
+    std::string ip = "";
+    if (cli_it != rpc_clients_.end()) {
+      ip = cli_it->second->host();
+    } 
+	  if (p.first == leader_site_id) {
+        // fix the 1c1s1p bug
+        // Log_info("leader_site_id %d", leader_site_id);
+        verify(0 == i);
+        e->FeedResponse(true, prevLogIndex + 1, ip);
+        continue;
+    }
+  // }
+
+  // // Forward the request to the next hop in the path
+  // {
+  //   auto &p = proxies[path[1]];
+  //   auto follower_id = p.first;
+  //   auto proxy = (ChainRPCProxy*) p.second;
+  //   auto cli_it = rpc_clients_.find(follower_id);
+  //   std::string ip = "";
+  //   if (cli_it != rpc_clients_.end()) {
+  //     ip = cli_it->second->host();
+  //   }
+
+    std::get<2>(pathsW[par_id][pathId]) = 1; // Update current index in the path
+    FutureAttr fuattr;
+    struct timespec begin;
+    clock_gettime(CLOCK_MONOTONIC, &begin);
+
+    fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
+      uint64_t accept = 0;
+      uint64_t term = 0;
+      uint64_t index = 0;
+			
+			fu->get_reply() >> accept;
+      fu->get_reply() >> term;
+      fu->get_reply() >> index;
+			
+			struct timespec end;
+			//clock_gettime(CLOCK_MONOTONIC, &begin);
+			this->outbound--;
+			//Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
+			
+      bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
+      e->FeedResponse(y, index, ip);
+    };
+    MarshallDeputy md(cmd);
+		verify(md.sp_data_ != nullptr);
+		outbound++;
+		DepId di;
+		di.str = "dep";
+		di.id = dep_id;
+
+    auto cu = make_shared<ControlUnit>();
+    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
+    MarshallDeputy cu_cmd(cu_m);
+
+    auto f = proxy->async_AppendEntriesChain(slot_id,
+                                        ballot,
+                                        currentTerm,
+                                        prevLogIndex,
+                                        prevLogTerm,
+                                        commitIndex,
+																				di,
+                                        md,
+                                        cu_cmd,
+                                        fuattr);
+    Future::safe_release(f);
+  } // END of for loop
+  verify(!e->IsReady());
+  return e;
+}
+#else
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       siteid_t leader_site_id,
@@ -160,26 +270,8 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
-  // unordered_set<std::string> ip_addrs {};
-  // std::vector<std::shared_ptr<rrr::Client>> clients;
-
-  // vector<Future*> fus;
   WAN_WAIT;
 
-  // for (auto& p : proxies) {
-  //   auto id = p.first;
-  //   auto proxy = (ChainRPCProxy*) p.second;
-  //   auto cli_it = rpc_clients_.find(id);
-  //   std::string ip = "";
-  //   if (cli_it != rpc_clients_.end()) {
-  //     ip = cli_it->second->host();
-	// 		//cli = cli_it->second;
-  //   }
-  //   ip_addrs.insert(ip);
-	// 	//clients.push_back(cli);
-  // }
-  // //e->clients_ = clients;
-  
   for (auto& p : proxies) {
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
@@ -223,7 +315,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 		DepId di;
 		di.str = "dep";
 		di.id = dep_id;
-    // TODO: AppendEntries would not be called if the leader is the current leader
     auto f = proxy->async_AppendEntries(slot_id,
                                         ballot,
                                         currentTerm,
@@ -234,10 +325,12 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         md, 
                                         fuattr);
     Future::safe_release(f);
-  }
+  } // END of for loop
   verify(!e->IsReady());
   return e;
 }
+#endif
+
 
 void ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                            slotid_t slot_id,
@@ -413,7 +506,7 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
         for(int num : perm) {
             path.push_back(num);
         }
-        pathsW_[par_id].push_back(std::make_tuple(path, intial_w, 0, id));
+        pathsW[par_id].push_back(std::make_tuple(path, intial_w, 0, id));
         id++;
     }
   }
@@ -421,8 +514,8 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
 
 // Pickup one path based on weights.
 // Return: the index of the paths.
-int ChainRPCCommo::_getNextAvailablePath(int par_id) {
-  auto paths = pathsW_[par_id];
+int ChainRPCCommo::getNextAvailablePath(int par_id) {
+  auto paths = pathsW[par_id];
 
   vector<double> weights;
   for (auto& p : paths) {
@@ -445,7 +538,7 @@ int ChainRPCCommo::_getNextAvailablePath(int par_id) {
 }
 
 // Update the weight of cur_i-th path in the par_id partition based on response_time. 
-void ChainRPCCommo::_updatePathWeights(int par_id, int cur_i, double cur_response_time) {
+void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response_time) {
   std::deque<double> response_times = pathResponeTime_[par_id];
   double tol = cur_response_time, cnt = 1;
   for (int i=0; i<response_times.size(); i++) {
@@ -454,7 +547,7 @@ void ChainRPCCommo::_updatePathWeights(int par_id, int cur_i, double cur_respons
   }
   double avg = tol / cnt;
   auto weights = vector<double>();
-  for (auto& p : pathsW_[par_id]) {
+  for (auto& p : pathsW[par_id]) {
     weights.push_back(std::get<1>(p));
   }
 
@@ -468,7 +561,7 @@ void ChainRPCCommo::_updatePathWeights(int par_id, int cur_i, double cur_respons
 
   // Write back the updated weights
   for (int i=0; i<weights.size(); i++) {
-    std::get<1>(pathsW_[par_id][i]) = weights[i];
+    std::get<1>(pathsW[par_id][i]) = weights[i];
   }
 }
 

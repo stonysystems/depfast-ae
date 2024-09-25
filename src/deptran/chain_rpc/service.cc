@@ -112,13 +112,27 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
                                         const uint64_t& leaderCommitIndex,
 																				const DepId& dep_id,
                                         const MarshallDeputy& md_cmd,
-                                        const MarshallDeputy& uc,
+                                        const MarshallDeputy& cu_cmd,
                                         uint64_t *followerAppendOK,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
+    Coroutine::CreateRun([&] () {
+      sched_->OnAppendEntriesChain(slot,
+                            ballot,
+                            leaderCurrentTerm,
+                            leaderPrevLogIndex,
+                            leaderPrevLogTerm,
+                            leaderCommitIndex,
+														dep_id,
+                            const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                            const_cast<MarshallDeputy&>(cu_cmd).sp_data_,
+                            followerAppendOK,
+                            followerCurrentTerm,
+                            followerLastLogIndex,
+                            std::bind(&rrr::DeferredReply::reply, defer));
 
-
+  });
 }
 
 // Replicas return acculumated results to the leader.

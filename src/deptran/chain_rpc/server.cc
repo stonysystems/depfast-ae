@@ -421,6 +421,109 @@ void ChainRPCServer::StartTimer()
             auto instance = GetChainRPCInstance(lastLogIndex);
             instance->log_ = cmd;
 
+            // Pass the content to a thread that is always running
+            // Disk write event
+            // Wait on the event
+            instance->term = this->currentTerm;
+            //app_next_(*instance->log_); 
+            verify(lastLogIndex > commitIndex);
+
+            *followerAppendOK = 1;
+            *followerCurrentTerm = this->currentTerm;
+            *followerLastLogIndex = this->lastLogIndex;
+            
+
+            // Write to disk? why do we need this op?
+						if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
+              // auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
+              // auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
+              
+							// vector<struct KeyValue> kv_vector;
+							// int index = 0;
+							// for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
+							// 	auto cmd_input = (*it)->input.values_;
+							// 	for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
+							// 		struct KeyValue key_value = {it2->first, it2->second.get_i32()};
+							// 		kv_vector.push_back(key_value);
+							// 	}
+							// }
+              // fprintf(stderr, "kv_vector size: %d\n", kv_vector.size());
+
+							// struct KeyValue key_values[kv_vector.size()];
+							// std::copy(kv_vector.begin(), kv_vector.end(), key_values);
+
+							// auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
+							// de->Wait();
+            } else {
+							// int value = -1;
+							// auto de = IO::write(filename, &value, sizeof(int), 1);
+              // de->Wait();
+            }
+        }
+        else {
+            Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
+                this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
+            *followerAppendOK = 0;
+        }
+
+				/*if (rand() % 1000 == 0) {
+					usleep(25*1000);
+				}*/
+        cb();
+        // shared_ptr<Marshallable> sp;
+        // OnCommit(0,0, sp); // We don't really use those parameters.
+        // fprintf(stderr, "OnCommit done\n");
+    }
+
+    void ChainRPCServer::OnAppendEntriesChain(const slotid_t slot_id,
+                                     const ballot_t ballot,
+                                     const uint64_t leaderCurrentTerm,
+                                     const uint64_t leaderPrevLogIndex,
+                                     const uint64_t leaderPrevLogTerm,
+                                     const uint64_t leaderCommitIndex,
+																		 const struct DepId dep_id,
+                                     shared_ptr<Marshallable> &cmd,
+                                     shared_ptr<Marshallable> &cu_cmd,
+                                     uint64_t *followerAppendOK,
+                                     uint64_t *followerCurrentTerm,
+                                     uint64_t *followerLastLogIndex,
+                                     const function<void()> &cb) {
+        Log_info("OnAppendEntriesChain");
+
+        // TODO: check if a request is received earlier, if yes, not reject immediately instead,
+        //   We optimistically expect it will be received within a timeout.
+        // Reactor::CreateSpEvent<NeverEvent>()->Wait(10*1000);
+        std::lock_guard<std::recursive_mutex> lock(mtx_);
+        Log_debug("fpga-raft scheduler on append entries for "
+                "slot_id: %llx, loc: %d, PrevLogIndex: %d",
+                slot_id, this->loc_id_, leaderPrevLogIndex);
+        if ((leaderCurrentTerm >= this->currentTerm) &&
+                (leaderPrevLogIndex <= this->lastLogIndex)
+                /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
+            //resetTimer() ;
+            if (leaderCurrentTerm > this->currentTerm) {
+                currentTerm = leaderCurrentTerm;
+                Log_debug("server %d, set to be follower", loc_id_ ) ;
+                setIsLeader(false) ;
+            }
+
+						//this means that this is a retry of a previous one for a simulation
+						/*if (slot_id == 100000000 || leaderPrevLogIndex + 1 < lastLogIndex) {
+							for (int i = 0; i < 1000000; i++) Log_info("Dropping this AE message: %d %d", leaderPrevLogIndex, lastLogIndex);
+							//verify(0);
+							*followerAppendOK = 0;
+							cb();
+							return;
+						}*/
+            verify(this->lastLogIndex == leaderPrevLogIndex);
+            this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
+            uint64_t prevCommitIndex = this->commitIndex;
+            this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);
+            /* TODO: Replace entries after s.log[prev] w/ ents */
+            /* TODO: it should have for loop for multiple entries */
+            auto instance = GetChainRPCInstance(lastLogIndex);
+            instance->log_ = cmd;
+
 
             // Pass the content to a thread that is always running
             // Disk write event

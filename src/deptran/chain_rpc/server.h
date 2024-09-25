@@ -273,7 +273,21 @@ class ChainRPCServer : public TxLogServer {
                        uint64_t *followerCurrentTerm,
                        uint64_t *followerLastLogIndex,
                        const function<void()> &cb);
-
+  
+  void OnAppendEntriesChain(const slotid_t slot_id,
+                       const ballot_t ballot,
+                       const uint64_t leaderCurrentTerm,
+                       const uint64_t leaderPrevLogIndex,
+                       const uint64_t leaderPrevLogTerm,
+                       const uint64_t leaderCommitIndex,
+											 const struct DepId dep_id,
+                       shared_ptr<Marshallable> &cmd,
+                       shared_ptr<Marshallable> &cu_cmd,
+                       uint64_t *followerAppendOK,
+                       uint64_t *followerCurrentTerm,
+                       uint64_t *followerLastLogIndex,
+                       const function<void()> &cb);
+                       
   void OnCommit(const slotid_t slot_id,
                 const ballot_t ballot,
                 shared_ptr<Marshallable> &cmd);

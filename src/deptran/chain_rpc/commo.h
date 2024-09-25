@@ -223,13 +223,13 @@ friend class ChainRPCProxy;
   // Utility functions
   // Execute on the leader
   // par_id: [{path:[loc_id,...], weight:double, current idx in the path, uniq-id for this path},...]
-  unordered_map<parid_t, vector<std::tuple<vector<int>, double, int, int>>> pathsW_ ;
+  unordered_map<parid_t, vector<std::tuple<vector<int>, double, int, int>>> pathsW ;
   // We keep recent response times for each path for updating the weights.
   unordered_map<parid_t, std::deque<double>> pathResponeTime_ ;
   void _preAllocatePathsWithWeights();
-  int _getNextAvailablePath(int par_id) ;
+  int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
-  void _updatePathWeights(int par_id, int i, double response_time) ;
+  void updatePathWeights(int par_id, int i, double response_time) ;
 };
 
 } // namespace janus
