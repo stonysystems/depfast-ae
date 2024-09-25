@@ -1,16 +1,14 @@
-#pragma once
+#ifndef CHAINRPC_UTILS_H
+#define CHAINRPC_UTILS_H
 
 #include "__dep__.h"
 #include "marshallable.h"
 
 namespace janus {
-
-    // TODO: this a placeholder for the control unit, we will carry this data over the networking.
-    
-    // In our implementation, we use TxData to encode/decode the command data.
+    // In our implementation, we use TxData::ToMarshal to encode/decode the command data.
     // To support ChainRPC, we should have an additional data structure to carry the control unit.
     class ControlUnit : public Marshallable {
-    private:
+    public:
         // Necessary information to decode and encode in the control Unit.
         int total_partitions_;
         int acc_ack_;
@@ -20,11 +18,21 @@ namespace janus {
         // The current path index.
         int path_index_;
 
-        ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {}
+        ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
+            total_partitions_ = 0;
+            acc_ack_ = 0;
+            acc_rej_ = 0;
+        }
         virtual ~ControlUnit() { }
-        virtual Marshal& ToMarshal(Marshal&) const override;
-        virtual Marshal& FromMarshal(Marshal&) override;
-    public:
+        Marshal& ToMarshal(Marshal&m) const {
+            m << total_partitions_;
+            return m;
+        };
+
+        Marshal& FromMarshal(Marshal&m) {
+            m >> total_partitions_;
+            return m;
+        };
         void SetTotalPartitions(int n) {
             total_partitions_ = n;
         }
@@ -33,20 +41,6 @@ namespace janus {
             return acc_ack_ > 0.5 * total_partitions_ || acc_rej_ > 0.5 * total_partitions_;
         }
     };
-
-    ControlUnit::ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
-        total_partitions_ = 0;
-        acc_ack_ = 0;
-        acc_rej_ = 0;
-    };
-
-    Marshal& ControlUnit::ToMarshal(Marshal& m) const {
-        m << total_partitions_;
-        return m;
-    };
-
-    Marshal& ControlUnit::FromMarshal(Marshal& m) {
-        m >> total_partitions_;
-        return m;
-    };
 }
+
+#endif

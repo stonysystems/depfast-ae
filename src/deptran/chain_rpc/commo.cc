@@ -141,7 +141,8 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
 
 }
 
-// TODO: updated the way to call this function, Try to minimize modifications as much as possible for later migiration to Rolis
+// TODO: Update the way to call this function, 
+// Try to minimize modifications as much as possible for later migiration to Rolis
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       siteid_t leader_site_id,
@@ -159,25 +160,25 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
-  unordered_set<std::string> ip_addrs {};
-  std::vector<std::shared_ptr<rrr::Client>> clients;
+  // unordered_set<std::string> ip_addrs {};
+  // std::vector<std::shared_ptr<rrr::Client>> clients;
 
-  vector<Future*> fus;
+  // vector<Future*> fus;
   WAN_WAIT;
 
-  for (auto& p : proxies) {
-    auto id = p.first;
-    auto proxy = (ChainRPCProxy*) p.second;
-    auto cli_it = rpc_clients_.find(id);
-    std::string ip = "";
-    if (cli_it != rpc_clients_.end()) {
-      ip = cli_it->second->host();
-			//cli = cli_it->second;
-    }
-    ip_addrs.insert(ip);
-		//clients.push_back(cli);
-  }
-  //e->clients_ = clients;
+  // for (auto& p : proxies) {
+  //   auto id = p.first;
+  //   auto proxy = (ChainRPCProxy*) p.second;
+  //   auto cli_it = rpc_clients_.find(id);
+  //   std::string ip = "";
+  //   if (cli_it != rpc_clients_.end()) {
+  //     ip = cli_it->second->host();
+	// 		//cli = cli_it->second;
+  //   }
+  //   ip_addrs.insert(ip);
+	// 	//clients.push_back(cli);
+  // }
+  // //e->clients_ = clients;
   
   for (auto& p : proxies) {
     auto follower_id = p.first;
@@ -187,7 +188,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     if (cli_it != rpc_clients_.end()) {
       ip = cli_it->second->host();
     }
-	if (p.first == leader_site_id) {
+	  if (p.first == leader_site_id) {
         // fix the 1c1s1p bug
         // Log_info("leader_site_id %d", leader_site_id);
         e->FeedResponse(true, prevLogIndex + 1, ip);
