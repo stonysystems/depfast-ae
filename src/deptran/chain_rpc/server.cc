@@ -488,13 +488,12 @@ void ChainRPCServer::StartTimer()
                                      uint64_t *followerCurrentTerm,
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
-        Log_info("OnAppendEntriesChain");
+        
 
         if (IsLeader()) {
          // If the leader receives an accumulated results from the followers
          // We should feed a accumulated results back to the coordinator to make a final decision.
-         
-
+         Log_info("commo: %p\n", (void*)this->commo_);
         }
 
         if ((leaderCurrentTerm >= this->currentTerm) &&
@@ -503,13 +502,12 @@ void ChainRPCServer::StartTimer()
           // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
           Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
         }
-
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
-        Log_debug("fpga-raft scheduler on append entries for "
-                "slot_id: %llx, loc: %d, PrevLogIndex: %d",
-                slot_id, this->loc_id_, leaderPrevLogIndex);
+        Log_info("ChainRPC scheduler on append entries for "
+                "slot_id: %llu, loc: %d, PrevLogIndex: %d, isLeader: %d, path-id: %s",
+                slot_id, this->loc_id_, leaderPrevLogIndex, IsLeader()); //, cu_cmd_ptr->uuid_.c_str());
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
             if (leaderCurrentTerm > this->currentTerm) {
@@ -550,7 +548,7 @@ void ChainRPCServer::StartTimer()
             };
             MarshallDeputy md(cmd);
             MarshallDeputy cu_md(cu_cmd);
-            // proxy->async_AppendEntriesChain(slot_id,
+            // auto f = proxy->async_AppendEntriesChain(slot_id,
             //                             ballot,
             //                             currentTerm,
             //                             leaderPrevLogIndex,
@@ -560,6 +558,7 @@ void ChainRPCServer::StartTimer()
             //                             md,
             //                             cu_md,
             //                             fuattr);
+            // Future::safe_release(f);
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
