@@ -101,7 +101,10 @@ void CoordinatorChainRPC::AppendEntries() {
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
 		// quorum_events_.push_back(sp_quorum);
-		// Log_info("time of Wait(): %d", (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec);
+		double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
+    commo()->updateResponseTime(par_id_, elapsed);
+    commo()->updatePathWeights(par_id_, commo()->ongoingPickedPath_[par_id_], elapsed);
+
 		slow_ = sp_quorum->IsSlow();
 		
 		long leader_time;

@@ -21,6 +21,9 @@ static int volatile xx =
 
 ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
   _preAllocatePathsWithWeights();
+  vector<parid_t> partitions = Config::GetConfig()->GetAllPartitionIds();
+  for (auto& par_id : partitions)
+    ongoingPickedPath_[par_id] = 0;
 }
 
 shared_ptr<ChainRPCForwardQuorumEvent> ChainRPCCommo::SendForward(parid_t par_id, 
@@ -165,6 +168,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
   verify(pathsW[par_id].size() > 0);
   int pathId = getNextAvailablePath(par_id);
+  ongoingPickedPath_[par_id] = pathId;
   vector<int> path = std::get<0>(pathsW[par_id][pathId]);
 
   int n = Config::GetConfig()->GetPartitionSize(par_id);
@@ -191,9 +195,10 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     }
   // }
 
-  // // Forward the request to the next hop in the path
+  // // Forward the request to the next hop in the path.
   // {
-  //   auto &p = proxies[path[1]];
+  //   int nextHop = 1;
+  //   auto &p = proxies[path[nextHop]];
   //   auto follower_id = p.first;
   //   auto proxy = (ChainRPCProxy*) p.second;
   //   auto cli_it = rpc_clients_.find(follower_id);
@@ -201,6 +206,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   //   if (cli_it != rpc_clients_.end()) {
   //     ip = cli_it->second->host();
   //   }
+    int nextHop = 1;
 
     std::get<2>(pathsW[par_id][pathId]) = 1; // Update current index in the path
     FutureAttr fuattr;
@@ -234,6 +240,9 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 		di.id = dep_id;
 
     auto cu = make_shared<ControlUnit>();
+    cu->total_partitions_ = n;
+    cu->acc_ack_ = 1; // The first ack is from the leader
+    cu->toIndex_ = nextHop; // The next hop in the path
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     MarshallDeputy cu_cmd(cu_m);
 
@@ -248,8 +257,10 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         cu_cmd,
                                         fuattr);
     Future::safe_release(f);
-  } // END of for loop
+  }
   verify(!e->IsReady());
+
+  // TODO: update e with acculated results from the path
   return e;
 }
 #else
@@ -501,11 +512,12 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
     int id = 0;
     for(const auto& perm : permutations) {
         vector<int> path;
-        // The first node is always leader, and start from the leader.
+        // The first or last node is always leader, and start from or end with the leader.
         path.push_back(0);
         for(int num : perm) {
             path.push_back(num);
         }
+        path.push_back(0);
         pathsW[par_id].push_back(std::make_tuple(path, intial_w, 0, id));
         id++;
     }
@@ -562,6 +574,14 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
   // Write back the updated weights
   for (int i=0; i<weights.size(); i++) {
     std::get<1>(pathsW[par_id][i]) = weights[i];
+  }
+}
+
+// Update the response time of all Paths.
+void ChainRPCCommo::updateResponseTime(int par_id, double latency) {
+  pathResponeTime_[par_id].push_back(latency);
+  if (pathResponeTime_[par_id].size() > 10) {
+    pathResponeTime_[par_id].pop_front();
   }
 }
 

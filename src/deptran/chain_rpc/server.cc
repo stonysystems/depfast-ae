@@ -6,7 +6,7 @@
 #include "frame.h"
 #include "coordinator.h"
 #include "../classic/tpc_command.h"
-
+#include "utils.h"
 
 namespace janus {
 
@@ -490,40 +490,35 @@ void ChainRPCServer::StartTimer()
                                      const function<void()> &cb) {
         Log_info("OnAppendEntriesChain");
 
-        // TODO: check if a request is received earlier, if yes, not reject immediately instead,
-        //   We optimistically expect it will be received within a timeout.
-        // Reactor::CreateSpEvent<NeverEvent>()->Wait(10*1000);
+        if ((leaderCurrentTerm >= this->currentTerm) &&
+                (leaderPrevLogIndex <= this->lastLogIndex)) {
+        }else {
+          // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
+          Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
+        }
+
+        auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
+
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
         if ((leaderCurrentTerm >= this->currentTerm) &&
-                (leaderPrevLogIndex <= this->lastLogIndex)
-                /* TODO: log[leaderPrevLogidex].term == leaderPrevLogTerm */) {
-            //resetTimer() ;
+                (leaderPrevLogIndex <= this->lastLogIndex)) {
             if (leaderCurrentTerm > this->currentTerm) {
                 currentTerm = leaderCurrentTerm;
                 Log_debug("server %d, set to be follower", loc_id_ ) ;
                 setIsLeader(false) ;
             }
 
-						//this means that this is a retry of a previous one for a simulation
-						/*if (slot_id == 100000000 || leaderPrevLogIndex + 1 < lastLogIndex) {
-							for (int i = 0; i < 1000000; i++) Log_info("Dropping this AE message: %d %d", leaderPrevLogIndex, lastLogIndex);
-							//verify(0);
-							*followerAppendOK = 0;
-							cb();
-							return;
-						}*/
             verify(this->lastLogIndex == leaderPrevLogIndex);
-            this->lastLogIndex = leaderPrevLogIndex + 1 /* TODO:len(ents) */;
+            this->lastLogIndex = leaderPrevLogIndex + 1;
             uint64_t prevCommitIndex = this->commitIndex;
             this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);
             /* TODO: Replace entries after s.log[prev] w/ ents */
             /* TODO: it should have for loop for multiple entries */
             auto instance = GetChainRPCInstance(lastLogIndex);
             instance->log_ = cmd;
-
 
             // Pass the content to a thread that is always running
             // Disk write event
@@ -536,47 +531,25 @@ void ChainRPCServer::StartTimer()
             *followerCurrentTerm = this->currentTerm;
             *followerLastLogIndex = this->lastLogIndex;
             
-
-            // Write to disk? why do we need this op?
-						if (cmd->kind_ == MarshallDeputy::CMD_TPC_COMMIT){
-              // auto p_cmd = dynamic_pointer_cast<TpcCommitCommand>(cmd);
-              // auto sp_vec_piece = dynamic_pointer_cast<VecPieceData>(p_cmd->cmd_)->sp_vec_piece_data_;
-              
-							// vector<struct KeyValue> kv_vector;
-							// int index = 0;
-							// for (auto it = sp_vec_piece->begin(); it != sp_vec_piece->end(); it++){
-							// 	auto cmd_input = (*it)->input.values_;
-							// 	for (auto it2 = cmd_input->begin(); it2 != cmd_input->end(); it2++) {
-							// 		struct KeyValue key_value = {it2->first, it2->second.get_i32()};
-							// 		kv_vector.push_back(key_value);
-							// 	}
-							// }
-              // fprintf(stderr, "kv_vector size: %d\n", kv_vector.size());
-
-							// struct KeyValue key_values[kv_vector.size()];
-							// std::copy(kv_vector.begin(), kv_vector.end(), key_values);
-
-							// auto de = IO::write(filename, key_values, sizeof(struct KeyValue), kv_vector.size());
-							// de->Wait();
-            } else {
-							// int value = -1;
-							// auto de = IO::write(filename, &value, sizeof(int), 1);
-              // de->Wait();
-            }
+            cu_cmd_ptr->acc_ack_ += 1;
+            int nextHop = cu_cmd_ptr->GetNextHop();
+            cu_cmd_ptr->toIndex_ = nextHop;
+            auto commo = ((ChainRPCCommo *)(this->commo_));
+            // TODO: send to the next server
+            Log_info("proxy: %d\n", commo->rpc_par_proxies_[partition_id_].size());
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
                 this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
             *followerAppendOK = 0;
+            
+            cu_cmd_ptr->acc_rej_ += 1;
+            // If we can terminate earlier, return back to the leader, otherwise forward to the next server.
+            int nextHop = cu_cmd_ptr->GetNextHop();
+            cu_cmd_ptr->toIndex_ = nextHop;
         }
 
-				/*if (rand() % 1000 == 0) {
-					usleep(25*1000);
-				}*/
         cb();
-        // shared_ptr<Marshallable> sp;
-        // OnCommit(0,0, sp); // We don't really use those parameters.
-        // fprintf(stderr, "OnCommit done\n");
     }
 
     void ChainRPCServer::OnForward(shared_ptr<Marshallable> &cmd, 
