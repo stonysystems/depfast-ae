@@ -8,15 +8,17 @@ namespace janus {
     // In our implementation, we use TxData::ToMarshal to encode/decode the command data.
     // To support ChainRPC, we should have an additional data structure to carry the control unit.
     class ControlUnit : public Marshallable {
+    private:
+        // The index node in the curret path.
+        int toIndex_;
     public:
         // Necessary information to decode and encode in the control Unit.
         int total_partitions_;
         int acc_ack_;
         int acc_rej_;
         // Path for the current request.
+        // If total_partitions_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
         std::vector<int> path_; // int is the loc_id
-        // The index node in the curret path.
-        int toIndex_;
 
         ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
             total_partitions_ = 0;
@@ -56,12 +58,14 @@ namespace janus {
 
         bool RegisterEarlyTerminate() {
             return acc_ack_ > 0.5 * total_partitions_ 
-                    || acc_rej_ > 0.5 * total_partitions_;
+                    || acc_rej_ > 0.5 * total_partitions_
+                    || toIndex_ == path_.size() - 1;
         }
 
         // If we can terminate earlier, return back to the leader immediately, otherwise forward to the next server.
-        int GetNextHop() {
-            return RegisterEarlyTerminate()? 0 : path_[toIndex_+1];
+        int GetNextHopWithUpdate() {
+            toIndex_++;
+            return RegisterEarlyTerminate()? 0 : path_[toIndex_];
         }
     };
 }

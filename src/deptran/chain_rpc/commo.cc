@@ -150,7 +150,7 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
   }
 
 }
-
+#define CHAIN_RPC_ENABLED
 #ifdef CHAIN_RPC_ENABLED
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
@@ -197,7 +197,11 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
   // // Forward the request to the next hop in the path.
   // {
-  //   int nextHop = 1;
+    auto cu = make_shared<ControlUnit>();
+    cu->total_partitions_ = n;
+    cu->acc_ack_ = 1; // The first ack is from the leader
+     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
+  //   int nextHop = cu->GetNextHopWithUpdate();
   //   auto &p = proxies[path[nextHop]];
   //   auto follower_id = p.first;
   //   auto proxy = (ChainRPCProxy*) p.second;
@@ -206,9 +210,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   //   if (cli_it != rpc_clients_.end()) {
   //     ip = cli_it->second->host();
   //   }
-    int nextHop = 1;
 
-    std::get<2>(pathsW[par_id][pathId]) = 1; // Update current index in the path
     FutureAttr fuattr;
     struct timespec begin;
     clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -228,7 +230,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 			//Log_info("reply from server: %s and is_ready: %d", ip.c_str(), e->IsReady());
 			clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
-			
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
       e->FeedResponse(y, index, ip);
     };
@@ -239,11 +240,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 		di.str = "dep";
 		di.id = dep_id;
 
-    auto cu = make_shared<ControlUnit>();
-    cu->total_partitions_ = n;
-    cu->acc_ack_ = 1; // The first ack is from the leader
-    cu->toIndex_ = nextHop; // The next hop in the path
-    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     MarshallDeputy cu_cmd(cu_m);
 
     auto f = proxy->async_AppendEntriesChain(slot_id,
@@ -518,7 +514,7 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
             path.push_back(num);
         }
         path.push_back(0);
-        pathsW[par_id].push_back(std::make_tuple(path, intial_w, 0, id));
+        pathsW[par_id].push_back(std::make_tuple(path, intial_w, id));
         id++;
     }
   }

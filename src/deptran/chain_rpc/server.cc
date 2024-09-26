@@ -490,6 +490,13 @@ void ChainRPCServer::StartTimer()
                                      const function<void()> &cb) {
         Log_info("OnAppendEntriesChain");
 
+        if (IsLeader()) {
+         // If the leader receives an accumulated results from the followers
+         // We should feed a accumulated results back to the coordinator to make a final decision.
+         
+
+        }
+
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
         }else {
@@ -532,11 +539,27 @@ void ChainRPCServer::StartTimer()
             *followerLastLogIndex = this->lastLogIndex;
             
             cu_cmd_ptr->acc_ack_ += 1;
-            int nextHop = cu_cmd_ptr->GetNextHop();
-            cu_cmd_ptr->toIndex_ = nextHop;
+            int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
             auto commo = ((ChainRPCCommo *)(this->commo_));
-            // TODO: send to the next server
-            Log_info("proxy: %d\n", commo->rpc_par_proxies_[partition_id_].size());
+            verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
+            // Forward this request and accumulated results to the next hop.
+            auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+            FutureAttr fuattr;
+            fuattr.callback = [this] (Future* fu) { 
+              // Nothing
+            };
+            MarshallDeputy md(cmd);
+            MarshallDeputy cu_md(cu_cmd);
+            // proxy->async_AppendEntriesChain(slot_id,
+            //                             ballot,
+            //                             currentTerm,
+            //                             leaderPrevLogIndex,
+            //                             leaderPrevLogTerm,
+            //                             commitIndex,
+            //                             dep_id,
+            //                             md,
+            //                             cu_md,
+            //                             fuattr);
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
@@ -545,8 +568,6 @@ void ChainRPCServer::StartTimer()
             
             cu_cmd_ptr->acc_rej_ += 1;
             // If we can terminate earlier, return back to the leader, otherwise forward to the next server.
-            int nextHop = cu_cmd_ptr->GetNextHop();
-            cu_cmd_ptr->toIndex_ = nextHop;
         }
 
         cb();
