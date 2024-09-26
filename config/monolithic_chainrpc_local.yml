@@ -1,0 +1,76 @@
+
+# config/rw.yml 
+bench:
+  workload: rw
+  scale: 1
+  weight:
+    read: 0 
+    write: 1
+  population: # intial number of records in each table
+    history: 1000000
+
+schema: # table information
+  - name: history
+    column:
+      - {name: h_key,     type: integer, primary: true}
+      - {name: h_c_id,    type: integer}
+
+# sharding strategy.
+# default is MOD by primary key.
+# CUSTOM means strategy is defined in the code.
+# TODO a better way to define sharding strategy.
+sharding:
+  history:    MOD
+
+# config/2pl_ww_fpga_raft.yml
+mode:
+  cc: none # concurrency control
+  ab: chain_rpc # atomic broadcast; chain_rpc
+  read_only: occ
+  batch: false
+  retry: 20
+  ongoing: 1 # per client
+
+# config/concurrent_100.yml 
+n_concurrent: 1
+
+# config/1c1s3r3p.yml
+# site:
+#   server: # each line is a partition, the first is the master site_name:port
+#     - ["s101:8000", "s201:8001", "s301:8002"]
+#   client: # each line is a partition
+#     - ["c101"]
+
+# # site_name - process_name map
+# process:
+#   s101: p1
+#   s201: p2
+#   s301: p3
+#   c101: localhost
+
+# host:
+#   localhost: 127.0.0.1
+#   p1: 127.0.0.1
+#   p2: 127.0.0.1
+#   p3: 127.0.0.1
+
+# config/1c1s3r1p.yml
+site:
+  server: # each line is a partition, the first is the master site_name:port
+    - ["s101:38000", "s201:38001", "s301:38002"]
+  client: # each line is a partition
+    #- ["c01", "c02", "c03"]
+    - ["c01"]
+
+# site_name - process_name map
+process:
+  s101: localhost 
+  s201: localhost 
+  s301: localhost 
+  c01: localhost 
+
+host:
+  localhost: 127.0.0.1
+  p1: 127.0.0.1
+  p2: 127.0.0.1
+  c01: 127.0.0.1

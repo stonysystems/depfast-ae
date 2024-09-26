@@ -164,7 +164,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t prevLogTerm,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
-  Log_info("BroadcastAppendEntries-ChainVersion\n");
+  //Log_info("BroadcastAppendEntries-ChainVersion, commo:%p\n", (void*)this);
 
   verify(pathsW[par_id].size() > 0);
   int pathId = getNextAvailablePath(par_id);
@@ -200,16 +200,17 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     auto cu = make_shared<ControlUnit>();
     cu->total_partitions_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
-     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
-  //   int nextHop = cu->GetNextHopWithUpdate();
-  //   auto &p = proxies[path[nextHop]];
-  //   auto follower_id = p.first;
-  //   auto proxy = (ChainRPCProxy*) p.second;
-  //   auto cli_it = rpc_clients_.find(follower_id);
-  //   std::string ip = "";
-  //   if (cli_it != rpc_clients_.end()) {
-  //     ip = cli_it->second->host();
-  //   }
+    Log_info("send out over path: %s", cu->uuid_.c_str());
+    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
+    int nextHop = cu->GetNextHopWithUpdate();
+    // auto &p = proxies[path[nextHop]];
+    // auto follower_id = p.first;
+    // auto proxy = (ChainRPCProxy*) p.second;
+    // auto cli_it = rpc_clients_.find(follower_id);
+    // std::string ip = "";
+    // if (cli_it != rpc_clients_.end()) {
+    //   ip = cli_it->second->host();
+    // }
 
     FutureAttr fuattr;
     struct timespec begin;
@@ -256,7 +257,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   }
   verify(!e->IsReady());
 
-  // TODO: update e with acculated results from the path
   return e;
 }
 #else
