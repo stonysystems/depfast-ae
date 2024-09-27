@@ -488,6 +488,7 @@ void ChainRPCServer::StartTimer()
         
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
+        verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
         Log_info("ControlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
          // If the leader receives an accumulated results from the followers
@@ -512,6 +513,7 @@ void ChainRPCServer::StartTimer()
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
         }else {
           // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
+          Log_info("Best-effort reorder!");
           Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
         }
 
@@ -546,31 +548,6 @@ void ChainRPCServer::StartTimer()
             *followerLastLogIndex = this->lastLogIndex;
             
             cu_cmd_ptr->acc_ack_ += 1;
-            cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
-
-            int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
-            Log_info("next hop: %d, for path: %s", nextHop, cu_cmd_ptr->uuid_.c_str());
-            auto commo = ((ChainRPCCommo *)(this->commo_));
-            verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
-            // Forward this request and accumulated results to the next hop.
-            auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
-            FutureAttr fuattr;
-            fuattr.callback = [this] (Future* fu) { 
-              // Do nothing...
-            };
-            MarshallDeputy md(cmd);
-            MarshallDeputy cu_md(cu_cmd);
-            auto f = proxy->async_AppendEntriesChain(slot_id,
-                                        ballot,
-                                        currentTerm,
-                                        leaderPrevLogIndex,
-                                        leaderPrevLogTerm,
-                                        commitIndex,
-                                        dep_id,
-                                        md,
-                                        cu_md,
-                                        fuattr);
-            Future::safe_release(f);
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
@@ -578,9 +555,31 @@ void ChainRPCServer::StartTimer()
             *followerAppendOK = 0;
             
             cu_cmd_ptr->acc_rej_ += 1;
-            // If we can terminate earlier, return back to the leader, otherwise forward to the next server.
         }
 
+        cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+        int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
+        Log_info("next hop: %d, for path: %s", nextHop, cu_cmd_ptr->uuid_.c_str());
+        
+        // Forward this request and accumulated results to the next hop.
+        auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+        FutureAttr fuattr;
+        fuattr.callback = [this] (Future* fu) { 
+          // Do nothing...
+        };
+        MarshallDeputy md(cmd);
+        MarshallDeputy cu_md(cu_cmd);
+        auto f = proxy->async_AppendEntriesChain(slot_id,
+                                    ballot,
+                                    currentTerm,
+                                    leaderPrevLogIndex,
+                                    leaderPrevLogTerm,
+                                    commitIndex,
+                                    dep_id,
+                                    md,
+                                    cu_md,
+                                    fuattr);
+        Future::safe_release(f);
         cb();
     }
 

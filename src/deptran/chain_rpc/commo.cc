@@ -546,6 +546,7 @@ int ChainRPCCommo::getNextAvailablePath(int par_id) {
 
 // Update the weight of cur_i-th path in the par_id partition based on response_time. 
 void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response_time) {
+  double max_change = 0.05; // max change is 5%, we don't want to change too much
   std::deque<double> response_times = pathResponeTime_[par_id];
   double tol = cur_response_time, cnt = 1;
   for (int i=0; i<response_times.size(); i++) {
@@ -559,12 +560,11 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
   }
 
   // Update the i-th probability based on the latency comparison
+  double prevW = weights[cur_i];
+  weights[cur_i] *= max(1-max_change, min(1+max_change, (avg/cur_response_time))); // range: [1-max_change, 1+max_change]
+  Log_info("Update weight from %f to %f, Weights: %s, Not normalized", prevW, weights[cur_i], _arrayToString(weights).c_str());
   // Normalize the probability array to ensure the sum is 1
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
-  double prevW = weights[cur_i];
-  weights[cur_i] *= (avg / cur_response_time);
-  Log_info("Update weight from %f to %f, Weights: %s, Not normalized", prevW, weights[cur_i], _arrayToString(weights).c_str());
-
   for (double& p : weights) {
     p /= total;
   }
@@ -575,12 +575,42 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
   }
 }
 
-// Update the response time of all Paths.
+// Keep latest 200 data to update the response time of all Paths.
+// In this implementation, we don't want to keep outliers.
 void ChainRPCCommo::updateResponseTime(int par_id, double latency) {
-  pathResponeTime_[par_id].push_back(latency);
-  if (pathResponeTime_[par_id].size() > 10) {
-    pathResponeTime_[par_id].pop_front();
-  }
+    int N = 200;
+    auto& responseTimes = pathResponeTime_[par_id];
+
+    // Only calculate IQR and detect outliers if we have enough data (e.g., at least 10 samples)
+    if (responseTimes.size() >= 10) {
+        // Copy response times to a vector for sorting
+        std::vector<double> sortedTimes(responseTimes.begin(), responseTimes.end());
+        std::sort(sortedTimes.begin(), sortedTimes.end());
+
+        // Calculate Q1 (25th percentile) and Q3 (75th percentile)
+        size_t n = sortedTimes.size();
+        double Q1 = sortedTimes[n / 4];
+        double Q3 = sortedTimes[(3 * n) / 4];
+        double IQR = Q3 - Q1;
+
+        // Define the acceptable range
+        double lowerBound = Q1 - 1.5 * IQR;
+        double upperBound = Q3 + 1.5 * IQR;
+
+        // If the latency is an outlier, do not add it
+        if (latency < lowerBound || latency > upperBound) {
+            // Optionally, you can log or handle the outlier here
+            return; // Ignore the outlier
+        }
+    }
+
+    // Add the latency if it's not an outlier
+    responseTimes.push_back(latency);
+
+    // Keep only the last N response times
+    if (responseTimes.size() > N) {
+        responseTimes.pop_front();
+    }
 }
 
 } // namespace janus
