@@ -97,6 +97,7 @@ void CoordinatorChainRPC::AppendEntries() {
 		struct timespec start_;
 		clock_gettime(CLOCK_MONOTONIC, &start_);
     sp_quorum->Wait();
+    Log_info("Completed waiting for append entries");
 		struct timespec end_;
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
@@ -153,6 +154,7 @@ void CoordinatorChainRPC::AppendEntries() {
     }
     // TODO: do you need to retry here?
     else if (sp_quorum->No()) {
+        Log_info("failed to have a quorum for append entries");
         verify(0);
         // TODO should become a follower if the term is smaller
         //if(!IsLeader())
@@ -217,7 +219,8 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        LeaderLearn(); // TODO: try to eliminate this
+        Log_info("commit a request");
+        LeaderLearn();
       } else {
         // verify(0);
         // Forward(cmd_,commit_callback_) ;

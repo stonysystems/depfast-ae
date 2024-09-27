@@ -8,7 +8,7 @@ namespace janus {
 /** thread safe */
 
 void CoordinatorNone::GotoNextPhase() {
-
+  
   int n_phase = 2;
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:

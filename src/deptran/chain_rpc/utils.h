@@ -54,6 +54,8 @@ namespace janus {
         std::vector<int> path_; 
         // Debugging purpose, a random string to identify the control unit.
         std::string uuid_;
+        // Index of the current path in paths within the partition.
+        int pathIdx_;
 
         ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
             total_partitions_ = 0;
@@ -94,6 +96,12 @@ namespace janus {
             total_partitions_ = n;
         }
 
+        void SetPath(vector<int> path) {
+            for (int i=0; i<path.size(); i++) {
+                path_.push_back(path[i]);
+            }
+        }
+
         bool RegisterEarlyTerminate() {
             return acc_ack_ > 0.5 * total_partitions_ 
                     || acc_rej_ > 0.5 * total_partitions_
@@ -105,6 +113,21 @@ namespace janus {
             toIndex_++;
             return RegisterEarlyTerminate()? 0 : path_[toIndex_];
         }
+
+        std::string toString() const {
+            std::ostringstream oss;
+            oss << "UUID: " << uuid_;
+            oss << ", path: " ;
+            for (int i=0; i<path_.size(); i++) {
+                oss << path_[i] << " -> ";
+            } 
+            oss << "nullptr, toIndex: " << toIndex_ ;
+            oss << ", nextHop: " << path_[toIndex_] ;
+            oss << ", total_partitions: " << total_partitions_;
+            oss << ", acc_ack: " << acc_ack_ << ", acc_rej: " << acc_rej_;
+        return oss.str();
+    }
+
     };
 }
 

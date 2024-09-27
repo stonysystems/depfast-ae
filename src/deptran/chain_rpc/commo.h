@@ -222,10 +222,11 @@ friend class ChainRPCProxy;
 
   // Utility functions
   // Execute on the leader
-  // par_id: [{path:[loc_id,...], weight:double, index in paths},...]
-  unordered_map<parid_t, vector<std::tuple<vector<int>, double, int>>> pathsW ;
+  // par_id: [{path:[loc_id,...], weight:double},...]
+  unordered_map<parid_t, vector<std::tuple<vector<int>, double>>> pathsW ;
   // We keep recent response times for each path for updating the weights.
   unordered_map<parid_t, std::deque<double>> pathResponeTime_ ;
+  // int is the index of the path in paths
   unordered_map<parid_t, int> ongoingPickedPath_ ; 
   void _preAllocatePathsWithWeights();
   int getNextAvailablePath(int par_id) ;
@@ -233,6 +234,10 @@ friend class ChainRPCProxy;
   void updatePathWeights(int par_id, int i, double response_time) ;
   // Update the response time of the path.
   void updateResponseTime(int par_id, double latency) ;
+
+  // Event mapping in ChainRPC
+  // TODO: use int64_t instead of string, and erase the event after the event is completed.
+  unordered_map<std::string, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
 };
 
 } // namespace janus

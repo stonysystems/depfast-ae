@@ -387,9 +387,6 @@ void ChainRPCServer::StartTimer()
                                      const function<void()> &cb) {
         Log_info("OnAppendEntries");
 
-        // TODO: check if a request is received earlier, if yes, not reject immediately instead,
-        //   We optimistically expect it will be received within a timeout.
-        // Reactor::CreateSpEvent<NeverEvent>()->Wait(10*1000);
         std::lock_guard<std::recursive_mutex> lock(mtx_);
         Log_debug("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
@@ -489,12 +486,28 @@ void ChainRPCServer::StartTimer()
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
         
-
+        auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
+        auto commo = (ChainRPCCommo *)(this->commo_);
+        Log_info("ControlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
          // If the leader receives an accumulated results from the followers
          // We should feed a accumulated results back to the coordinator to make a final decision.
-         //Log_info("commo: %p\n", (void*)this->commo_);
+         // Update a event mapping
+         if (commo->event_append_map_[cu_cmd_ptr->uuid_]) {
+          Log_info("Update the event mapping");
+          for (int i=0; i<cu_cmd_ptr->acc_ack_; i++) {
+            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(true, 0, "");
+          }
+         }else {
+          Log_info("Fail to update the event mapping");
+         }
+         cb();
+         return ;
         }
+
+        Log_info("ChainRPC scheduler on append entries for "
+                "slot_id: %llu, loc: %d, PrevLogIndex: %d, isLeader: %d",
+                slot_id, this->loc_id_, leaderPrevLogIndex, IsLeader());
 
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
@@ -502,12 +515,9 @@ void ChainRPCServer::StartTimer()
           // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
           Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
         }
-        auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
-        // Log_info("ChainRPC scheduler on append entries for "
-        //         "slot_id: %llu, loc: %d, PrevLogIndex: %d, isLeader: %d, path-id: %s",
-        //         slot_id, this->loc_id_, leaderPrevLogIndex, IsLeader()); //, cu_cmd_ptr->uuid_.c_str());
+
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
             if (leaderCurrentTerm > this->currentTerm) {
@@ -538,6 +548,7 @@ void ChainRPCServer::StartTimer()
             
             cu_cmd_ptr->acc_ack_ += 1;
             int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
+            Log_info("next hop: %d, for path: %s", nextHop, cu_cmd_ptr->uuid_.c_str());
             auto commo = ((ChainRPCCommo *)(this->commo_));
             verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
             // Forward this request and accumulated results to the next hop.
@@ -548,17 +559,17 @@ void ChainRPCServer::StartTimer()
             };
             MarshallDeputy md(cmd);
             MarshallDeputy cu_md(cu_cmd);
-            // auto f = proxy->async_AppendEntriesChain(slot_id,
-            //                             ballot,
-            //                             currentTerm,
-            //                             leaderPrevLogIndex,
-            //                             leaderPrevLogTerm,
-            //                             commitIndex,
-            //                             dep_id,
-            //                             md,
-            //                             cu_md,
-            //                             fuattr);
-            // Future::safe_release(f);
+            auto f = proxy->async_AppendEntriesChain(slot_id,
+                                        ballot,
+                                        currentTerm,
+                                        leaderPrevLogIndex,
+                                        leaderPrevLogTerm,
+                                        commitIndex,
+                                        dep_id,
+                                        md,
+                                        cu_md,
+                                        fuattr);
+            Future::safe_release(f);
         }
         else {
             Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",

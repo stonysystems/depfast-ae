@@ -167,9 +167,9 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   //Log_info("BroadcastAppendEntries-ChainVersion, commo:%p\n", (void*)this);
 
   verify(pathsW[par_id].size() > 0);
-  int pathId = getNextAvailablePath(par_id);
-  ongoingPickedPath_[par_id] = pathId;
-  vector<int> path = std::get<0>(pathsW[par_id][pathId]);
+  int pathIdx = getNextAvailablePath(par_id);
+  ongoingPickedPath_[par_id] = pathIdx;
+  vector<int> path = std::get<0>(pathsW[par_id][pathIdx]);
 
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
@@ -177,40 +177,42 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
   WAN_WAIT;
 
-  for (int i=0; i<proxies.size(); i++) {
-    auto &p = proxies[i];
+  // for (int i=0; i<proxies.size(); i++) {
+  //   auto &p = proxies[i];
+  //   auto follower_id = p.first;
+  //   auto proxy = (ChainRPCProxy*) p.second;
+  //   auto cli_it = rpc_clients_.find(follower_id);
+  //   std::string ip = "";
+  //   if (cli_it != rpc_clients_.end()) {
+  //     ip = cli_it->second->host();
+  //   } 
+	//   if (p.first == leader_site_id) {
+  //       // fix the 1c1s1p bug
+  //       // Log_info("leader_site_id %d", leader_site_id);
+  //       verify(0 == i);
+  //       //e->FeedResponse(true, prevLogIndex + 1, ip);
+  //       continue;
+  //   }
+  // }
+
+  // Forward the request to the next hop in the path.
+  {
+    auto cu = make_shared<ControlUnit>();
+    cu->total_partitions_ = n;
+    cu->acc_ack_ = 1; // The first ack is from the leader
+    cu->pathIdx_ = pathIdx;
+    cu->SetPath(path);
+    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
+    int nextHop = cu->GetNextHopWithUpdate();
+    Log_info("ControlUnit: %s", cu->toString().c_str());
+    auto &p = proxies[path[nextHop]];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
     auto cli_it = rpc_clients_.find(follower_id);
     std::string ip = "";
     if (cli_it != rpc_clients_.end()) {
       ip = cli_it->second->host();
-    } 
-	  if (p.first == leader_site_id) {
-        // fix the 1c1s1p bug
-        // Log_info("leader_site_id %d", leader_site_id);
-        verify(0 == i);
-        e->FeedResponse(true, prevLogIndex + 1, ip);
-        continue;
     }
-  // }
-
-  // // Forward the request to the next hop in the path.
-  // {
-    auto cu = make_shared<ControlUnit>();
-    cu->total_partitions_ = n;
-    cu->acc_ack_ = 1; // The first ack is from the leader
-    Log_info("send out over path: %s", cu->uuid_.c_str());
-    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
-    int nextHop = cu->GetNextHopWithUpdate();
-    // auto &p = proxies[path[nextHop]];
-    // auto follower_id = p.first;
-    // auto proxy = (ChainRPCProxy*) p.second;
-    // auto cli_it = rpc_clients_.find(follower_id);
-    // std::string ip = "";
-    // if (cli_it != rpc_clients_.end()) {
-    //   ip = cli_it->second->host();
-    // }
 
     FutureAttr fuattr;
     struct timespec begin;
@@ -232,7 +234,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 			clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
-      e->FeedResponse(y, index, ip);
+      //e->FeedResponse(y, index, ip);
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
@@ -254,6 +256,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         cu_cmd,
                                         fuattr);
     Future::safe_release(f);
+    event_append_map_[cu->uuid_] = e;
   }
   verify(!e->IsReady());
 
@@ -514,7 +517,7 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
             path.push_back(num);
         }
         path.push_back(0);
-        pathsW[par_id].push_back(std::make_tuple(path, intial_w, id));
+        pathsW[par_id].push_back(std::make_tuple(path, intial_w));
         id++;
     }
   }
