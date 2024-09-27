@@ -84,6 +84,7 @@ void CoordinatorClassic::DoTxAsync(TxRequest& req) {
     ForwardTxnRequest(req);
   } else {
     Log_debug("start txn!!! : %d", forward_status_);
+    // This GotoNextPhase is in none/coordinator.cc, coz this is CoordinatorNone instance
     Coroutine::CreateRun([this]() { GotoNextPhase(); }, __FILE__, __LINE__);
   }
 }
@@ -204,6 +205,7 @@ void CoordinatorClassic::Restart() {
   }
 }
 
+// Run on the client side, call Communicator::BroadcastDispatch
 void CoordinatorClassic::DispatchAsync() {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto txn = (TxData*) cmd_;
@@ -315,9 +317,9 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
               txn->id_, txn->n_pieces_dispatched_, txn->GetNPieceAll());
     DispatchAsync();
   } else if (AllDispatchAcked()) {
-    Log_debug("receive all start acks, txn_id: %llx; START PREPARE",
+    Log_info("receive all start acks, txn_id: %llx; START PREPARE",
               txn->id_);
-    GotoNextPhase();
+    GotoNextPhase(); // Mark this request is completed on client side - 1.
   }
 }
 

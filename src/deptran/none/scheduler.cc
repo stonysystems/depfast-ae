@@ -6,6 +6,7 @@
 #include "../rcc_rpc.h"
 
 namespace janus {
+// The server side forwards to corresponding protocol.
 bool SchedulerNone::Dispatch(cmdid_t cmd_id, shared_ptr<Marshallable> cmd,
                              TxnOutput& ret_output) {
 	auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(cmd_id));

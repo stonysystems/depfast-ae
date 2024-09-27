@@ -492,11 +492,10 @@ void ChainRPCServer::StartTimer()
         if (IsLeader()) {
          // If the leader receives an accumulated results from the followers
          // We should feed a accumulated results back to the coordinator to make a final decision.
-         // Update a event mapping
          if (commo->event_append_map_[cu_cmd_ptr->uuid_]) {
-          Log_info("Update the event mapping");
           for (int i=0; i<cu_cmd_ptr->acc_ack_; i++) {
-            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(true, 0, "");
+            // Parameter ip doesn't matter.
+            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(true, cu_cmd_ptr->lastLogIndex_[i], "");
           }
          }else {
           Log_info("Fail to update the event mapping");
@@ -547,6 +546,8 @@ void ChainRPCServer::StartTimer()
             *followerLastLogIndex = this->lastLogIndex;
             
             cu_cmd_ptr->acc_ack_ += 1;
+            cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+
             int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
             Log_info("next hop: %d, for path: %s", nextHop, cu_cmd_ptr->uuid_.c_str());
             auto commo = ((ChainRPCCommo *)(this->commo_));
@@ -555,7 +556,7 @@ void ChainRPCServer::StartTimer()
             auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
             FutureAttr fuattr;
             fuattr.callback = [this] (Future* fu) { 
-              // Nothing
+              // Do nothing...
             };
             MarshallDeputy md(cmd);
             MarshallDeputy cu_md(cu_cmd);
@@ -605,6 +606,8 @@ void ChainRPCServer::StartTimer()
   void ChainRPCServer::OnCommit(const slotid_t slot_id,
                               const ballot_t ballot,
                               shared_ptr<Marshallable> &cmd) {
+    // !!!!!! Problem is here!!!!!! commitIndex is not updated
+    Log_info("OnCommit, in_applying_logs_: %d, executeIndex: %d, commitIndex: %d", in_applying_logs_, executeIndex, commitIndex);
     std::lock_guard<std::recursive_mutex> lock(mtx_);
 		struct timespec begin, end;
 		//clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -618,10 +621,11 @@ void ChainRPCServer::StartTimer()
     for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
         auto next_instance = GetChainRPCInstance(id);
         if (next_instance->log_) {
-            Log_debug("fpga-raft par:%d loc:%d executed slot %lx now", partition_id_, loc_id_, id);
+            Log_info("chainRPC par:%d loc:%d executed slot %lu now", partition_id_, loc_id_, id);
             app_next_(*next_instance->log_);
             executeIndex++;
         } else {
+            Log_info("No log, chainRPC par:%d loc:%d executed slot %lu now", partition_id_, loc_id_, id);
             break;
         }
     }

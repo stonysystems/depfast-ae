@@ -246,6 +246,7 @@ std::shared_ptr<QuorumEvent> Communicator::SendReelect(){
 
 }
 
+// Do a dispatch on the client side.
 void Communicator::BroadcastDispatch(
     shared_ptr<vector<shared_ptr<TxPieceData>>> sp_vec_piece,
     Coordinator* coo,
@@ -259,7 +260,7 @@ void Communicator::BroadcastDispatch(
         int32_t ret;
         TxnOutput outputs;
         fu->get_reply() >> ret >> outputs;
-        callback(ret, outputs);
+        callback(ret, outputs); // This callback function is CoordinatorClassic::DispatchAck on client side.
       };
   auto pair_leader_proxy = LeaderProxyForPartition(par_id);
   SetLeaderCache(par_id, pair_leader_proxy) ;
@@ -274,6 +275,7 @@ void Communicator::BroadcastDispatch(
 	di.str = "dep";
 	di.id = Communicator::global_id++;
   
+  // Make a RPC to ClassicServiceImpl::Dispatch.
 	auto future = proxy->async_Dispatch(cmd_id, di, md, fuattr);
   Future::safe_release(future);
   if (false) {

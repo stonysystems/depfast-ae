@@ -47,6 +47,8 @@ void ClassicServiceImpl::ReElect(bool_t* success,
 	*success = dtxn_sched()->RequestVote();
 	defer->reply();
 }
+
+// The server side receives a request from the client worker.
 void ClassicServiceImpl::Dispatch(const i64& cmd_id,
 																	const DepId& dep_id,
                                   const MarshallDeputy& md,
@@ -73,6 +75,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
     }
+    Log_info("On server side: Dispatch status: %d (Leader server)", *res);
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   // }, __FILE__, cmd_id);

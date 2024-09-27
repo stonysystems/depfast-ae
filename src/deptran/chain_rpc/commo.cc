@@ -164,8 +164,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t prevLogTerm,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
-  //Log_info("BroadcastAppendEntries-ChainVersion, commo:%p\n", (void*)this);
-
   verify(pathsW[par_id].size() > 0);
   int pathIdx = getNextAvailablePath(par_id);
   ongoingPickedPath_[par_id] = pathIdx;
@@ -177,24 +175,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
   WAN_WAIT;
 
-  // for (int i=0; i<proxies.size(); i++) {
-  //   auto &p = proxies[i];
-  //   auto follower_id = p.first;
-  //   auto proxy = (ChainRPCProxy*) p.second;
-  //   auto cli_it = rpc_clients_.find(follower_id);
-  //   std::string ip = "";
-  //   if (cli_it != rpc_clients_.end()) {
-  //     ip = cli_it->second->host();
-  //   } 
-	//   if (p.first == leader_site_id) {
-  //       // fix the 1c1s1p bug
-  //       // Log_info("leader_site_id %d", leader_site_id);
-  //       verify(0 == i);
-  //       //e->FeedResponse(true, prevLogIndex + 1, ip);
-  //       continue;
-  //   }
-  // }
-
   // Forward the request to the next hop in the path.
   {
     auto cu = make_shared<ControlUnit>();
@@ -202,6 +182,8 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     cu->acc_ack_ = 1; // The first ack is from the leader
     cu->pathIdx_ = pathIdx;
     cu->SetPath(path);
+    cu->AppendResponseForAppendEntries(1, currentTerm, prevLogIndex + 1);
+
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->GetNextHopWithUpdate();
     Log_info("ControlUnit: %s", cu->toString().c_str());
@@ -494,6 +476,20 @@ std::vector<std::vector<int>> _generatePermutations(int n) {
     return permutations;
 }
 
+template <typename E>
+std::string _arrayToString(const std::vector<E>& data) {
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < data.size(); ++i) {
+        oss << data[i];
+        if (i != data.size() - 1) {
+            oss << ", "; // Separate with a comma, but not after the last element
+        }
+    }
+    oss << "]";
+    return oss.str();
+}
+
 // Allocate the paths with equal weights
 // site_id is a global id for both servers and clients.
 // locale_id is a id within a replica group, we use locale_id to identify the path.
@@ -565,7 +561,10 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
   // Update the i-th probability based on the latency comparison
   // Normalize the probability array to ensure the sum is 1
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
+  double prevW = weights[cur_i];
   weights[cur_i] *= (avg / cur_response_time);
+  Log_info("Update weight from %f to %f, Weights: %s, Not normalized", prevW, weights[cur_i], _arrayToString(weights).c_str());
+
   for (double& p : weights) {
     p /= total;
   }

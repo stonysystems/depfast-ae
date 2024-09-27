@@ -144,10 +144,9 @@ void CoordinatorChainRPC::AppendEntries() {
 			slow_ = follower_times[0]/avg_ob > 80000 && follower_times[1]/avg_ob > 80000;
 		}
 
-		//Log_info("slow?: %d", slow_);
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				//Log_info("%d vs %d", minIndex, this->sch_->commitIndex);
+				Log_info("sp_quorum: minIndex %d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
@@ -219,7 +218,7 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        Log_info("commit a request");
+        Log_info("Broadcast a Decide");
         LeaderLearn();
       } else {
         // verify(0);

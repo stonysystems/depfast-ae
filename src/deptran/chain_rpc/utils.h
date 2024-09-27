@@ -38,6 +38,7 @@ namespace janus {
 
     // In our implementation, we use TxData::ToMarshal to encode/decode the command data.
     // To support ChainRPC, we should have an additional data structure to carry the control unit.
+    // This is more for the AppendEntriesChain RPC.
     class ControlUnit : public Marshallable {
     private:
         // The index node in the curret path.
@@ -48,6 +49,11 @@ namespace janus {
         int total_partitions_;
         int acc_ack_;
         int acc_rej_;
+        // Accumulated responses for AppendEntries each server has received.
+        vector <uint64_t> appendOK_;
+        vector <uint64_t> currentTerm_;
+        vector <uint64_t> lastLogIndex_;
+
         // Path for the current request.
         // If total_partitions_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
         // int is the loc_id.
@@ -73,6 +79,19 @@ namespace janus {
             for (auto p : path_) {
                 m << p;
             }
+
+            m << (int32_t) appendOK_.size();
+            for (auto p : appendOK_) {
+                m << p;
+            }
+            m << (int32_t) currentTerm_.size();
+            for (auto p : currentTerm_) {
+                m << p;
+            }
+            m << (int32_t) lastLogIndex_.size();
+            for (auto p : lastLogIndex_) {
+                m << p;
+            }
             m << uuid_.c_str();
             return m;
         };
@@ -88,9 +107,37 @@ namespace janus {
                 m >> p;
                 path_.push_back(p);
             }
+
+            int32_t sz2;
+            m >> sz2;
+            for (int i = 0; i < sz2; i++) {
+                uint64_t p;
+                m >> p;
+                appendOK_.push_back(p);
+            }
+            int32_t sz3;
+            m >> sz3;
+            for (int i = 0; i < sz3; i++) {
+                uint64_t p;
+                m >> p;
+                currentTerm_.push_back(p);
+            }
+            int32_t sz4;
+            m >> sz4;
+            for (int i = 0; i < sz4; i++) {
+                uint64_t p;
+                m >> p;
+                lastLogIndex_.push_back(p);
+            }
             m >> uuid_;
             return m;
         };
+
+        void AppendResponseForAppendEntries(uint64_t appendOK, uint64_t currentTerm, uint64_t lastLogIndex) {
+            appendOK_.push_back(appendOK);
+            currentTerm_.push_back(currentTerm);
+            lastLogIndex_.push_back(lastLogIndex);
+        }
 
         void SetTotalPartitions(int n) {
             total_partitions_ = n;
@@ -108,9 +155,9 @@ namespace janus {
                     || toIndex_ == path_.size() - 1;
         }
 
-        // If we can terminate earlier, return back to the leader immediately, otherwise forward to the next server.
         int GetNextHopWithUpdate() {
             toIndex_++;
+            // If we can terminate earlier, return back to the leader immediately, otherwise forward to the next server.
             return RegisterEarlyTerminate()? 0 : path_[toIndex_];
         }
 
