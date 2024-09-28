@@ -1,8 +1,17 @@
 ### Compile and run the code
 ```
+# Compile
 python3 waf configure build -J
 
-build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P localhost
+# Run each command in 5 different terminal tabs
+# Start 3 replicas
+./build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P localhost
+./build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P p1
+./build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P p2
+
+# Once servers get started, start clients
+./build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P c01
+./build/deptran_server -f config/monolithic_chainrpc.yml -d 30 -P c02
 ```
 
 ### Implementations
