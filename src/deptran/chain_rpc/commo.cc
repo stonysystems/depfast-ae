@@ -21,9 +21,6 @@ static int volatile xx =
 
 ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
   _preAllocatePathsWithWeights();
-  vector<parid_t> partitions = Config::GetConfig()->GetAllPartitionIds();
-  for (auto& par_id : partitions)
-    ongoingPickedPath_[par_id] = 0;
 }
 
 shared_ptr<ChainRPCForwardQuorumEvent> ChainRPCCommo::SendForward(parid_t par_id, 
@@ -150,7 +147,7 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
   }
 
 }
-#define CHAIN_RPC_ENABLED
+
 #ifdef CHAIN_RPC_ENABLED
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
@@ -166,7 +163,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       shared_ptr<Marshallable> cmd) {
   verify(pathsW[par_id].size() > 0);
   int pathIdx = getNextAvailablePath(par_id);
-  ongoingPickedPath_[par_id] = pathIdx;
   vector<int> path = std::get<0>(pathsW[par_id][pathIdx]);
 
   int n = Config::GetConfig()->GetPartitionSize(par_id);
@@ -180,8 +176,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     auto cu = make_shared<ControlUnit>();
     cu->total_partitions_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
-    cu->pathIdx_ = pathIdx;
-    cu->SetPath(path);
+    cu->SetPath(pathIdx, path);
     cu->AppendResponseForAppendEntries(1, currentTerm, prevLogIndex + 1);
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
@@ -242,6 +237,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   }
   verify(!e->IsReady());
 
+  e->ongoingPickedPath = pathIdx;
   return e;
 }
 #else
@@ -546,7 +542,6 @@ int ChainRPCCommo::getNextAvailablePath(int par_id) {
 
 // Update the weight of cur_i-th path in the par_id partition based on response_time. 
 void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response_time) {
-  double max_change = 0.05; // max change is 5%, we don't want to change too much
   std::deque<double> response_times = pathResponeTime_[par_id];
   double tol = cur_response_time, cnt = 1;
   for (int i=0; i<response_times.size(); i++) {
@@ -561,8 +556,14 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
 
   // Update the i-th probability based on the latency comparison
   double prevW = weights[cur_i];
-  weights[cur_i] *= max(1-max_change, min(1+max_change, (avg/cur_response_time))); // range: [1-max_change, 1+max_change]
-  Log_info("Update weight from %f to %f, Weights: %s, Not normalized", prevW, weights[cur_i], _arrayToString(weights).c_str());
+
+  double changeRatio = avg/cur_response_time;
+  double max_change = 0.05; // max change is 5%, we don't want to update weights significantly.
+  weights[cur_i] *= max(1-max_change, 
+                        min(1+max_change, changeRatio)); 
+  weights[cur_i] = max(weights[cur_i], 0.01); // min weight is 1%
+  weights[cur_i] = min(weights[cur_i], 0.9); // max weight is 90%
+  Log_info("Update weight from %f to %f, avg: %f, cur_response_time: %f, Weights: %s (not normalized), path_id: %d, len of pathResponeTime_: %d", prevW, weights[cur_i], avg, cur_response_time, _arrayToString(weights).c_str(), cur_i, pathResponeTime_[par_id].size());
   // Normalize the probability array to ensure the sum is 1
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
   for (double& p : weights) {
@@ -576,36 +577,36 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
 }
 
 // Keep latest 200 data to update the response time of all Paths.
-// In this implementation, we don't want to keep outliers.
+// In this implementation, I eliminate outliers.
 void ChainRPCCommo::updateResponseTime(int par_id, double latency) {
     int N = 200;
     auto& responseTimes = pathResponeTime_[par_id];
 
-    // Only calculate IQR and detect outliers if we have enough data (e.g., at least 10 samples)
-    if (responseTimes.size() >= 10) {
+    // Copy response times to a vector for sorting
+    if (responseTimes.size() >= N) {
         // Copy response times to a vector for sorting
-        std::vector<double> sortedTimes(responseTimes.begin(), responseTimes.end());
-        std::sort(sortedTimes.begin(), sortedTimes.end());
+        std::vector<double> times(responseTimes.begin(), responseTimes.end());
+        auto min_it = std::min_element(times.begin(), times.end());
+        auto max_it = std::max_element(times.begin(), times.end());
 
-        // Calculate Q1 (25th percentile) and Q3 (75th percentile)
-        size_t n = sortedTimes.size();
-        double Q1 = sortedTimes[n / 4];
-        double Q3 = sortedTimes[(3 * n) / 4];
-        double IQR = Q3 - Q1;
+        // Dereference the iterators to get the values
+        double min_value = *min_it;
+        double max_value = *max_it;
 
         // Define the acceptable range
-        double lowerBound = Q1 - 1.5 * IQR;
-        double upperBound = Q3 + 1.5 * IQR;
+        double lowerBound = 0.5 * min_value;
+        double upperBound = 1.5 * max_value ;
 
         // If the latency is an outlier, do not add it
         if (latency < lowerBound || latency > upperBound) {
-            // Optionally, you can log or handle the outlier here
+            Log_info("Outlier detected: latency = %f, min = %f, max = %f, lowerBound = %f, upperBound = %f", latency, min_value, max_value, lowerBound, upperBound);
             return; // Ignore the outlier
+        } else {
+            responseTimes.push_back(latency);
         }
+    } else {
+      responseTimes.push_back(latency);
     }
-
-    // Add the latency if it's not an outlier
-    responseTimes.push_back(latency);
 
     // Keep only the last N response times
     if (responseTimes.size() > N) {

@@ -143,7 +143,8 @@ namespace janus {
             total_partitions_ = n;
         }
 
-        void SetPath(vector<int> path) {
+        void SetPath(int pathIdx, vector<int> path) {
+            pathIdx_ = pathIdx;
             for (int i=0; i<path.size(); i++) {
                 path_.push_back(path[i]);
             }
@@ -164,10 +165,11 @@ namespace janus {
         std::string toString() const {
             std::ostringstream oss;
             oss << "UUID: " << uuid_;
-            oss << ", path: " ;
+            oss << ", PathIndex: " << pathIdx_;
+            oss << ", Path: " ;
             for (int i=0; i<path_.size(); i++) {
                 oss << path_[i] << " -> ";
-            } 
+            }
             oss << "nullptr, toIndex: " << toIndex_ ;
             oss << ", nextHop: " << path_[toIndex_] ;
             oss << ", total_partitions: " << total_partitions_;

@@ -104,6 +104,10 @@ class ChainRPCAppendQuorumEvent: public QuorumEvent {
  public:
     uint64_t minIndex;
     using QuorumEvent::QuorumEvent;
+
+    // A message between commo.cpp and coordinator.cc
+    int ongoingPickedPath = -1;
+
     void FeedResponse(bool appendOK, uint64_t index, std::string ip_addr = "") {
         if (appendOK) {
             if ((n_voted_yes_ == 0) && (n_voted_no_ == 0))
@@ -226,8 +230,6 @@ friend class ChainRPCProxy;
   unordered_map<parid_t, vector<std::tuple<vector<int>, double>>> pathsW ;
   // We keep recent response times for each path for updating the weights.
   unordered_map<parid_t, std::deque<double>> pathResponeTime_ ;
-  // int is the index of the path in paths
-  unordered_map<parid_t, int> ongoingPickedPath_ ; 
   void _preAllocatePathsWithWeights();
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths

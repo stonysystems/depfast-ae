@@ -103,8 +103,9 @@ void CoordinatorChainRPC::AppendEntries() {
 
 		// quorum_events_.push_back(sp_quorum);
 		double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
+    Log_info("Time of append entries on server: %f, path_id: %d", elapsed, sp_quorum->ongoingPickedPath);
     commo()->updateResponseTime(par_id_, elapsed);
-    commo()->updatePathWeights(par_id_, commo()->ongoingPickedPath_[par_id_], elapsed);
+    commo()->updatePathWeights(par_id_, sp_quorum->ongoingPickedPath, elapsed);
 
 		slow_ = sp_quorum->IsSlow();
 		
