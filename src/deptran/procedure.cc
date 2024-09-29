@@ -56,6 +56,13 @@ TxData::TxData() {
   read_only_failed_ = false;
   pre_time_ = timespec2ms(start_time_);
   early_return_ = Config::GetConfig()->do_early_return();
+
+  int huge_data_size = 100; //  * 10000;
+  huge_dummy_data_.resize(huge_data_size);  // Reserve space to avoid reallocation
+  // Generate random alphabetic characters
+  for (int i = 0; i < huge_data_size; ++i) {
+      huge_dummy_data_[i]= 'a';
+  }
 }
 
 Marshal& operator << (Marshal& m, const TxWorkspace &ws) {
@@ -361,6 +368,7 @@ Marshal& TxData::ToMarshal(Marshal& m) const {
   m << n_finished_;
   m << max_try_;
   m << n_try_;
+  m << huge_dummy_data_;
   return m;
 }
 
@@ -382,6 +390,7 @@ Marshal& TxData::FromMarshal(Marshal& m) {
   m >> n_finished_;
   m >> max_try_;
   m >> n_try_;
+  m >> huge_dummy_data_;
   return m;
 }
 

@@ -147,7 +147,7 @@ void CoordinatorChainRPC::AppendEntries() {
 
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				Log_info("sp_quorum: minIndex %d vs %d", minIndex, this->sch_->commitIndex);
+				Log_debug("sp_quorum: minIndex %d vs %d", minIndex, this->sch_->commitIndex);
         verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex ) ;
@@ -193,7 +193,10 @@ void CoordinatorChainRPC::LeaderLearn() {
     /*     this->sch_->app_next_(*instance->log_); */
     /* } */
 
-    commo()->BroadcastDecide(par_id_, slot_id_, dep_id_, curr_ballot_, cmd_);
+    // Not necessary to carray cmd_ in both AppendEntries and Commit. We removed it from the Commit RPC.
+    auto dummy = make_shared<CmdData>();
+    auto dummy_cmd = dynamic_pointer_cast<Marshallable>(dummy);
+    commo()->BroadcastDecide(par_id_, slot_id_, dep_id_, curr_ballot_, dummy_cmd);
     verify(phase_ == Phase::COMMIT);
     GotoNextPhase();
 }
