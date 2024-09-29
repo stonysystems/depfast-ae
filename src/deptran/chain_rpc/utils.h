@@ -75,6 +75,7 @@ namespace janus {
             m << total_partitions_;
             m << acc_ack_;
             m << acc_rej_;
+            m << pathIdx_;
             m << (int32_t) path_.size();
             for (auto p : path_) {
                 m << p;
@@ -100,6 +101,7 @@ namespace janus {
             m >> total_partitions_;
             m >> acc_ack_;
             m >> acc_rej_;
+            m >> pathIdx_;
             int32_t sz;
             m >> sz;
             for (int i = 0; i < sz; i++) {

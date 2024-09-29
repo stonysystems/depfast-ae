@@ -506,14 +506,14 @@ void ChainRPCServer::StartTimer()
         }
 
         Log_info("ChainRPC scheduler on append entries for "
-                "slot_id: %llu, loc: %d, PrevLogIndex: %d, isLeader: %d",
-                slot_id, this->loc_id_, leaderPrevLogIndex, IsLeader());
+                "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
+                this->loc_id_, slot_id, leaderPrevLogIndex, this->lastLogIndex, IsLeader());
 
         if ((leaderCurrentTerm >= this->currentTerm) &&
                 (leaderPrevLogIndex <= this->lastLogIndex)) {
         }else {
           // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
-          Log_info("Best-effort reorder!");
+          Log_info("Best-effort waiting for in-order execution");
           Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
         }
 
@@ -605,8 +605,6 @@ void ChainRPCServer::StartTimer()
   void ChainRPCServer::OnCommit(const slotid_t slot_id,
                               const ballot_t ballot,
                               shared_ptr<Marshallable> &cmd) {
-    // !!!!!! Problem is here!!!!!! commitIndex is not updated
-    Log_info("OnCommit, in_applying_logs_: %d, executeIndex: %d, commitIndex: %d", in_applying_logs_, executeIndex, commitIndex);
     std::lock_guard<std::recursive_mutex> lock(mtx_);
 		struct timespec begin, end;
 		//clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -620,11 +618,10 @@ void ChainRPCServer::StartTimer()
     for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
         auto next_instance = GetChainRPCInstance(id);
         if (next_instance->log_) {
-            Log_info("chainRPC par:%d loc:%d executed slot %lu now", partition_id_, loc_id_, id);
+            Log_info("chainRPC par:%d loc:%d executed slot %lu", partition_id_, loc_id_, id);
             app_next_(*next_instance->log_);
             executeIndex++;
         } else {
-            Log_info("No log, chainRPC par:%d loc:%d executed slot %lu now", partition_id_, loc_id_, id);
             break;
         }
     }

@@ -36,3 +36,4 @@ In most cases, all paths should have similar responsiveness, with roughly equal 
 2. https://github.com/kshivam26/depfast-ae/compare/kshivam26:depfast-ae:7436ab8...kshivam26:depfast-ae:micro
 3. design doc: https://docs.google.com/document/d/1TvQPeBAwDxJ3_JDbWtNSCYXOkr31lDOLb4rhkEBQvNk/edit?usp=sharing
 4. https://github.com/stonysystems/depfast-ae/tree/chainrpc
+5. https://colab.research.google.com/drive/115pZVaxnS8xZKmP5KNXduW5-IbFNxJnc?usp=sharing ChainRPC evaluation drawing in colab
