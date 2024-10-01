@@ -181,7 +181,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->Increment2NextHop();
-    Log_info("ControlUnit: %s", cu->toString().c_str());
+    Log_info("slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
     auto &p = proxies[nextHop];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
@@ -234,10 +234,12 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         fuattr);
     Future::safe_release(f);
     event_append_map_[cu->uuid_] = e;
-  }
-  verify(!e->IsReady());
+  
+    verify(!e->IsReady());
 
-  e->ongoingPickedPath = pathIdx;
+    e->ongoingPickedPath = pathIdx;
+    e->uuid_ = cu->uuid_;
+  }
   return e;
 }
 #else

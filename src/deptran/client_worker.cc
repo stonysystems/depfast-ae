@@ -329,7 +329,7 @@ void ClientWorker::Work() {
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
-    sleep(1);
+    sleep(3);
     if (prev == (int) sp_n_tx_done_.value_) {
       Log_info("no progress. exit.");
       break;

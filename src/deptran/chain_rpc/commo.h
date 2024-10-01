@@ -107,6 +107,8 @@ class ChainRPCAppendQuorumEvent: public QuorumEvent {
 
     // A message between commo.cpp and coordinator.cc
     int ongoingPickedPath = -1;
+    // uuid_ for a path
+    std::string uuid_ = "";
 
     void FeedResponse(bool appendOK, uint64_t index, std::string ip_addr = "") {
         if (appendOK) {

@@ -498,6 +498,9 @@ void ChainRPCServer::StartTimer()
             // Parameter ip doesn't matter.
             commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(true, cu_cmd_ptr->lastLogIndex_[i], "");
           }
+          for (int i=0; i<cu_cmd_ptr->acc_rej_; i++) {
+            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(false, cu_cmd_ptr->lastLogIndex_[i], "");
+          }
          }else {
           Log_info("Fail to update the event mapping");
          }
@@ -512,7 +515,8 @@ void ChainRPCServer::StartTimer()
         std::lock_guard<std::recursive_mutex> lock(mtx_);
 
         if ((leaderCurrentTerm >= this->currentTerm) &&
-                (leaderPrevLogIndex <= this->lastLogIndex)) {
+                (leaderPrevLogIndex <= this->lastLogIndex) &&
+                this->lastLogIndex == leaderPrevLogIndex) {
             if (leaderCurrentTerm > this->currentTerm) {
                 currentTerm = leaderCurrentTerm;
                 Log_debug("server %d, set to be follower", loc_id_ ) ;
