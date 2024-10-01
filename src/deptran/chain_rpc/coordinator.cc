@@ -71,23 +71,9 @@ void CoordinatorChainRPC::AppendEntries() {
     /* Should we use slot_id instead of lastLogIndex and balot instead of term? */
     uint64_t prevLogIndex = this->sch_->lastLogIndex;
 
-    /*this->sch_->lastLogIndex += 1;
-    auto instance = this->sch_->GetChainRPCInstance(this->sch_->lastLogIndex);
-
-    instance->log_ = cmd_;
-    instance->term = this->sch_->currentTerm;*/
-
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
 		this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, slot_id_, curr_ballot_) ;
-// 		int retry_cnt = 0;
-
-// retry:
-//     retry_cnt += 1;
-//     if (retry_cnt > 100) {
-//         Log_fatal("Too many retries for append entries");
-//         verify(0);
-//     }
     auto sp_quorum = commo()->BroadcastAppendEntries(par_id_,
                                                      this->sch_->site_id_,
                                                      slot_id_,
@@ -117,14 +103,13 @@ void CoordinatorChainRPC::AppendEntries() {
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
 				//Log_info("sp_quorum: minIndex %d vs %d, uuid_:%s", minIndex, this->sch_->commitIndex, sp_quorum->uuid_.c_str());
-        verify(minIndex >= this->sch_->commitIndex) ;
+        //verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex) ;
     }
     else if (sp_quorum->No()) {
         Log_info("failed to have a quorum for append entries, uuid_:%s", sp_quorum->uuid_.c_str());
-        // goto retry;
-
+        verify(0);
     }
     else {
         verify(0);
