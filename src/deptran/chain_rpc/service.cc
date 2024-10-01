@@ -118,16 +118,9 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
-    // Best-effort implementation
-    // If the previous log index is not received, wait for a while before exection this request.
+    // Best-effort: in current implementation, we don't really do a retry for ChainRPC.
     auto cux = const_cast<MarshallDeputy&>(cu_cmd).sp_data_;
     auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cux);
-    // for (auto it = sequencer_tracker_.begin(); it != sequencer_tracker_.end(); it++) {
-    //     Log_info("   Tracker: %d", it->first);
-    // }
-    // Log_info("Best-effort in-order an index: %d, ControlUnit:%s", leaderPrevLogIndex, cu_cmd_ptr->toString().c_str());
-    // 
-    // TODO: remove outdated entries in the sequencer_tracker_.
     while (leaderPrevLogIndex > 0) {
       if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
         Reactor::CreateSpEvent<NeverEvent>()->Wait(10);
@@ -136,6 +129,7 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
       }
     }
     sequencer_tracker_[leaderPrevLogIndex] = 1;
+    sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
 
     Coroutine::CreateRun([&] () {
       sched_->OnAppendEntriesChain(slot,

@@ -550,7 +550,6 @@ void ChainRPCServer::StartTimer()
         }
 
         cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
-        
         // Forward this request and accumulated results to the next hop.
         // Note that the next hop can be the leader or next follower in the chain or both.
         // We have to propogate requests to all replicas in the chain.
@@ -567,6 +566,7 @@ void ChainRPCServer::StartTimer()
           hops.push_back(secondHop);
         }
 
+        std::sort(hops.begin(), hops.end()); // Always try to send to the leader first.
         for (int i=0; i<hops.size(); i++) {
           int nextHop = hops[i];
           
