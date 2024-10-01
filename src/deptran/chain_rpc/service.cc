@@ -118,6 +118,7 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
+#ifdef IN_ORDER_ENABLED
     // Best-effort: in current implementation, we don't really do a retry for ChainRPC.
     auto cux = const_cast<MarshallDeputy&>(cu_cmd).sp_data_;
     auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cux);
@@ -130,6 +131,7 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
     }
     sequencer_tracker_[leaderPrevLogIndex] = 1;
     sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
+#endif
 
     Coroutine::CreateRun([&] () {
       sched_->OnAppendEntriesChain(slot,

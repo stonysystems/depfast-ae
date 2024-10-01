@@ -633,7 +633,7 @@ void ChainRPCServer::StartTimer()
     in_applying_logs_ = true;
     
     for (slotid_t id = executeIndex + 1; id <= commitIndex; id++) {
-        auto next_instance = GetChainRPCInstance(id);
+        auto next_instance = GetChainRPCInstance(id); // Strong assumption that the log is not null from AppendEntries, but it is not always true.
         if (next_instance->log_) {
             Log_info("chainRPC par:%d loc:%d executed slot %lu", partition_id_, loc_id_, id);
             app_next_(*next_instance->log_);
