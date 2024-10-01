@@ -180,9 +180,9 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     cu->AppendResponseForAppendEntries(1, currentTerm, prevLogIndex + 1);
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
-    int nextHop = cu->GetNextHopWithUpdate();
+    int nextHop = cu->Increment2NextHop();
     Log_info("ControlUnit: %s", cu->toString().c_str());
-    auto &p = proxies[path[nextHop]];
+    auto &p = proxies[nextHop];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
     auto cli_it = rpc_clients_.find(follower_id);

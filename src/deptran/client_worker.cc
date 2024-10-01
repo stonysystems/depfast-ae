@@ -323,12 +323,18 @@ void ClientWorker::Work() {
     all_done_ = 1;
   })));
 
+  int prev = (int) sp_n_tx_done_.value_;
   while (all_done_ == 0) {
-    Log_info("wait for finish... n_ceased_cleints: %d,  "
+    Log_info("wait for finish... n_ceased_clients: %d,  "
               "n_issued: %d, n_done: %d, n_created_coordinator: %d",
               (int) n_ceased_client_.value_, (int) n_tx_issued_,
               (int) sp_n_tx_done_.value_, (int) created_coordinators_.size());
-    sleep(5);
+    sleep(1);
+    if (prev == (int) sp_n_tx_done_.value_) {
+      Log_info("no progress. exit.");
+      break;
+    }
+    prev = (int) sp_n_tx_done_.value_;
   }
 
   if (failover_server_quit_ && !*failover_server_quit_) {

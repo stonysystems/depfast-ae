@@ -489,7 +489,7 @@ void ChainRPCServer::StartTimer()
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
-        Log_info("ControlUnit:%s", cu_cmd_ptr->toString().c_str());
+        Log_info("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
          // If the leader receives an accumulated results from the followers
          // We should feed a accumulated results back to the coordinator to make a final decision.
@@ -508,14 +508,6 @@ void ChainRPCServer::StartTimer()
         Log_info("ChainRPC scheduler on append entries for "
                 "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
                 this->loc_id_, slot_id, leaderPrevLogIndex, this->lastLogIndex, IsLeader());
-
-        if ((leaderCurrentTerm >= this->currentTerm) &&
-                (leaderPrevLogIndex <= this->lastLogIndex)) {
-        }else {
-          // In ChainRPC optimization, we do a best-effort to make in-order execution optimistically within a timeout.
-          Log_info("Best-effort waiting for in-order execution");
-          Reactor::CreateSpEvent<NeverEvent>()->Wait(1*1000); // wait for 1ms
-        }
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
 
@@ -558,28 +550,53 @@ void ChainRPCServer::StartTimer()
         }
 
         cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
-        int nextHop = cu_cmd_ptr->GetNextHopWithUpdate();
-        Log_info("next hop: %d, for path: %s", nextHop, cu_cmd_ptr->uuid_.c_str());
         
         // Forward this request and accumulated results to the next hop.
-        auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
-        FutureAttr fuattr;
-        fuattr.callback = [this] (Future* fu) { 
-          // Do nothing...
-        };
-        MarshallDeputy md(cmd);
-        MarshallDeputy cu_md(cu_cmd);
-        auto f = proxy->async_AppendEntriesChain(slot_id,
-                                    ballot,
-                                    currentTerm,
-                                    leaderPrevLogIndex,
-                                    leaderPrevLogTerm,
-                                    commitIndex,
-                                    dep_id,
-                                    md,
-                                    cu_md,
-                                    fuattr);
-        Future::safe_release(f);
+        // Note that the next hop can be the leader or next follower in the chain or both.
+        // We have to propogate requests to all replicas in the chain.
+        vector<int> hops ;
+        int firstHop = cu_cmd_ptr->Increment2NextHop(); // Jump to the next hop.
+        hops.push_back(firstHop);
+        int secondHop = firstHop; // If jump to the leader early.
+        
+        if (!cu_cmd_ptr->return_leader_ && cu_cmd_ptr->RegisterEarlyTerminate()) {
+          secondHop = 0;
+        }
+
+        if (secondHop != firstHop) {
+          hops.push_back(secondHop);
+        }
+
+        for (int i=0; i<hops.size(); i++) {
+          int nextHop = hops[i];
+          
+          if (nextHop == 0) {
+            if (cu_cmd_ptr->return_leader_ == 1) {
+              continue; 
+            }
+            cu_cmd_ptr->return_leader_ = 1;
+          }
+          Log_info("Jump to next hop: %d, ControlUnit: %s", nextHop, cu_cmd_ptr->toString().c_str());
+
+          auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+          FutureAttr fuattr;
+          fuattr.callback = [this] (Future* fu) { 
+            // Do nothing...
+          };
+          MarshallDeputy md(cmd);
+          MarshallDeputy cu_md(cu_cmd);
+          auto f = proxy->async_AppendEntriesChain(slot_id,
+                                      ballot,
+                                      currentTerm,
+                                      leaderPrevLogIndex,
+                                      leaderPrevLogTerm,
+                                      commitIndex,
+                                      dep_id,
+                                      md,
+                                      cu_md,
+                                      fuattr);
+          Future::safe_release(f);
+        }
         cb();
     }
 

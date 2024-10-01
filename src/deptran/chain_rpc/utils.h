@@ -62,6 +62,7 @@ namespace janus {
         std::string uuid_;
         // Index of the current path in paths within the partition.
         int pathIdx_;
+        int return_leader_;
 
         ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
             total_partitions_ = 0;
@@ -69,6 +70,7 @@ namespace janus {
             acc_rej_ = 0;
             toIndex_ = 0;
             uuid_ = generateUUID4();
+            return_leader_ = 0;
         }
         virtual ~ControlUnit() { }
         Marshal& ToMarshal(Marshal&m) const {
@@ -76,6 +78,8 @@ namespace janus {
             m << acc_ack_;
             m << acc_rej_;
             m << pathIdx_;
+            m << toIndex_;
+            m << return_leader_;
             m << (int32_t) path_.size();
             for (auto p : path_) {
                 m << p;
@@ -102,6 +106,8 @@ namespace janus {
             m >> acc_ack_;
             m >> acc_rej_;
             m >> pathIdx_;
+            m >> toIndex_;
+            m >> return_leader_;
             int32_t sz;
             m >> sz;
             for (int i = 0; i < sz; i++) {
@@ -155,13 +161,19 @@ namespace janus {
         bool RegisterEarlyTerminate() {
             return acc_ack_ > 0.5 * total_partitions_ 
                     || acc_rej_ > 0.5 * total_partitions_
-                    || toIndex_ == path_.size() - 1;
+                    || IsTail();
         }
 
-        int GetNextHopWithUpdate() {
+        int Increment2NextHop() {
             toIndex_++;
-            // If we can terminate earlier, return back to the leader immediately, otherwise forward to the next server.
-            return RegisterEarlyTerminate()? 0 : path_[toIndex_];
+            return path_[toIndex_];
+        }
+
+        bool IsTail() {
+            // [0, 1, 2, 0]
+            //           ^ toIndex_ = 3, path_.size() = 4
+            // if toIndex == path.size() - 1, then it is the tail.
+            return toIndex_ == path_.size() - 1;
         }
 
         std::string toString() const {
@@ -176,6 +188,12 @@ namespace janus {
             oss << ", nextHop: " << path_[toIndex_] ;
             oss << ", total_partitions: " << total_partitions_;
             oss << ", acc_ack: " << acc_ack_ << ", acc_rej: " << acc_rej_;
+            oss << ", return_early: " << return_leader_;
+            oss << ", appendOK_: [";
+            for (int i=0; i<appendOK_.size(); i++) {
+                oss << appendOK_[i] << ", ";
+            }
+            oss << "]";
         return oss.str();
     }
 
