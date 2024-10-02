@@ -2,6 +2,8 @@
 #include "service.h"
 #include "server.h"
 #include "utils.h"
+#include <chrono>
+
 
 namespace janus {
 
@@ -118,19 +120,24 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
                                         uint64_t *followerCurrentTerm,
                                         uint64_t *followerLastLogIndex,
                                         rrr::DeferredReply* defer) {
-#ifdef IN_ORDER_ENABLED
+#if defined(IN_ORDER_ENABLED) && defined(CHAIN_RPC_ENABLED)
     // Best-effort: in current implementation, we don't really do a retry for ChainRPC.
-    struct timespec start_;
-		clock_gettime(CLOCK_MONOTONIC, &start_);
+    auto start = std::chrono::high_resolution_clock::now();
     auto cux = const_cast<MarshallDeputy&>(cu_cmd).sp_data_;
     auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cux);
     // We don't want to wait for infinite time due to packet loss, however, it's 
     // it's very rare to happen in nowaday's advancing networking.
+    double timeout = 0.4; // unit: ms
     if (leaderPrevLogIndex > 0) {
-      for (int i=0; i<100; i++) {
+      while (true) {
         if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
-          Reactor::CreateSpEvent<NeverEvent>()->Wait(10);
+          Reactor::CreateSpEvent<NeverEvent>()->Wait(10); // it might takes more than 10ms to come back
         } else {
+          break;
+        }
+        std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+        if (duration.count() > timeout * 1000.0 * 1000.0) {
+          Log_track("[Break]Timeout for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
           break;
         }
       }
@@ -138,10 +145,8 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
 
     sequencer_tracker_[leaderPrevLogIndex] = 1;
     sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
-    struct timespec end_;
-		clock_gettime(CLOCK_MONOTONIC, &end_);
-    double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
-    Log_info("Time of append entries on service: %f ms, ControlUnit: %s", elapsed/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
+    std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+    Log_track("Time of append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
 #endif
 
     Coroutine::CreateRun([&] () {

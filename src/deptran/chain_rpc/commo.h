@@ -108,7 +108,8 @@ class ChainRPCAppendQuorumEvent: public QuorumEvent {
     // A message between commo.cpp and coordinator.cc
     int ongoingPickedPath = -1;
     // uuid_ for a path (Debugging purpose)
-    std::string uuid_ = "";
+    //std::string uuid_ = "";
+    int uniq_id_ = -1;
 
     void FeedResponse(bool appendOK, uint64_t index, std::string ip_addr = "") {
         if (appendOK) {
@@ -239,9 +240,10 @@ friend class ChainRPCProxy;
   // Update the response time of the path.
   void updateResponseTime(int par_id, double latency) ;
 
+  atomic<int> uniq_id_ = {0};
+
   // Event mapping in ChainRPC
-  // TODO: use int64_t instead of string, and erase the event after the event is completed.
-  unordered_map<std::string, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
+  unordered_map<int, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
 };
 
 } // namespace janus

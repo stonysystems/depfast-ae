@@ -489,11 +489,11 @@ void ChainRPCServer::StartTimer()
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
-        Log_info("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
+        Log_track("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.
-          auto e = commo->event_append_map_[cu_cmd_ptr->uuid_];
+          auto e = commo->event_append_map_[cu_cmd_ptr->uniq_id_];
           unordered_map<int, int> ackedReplicas;
           if (e) {
             for (int i=0; i<cu_cmd_ptr->appendOK_.size(); i++) {
@@ -511,14 +511,16 @@ void ChainRPCServer::StartTimer()
                   hops.push_back(i);
                 }
 
-                //Retry RPC
+                // Retry RPC
+                // What else we can do is to send out retry RPC one by one in a chain, instead of broadcasting.
                 auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(hops.size(), hops.size());
                 for (int i=0; i<hops.size(); i++) {
-                  Log_info("Retry request-id: %s", cu_cmd_ptr->uuid_.c_str());
+                  int uniq_id_ = cu_cmd_ptr->uniq_id_;
                   int nextHop = hops[i];
                   auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+
                   FutureAttr fuattr;
-                  fuattr.callback = [&e, nextHop, &retry_e, &ackedReplicas] (Future* fu) {
+                  fuattr.callback = [&e, nextHop, uniq_id_, &retry_e,  &ackedReplicas] (Future* fu) {
                     retry_e->VoteYes();
                     uint64_t accept = 0;
                     uint64_t term = 0;
@@ -530,7 +532,7 @@ void ChainRPCServer::StartTimer()
 
                     if (accept=1) {
                       e->FeedResponse(true, index, "");
-                      Log_info("Newly acked replica: %d in Retry", nextHop);
+                      Log_info("acked replica: %d in Retry, uniq_id_:%d", nextHop, uniq_id_);
                     }
                     ackedReplicas[nextHop] = 1;
                   };
@@ -561,9 +563,9 @@ void ChainRPCServer::StartTimer()
           return ;
         }
 
-        Log_info("ChainRPC scheduler on append entries for "
-                "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
-                this->loc_id_, slot_id, leaderPrevLogIndex, this->lastLogIndex, IsLeader());
+        Log_track("ChainRPC scheduler on append entries for "
+                 "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
+                 this->loc_id_, slot_id, leaderPrevLogIndex, this->lastLogIndex, IsLeader());
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
 
@@ -640,7 +642,7 @@ void ChainRPCServer::StartTimer()
             }
             cu_cmd_ptr->return_leader_ = 1;
           }
-          Log_info("Jump to next hop: %d, ControlUnit: %s", nextHop, cu_cmd_ptr->toString().c_str());
+          Log_track("Jump to next hop: %d, ControlUnit: %s", nextHop, cu_cmd_ptr->toString().c_str());
 
           auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
           FutureAttr fuattr;

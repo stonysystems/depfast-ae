@@ -19,8 +19,10 @@ static int volatile xx =
                                      return new ControlUnit;
                                    });
 
+// One instance per process
 ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
   _preAllocatePathsWithWeights();
+  Log_info("Initialize ChainRPCCommo");
 }
 
 shared_ptr<ChainRPCForwardQuorumEvent> ChainRPCCommo::SendForward(parid_t par_id, 
@@ -170,10 +172,12 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
 
   WAN_WAIT;
+  uniq_id_++;
 
   // Forward the request to the next hop in the path.
   {
     auto cu = make_shared<ControlUnit>();
+    cu->SetUniqueID(uniq_id_);
     cu->total_partitions_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
     cu->SetPath(pathIdx, path);
@@ -181,7 +185,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->Increment2NextHop();
-    Log_info("slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
+    Log_track("slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
     auto &p = proxies[nextHop];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
@@ -233,12 +237,12 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         cu_cmd,
                                         fuattr);
     Future::safe_release(f);
-    event_append_map_[cu->uuid_] = e;
+    event_append_map_[cu->uniq_id_] = e;
   
     verify(!e->IsReady());
 
     e->ongoingPickedPath = pathIdx;
-    e->uuid_ = cu->uuid_;
+    e->uniq_id_ = cu->uniq_id_;
   }
   return e;
 }
@@ -565,7 +569,7 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, double cur_response
                         min(1+max_change, changeRatio)); 
   weights[cur_i] = max(weights[cur_i], 0.01); // min weight is 1%
   weights[cur_i] = min(weights[cur_i], 0.9); // max weight is 90%
-  Log_info("Update weight from %f to %f, avg: %f, cur_response_time: %f, Weights: %s (not normalized), path_id: %d, len of pathResponeTime_: %d", prevW, weights[cur_i], avg, cur_response_time, _arrayToString(weights).c_str(), cur_i, pathResponeTime_[par_id].size());
+  Log_track("Update weight from %f to %f, avg: %f, cur_response_time: %f, Weights: %s (not normalized), path_id: %d, len of pathResponeTime_: %d", prevW, weights[cur_i], avg, cur_response_time, _arrayToString(weights).c_str(), cur_i, pathResponeTime_[par_id].size());
   // Normalize the probability array to ensure the sum is 1
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
   for (double& p : weights) {

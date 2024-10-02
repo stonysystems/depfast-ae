@@ -3,8 +3,8 @@
 #include "../constants.h"
 #include "coordinator.h"
 #include "commo.h"
-
 #include "server.h"
+#include <chrono>
 
 namespace janus {
 
@@ -87,27 +87,26 @@ void CoordinatorChainRPC::AppendEntries() {
                                                      this->sch_->commitIndex,
                                                      cmd_);
 
-		struct timespec start_;
-		clock_gettime(CLOCK_MONOTONIC, &start_);
+		auto start = std::chrono::high_resolution_clock::now();
     sp_quorum->Wait();
     Log_info("Completed waiting for append entries");
-		struct timespec end_;
-		clock_gettime(CLOCK_MONOTONIC, &end_);
+		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+    Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
 
-		double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
-    Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uuid_:%s", elapsed/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uuid_.c_str());
-    commo()->updateResponseTime(par_id_, elapsed);
-    commo()->updatePathWeights(par_id_, sp_quorum->ongoingPickedPath, elapsed);
+#ifdef CHAIN_RPC_ENABLED
+    commo()->updateResponseTime(par_id_, duration.count());
+    commo()->updatePathWeights(par_id_, sp_quorum->ongoingPickedPath, duration.count());
+#endif
 
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;
-				//Log_info("sp_quorum: minIndex %d vs %d, uuid_:%s", minIndex, this->sch_->commitIndex, sp_quorum->uuid_.c_str());
+				//Log_info("sp_quorum: minIndex %d vs %d", minIndex, this->sch_->commitIndex);
         //verify(minIndex >= this->sch_->commitIndex) ;
         committed_ = true;
         Log_debug("fpga-raft append commited loc:%d minindex:%d", loc_id_, minIndex) ;
     }
     else if (sp_quorum->No()) {
-        Log_info("failed to have a quorum for append entries, uuid_:%s", sp_quorum->uuid_.c_str());
+        Log_info("failed to have a quorum for append entries, uniq_id_:%d", sp_quorum->uniq_id_);
         verify(0);
     }
     else {

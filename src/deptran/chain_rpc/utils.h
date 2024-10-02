@@ -62,6 +62,8 @@ namespace janus {
         std::vector<int> path_; 
         // Debugging purpose, a random string to identify the control unit.
         std::string uuid_;
+        // Unique identifier for the control unit.
+        int uniq_id_;
         // Index of the current path in paths within the partition.
         int pathIdx_;
         int return_leader_;
@@ -71,9 +73,11 @@ namespace janus {
             acc_ack_ = 0;
             acc_rej_ = 0;
             toIndex_ = 0;
-            uuid_ = generateUUID4();
+            //uuid_ = generateUUID4();
+            uuid_ = "";
             return_leader_ = 0;
             isRetry = 0;
+            uniq_id_ = 0;
         }
         virtual ~ControlUnit() { }
         Marshal& ToMarshal(Marshal&m) const {
@@ -83,6 +87,7 @@ namespace janus {
             m << pathIdx_;
             m << toIndex_;
             m << isRetry;
+            m << uniq_id_;
             m << return_leader_;
             m << (int32_t) path_.size();
             for (auto p : path_) {
@@ -106,7 +111,7 @@ namespace janus {
             for (auto p : lastLogIndex_) {
                 m << p;
             }
-            m << uuid_.c_str();
+            //m << uuid_.c_str();
             return m;
         };
 
@@ -117,6 +122,7 @@ namespace janus {
             m >> pathIdx_;
             m >> toIndex_;
             m >> isRetry;
+            m >> uniq_id_;
             m >> return_leader_;
             int32_t sz;
             m >> sz;
@@ -155,7 +161,7 @@ namespace janus {
                 m >> p;
                 lastLogIndex_.push_back(p);
             }
-            m >> uuid_;
+            //m >> uuid_;
             return m;
         };
 
@@ -198,9 +204,14 @@ namespace janus {
             return toIndex_ == path_.size() - 1;
         }
 
+        void SetUniqueID(int id) {
+            uniq_id_ = id;
+        }
+
         std::string toString() const {
             std::ostringstream oss;
             oss << "UUID: " << uuid_;
+            oss << ", UniqID: " << uniq_id_;
             oss << ", PathIndex: " << pathIdx_;
             oss << ", Path: " ;
             for (int i=0; i<path_.size(); i++) {
