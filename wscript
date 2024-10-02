@@ -80,6 +80,7 @@ def configure(conf):
     _enable_simulate_wan(conf)
     _enable_db_checksum(conf)
     _enable_leaksan(conf)
+    _enable_chainrpc(conf)
 
     conf.env.append_value("CXXFLAGS", "-Wno-reorder")
     conf.env.append_value("CXXFLAGS", "-Wno-comment")
@@ -206,6 +207,11 @@ def _choose_compiler(conf):
     else:
         Logs.pprint("PINK", "use system default compiler")
 
+
+def _enable_chainrpc(conf):
+    conf.env.append_value("CXXFLAGS", "-DCHAIN_RPC_ENABLED".split())
+    conf.env.append_value("CXXFLAGS", "-DIN_ORDER_ENABLED".split())
+
 def _enable_rpc_s(conf):
     if Options.options.rpc_s:
         conf.env.append_value("CXXFLAGS", "-DRPC_STATISTICS")
@@ -302,6 +308,7 @@ def _enable_ipc(conf):
         Logs.pprint("PINK", "Use IPC instead of network socket")
         conf.env.append_value("CXXFLAGS", "-DUSE_IPC")
 
+
 def _enable_debug(conf):
     if Options.options.debug:
         Logs.pprint("PINK", "Debug support enabled")
@@ -314,8 +321,7 @@ def _enable_debug(conf):
                 "-ggdb -DLOG_INFO -rdynamic -fno-omit-frame-pointer".split())
         else:
             conf.env.append_value("CXXFLAGS", "-g -pthread -O2 -DNDEBUG  -DLOG_INFO".split())
-            conf.env.append_value("CXXFLAGS", "-DCHAIN_RPC_ENABLED".split())
-            conf.env.append_value("CXXFLAGS", "-DIN_ORDER_ENABLED".split())
+
 
 def _properly_split(args):
     if args == None:
