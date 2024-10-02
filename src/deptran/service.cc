@@ -75,7 +75,7 @@ void ClassicServiceImpl::Dispatch(const i64& cmd_id,
     if (!dtxn_sched()->Dispatch(cmd_id, sp, *output)) {
       *res = REJECT;
     }
-    Log_info("On server side: Dispatch status: %d (Leader server)", *res);
+    Log_track("On server side: Dispatch status: %d (Leader server)", *res);
     *coro_id = Coroutine::CurrentCoroutine()->id;
     defer->reply();
   // }, __FILE__, cmd_id);

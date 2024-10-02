@@ -266,7 +266,7 @@ void SchedulerClassic::DoAbort(Tx& tx_box) {
 
 // This function will be invoked if a request is executed.
 int SchedulerClassic::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
-  Log_info("CommitReplicated:%d on server side\n", loc_id_);
+  Log_track("CommitReplicated:%d on server side\n", loc_id_);
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto tx_id = tpc_commit_cmd.tx_id_;
   auto sp_tx = dynamic_pointer_cast<TxClassic>(GetOrCreateTx(tx_id));

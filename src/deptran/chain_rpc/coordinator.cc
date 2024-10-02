@@ -65,7 +65,7 @@ void CoordinatorChainRPC::AppendEntries() {
     verify(!in_append_entries);
     // verify(this->sch_->IsLeader()); TODO del it yidawu
     in_append_entries = true;
-    Log_info("fpga-raft coordinator broadcasts append entries, "
+    Log_track("fpga-raft coordinator broadcasts append entries, "
                   "par_id_: %lu, slot_id: %llu, lastLogIndex: %d",
               par_id_, slot_id_, this->sch_->lastLogIndex);
     /* Should we use slot_id instead of lastLogIndex and balot instead of term? */
@@ -89,9 +89,9 @@ void CoordinatorChainRPC::AppendEntries() {
 
 		auto start = std::chrono::high_resolution_clock::now();
     sp_quorum->Wait();
-    Log_info("Completed waiting for append entries");
+    Log_track("Completed waiting for append entries");
 		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
-    Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
+    Log_track("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
 
 #ifdef CHAIN_RPC_ENABLED
     commo()->updateResponseTime(par_id_, duration.count());
@@ -168,7 +168,6 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-        Log_info("Broadcast a Decide");
         LeaderLearn();
       } else {
         // verify(0);

@@ -317,7 +317,7 @@ void CoordinatorClassic::DispatchAck(phase_t phase,
               txn->id_, txn->n_pieces_dispatched_, txn->GetNPieceAll());
     DispatchAsync();
   } else if (AllDispatchAcked()) {
-    Log_info("receive all start acks, txn_id: %llx; START PREPARE",
+    Log_track("receive all start acks, txn_id: %llx; START PREPARE",
               txn->id_);
     GotoNextPhase(); // Mark this request is completed on client side - 1.
   }

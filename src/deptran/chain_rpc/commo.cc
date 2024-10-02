@@ -468,6 +468,7 @@ ChainRPCCommo::BroadcastVote2FPGA(parid_t par_id,
   return e;
 }
 
+// Exponential to # of replicas, it's ok for 3/5 replicas (2 and 16 paths). 
 std::vector<std::vector<int>> _generatePermutations(int n) {
     std::vector<std::vector<int>> permutations;
     std::vector<int> nums(n);
@@ -506,7 +507,6 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
     auto permutations = _generatePermutations(n-1);
     double intial_w = 1.0 / permutations.size();
 
-    int id = 0;
     for(const auto& perm : permutations) {
         vector<int> path;
         // The first or last node is always leader, and start from or end with the leader.
@@ -516,7 +516,6 @@ void ChainRPCCommo::_preAllocatePathsWithWeights() {
         }
         path.push_back(0);
         pathsW[par_id].push_back(std::make_tuple(path, intial_w));
-        id++;
     }
   }
 }
