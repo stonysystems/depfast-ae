@@ -94,9 +94,8 @@ void CoordinatorChainRPC::AppendEntries() {
 		struct timespec end_;
 		clock_gettime(CLOCK_MONOTONIC, &end_);
 
-		// quorum_events_.push_back(sp_quorum);
 		double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
-    Log_info("Time of append entries on server: %f, path_id: %d, uuid_:%s", elapsed, sp_quorum->ongoingPickedPath, sp_quorum->uuid_.c_str());
+    Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uuid_:%s", elapsed/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uuid_.c_str());
     commo()->updateResponseTime(par_id_, elapsed);
     commo()->updatePathWeights(par_id_, sp_quorum->ongoingPickedPath, elapsed);
 

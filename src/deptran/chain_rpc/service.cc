@@ -120,19 +120,28 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
                                         rrr::DeferredReply* defer) {
 #ifdef IN_ORDER_ENABLED
     // Best-effort: in current implementation, we don't really do a retry for ChainRPC.
+    struct timespec start_;
+		clock_gettime(CLOCK_MONOTONIC, &start_);
     auto cux = const_cast<MarshallDeputy&>(cu_cmd).sp_data_;
     auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cux);
-    while (leaderPrevLogIndex > 0) {
-      if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
-        Reactor::CreateSpEvent<NeverEvent>()->Wait(10);
-      } else {
-        break;
-      }
-    }
     // We don't want to wait for infinite time due to packet loss, however, it's 
     // it's very rare to happen in nowaday's advancing networking.
+    if (leaderPrevLogIndex > 0) {
+      for (int i=0; i<100; i++) {
+        if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
+          Reactor::CreateSpEvent<NeverEvent>()->Wait(10);
+        } else {
+          break;
+        }
+      }
+    }
+
     sequencer_tracker_[leaderPrevLogIndex] = 1;
     sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
+    struct timespec end_;
+		clock_gettime(CLOCK_MONOTONIC, &end_);
+    double elapsed = (end_.tv_sec-start_.tv_sec)*1000000000 + end_.tv_nsec-start_.tv_nsec;
+    Log_info("Time of append entries on service: %f ms, ControlUnit: %s", elapsed/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
 #endif
 
     Coroutine::CreateRun([&] () {

@@ -315,6 +315,7 @@ def _enable_debug(conf):
         else:
             conf.env.append_value("CXXFLAGS", "-g -pthread -O2 -DNDEBUG  -DLOG_INFO".split())
             conf.env.append_value("CXXFLAGS", "-DCHAIN_RPC_ENABLED".split())
+            conf.env.append_value("CXXFLAGS", "-DIN_ORDER_ENABLED".split())
 
 def _properly_split(args):
     if args == None:
