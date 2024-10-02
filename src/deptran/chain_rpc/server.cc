@@ -532,7 +532,8 @@ void ChainRPCServer::StartTimer()
 
                     if (accept=1) {
                       e->FeedResponse(true, index, "");
-                      Log_info("acked replica: %d in Retry, uniq_id_:%d", nextHop, uniq_id_);
+                      // TODO: retry should not be a lot
+                      Log_track("acked replica: %d in Retry, uniq_id_:%d", nextHop, uniq_id_);
                     }
                     ackedReplicas[nextHop] = 1;
                   };
