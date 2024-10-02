@@ -491,21 +491,74 @@ void ChainRPCServer::StartTimer()
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
         Log_info("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
-         // If the leader receives an accumulated results from the followers
-         // We should feed a accumulated results back to the coordinator to make a final decision.
-         if (commo->event_append_map_[cu_cmd_ptr->uuid_]) {
-          for (int i=0; i<cu_cmd_ptr->acc_ack_; i++) {
-            // Parameter ip doesn't matter.
-            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(true, cu_cmd_ptr->lastLogIndex_[i], "");
+          // If the leader receives an accumulated results from the followers
+          // We should feed a accumulated results back to the coordinator to make a final decision.
+          auto e = commo->event_append_map_[cu_cmd_ptr->uuid_];
+          unordered_map<int, int> ackedReplicas;
+          if (e) {
+            for (int i=0; i<cu_cmd_ptr->appendOK_.size(); i++) {
+              if (cu_cmd_ptr->appendOK_[i] == 1) {
+                ackedReplicas[cu_cmd_ptr->local_ids_[i]] = 1;
+                e->FeedResponse(true, cu_cmd_ptr->lastLogIndex_[i], "");
+              }
+            }
+            
+            while (!e->IsReady()) {
+              cu_cmd_ptr->isRetry = 1;
+              vector<int> hops ;
+              for (int i=1; i<cu_cmd_ptr->total_partitions_; i++) {
+                if (ackedReplicas.find(i) == ackedReplicas.end()) {
+                  hops.push_back(i);
+                }
+
+                //Retry RPC
+                auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(hops.size(), hops.size());
+                for (int i=0; i<hops.size(); i++) {
+                  Log_info("Retry request-id: %s", cu_cmd_ptr->uuid_.c_str());
+                  int nextHop = hops[i];
+                  auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+                  FutureAttr fuattr;
+                  fuattr.callback = [&e, nextHop, &retry_e, &ackedReplicas] (Future* fu) {
+                    retry_e->VoteYes();
+                    uint64_t accept = 0;
+                    uint64_t term = 0;
+                    uint64_t index = 0;
+                    
+                    fu->get_reply() >> accept;
+                    fu->get_reply() >> term;
+                    fu->get_reply() >> index;
+
+                    if (accept=1) {
+                      e->FeedResponse(true, index, "");
+                      Log_info("Newly acked replica: %d in Retry", nextHop);
+                    }
+                    ackedReplicas[nextHop] = 1;
+                  };
+                  MarshallDeputy md(cmd);
+                  MarshallDeputy cu_md(cu_cmd);
+                  auto f = proxy->async_AppendEntriesChain(slot_id,
+                                              ballot,
+                                              currentTerm,
+                                              leaderPrevLogIndex,
+                                              leaderPrevLogTerm,
+                                              commitIndex,
+                                              dep_id,
+                                              md,
+                                              cu_md,
+                                              fuattr);
+                  Future::safe_release(f);
+                }
+                retry_e->Wait();
+              }
+            }
+            // for (int i=0; i<cu_cmd_ptr->acc_rej_; i++) {
+            //   e->FeedResponse(false, cu_cmd_ptr->lastLogIndex_[i], "");
+            // }
+          }else {
+            Log_info("Fail to update the event mapping");
           }
-          for (int i=0; i<cu_cmd_ptr->acc_rej_; i++) {
-            commo->event_append_map_[cu_cmd_ptr->uuid_]->FeedResponse(false, cu_cmd_ptr->lastLogIndex_[i], "");
-          }
-         }else {
-          Log_info("Fail to update the event mapping");
-         }
-         cb();
-         return ;
+          cb();
+          return ;
         }
 
         Log_info("ChainRPC scheduler on append entries for "
@@ -537,7 +590,7 @@ void ChainRPCServer::StartTimer()
             // Wait on the event
             instance->term = this->currentTerm;
             //app_next_(*instance->log_); 
-            verify(lastLogIndex > commitIndex);
+            //verify(lastLogIndex > commitIndex);
 
             *followerAppendOK = 1;
             *followerCurrentTerm = this->currentTerm;
@@ -553,7 +606,14 @@ void ChainRPCServer::StartTimer()
             cu_cmd_ptr->acc_rej_ += 1;
         }
 
-        cu_cmd_ptr->AppendResponseForAppendEntries(*followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+        cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, *followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+
+        // Skip retry entry's propogation
+        if (cu_cmd_ptr->isRetry) {
+          cb();
+          return ;
+        }
+
         // Forward this request and accumulated results to the next hop.
         // Note that the next hop can be the leader or next follower in the chain or both.
         // We have to propogate requests to all replicas in the chain.

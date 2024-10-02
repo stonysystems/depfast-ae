@@ -50,9 +50,11 @@ namespace janus {
         int acc_ack_;
         int acc_rej_;
         // Accumulated responses for AppendEntries each server has received.
+        vector <int> local_ids_;
         vector <uint64_t> appendOK_;
         vector <uint64_t> currentTerm_;
         vector <uint64_t> lastLogIndex_;
+        int isRetry; // 0: no retry, 1: retry
 
         // Path for the current request.
         // If total_partitions_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
@@ -71,6 +73,7 @@ namespace janus {
             toIndex_ = 0;
             uuid_ = generateUUID4();
             return_leader_ = 0;
+            isRetry = 0;
         }
         virtual ~ControlUnit() { }
         Marshal& ToMarshal(Marshal&m) const {
@@ -79,9 +82,15 @@ namespace janus {
             m << acc_rej_;
             m << pathIdx_;
             m << toIndex_;
+            m << isRetry;
             m << return_leader_;
             m << (int32_t) path_.size();
             for (auto p : path_) {
+                m << p;
+            }
+
+            m << (int32_t) local_ids_.size();
+            for (auto p : local_ids_) {
                 m << p;
             }
 
@@ -107,6 +116,7 @@ namespace janus {
             m >> acc_rej_;
             m >> pathIdx_;
             m >> toIndex_;
+            m >> isRetry;
             m >> return_leader_;
             int32_t sz;
             m >> sz;
@@ -114,6 +124,14 @@ namespace janus {
                 int p;
                 m >> p;
                 path_.push_back(p);
+            }
+
+            int32_t sz5;
+            m >> sz5;
+            for (int i = 0; i < sz5; i++) {
+                int p;
+                m >> p;
+                local_ids_.push_back(p);
             }
 
             int32_t sz2;
@@ -141,7 +159,11 @@ namespace janus {
             return m;
         };
 
-        void AppendResponseForAppendEntries(uint64_t appendOK, uint64_t currentTerm, uint64_t lastLogIndex) {
+        void AppendResponseForAppendEntries(int loc_id_,
+                                            uint64_t appendOK, 
+                                            uint64_t currentTerm, 
+                                            uint64_t lastLogIndex) {
+            local_ids_.push_back(loc_id_);
             appendOK_.push_back(appendOK);
             currentTerm_.push_back(currentTerm);
             lastLogIndex_.push_back(lastLogIndex);
@@ -189,9 +211,10 @@ namespace janus {
             oss << ", total_partitions: " << total_partitions_;
             oss << ", acc_ack: " << acc_ack_ << ", acc_rej: " << acc_rej_;
             oss << ", return_early: " << return_leader_;
+            oss << ", isRetry: " << isRetry;
             oss << ", appendOK_: [";
             for (int i=0; i<appendOK_.size(); i++) {
-                oss << appendOK_[i] << ", ";
+                oss << "(" << local_ids_[i] << " -> " << appendOK_[i] << "), ";
             }
             oss << "]";
         return oss.str();

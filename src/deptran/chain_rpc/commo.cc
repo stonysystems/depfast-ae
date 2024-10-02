@@ -177,7 +177,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     cu->total_partitions_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
     cu->SetPath(pathIdx, path);
-    cu->AppendResponseForAppendEntries(1, currentTerm, prevLogIndex + 1);
+    cu->AppendResponseForAppendEntries(0, 1, currentTerm, prevLogIndex + 1);
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->Increment2NextHop();

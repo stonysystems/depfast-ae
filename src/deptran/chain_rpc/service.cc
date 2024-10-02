@@ -129,6 +129,8 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
         break;
       }
     }
+    // We don't want to wait for infinite time due to packet loss, however, it's 
+    // it's very rare to happen in nowaday's advancing networking.
     sequencer_tracker_[leaderPrevLogIndex] = 1;
     sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
 #endif
