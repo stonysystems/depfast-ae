@@ -87,16 +87,10 @@ void CoordinatorChainRPC::AppendEntries() {
                                                      this->sch_->commitIndex,
                                                      cmd_);
 
-		auto start = std::chrono::high_resolution_clock::now();
+		// auto start = std::chrono::high_resolution_clock::now();
     sp_quorum->Wait(1000*1000);
-    Log_track("Completed waiting for append entries");
-		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
-    Log_track("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
-
-#ifdef CHAIN_RPC_ENABLED
-    commo()->updateResponseTime(par_id_, duration.count());
-    commo()->updatePathWeights(par_id_, sp_quorum->ongoingPickedPath, duration.count());
-#endif
+		// std::chrono::duration<double, std::nano> duration = end - start; // in nanoseconds
+    // Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
 
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;

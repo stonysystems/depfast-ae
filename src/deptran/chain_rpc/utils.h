@@ -55,6 +55,7 @@ namespace janus {
         vector <uint64_t> currentTerm_;
         vector <uint64_t> lastLogIndex_;
         int isRetry; // 0: no retry, 1: retry
+        uint64_t init_time; // The time when the control unit is initialized in ns.
 
         // Path for the current request.
         // If total_partitions_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
@@ -68,6 +69,13 @@ namespace janus {
         int pathIdx_;
         int return_leader_;
 
+        uint64_t GetNowInns() {
+            auto now = std::chrono::system_clock::now();
+            auto now_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(now);
+            auto value = now_ns.time_since_epoch();
+            return (uint64_t) value.count();
+        }
+
         ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
             total_partitions_ = 0;
             acc_ack_ = 0;
@@ -78,6 +86,7 @@ namespace janus {
             return_leader_ = 0;
             isRetry = 0;
             uniq_id_ = 0;
+            init_time = GetNowInns();
         }
         virtual ~ControlUnit() { }
         Marshal& ToMarshal(Marshal&m) const {
@@ -87,6 +96,7 @@ namespace janus {
             m << pathIdx_;
             m << toIndex_;
             m << isRetry;
+            m << init_time;
             m << uniq_id_;
             m << return_leader_;
             m << (int32_t) path_.size();
@@ -122,6 +132,7 @@ namespace janus {
             m >> pathIdx_;
             m >> toIndex_;
             m >> isRetry;
+            m >> init_time;
             m >> uniq_id_;
             m >> return_leader_;
             int32_t sz;
@@ -212,6 +223,7 @@ namespace janus {
             std::ostringstream oss;
             oss << "UUID: " << uuid_;
             oss << ", UniqID: " << uniq_id_;
+            oss << ", init_time: " << init_time;
             oss << ", PathIndex: " << pathIdx_;
             oss << ", Path: " ;
             for (int i=0; i<path_.size(); i++) {

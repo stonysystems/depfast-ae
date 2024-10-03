@@ -485,12 +485,19 @@ void ChainRPCServer::StartTimer()
                                      uint64_t *followerCurrentTerm,
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
-        
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
         Log_track("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
+          // Skip first several seconds warmup time.
+          uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
+          if (std::chrono::high_resolution_clock::now() - commo->initializtion_time > std::chrono::seconds(5)) {
+            commo->updateResponseTime(partition_id_, cu_cmd_ptr->pathIdx_, end_in_ns-cu_cmd_ptr->init_time);
+            commo->updatePathWeights(partition_id_, cu_cmd_ptr->pathIdx_,  end_in_ns-cu_cmd_ptr->init_time);
+          }
+          Log_info("Leader received back: %f ms, path_id: %d", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_);
+
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.
           auto e = commo->event_append_map_[cu_cmd_ptr->uniq_id_];
@@ -554,9 +561,6 @@ void ChainRPCServer::StartTimer()
                 retry_e->Wait();
               }
             }
-            // for (int i=0; i<cu_cmd_ptr->acc_rej_; i++) {
-            //   e->FeedResponse(false, cu_cmd_ptr->lastLogIndex_[i], "");
-            // }
           }else {
             Log_info("Fail to update the event mapping");
           }

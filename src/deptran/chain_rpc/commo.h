@@ -4,6 +4,7 @@
 #include "../constants.h"
 #include "../communicator.h"
 #include <deque>
+#include <chrono>
 
 namespace janus {
 
@@ -229,17 +230,20 @@ friend class ChainRPCProxy;
 
   // Utility functions
   // Execute on the leader
-  // par_id: [{path:[loc_id,...], weight:double},...]
-  unordered_map<parid_t, vector<std::tuple<vector<int>, double>>> pathsW ;
+  // par_id: [{path:[loc_id -> loc_id -> ...], weight:double},...]
+  unordered_map<parid_t, vector<std::tuple<vector<int>, double>>> pathsWeights;
   // We keep recent response times for each path for updating the weights.
-  unordered_map<parid_t, std::deque<double>> pathResponeTime_ ;
+  unordered_map<parid_t, vector<std::deque<uint64_t>>> pathResponeTime_ ;
+  chrono::time_point<chrono::high_resolution_clock> initializtion_time;
+
+  // Update the response time of the path.
+  void updateResponseTime(int par_id, int i, uint64_t latency) ;
   void _preAllocatePathsWithWeights();
+  void _initializePathResponseTime();
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
-  void updatePathWeights(int par_id, int i, double response_time) ;
-  // Update the response time of the path.
-  void updateResponseTime(int par_id, double latency) ;
-
+  void updatePathWeights(int par_id, int i, uint64_t response_time) ;
+  
   atomic<int> uniq_id_ = {0};
 
   // Event mapping in ChainRPC
