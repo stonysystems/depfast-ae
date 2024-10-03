@@ -88,7 +88,7 @@ void CoordinatorChainRPC::AppendEntries() {
                                                      cmd_);
 
 		auto start = std::chrono::high_resolution_clock::now();
-    sp_quorum->Wait();
+    sp_quorum->Wait(1000*1000);
     Log_track("Completed waiting for append entries");
 		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
     Log_track("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
@@ -109,7 +109,7 @@ void CoordinatorChainRPC::AppendEntries() {
         Log_info("failed to have a quorum for append entries, uniq_id_:%d", sp_quorum->uniq_id_);
         verify(0);
     }
-    else {
+    else { // TODO: if timeout, we retry it in different backward path.
         verify(0);
     }
 }

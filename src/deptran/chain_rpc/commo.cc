@@ -468,14 +468,39 @@ ChainRPCCommo::BroadcastVote2FPGA(parid_t par_id,
   return e;
 }
 
-// Exponential to # of replicas, it's ok for 3/5 replicas (2 and 16 paths). 
+// Exponential to # of replicas, it's ok for 3/5 replicas (2 and 24 paths). 
+// First half is the normal path, the second half is the reverse path.
+// permutations[i+halfSize] is the reverse of permutations[i].
 std::vector<std::vector<int>> _generatePermutations(int n) {
     std::vector<std::vector<int>> permutations;
     std::vector<int> nums(n);
-    for(int i = 0; i < n; ++i) nums[i] = i + 1;
+    
+    // Initialize nums as [1, 2, ..., n]
+    for (int i = 0; i < n; ++i) {
+        nums[i] = i + 1;
+    }
+
+    // Generate first half of permutations
+    int halfSize = 1;
+    for (int i = 2; i <= n; ++i) {
+        halfSize *= i;  // Calculate the factorial to get half the total permutations
+    }
+    halfSize /= 2;  // The first half size of the permutations
+
+    // Use next_permutation to fill the first half
+    int count = 0;
     do {
         permutations.push_back(nums);
-    } while(std::next_permutation(nums.begin(), nums.end()));
+        count++;
+    } while (std::next_permutation(nums.begin(), nums.end()) && count < halfSize);
+
+    // Fill the second half with the reverse of the first half
+    for (int i = 0; i < halfSize; ++i) {
+        std::vector<int> reversed = permutations[i];
+        std::reverse(reversed.begin(), reversed.end());
+        permutations.push_back(reversed);
+    }
+
     return permutations;
 }
 
@@ -604,7 +629,7 @@ void ChainRPCCommo::updateResponseTime(int par_id, double latency) {
 
         // If the latency is an outlier, do not add it
         if (latency < lowerBound || latency > upperBound) {
-            Log_info("Outlier detected: latency = %f, min = %f, max = %f, lowerBound = %f, upperBound = %f", latency, min_value, max_value, lowerBound, upperBound);
+            //Log_info("Outlier detected: latency = %f, min = %f, max = %f, lowerBound = %f, upperBound = %f", latency, min_value, max_value, lowerBound, upperBound);
             return; // Ignore the outlier
         } else {
             responseTimes.push_back(latency);
