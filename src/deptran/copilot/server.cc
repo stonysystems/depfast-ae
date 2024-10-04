@@ -1,6 +1,7 @@
 #include "server.h"
 #include "frame.h"
 #include "coordinator.h"
+#include <stack>
 
 // #define DEBUG
 #define WAIT_AT_UNCOMMIT

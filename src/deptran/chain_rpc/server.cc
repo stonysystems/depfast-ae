@@ -510,7 +510,7 @@ void ChainRPCServer::StartTimer()
               }
             }
             
-            while (!e->IsReady()) {
+            while (!e->IsReady()) { // A majority of acked replicas are ready.
               cu_cmd_ptr->isRetry = 1;
               vector<int> hops ;
               for (int i=1; i<cu_cmd_ptr->total_partitions_; i++) {
@@ -518,13 +518,12 @@ void ChainRPCServer::StartTimer()
                   hops.push_back(i);
                 }
 
-                // Retry RPC
-                // What else we can do is to send out retry RPC one by one in a chain, instead of broadcasting.
-                auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(hops.size(), hops.size());
+                // Retry RPC in a chained-based way.
                 for (int i=0; i<hops.size(); i++) {
                   int uniq_id_ = cu_cmd_ptr->uniq_id_;
                   int nextHop = hops[i];
                   auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+                  auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
 
                   FutureAttr fuattr;
                   fuattr.callback = [&e, nextHop, uniq_id_, &retry_e,  &ackedReplicas] (Future* fu) {
@@ -539,7 +538,6 @@ void ChainRPCServer::StartTimer()
 
                     if (accept=1) {
                       e->FeedResponse(true, index, "");
-                      // TODO: retry should not be a lot
                       Log_track("acked replica: %d in Retry, uniq_id_:%d", nextHop, uniq_id_);
                     }
                     ackedReplicas[nextHop] = 1;
@@ -557,8 +555,8 @@ void ChainRPCServer::StartTimer()
                                               cu_md,
                                               fuattr);
                   Future::safe_release(f);
+                  retry_e->Wait();
                 }
-                retry_e->Wait();
               }
             }
           }else {
