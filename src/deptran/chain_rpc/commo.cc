@@ -488,6 +488,7 @@ std::string _arrayToString(const std::vector<E>& data) {
 // Exponential to # of replicas, it's ok for 3/5 replicas (2 and 24 paths). 
 // First half is the normal path, the second half is the reverse path.
 // permutations[i+halfSize] is the reverse of permutations[i].
+// In path allocations, we always have a forward and backward path in pair to tolerate one-node failure.
 std::vector<std::vector<int>> _generatePermutations(int n) {
     std::vector<std::vector<int>> permutations;
     std::vector<int> nums(n);

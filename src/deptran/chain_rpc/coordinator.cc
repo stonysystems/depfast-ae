@@ -71,6 +71,7 @@ void CoordinatorChainRPC::AppendEntries() {
     /* Should we use slot_id instead of lastLogIndex and balot instead of term? */
     uint64_t prevLogIndex = this->sch_->lastLogIndex;
 
+failed_retry:
     /* TODO: get prevLogTerm based on the logs */
     uint64_t prevLogTerm = this->sch_->currentTerm;
 		this->sch_->SetLocalAppend(cmd_, &prevLogTerm, &prevLogIndex, slot_id_, curr_ballot_) ;
@@ -103,8 +104,9 @@ void CoordinatorChainRPC::AppendEntries() {
         Log_info("failed to have a quorum for append entries, uniq_id_:%d", sp_quorum->uniq_id_);
         verify(0);
     }
-    else { // TODO: if timeout, we retry it in different backward path.
-        verify(0);
+    else { // If timeout due to failed nodes, we retry it in different backward path with the same slot_id_.
+        void(0); // We should feed it to its previous backward path in failure. At this moment, we don't have a failover experiment.
+        goto failed_retry;
     }
 }
 
