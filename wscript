@@ -112,6 +112,7 @@ def configure(conf):
         # check python modules
 #        conf.check_python_module('tabulate')
 #        conf.check_python_module('yaml')
+        Logs.pprint("PINK", conf.env.CXXFLAGS)
 
 def build(bld):
     _depend("src/rrr/pylib/simplerpcgen/rpcgen.py",
