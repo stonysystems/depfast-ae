@@ -143,6 +143,7 @@ class Config {
   vector<SiteInfo> par_clients_;
   map<string, string> proc_host_map_;
   map<string, string> site_proc_map_;
+  int32_t n_msgsize;
 
   Sharding* sharding_;
 
@@ -236,6 +237,7 @@ class Config {
   uint32_t get_start_coordinator_id();
   int32_t benchmark();
   uint32_t GetNumPartition();
+  int32_t GetMsgSize();
   uint32_t get_scale_factor();
   int32_t get_max_retry();
   single_server_t get_single_server();

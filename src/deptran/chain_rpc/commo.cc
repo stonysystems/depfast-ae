@@ -625,7 +625,7 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_respon
                         min(1+max_change, changeRatio)); 
   weights[cur_i] = max(weights[cur_i], 0.01); // min weight is 1%
   weights[cur_i] = min(weights[cur_i], 0.9); // max weight is 90%
-  Log_info("Weights: %s", _arrayToString(weights).c_str());
+  Log_track("Weights: %s", _arrayToString(weights).c_str());
   // Normalize the probability array to ensure the sum is 1
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
   for (double& p : weights) {

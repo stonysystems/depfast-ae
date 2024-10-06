@@ -496,7 +496,7 @@ void ChainRPCServer::StartTimer()
             commo->updateResponseTime(partition_id_, cu_cmd_ptr->pathIdx_, end_in_ns-cu_cmd_ptr->init_time);
             commo->updatePathWeights(partition_id_, cu_cmd_ptr->pathIdx_,  end_in_ns-cu_cmd_ptr->init_time);
           }
-          Log_info("Leader received back: %f ms, path_id: %d", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_);
+          Log_track("Leader received back: %f ms, path_id: %d", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_);
 
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.

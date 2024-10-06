@@ -193,8 +193,6 @@ class TxData: public CmdData {
   }
   map<innid_t, TxWorkspace> inputs_ = {};  // input of each piece.
 
-  // Huge data to saturate the network.
-  std::string huge_dummy_data_;
  public:
   bool read_only_failed_ = false;
   double pre_time_ = 0.0;

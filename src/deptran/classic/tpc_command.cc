@@ -1,6 +1,7 @@
 #include "tpc_command.h"
 #include "../command.h"
 #include "../command_marshaler.h"
+#include "config.h"
 
 using namespace janus;
 
@@ -73,6 +74,9 @@ Marshal& TpcCommitCommand::ToMarshal(Marshal& m) const {
   m << ret_;
   MarshallDeputy md(cmd_);
   m << md;
+  std::string huge_dummy_data_;
+  huge_dummy_data_.resize(Config::GetConfig()->GetMsgSize());
+  m << huge_dummy_data_;
   return m;
 }
 
@@ -85,6 +89,8 @@ Marshal& TpcCommitCommand::FromMarshal(Marshal& m) {
     cmd_ = md.sp_data_;
   else
     verify(0);
+  std::string huge_dummy_data_;
+  m >> huge_dummy_data_;
   return m;
 }
 

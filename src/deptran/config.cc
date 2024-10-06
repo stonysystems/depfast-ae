@@ -319,6 +319,12 @@ void Config::LoadYML(std::string &filename) {
     n_concurrent_ = config["n_concurrent"].as<uint16_t>();
     Log_info("# of concurrent requests: %d", n_concurrent_);
   }
+  if (config["n_msgsize"]) {
+    n_msgsize = config["n_msgsize"].as<uint32_t>();
+    Log_info("# of msgsize: %d", n_msgsize);
+  }else{
+    n_msgsize = 0;
+  }
   if (config["n_parallel_dispatch"]) {
     n_parallel_dispatch_ = config["n_parallel_dispatch"].as<int32_t>();
   }
@@ -871,6 +877,10 @@ int Config::GetPartitionSize(parid_t partition_id) {
     return it->replicas.size();
   }
   verify(0);
+}
+
+int32_t Config::GetMsgSize() {
+  return n_msgsize;
 }
 
 std::vector<Config::SiteInfo>
