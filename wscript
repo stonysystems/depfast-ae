@@ -56,6 +56,7 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('--enable-chainrpc', dest='chainrpc', default=None)
     opt.add_option('--in-order-enforce', dest='inorderenforce', default=None)
+    opt.add_option('--enable-single-path', dest='singlepath', default=None)
     opt.parse_args();
 
 def configure(conf):
@@ -217,6 +218,10 @@ def _enable_chainrpc(conf):
         
     if Options.options.inorderenforce=="1":
         conf.env.append_value("CXXFLAGS", "-DIN_ORDER_ENABLED".split())
+
+    if Options.options.singlepath=="1":
+        conf.env.append_value("CXXFLAGS", "-DSINGLE_PATH_ENABLED".split())
+    
 
 def _enable_rpc_s(conf):
     if Options.options.rpc_s:

@@ -37,3 +37,4 @@ In most cases, all paths should have similar responsiveness, with roughly equal 
 3. design doc: https://docs.google.com/document/d/1TvQPeBAwDxJ3_JDbWtNSCYXOkr31lDOLb4rhkEBQvNk/edit?usp=sharing
 4. https://github.com/stonysystems/depfast-ae/tree/chainrpc
 5. https://colab.research.google.com/drive/115pZVaxnS8xZKmP5KNXduW5-IbFNxJnc?usp=sharing ChainRPC evaluation drawing in colab
+6. https://github.com/stonysystems/depfast-ae/compare/stonysystems:depfast-ae:0753b9...stonysystems:depfast-ae:chainrpc

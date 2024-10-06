@@ -24,7 +24,7 @@ experimenta() {
   rm -rf $filename
 
   # chainRPC
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i"
@@ -35,7 +35,7 @@ experimenta() {
     done
 
   # normal Raft
-  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0
+  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i"
@@ -55,7 +55,7 @@ experimentb() {
   rm -rf $filename
 
   # chainRPC (in-order enforcement)
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i"
@@ -66,7 +66,7 @@ experimentb() {
     done
 
   # chainRPC (without in-order enforcement, we retransmit rejected requests)
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=0
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=0 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i"
@@ -78,15 +78,16 @@ experimentb() {
 }
 
 experimentc() {
-  echo ""
+  echo "the same as experimenta with latency monitor."
+  
 }
 
 experimentd() {
-  echo ""
+  echo "Slow node experiment; put a slowness on one node, and then monitor performance changes."
 }
 
 experimente() {
-  echo ""
+  echo "Port to Rolis."
 }
 
 #experimenta
