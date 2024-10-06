@@ -216,6 +216,8 @@ class Communicator {
   void SetNewLeaderProxy(parid_t par_id, locid_t loc_id);
   void SendSimpleCmd(groupid_t gid, SimpleCommand& cmd, std::vector<int32_t>& sids,
       const function<void(int)>& callback);
+
+  virtual void Statistics() const { };
 };
 
 } // namespace janus

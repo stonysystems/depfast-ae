@@ -120,6 +120,12 @@ void ServerWorker::RegisterWorkload() {
   workload->RegisterPrecedures();
 }
 
+void ServerWorker::Statistics() {
+  if (rep_commo_) {
+    rep_commo_->Statistics();
+  }
+}
+
 void ServerWorker::SetupService() {
   Log_info("enter %s for %s @ %s", __FUNCTION__,
            this->site_info_->name.c_str(),

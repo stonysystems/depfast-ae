@@ -12,11 +12,13 @@ void CoordinatorNone::GotoNextPhase() {
   int n_phase = 2;
   switch (phase_++ % n_phase) {
     case Phase::INIT_END:
+      dispatch_time_ = GetNowInns();
       DispatchAsync();
       verify(phase_ % n_phase == Phase::DISPATCH);
       break;
     case Phase::DISPATCH:
       committed_ = true;
+      cli2cli_.push_back(GetNowInns() - dispatch_time_);
       verify(phase_ % n_phase == Phase::INIT_END);
       End(); // Mark this request is completed on client side - 2.
       break;

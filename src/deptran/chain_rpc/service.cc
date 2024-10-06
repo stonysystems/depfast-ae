@@ -131,8 +131,8 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
     // TODO, timeout should be fineturned to minimize the retry RPC.
     if (leaderPrevLogIndex > 0) {
       while (true) {
-        if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
-          Reactor::CreateSpEvent<NeverEvent>()->Wait(10); // it might takes more than 10ms to come back
+        if (sequencer_tracker_min_.load() < leaderPrevLogIndex - 1) {
+          Reactor::CreateSpEvent<NeverEvent>()->Wait(100);
         } else {
           break;
         }
@@ -142,13 +142,14 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
           break;
         }
       }
+      //std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+      //Log_info("[Jump]Time for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
     }
 
-    sequencer_tracker_[leaderPrevLogIndex] = 1;
-    sequencer_tracker_.erase(leaderPrevLogIndex - 1000);
-    std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
-    Log_track("ControlUnit: %s", cu_cmd_ptr->toString().c_str());
-    Log_track("Time of append entries on service: %f ms", duration.count()/1000.0/1000.0);
+    sequencer_tracker_min_ += 1;
+    // std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+    // Log_track("ControlUnit: %s", cu_cmd_ptr->toString().c_str());
+    // Log_track("Time of append entries on service: %f ms", duration.count()/1000.0/1000.0);
 
 #endif
 

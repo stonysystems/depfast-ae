@@ -510,6 +510,12 @@ void ChainRPCServer::StartTimer()
               }
             }
             
+            if (e->IsReady()) {
+              commo->received_quorum_ok_cnt += 1;
+            } else {
+              commo->received_quorum_fail_cnt += 1; 
+            }
+
             while (!e->IsReady()) { // A majority of acked replicas are ready.
               cu_cmd_ptr->isRetry = 1;
               vector<int> hops ;
@@ -524,6 +530,7 @@ void ChainRPCServer::StartTimer()
                   int nextHop = hops[i];
                   auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
                   auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
+                  commo->retry_rpc_cnt += 1;
 
                   FutureAttr fuattr;
                   fuattr.callback = [&e, nextHop, uniq_id_, &retry_e,  &ackedReplicas] (Future* fu) {

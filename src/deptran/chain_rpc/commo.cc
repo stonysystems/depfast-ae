@@ -86,6 +86,14 @@ void ChainRPCCommo::BroadcastHeartbeat(parid_t par_id,
   }
 }
 
+void ChainRPCCommo::Statistics() const {
+  Log_info("Retransmit RPC counts %d, received quorum_ok: %d, received quorum_fail: %d, ok+fail:%d", 
+                retry_rpc_cnt.load(), 
+                received_quorum_ok_cnt.load(), 
+                received_quorum_fail_cnt.load(), 
+                received_quorum_ok_cnt.load() + received_quorum_fail_cnt.load());
+}
+
 void ChainRPCCommo::SendHeartbeat(parid_t par_id,
 																	siteid_t site_id,
 																  uint64_t logIndex) {
@@ -262,7 +270,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                       uint64_t prevLogTerm,
                                       uint64_t commitIndex,
                                       shared_ptr<Marshallable> cmd) {
-  Log_info("BroadcastAppendEntries\n");
+  //Log_info("BroadcastAppendEntries\n");
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<ChainRPCAppendQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
@@ -518,6 +526,10 @@ std::vector<std::vector<int>> _generatePermutations(int n) {
         std::reverse(reversed.begin(), reversed.end());
         permutations.push_back(reversed);
     }
+
+#ifdef SINGLE_PATH_ENABLED
+    permutations.resize(1);
+#endif
 
     for (int i = 0; i < permutations.size(); ++i) {
         Log_info("Path %d: %s", i, _arrayToString(permutations[i]).c_str());

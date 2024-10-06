@@ -245,9 +245,14 @@ friend class ChainRPCProxy;
   void updatePathWeights(int par_id, int i, uint64_t response_time) ;
   
   atomic<int> uniq_id_ = {0};
+  atomic<int> retry_rpc_cnt = {0};
+  atomic<int> received_quorum_ok_cnt = {0};
+  atomic<int> received_quorum_fail_cnt = {0};
 
   // Event mapping in ChainRPC
   unordered_map<int, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
+
+  void Statistics() const override;
 };
 
 } // namespace janus

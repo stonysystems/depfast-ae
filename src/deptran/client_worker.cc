@@ -350,6 +350,24 @@ void ClientWorker::Work() {
   fflush(stderr);
   fflush(stdout);
 
+  for (auto c : created_coordinators_) {
+    for (int i=0; i<c->cli2cli_.size(); i++){
+      cli2cli_.push_back(c->cli2cli_[i]);
+    }
+  }
+
+  std::sort(cli2cli_.begin(), cli2cli_.end());
+  int index = 0;
+  Log_info("Collected lat: %d", cli2cli_.size());
+  index = static_cast<int>(0.99 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 99p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.95 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 95p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.50 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.1 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+
   if (ccsi) {
     Log_info("%s: wait_for_shutdown at client %d", __FUNCTION__, cli_id_);
     ccsi->wait_for_shutdown();

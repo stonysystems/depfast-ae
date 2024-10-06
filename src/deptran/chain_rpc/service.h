@@ -96,6 +96,8 @@ void AppendEntriesChain(const uint64_t& slot,
 
   // Data structure for the in-order guarantee
   unordered_map<int, int> sequencer_tracker_;  // slot_id: status, 0: not received, 1: executed
+  atomic<int> sequencer_tracker_min_{0};
+  
 };
 
 } // namespace janus

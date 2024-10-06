@@ -113,10 +113,10 @@ namespace janus {
             for (auto p : appendOK_) {
                 m << p;
             }
-            m << (int32_t) currentTerm_.size();
-            for (auto p : currentTerm_) {
-                m << p;
-            }
+            // m << (int32_t) currentTerm_.size();
+            // for (auto p : currentTerm_) {
+            //     m << p;
+            // }
             m << (int32_t) lastLogIndex_.size();
             for (auto p : lastLogIndex_) {
                 m << p;
@@ -159,12 +159,12 @@ namespace janus {
                 appendOK_.push_back(p);
             }
             int32_t sz3;
-            m >> sz3;
-            for (int i = 0; i < sz3; i++) {
-                uint64_t p;
-                m >> p;
-                currentTerm_.push_back(p);
-            }
+            // m >> sz3;
+            // for (int i = 0; i < sz3; i++) {
+            //     uint64_t p;
+            //     m >> p;
+            //     currentTerm_.push_back(p);
+            // }
             int32_t sz4;
             m >> sz4;
             for (int i = 0; i < sz4; i++) {
@@ -182,7 +182,7 @@ namespace janus {
                                             uint64_t lastLogIndex) {
             local_ids_.push_back(loc_id_);
             appendOK_.push_back(appendOK);
-            currentTerm_.push_back(currentTerm);
+            //currentTerm_.push_back(currentTerm);
             lastLogIndex_.push_back(lastLogIndex);
         }
 
@@ -197,6 +197,7 @@ namespace janus {
             }
         }
 
+        // Core function: return earlier or not
         bool RegisterEarlyTerminate() {
             return acc_ack_ > 0.5 * total_partitions_ 
                     || acc_rej_ > 0.5 * total_partitions_
