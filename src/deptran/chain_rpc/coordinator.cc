@@ -61,11 +61,11 @@ void CoordinatorChainRPC::Submit(shared_ptr<Marshallable>& cmd,
 
 // One coordinator instance per concurrency.
 void CoordinatorChainRPC::AppendEntries() {
-    std::lock_guard<std::recursive_mutex> lock(mtx_); // This looks like unnecessary, especially when we ave Wait() in the loop
+    std::lock_guard<std::recursive_mutex> lock(mtx_); // This looks like unnecessary, especially when we have Wait() in the loop
     verify(!in_append_entries);
     // verify(this->sch_->IsLeader()); TODO del it yidawu
     in_append_entries = true;
-    Log_track("fpga-raft coordinator broadcasts append entries, "
+    Log_track("ChainRPC coordinator broadcasts append entries, "
                   "par_id_: %lu, slot_id: %llu, lastLogIndex: %d",
               par_id_, slot_id_, this->sch_->lastLogIndex);
     /* Should we use slot_id instead of lastLogIndex and balot instead of term? */

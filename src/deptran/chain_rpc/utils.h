@@ -81,8 +81,11 @@ namespace janus {
             acc_ack_ = 0;
             acc_rej_ = 0;
             toIndex_ = 0;
-            //uuid_ = generateUUID4();
+            #ifdef CHAIN_DEBUG
+            uuid_ = generateUUID4();
+            #else
             uuid_ = "";
+            #endif
             return_leader_ = 0;
             isRetry = 0;
             uniq_id_ = 0;
@@ -121,7 +124,9 @@ namespace janus {
             for (auto p : lastLogIndex_) {
                 m << p;
             }
-            //m << uuid_.c_str();
+            #ifdef CHAIN_DEBUG
+            m << uuid_.c_str();
+            #endif
             return m;
         };
 
@@ -172,7 +177,9 @@ namespace janus {
                 m >> p;
                 lastLogIndex_.push_back(p);
             }
-            //m >> uuid_;
+            #ifdef CHAIN_DEBUG
+            m >> uuid_;
+            #endif
             return m;
         };
 
@@ -223,9 +230,9 @@ namespace janus {
         std::string toString() const {
             std::ostringstream oss;
             oss << "UUID: " << uuid_;
+            oss << ", PathIndex: " << pathIdx_;
             oss << ", UniqID: " << uniq_id_;
             oss << ", init_time: " << init_time;
-            oss << ", PathIndex: " << pathIdx_;
             oss << ", Path: " ;
             for (int i=0; i<path_.size(); i++) {
                 oss << path_[i] << " -> ";

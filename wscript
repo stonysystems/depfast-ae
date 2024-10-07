@@ -57,7 +57,7 @@ def options(opt):
     opt.add_option('--enable-chainrpc', dest='chainrpc', default=None)
     opt.add_option('--in-order-enforce', dest='inorderenforce', default=None)
     opt.add_option('--enable-single-path', dest='singlepath', default=None)
-    opt.parse_args();
+    opt.parse_args()
 
 def configure(conf):
     _choose_compiler(conf)
@@ -221,6 +221,8 @@ def _enable_chainrpc(conf):
 
     if Options.options.singlepath=="1":
         conf.env.append_value("CXXFLAGS", "-DSINGLE_PATH_ENABLED".split())
+
+    #conf.env.append_value("CXXFLAGS", "-DCHAIN_DEBUG".split())
     
 
 def _enable_rpc_s(conf):

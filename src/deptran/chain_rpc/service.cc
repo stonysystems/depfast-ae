@@ -128,7 +128,6 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
     // We don't want to wait for infinite time due to packet loss, however, it's 
     // it's very rare to happen in nowaday's advancing networking.
     double timeout = 5; // unit: ms
-    // TODO, timeout should be fineturned to minimize the retry RPC.
     if (leaderPrevLogIndex > 0) {
       while (true) {
         if (sequencer_tracker_min_.load() < leaderPrevLogIndex - 1) {

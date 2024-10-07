@@ -237,13 +237,14 @@ friend class ChainRPCProxy;
   chrono::time_point<chrono::high_resolution_clock> initializtion_time;
 
   // Update the response time of the path.
-  void updateResponseTime(int par_id, int i, uint64_t latency) ;
+  void appendResponseTime(int par_id, int i, uint64_t latency) ;
   void _preAllocatePathsWithWeights();
   void _initializePathResponseTime();
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
   void updatePathWeights(int par_id, int i, uint64_t response_time) ;
   
+  int availablePath;
   atomic<int> uniq_id_ = {0};
   atomic<int> retry_rpc_cnt = {0};
   atomic<int> received_quorum_ok_cnt = {0};

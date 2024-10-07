@@ -493,10 +493,10 @@ void ChainRPCServer::StartTimer()
           // Skip first several seconds warmup time.
           uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
           if (std::chrono::high_resolution_clock::now() - commo->initializtion_time > std::chrono::seconds(5)) {
-            commo->updateResponseTime(partition_id_, cu_cmd_ptr->pathIdx_, end_in_ns-cu_cmd_ptr->init_time);
+            commo->appendResponseTime(partition_id_, cu_cmd_ptr->pathIdx_, end_in_ns-cu_cmd_ptr->init_time);
             commo->updatePathWeights(partition_id_, cu_cmd_ptr->pathIdx_,  end_in_ns-cu_cmd_ptr->init_time);
           }
-          Log_track("Leader received back: %f ms, path_id: %d", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_);
+          Log_track("Leader received back: %f ms, path_id: %d, uuid_:%s, ", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_, cu_cmd_ptr->uuid_.c_str());
 
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.
@@ -510,6 +510,7 @@ void ChainRPCServer::StartTimer()
               }
             }
             
+            Log_track("Without retry, uuid_:%s ready:%d", cu_cmd_ptr->uuid_.c_str(), e->IsReady());
             if (e->IsReady()) {
               commo->received_quorum_ok_cnt += 1;
             } else {
@@ -566,6 +567,7 @@ void ChainRPCServer::StartTimer()
                 }
               }
             }
+            commo->event_append_map_.erase(cu_cmd_ptr->uniq_id_);
           }else {
             Log_info("Fail to update the event mapping");
           }
@@ -648,7 +650,7 @@ void ChainRPCServer::StartTimer()
           int nextHop = hops[i];
           
           if (nextHop == 0) {
-            if (cu_cmd_ptr->return_leader_ == 1) {
+            if (cu_cmd_ptr->return_leader_ == 1) { // If already returned, no further actions.
               continue; 
             }
             cu_cmd_ptr->return_leader_ = 1;

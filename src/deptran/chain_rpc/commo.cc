@@ -26,6 +26,7 @@ ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
   _initializePathResponseTime();
   Log_info("Initialize ChainRPCCommo");
   initializtion_time = std::chrono::high_resolution_clock::now();
+  availablePath = 0;
 }
 
 shared_ptr<ChainRPCForwardQuorumEvent> ChainRPCCommo::SendForward(parid_t par_id, 
@@ -196,7 +197,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->Increment2NextHop();
-    Log_track("slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
+    Log_track("Leader sends a request, slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
     auto &p = proxies[nextHop];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;
@@ -579,12 +580,43 @@ void ChainRPCCommo::_initializePathResponseTime() {
 // Pickup one path based on weights.
 // Return: the index of the paths.
 int ChainRPCCommo::getNextAvailablePath(int par_id) {
-  auto paths = pathsWeights[par_id];
+  return availablePath;
+}
 
-  vector<double> weights;
-  for (auto& p : paths) {
-    weights.push_back(std::get<1>(p));
+void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_response_time) {
+  if ((received_quorum_ok_cnt.load() + received_quorum_fail_cnt.load()) % 100 != 0) {
+    return;
   }
+
+  vector<double> avg_lat;
+  vector<std::deque<uint64_t>> response_times_paths = pathResponeTime_[par_id];
+  for (int i=0; i<response_times_paths.size(); i++) {
+    double tol = 0, cnt = 0;
+    for (int j=0; j<response_times_paths[i].size(); j++) {
+      tol += response_times_paths[i][j];
+      cnt++;
+    }
+    if (cnt==0) {
+      avg_lat.push_back(1000 * 1000); // If there are no request to this path, go for this path
+    }else{
+      avg_lat.push_back(tol/cnt);
+    }
+  }
+
+  std::vector<double> weights(avg_lat.size());
+    
+  // Step 1: Compute the inverse of each latency (since lower latencies should get higher weights)
+  for (size_t i = 0; i < avg_lat.size(); ++i) {
+    weights[i] = 1000 * 1000 * 10.0 / avg_lat[i];
+  }
+
+  double sum = std::accumulate(weights.begin(), weights.end(), 0.0); // Compute the sum of the inverses
+
+  for (double& weight : weights) { // Normalize
+    weight /= sum;
+  }
+
+  
 
   std::vector<double> cumulative;
   cumulative.reserve(weights.size());
@@ -598,11 +630,11 @@ int ChainRPCCommo::getNextAvailablePath(int par_id) {
 
   // Find the index corresponding to the random number
   auto it = std::lower_bound(cumulative.begin(), cumulative.end(), rand_num);
-  return std::distance(cumulative.begin(), it);
-}
+  availablePath = std::distance(cumulative.begin(), it);
 
-// Update the weight of cur_i-th path in the par_id partition based on response_time. 
-void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_response_time) {
+  Log_track("Weights: %s, avg_lat: %s, availablePath: %d", _arrayToString(weights).c_str(), _arrayToString(avg_lat).c_str(), availablePath);
+  /*
+  // Update the weight of cur_i-th path in the par_id partition based on response_time. 
   vector<std::deque<uint64_t>> response_times_paths = pathResponeTime_[par_id];
   double tol = 0, cnt = 0;
   for (int i=0; i<response_times_paths.size(); i++) {
@@ -624,8 +656,6 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_respon
   }
 
   // Update the i-th probability based on the latency comparison
-  double prevW = weights[cur_i];
-
   if (cur_response_time >= avg * 0.7 && cur_response_time <= avg * 1.3) {
     return;
   }
@@ -642,7 +672,7 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_respon
   double total = std::accumulate(weights.begin(), weights.end(), 0.0);
   for (double& p : weights) {
     p /= total;
-  }
+  }*/
 
   // Write back the updated weights
   for (int i=0; i<weights.size(); i++) {
@@ -651,16 +681,15 @@ void ChainRPCCommo::updatePathWeights(int par_id, int cur_i, uint64_t cur_respon
 }
 
 // Keep latest 200 data for each path.
-// In this implementation, I eliminate outliers!
-void ChainRPCCommo::updateResponseTime(int par_id, int cur_i, uint64_t latency) {
-    if (latency == 0) {
-      return ;
-    }
+// latency is in ns.
+void ChainRPCCommo::appendResponseTime(int par_id, int cur_i, uint64_t latency) {
+    if (latency == 0) return;
 
     int N = 200;
     auto& responseTimesPath = pathResponeTime_[par_id][cur_i];
 
-    // Copy response times to a vector for sorting
+    // For outliers, it's better not to eliminate it. Otherwise, it's hard to detect slowness.
+    /*
     if (responseTimesPath.size() >= N) {
         // Copy response times to a vector for sorting
         std::vector<double> times(responseTimesPath.begin(), responseTimesPath.end());
@@ -684,7 +713,9 @@ void ChainRPCCommo::updateResponseTime(int par_id, int cur_i, uint64_t latency) 
         }
     } else {
       responseTimesPath.push_back(latency);
-    }
+    } */
+
+    responseTimesPath.push_back(latency);
 
     // Keep only the last N response times
     if (responseTimesPath.size() > N) {

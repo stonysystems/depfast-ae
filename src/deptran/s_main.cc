@@ -54,6 +54,7 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
   Log_info("client enabled, number of sites: %d", client_sites.size());
   vector<ClientWorker*> workers;
 
+  int core_id = 31;
   failover_triggers = new bool[client_sites.size()]() ;
   for (uint32_t client_id = 0; client_id < client_sites.size(); client_id++) {
     ClientWorker* worker = new ClientWorker(client_id,
@@ -64,7 +65,19 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
                                             &failover_server_quit,
                                             &failover_server_idx);
     workers.push_back(worker);
-    client_threads_g.push_back(std::thread(&ClientWorker::Work, worker));
+    auto th_ = std::thread(&ClientWorker::Work, worker);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(core_id, &cpuset);
+    int rc = pthread_setaffinity_np(th_.native_handle(),
+                                    sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+      std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+    } else {
+      Log_info("start a client thread on core %d, client-id:%d", core_id, client_id);
+    }
+
+    client_threads_g.push_back(std::move(th_));
     client_workers_g.push_back(std::unique_ptr<ClientWorker>(worker));
   }
 
