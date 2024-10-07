@@ -77,7 +77,7 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
   int i=0;
   vector<std::thread> setup_ths;
   for (auto& site_info : server_sites) {
-    setup_ths.push_back(std::thread([&site_info, &i, &config] () {
+    auto th_ = (std::thread([&site_info, &i, &config] () {
       Log_info("launching site: %x, bind address %s",
                site_info.id,
                site_info.GetBindAddress().c_str());
@@ -99,6 +99,20 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
       Log_info("site %d launched!", (int)site_info.id);
       worker.launched_ = true;
     }));
+
+    int core_id = 1;
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(core_id, &cpuset);
+    int rc = pthread_setaffinity_np(th_.native_handle(),
+                                    sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+      std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+    } else {
+      Log_info("start a server thread on core %d, site-id:%d", core_id, site_info.id);
+    }
+
+    setup_ths.push_back(std::move(th_));
   }
 
   for (auto& worker : svr_workers_g) {

@@ -577,48 +577,49 @@ void ChainRPCServer::StartTimer()
                  "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
                  this->loc_id_, slot_id, leaderPrevLogIndex, this->lastLogIndex, IsLeader());
 
-        std::lock_guard<std::recursive_mutex> lock(mtx_);
+        { // minimize contention
+          std::lock_guard<std::recursive_mutex> lock(mtx_);
+          if ((leaderCurrentTerm >= this->currentTerm) &&
+                  (leaderPrevLogIndex <= this->lastLogIndex) &&
+                  this->lastLogIndex == leaderPrevLogIndex) {
+              if (leaderCurrentTerm > this->currentTerm) {
+                  currentTerm = leaderCurrentTerm;
+                  Log_debug("server %d, set to be follower", loc_id_ ) ;
+                  setIsLeader(false) ;
+              }
 
-        if ((leaderCurrentTerm >= this->currentTerm) &&
-                (leaderPrevLogIndex <= this->lastLogIndex) &&
-                this->lastLogIndex == leaderPrevLogIndex) {
-            if (leaderCurrentTerm > this->currentTerm) {
-                currentTerm = leaderCurrentTerm;
-                Log_debug("server %d, set to be follower", loc_id_ ) ;
-                setIsLeader(false) ;
-            }
+              verify(this->lastLogIndex == leaderPrevLogIndex);
+              this->lastLogIndex = leaderPrevLogIndex + 1;
+              uint64_t prevCommitIndex = this->commitIndex;
+              this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);
+              /* TODO: Replace entries after s.log[prev] w/ ents */
+              /* TODO: it should have for loop for multiple entries */
+              auto instance = GetChainRPCInstance(lastLogIndex);
+              instance->log_ = cmd;
 
-            verify(this->lastLogIndex == leaderPrevLogIndex);
-            this->lastLogIndex = leaderPrevLogIndex + 1;
-            uint64_t prevCommitIndex = this->commitIndex;
-            this->commitIndex = std::max(leaderCommitIndex, this->commitIndex);
-            /* TODO: Replace entries after s.log[prev] w/ ents */
-            /* TODO: it should have for loop for multiple entries */
-            auto instance = GetChainRPCInstance(lastLogIndex);
-            instance->log_ = cmd;
+              // Pass the content to a thread that is always running
+              // Disk write event
+              // Wait on the event
+              instance->term = this->currentTerm;
+              //app_next_(*instance->log_); 
+              //verify(lastLogIndex > commitIndex);
 
-            // Pass the content to a thread that is always running
-            // Disk write event
-            // Wait on the event
-            instance->term = this->currentTerm;
-            //app_next_(*instance->log_); 
-            //verify(lastLogIndex > commitIndex);
-
-            *followerAppendOK = 1;
-            *followerCurrentTerm = this->currentTerm;
-            *followerLastLogIndex = this->lastLogIndex;
-            
-            cu_cmd_ptr->acc_ack_ += 1;
+              *followerAppendOK = 1;
+              *followerCurrentTerm = this->currentTerm;
+              *followerLastLogIndex = this->lastLogIndex;
+              
+              cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, *followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+              cu_cmd_ptr->acc_ack_ += 1;
+          }
+          else {
+              Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
+                  this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
+              *followerAppendOK = 0;
+              
+              cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, *followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
+              cu_cmd_ptr->acc_rej_ += 1;
+          }
         }
-        else {
-            Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
-                this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
-            *followerAppendOK = 0;
-            
-            cu_cmd_ptr->acc_rej_ += 1;
-        }
-
-        cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, *followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
 
         // Skip retry entry's propogation
         if (cu_cmd_ptr->isRetry) {

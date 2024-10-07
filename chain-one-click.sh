@@ -79,11 +79,12 @@ experimentb() {
 
 experimentc() {
   echo "the same as experimenta with latency monitor."
-  
+  # Do nothing here!
 }
 
 experimentd() {
   echo "Slow node experiment; put a slowness on one node, and then monitor performance changes."
+  
 }
 
 experimente() {

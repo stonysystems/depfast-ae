@@ -366,7 +366,7 @@ void ClientWorker::Work() {
   index = static_cast<int>(0.50 * (cli2cli_.size() - 1) + 0.5);
   Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
   index = static_cast<int>(0.1 * (cli2cli_.size() - 1) + 0.5);
-  Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  Log_info("The 10p lat: %fms", cli2cli_[index]/1000.0/1000.0);
 
   if (ccsi) {
     Log_info("%s: wait_for_shutdown at client %d", __FUNCTION__, cli_id_);
