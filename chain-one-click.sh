@@ -83,15 +83,44 @@ experimentc() {
 }
 
 experimentd() {
-  echo "Slow node experiment; put a slowness on one node, and then monitor performance changes."
-  
+  echo "the same as experimenta, but with slowness. Put a slowness on one node, and then monitor performance changes."
+
+  conc=( 20 40 60 80 100 130 160 190 200 220 260 300 340 380 420 )
+  conc=( 20 )
+
+  filename=experimentd
+  mkdir -p $filename
+  rm -rf $filename
+
+  # chainRPC
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run3.sh $i slow"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_3_$i
+      mv *.log ./$filename/results_3_$i
+    done
+
+  # normal Raft
+  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run3.sh $i slow"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_3_slowness_$i
+      mv *.log ./$filename/results_3_slowness_$i
+    done
+
 }
 
 experimente() {
   echo "Port to Rolis."
 }
 
-#experimenta
+experimenta
 experimentb
 experimentc
 experimentd
