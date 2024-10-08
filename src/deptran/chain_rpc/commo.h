@@ -242,7 +242,7 @@ friend class ChainRPCProxy;
   void _initializePathResponseTime();
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
-  void updatePathWeights(int par_id, int i, uint64_t response_time) ;
+  void updatePathWeights(int par_id, uint64_t, int i, uint64_t response_time) ;
   
   int availablePath;
   atomic<int> uniq_id_ = {0};
@@ -252,6 +252,18 @@ friend class ChainRPCProxy;
 
   // Event mapping in ChainRPC
   unordered_map<int, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
+  using AppendParametersTuple = std::tuple<
+    uint64_t,                  // slot_id 0
+    ballot_t,                  // ballot 1
+    uint64_t,                  // currentTerm 2
+    uint64_t,        // prevLogIndex 3
+    uint64_t,        // prevLogTerm 4
+    uint64_t,        // commitIndex 5
+    DepId,         // di 6
+    MarshallDeputy // md 7
+  >; 
+  // Request mapping in ChainRPC for resend/just references
+  unordered_map<int, AppendParametersTuple> data_append_map_{};
 
   void Statistics() const override;
 };

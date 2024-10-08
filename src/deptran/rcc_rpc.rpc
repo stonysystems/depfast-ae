@@ -124,11 +124,11 @@ abstract service ChainRPC {
                       uint64_t followerAppendOK,
                       uint64_t followerCurrentTerm,
                       uint64_t followerLastLogIndex);
-
+ 
   // Return Acc results back to the leader earlier.
   defer AccBack2LeaderChain(uint64_t slot,
                             ballot_t ballot,
-                            MarshallDeputy uc);
+                            MarshallDeputy cu_cmd);
   
  
   defer Decide(uint64_t slot,

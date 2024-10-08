@@ -84,7 +84,7 @@ void AppendEntriesChain(const uint64_t& slot,
 
   void AccBack2LeaderChain(const uint64_t& slot, 
                      const ballot_t& ballot, 
-                     const MarshallDeputy& uc, 
+                     const MarshallDeputy& cu_cmd, 
                      rrr::DeferredReply* defer) override;
 
   void Decide(const uint64_t& slot,
