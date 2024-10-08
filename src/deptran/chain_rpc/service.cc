@@ -146,9 +146,9 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
     }
 
     sequencer_tracker_min_ += 1;
-    // // std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
-    // // Log_track("ControlUnit: %s", cu_cmd_ptr->toString().c_str());
-    // // Log_track("Time of append entries on service: %f ms", duration.count()/1000.0/1000.0);
+    // std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+    // Log_track("ControlUnit: %s", cu_cmd_ptr->toString().c_str());
+    // Log_track("Time of append entries on service: %f ms", duration.count()/1000.0/1000.0);
 
 #endif
 

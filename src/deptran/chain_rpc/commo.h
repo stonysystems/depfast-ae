@@ -236,10 +236,12 @@ friend class ChainRPCProxy;
   unordered_map<parid_t, vector<std::deque<uint64_t>>> pathResponeTime_ ;
   chrono::time_point<chrono::high_resolution_clock> initializtion_time;
 
+  // I used many shared variables, that's the problem
   // Update the response time of the path.
+  std::recursive_mutex mtx_{};
+  void _initializePathResponseTime();
   void appendResponseTime(int par_id, int i, uint64_t latency) ;
   void _preAllocatePathsWithWeights();
-  void _initializePathResponseTime();
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
   void updatePathWeights(int par_id, uint64_t, int i, uint64_t response_time) ;

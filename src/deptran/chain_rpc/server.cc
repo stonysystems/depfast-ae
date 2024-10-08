@@ -566,8 +566,6 @@ void ChainRPCServer::StartTimer()
           }else {
             Log_info("Fail to update the event mapping");
           }
-          cb();
-          return ;
         } else {
           void(0);
         }

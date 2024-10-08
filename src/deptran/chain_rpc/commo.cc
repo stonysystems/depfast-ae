@@ -20,11 +20,10 @@ static int volatile xx =
                                      return new ControlUnit;
                                    });
 
-// One instance per process
 ChainRPCCommo::ChainRPCCommo(PollMgr* poll) : Communicator(poll) {
+  Log_info("Initialize ChainRPCCommo once per process");
   _preAllocatePathsWithWeights();
   _initializePathResponseTime();
-  Log_info("Initialize ChainRPCCommo");
   initializtion_time = std::chrono::high_resolution_clock::now();
   availablePath = 0;
 }
@@ -212,6 +211,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     clock_gettime(CLOCK_MONOTONIC, &begin);
 
     fuattr.callback = [this, e, isLeader, currentTerm, follower_id, n, ip, begin] (Future* fu) {
+      /*
       uint64_t accept = 0;
       uint64_t term = 0;
       uint64_t index = 0;
@@ -227,7 +227,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
 			clock_gettime(CLOCK_MONOTONIC, &end);
 			//Log_info("time of reply on server %d: %ld", follower_id, (end.tv_sec - begin.tv_sec)*1000000000 + end.tv_nsec - begin.tv_nsec);
       bool y = ((accept == 1) && (isLeader) && (currentTerm == term));
-      //e->FeedResponse(y, index, ip);
+      e->FeedResponse(y, index, ip);*/
     };
     MarshallDeputy md(cmd);
 		verify(md.sp_data_ != nullptr);
@@ -680,8 +680,11 @@ void ChainRPCCommo::updatePathWeights(int par_id, uint64_t slot_id, int cur_i, u
   }*/
 
   // Write back the updated weights
-  for (int i=0; i<weights.size(); i++) {
-    std::get<1>(pathsWeights[par_id][i]) = weights[i];
+  {
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    for (int i=0; i<weights.size(); i++) {
+      std::get<1>(pathsWeights[par_id][i]) = weights[i];
+    }
   }
 }
 
