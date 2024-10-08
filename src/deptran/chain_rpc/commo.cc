@@ -183,12 +183,11 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   auto proxies = rpc_par_proxies_[par_id];
 
   WAN_WAIT;
-  uniq_id_++;
 
   // Forward the request to the next hop in the path.
   {
     auto cu = make_shared<ControlUnit>();
-    cu->SetUniqueID(uniq_id_);
+    cu->SetUniqueID(slot_id);
     cu->total_partitions_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
     cu->SetPath(pathIdx, path);

@@ -247,7 +247,6 @@ friend class ChainRPCProxy;
   void updatePathWeights(int par_id, uint64_t, int i, uint64_t response_time) ;
   
   int availablePath;
-  atomic<int> uniq_id_ = {0};
   atomic<int> retry_rpc_cnt = {0};
   atomic<int> received_quorum_ok_cnt = {0};
   atomic<int> received_quorum_fail_cnt = {0};
