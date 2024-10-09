@@ -385,10 +385,9 @@ void ChainRPCServer::StartTimer()
                                      uint64_t *followerCurrentTerm,
                                      uint64_t *followerLastLogIndex,
                                      const function<void()> &cb) {
-        Log_info("OnAppendEntries");
 
         std::lock_guard<std::recursive_mutex> lock(mtx_);
-        Log_debug("fpga-raft scheduler on append entries for "
+        Log_track("fpga-raft scheduler on append entries for "
                 "slot_id: %llx, loc: %d, PrevLogIndex: %d",
                 slot_id, this->loc_id_, leaderPrevLogIndex);
         if ((leaderCurrentTerm >= this->currentTerm) &&
