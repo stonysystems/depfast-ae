@@ -288,7 +288,7 @@ class ChainRPCServer : public TxLogServer {
                        uint64_t *followerLastLogIndex,
                        const function<void()> &cb);
 
-  void OnAccBack2LeaderChain(const slotid_t slot_id,
+  void OnAppendEntriesAccBack2LeaderChain(const slotid_t slot_id,
                        const ballot_t ballot,
                        shared_ptr<Marshallable> &cu_cmd,
                        const function<void()> &cb);

@@ -82,7 +82,7 @@ void AppendEntriesChain(const uint64_t& slot,
                      uint64_t *followerLastLogIndex,
                      rrr::DeferredReply* defer) override;
 
-  void AccBack2LeaderChain(const uint64_t& slot, 
+  void AppendEntriesAccBack2LeaderChain(const uint64_t& slot, 
                      const ballot_t& ballot, 
                      const MarshallDeputy& cu_cmd, 
                      rrr::DeferredReply* defer) override;

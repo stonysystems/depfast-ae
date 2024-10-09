@@ -471,22 +471,23 @@ void ChainRPCServer::StartTimer()
         // fprintf(stderr, "OnCommit done\n");
     }
     
-    void ChainRPCServer::OnAccBack2LeaderChain(const slotid_t slot_id,
+    void ChainRPCServer::OnAppendEntriesAccBack2LeaderChain(const slotid_t slot_id,
                                      const ballot_t ballot,
                                      shared_ptr<Marshallable> &cu_cmd,
                                      const function<void()> &cb) {
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
-        Log_track("Received AccBack2LeaderChain controlUnit:%s", cu_cmd_ptr->toString().c_str());
+        Log_track("Received AppendEntriesAccBack2LeaderChain controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
           // uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
           // Log_track("Leader received back: %f ms, path_id: %d, uuid_:%s, ", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_, cu_cmd_ptr->uuid_.c_str());
 
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.
-          auto e = commo->event_append_map_[cu_cmd_ptr->uniq_id_];
+          
           auto data = commo->data_append_map_[cu_cmd_ptr->uniq_id_];
+          auto e = std::get<8>(data);
           unordered_map<int, int> ackedReplicas;
           if (e) {
             for (int i=0; i<cu_cmd_ptr->appendOK_.size(); i++) {
@@ -555,7 +556,6 @@ void ChainRPCServer::StartTimer()
                 retry_e->Wait();
               }
             }
-            commo->event_append_map_.erase(cu_cmd_ptr->uniq_id_);
             commo->data_append_map_.erase(cu_cmd_ptr->uniq_id_);
           }else {
             Log_info("Fail to update the event mapping");
@@ -675,7 +675,7 @@ void ChainRPCServer::StartTimer()
           MarshallDeputy md(cmd);
           MarshallDeputy cu_md(cu_cmd);
           if (nextHop == 0) {
-            auto f = proxy->async_AccBack2LeaderChain(slot_id,
+            auto f = proxy->async_AppendEntriesAccBack2LeaderChain(slot_id,
                                       ballot,
                                       cu_md,
                                       fuattr);

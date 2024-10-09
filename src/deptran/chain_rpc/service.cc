@@ -171,9 +171,9 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
 }
 
 // Replicas return acculumated results to the leader.
-void ChainRPCServiceImpl::AccBack2LeaderChain(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cu_cmd, rrr::DeferredReply* defer) {
+void ChainRPCServiceImpl::AppendEntriesAccBack2LeaderChain(const uint64_t& slot, const ballot_t& ballot, const MarshallDeputy& cu_cmd, rrr::DeferredReply* defer) {
   Coroutine::CreateRun([&] () {
-    sched_->OnAccBack2LeaderChain(slot,
+    sched_->OnAppendEntriesAccBack2LeaderChain(slot,
                                   ballot,
                                   const_cast<MarshallDeputy&>(cu_cmd).sp_data_,
                                   std::bind(&rrr::DeferredReply::reply, defer));

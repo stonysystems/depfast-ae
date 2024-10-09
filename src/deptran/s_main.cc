@@ -113,7 +113,7 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
       worker.launched_ = true;
     }));
 
-    int core_id = 1;
+    int core_id = site_info.locale_id + 1;
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(core_id, &cpuset);

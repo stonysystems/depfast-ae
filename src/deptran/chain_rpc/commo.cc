@@ -249,7 +249,6 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         cu_cmd,
                                         fuattr);
     Future::safe_release(f);
-    event_append_map_[cu->uniq_id_] = e;
     data_append_map_[cu->uniq_id_] = std::make_tuple(slot_id,
                                         ballot,
                                         currentTerm,
@@ -257,7 +256,8 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         prevLogTerm,
                                         commitIndex,
 																				di,
-                                        std::ref(md));
+                                        std::ref(md),
+                                        e);
     verify(!e->IsReady());
 
     e->ongoingPickedPath = pathIdx;

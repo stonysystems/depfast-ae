@@ -253,8 +253,7 @@ friend class ChainRPCProxy;
   atomic<int> received_quorum_fail_cnt = {0};
 
   // Event mapping in ChainRPC
-  unordered_map<int, shared_ptr<ChainRPCAppendQuorumEvent>> event_append_map_{};
-  using AppendParametersTuple = std::tuple<
+  using AppendEntriesParametersTuple = std::tuple<
     uint64_t,                  // slot_id 0
     ballot_t,                  // ballot 1
     uint64_t,                  // currentTerm 2
@@ -262,10 +261,11 @@ friend class ChainRPCProxy;
     uint64_t,        // prevLogTerm 4
     uint64_t,        // commitIndex 5
     DepId,         // di 6
-    MarshallDeputy // md 7
+    MarshallDeputy, // md 7
+    std::shared_ptr<ChainRPCAppendQuorumEvent>
   >; 
   // Request mapping in ChainRPC for resend/just references
-  unordered_map<int, AppendParametersTuple> data_append_map_{};
+  unordered_map<int, AppendEntriesParametersTuple> data_append_map_{};
 
   void Statistics() const override;
 };
