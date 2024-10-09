@@ -481,13 +481,8 @@ void ChainRPCServer::StartTimer()
         verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
         Log_track("Received AccBack2LeaderChain controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
-          // Skip first several seconds warmup time.
-          uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
-          if (std::chrono::high_resolution_clock::now() - commo->initializtion_time > std::chrono::seconds(5)) {
-            commo->appendResponseTime(partition_id_, cu_cmd_ptr->pathIdx_, end_in_ns-cu_cmd_ptr->init_time);
-            commo->updatePathWeights(partition_id_, slot_id, cu_cmd_ptr->pathIdx_,  end_in_ns-cu_cmd_ptr->init_time);
-          }
-          Log_track("Leader received back: %f ms, path_id: %d, uuid_:%s, ", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_, cu_cmd_ptr->uuid_.c_str());
+          // uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
+          // Log_track("Leader received back: %f ms, path_id: %d, uuid_:%s, ", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_, cu_cmd_ptr->uuid_.c_str());
 
           // If the leader receives an accumulated results from the followers
           // We should feed a accumulated results back to the coordinator to make a final decision.
@@ -504,9 +499,9 @@ void ChainRPCServer::StartTimer()
             
             Log_track("Without retry, uuid_:%s ready:%d", cu_cmd_ptr->uuid_.c_str(), e->IsReady());
             if (e->IsReady()) {
-              commo->received_quorum_ok_cnt += 1;
+              //commo->received_quorum_ok_cnt += 1;
             } else {
-              commo->received_quorum_fail_cnt += 1; 
+              //commo->received_quorum_fail_cnt += 1; 
             }
 
             while (!e->IsReady()) { // A majority of acked replicas are ready.
@@ -525,7 +520,7 @@ void ChainRPCServer::StartTimer()
                 auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
                 auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
                 std::string uuid_ = cu_cmd_ptr->uuid_;
-                commo->retry_rpc_cnt += 1;
+                //commo->retry_rpc_cnt += 1;
 
                 FutureAttr fuattr;
                 fuattr.callback = [&e, nextHop, uuid_, uniq_id_, &retry_e,  &ackedReplicas] (Future* fu) {

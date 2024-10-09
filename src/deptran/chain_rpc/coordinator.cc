@@ -88,10 +88,15 @@ failed_retry:
                                                      this->sch_->commitIndex,
                                                      cmd_);
 
-		// auto start = std::chrono::high_resolution_clock::now();
+		auto start = std::chrono::high_resolution_clock::now();
     sp_quorum->Wait(1000*1000);
-		// std::chrono::duration<double, std::nano> duration = end - start; // in nanoseconds
+		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
     // Log_info("Time of append entries on coordinator: %f ms, path_id: %d, uniq_id_:%d", duration.count()/1000.0/1000.0, sp_quorum->ongoingPickedPath, sp_quorum->uniq_id_);
+    // Skip first several seconds warmup time.
+    if (std::chrono::high_resolution_clock::now() - commo()->initializtion_time > std::chrono::seconds(5)) {
+      commo()->appendResponseTime(par_id_, sp_quorum->ongoingPickedPath, duration.count());
+      commo()->updatePathWeights(par_id_, slot_id_, sp_quorum->ongoingPickedPath, duration.count());
+    }
 
     if (sp_quorum->Yes()) {
         minIndex = sp_quorum->minIndex;

@@ -11,6 +11,7 @@
 #include <deque>
 #include "utils.h"
 #include <chrono>
+#include <functional> // For std::ref
 
 namespace janus {
 
@@ -256,7 +257,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         prevLogTerm,
                                         commitIndex,
 																				di,
-                                        md);
+                                        std::ref(md));
     verify(!e->IsReady());
 
     e->ongoingPickedPath = pathIdx;
