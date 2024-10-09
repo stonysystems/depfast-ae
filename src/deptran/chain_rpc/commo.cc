@@ -647,7 +647,6 @@ void ChainRPCCommo::updatePathWeights(int par_id, uint64_t slot_id, int cur_i, u
 
   // Write back the updated weights
   {
-    std::lock_guard<std::recursive_mutex> lock(mtx_);
     for (int i=0; i<weights.size(); i++) {
       std::get<1>(pathsWeights[par_id][i]) = weights[i];
     }
