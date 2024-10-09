@@ -233,7 +233,8 @@ friend class ChainRPCProxy;
   // par_id: [{path:[loc_id -> loc_id -> ...], weight:double},...]
   unordered_map<parid_t, vector<std::tuple<vector<int>, double>>> pathsWeights;
   // We keep recent response times for each path for updating the weights.
-  unordered_map<parid_t, vector<std::deque<uint64_t>>> pathResponeTime_ ;
+  // par_id: [{path: (availIndex, hist_data)}]
+  unordered_map<parid_t, vector<std::tuple<int,vector<uint64_t>>>> pathResponeTime_ ;
   chrono::time_point<chrono::high_resolution_clock> initializtion_time;
 
   // I used many shared variables, that's the problem
