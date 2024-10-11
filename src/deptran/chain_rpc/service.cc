@@ -130,14 +130,15 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
     double timeout = 5; // unit: ms
     if (leaderPrevLogIndex > 0) {
       while (true) {
-        if (sequencer_tracker_min_.load() < leaderPrevLogIndex - 1) {
-          Reactor::CreateSpEvent<NeverEvent>()->Wait(100);
+        if (sequencer_tracker_.find(leaderPrevLogIndex - 1) == sequencer_tracker_.end()) {
+        //if (sequencer_tracker_min_.load() < leaderPrevLogIndex - 1) {
+          Reactor::CreateSpEvent<NeverEvent>()->Wait(10);
         } else {
           break;
         }
         std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
         if (duration.count() > timeout * 1000.0 * 1000.0) {
-          Log_track("[Break]Timeout for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
+          Log_info("[Break]Timeout for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
           break;
         }
       }
@@ -145,7 +146,9 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
       //Log_info("[Jump]Time for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
     }
 
-    sequencer_tracker_min_ += 1;
+    sequencer_tracker_[leaderPrevLogIndex] = 1;
+    sequencer_tracker_.erase(leaderPrevLogIndex - 100);
+    //sequencer_tracker_min_ += 1;
     // std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
     // Log_track("ControlUnit: %s", cu_cmd_ptr->toString().c_str());
     // Log_track("Time of append entries on service: %f ms", duration.count()/1000.0/1000.0);

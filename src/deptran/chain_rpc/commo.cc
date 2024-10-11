@@ -88,11 +88,11 @@ void ChainRPCCommo::BroadcastHeartbeat(parid_t par_id,
 }
 
 void ChainRPCCommo::Statistics() const {
-  Log_info("Retransmit RPC counts %d, received quorum_ok: %d, received quorum_fail: %d, ok+fail:%d", 
-                retry_rpc_cnt.load(), 
-                received_quorum_ok_cnt.load(), 
-                received_quorum_fail_cnt.load(), 
-                received_quorum_ok_cnt.load() + received_quorum_fail_cnt.load());
+  // Log_info("Retransmit RPC counts %d, received quorum_ok: %d, received quorum_fail: %d, ok+fail:%d", 
+  //               retry_rpc_cnt.load(), 
+  //               received_quorum_ok_cnt.load(), 
+  //               received_quorum_fail_cnt.load(), 
+  //               received_quorum_ok_cnt.load() + received_quorum_fail_cnt.load());
 }
 
 void ChainRPCCommo::SendHeartbeat(parid_t par_id,
