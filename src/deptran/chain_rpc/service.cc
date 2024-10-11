@@ -138,7 +138,7 @@ void ChainRPCServiceImpl::AppendEntriesChain(const uint64_t& slot,
         }
         std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
         if (duration.count() > timeout * 1000.0 * 1000.0) {
-          Log_info("[Break]Timeout for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
+          Log_track("[Break]Timeout for append entries on service: %f ms, ControlUnit: %s", duration.count()/1000.0/1000.0, cu_cmd_ptr->toString().c_str());
           break;
         }
       }

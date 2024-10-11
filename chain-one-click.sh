@@ -1,4 +1,6 @@
 # nload enp129s0f0
+# awk '/Throughput:/ {match($0, /Throughput: ([0-9.]+)/, a); sum += a[1]} END {print sum}' *.log
+# Log_track --> Log_info
 
 servers3=(
   "192.168.1.102" # leader
