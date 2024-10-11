@@ -19,7 +19,7 @@ p2=192.168.1.104
 
 slowness_cmd=""
 if [ "$slowness" == "slow" ]; then
-    slowness_cmd="cpulimit --exe deptran_server --limit 20"
+    slowness_cmd="cpulimit --exe deptran_server --limit 10"
 else
     slowness_cmd="echo ''"
 fi
@@ -31,9 +31,6 @@ sleep 0.4
 ssh $p1 "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P p1 > p1.log 2>&1 &" &
 sleep 0.4
 ssh $p2 "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P p2 > p2.log 2>&1 &" &
-# Run slowness
-echo "run $slowness_cmd on $p2"
-ssh $p2 "$slowness_cmd &" &
 sleep 5
 
 # Start clients
@@ -45,6 +42,10 @@ do
   ssh $leader "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P $c > $c.log 2>&1 &" &
   sleep 0.1
 done
+
+sleep 0.4
+echo "run $slowness_cmd on $p2"
+ssh $p2 "$slowness_cmd &" &
 
 sleep_time=$((t + 10))
 sleep $sleep_time
