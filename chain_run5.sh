@@ -55,9 +55,4 @@ done
 sleep_time=$((t + 10))
 sleep $sleep_time
 
-ssh $leader "pkill deptran_server"
-ssh $p1 "pkill deptran_server"
-ssh $p2 "pkill cpulimit"
-ssh $p2 "pkill deptran_server"
-ssh $p3 "pkill deptran_server"
-ssh $p4 "pkill deptran_server"
+./kill.sh

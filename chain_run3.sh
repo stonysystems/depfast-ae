@@ -30,10 +30,10 @@ ssh $leader "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolith
 sleep 0.4
 ssh $p1 "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P p1 > p1.log 2>&1 &" &
 sleep 0.4
-ssh $p2 "$slowness_cmd &" &
-echo "run $slowness_cmd on $p2"
-sleep 0.1
 ssh $p2 "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P p2 > p2.log 2>&1 &" &
+# Run slowness
+echo "run $slowness_cmd on $p2"
+ssh $p2 "$slowness_cmd &" &
 sleep 5
 
 # Start clients
@@ -49,7 +49,4 @@ done
 sleep_time=$((t + 10))
 sleep $sleep_time
 
-ssh $leader "pkill deptran_server"
-ssh $p1 "pkill deptran_server"
-ssh $p2 "pkill cpulimit"
-ssh $p2 "pkill deptran_server"
+./kill.sh
