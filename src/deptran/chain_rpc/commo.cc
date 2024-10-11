@@ -249,15 +249,15 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
                                         cu_cmd,
                                         fuattr);
     Future::safe_release(f);
-    data_append_map_[cu->uniq_id_] = std::make_tuple(slot_id,
-                                        ballot,
-                                        currentTerm,
-                                        prevLogIndex,
-                                        prevLogTerm,
-                                        commitIndex,
-																				di,
-                                        std::ref(md),
-                                        e);
+    data_append_map_.emplace(cu->uniq_id_, std::make_tuple(slot_id,
+                  ballot,
+                  currentTerm,
+                  prevLogIndex,
+                  prevLogTerm,
+                  commitIndex,
+								  di,
+                  std::ref(md),
+                  e));
     verify(!e->IsReady());
 
     e->ongoingPickedPath = pathIdx;
@@ -596,7 +596,8 @@ int ChainRPCCommo::getNextAvailablePath(int par_id) {
 }
 
 void ChainRPCCommo::updatePathWeights(int par_id, uint64_t slot_id, int cur_i, uint64_t cur_response_time) {
-  if (slot_id % 100 != 0) {
+  int M = 1000;
+  if (slot_id % M != 0) {
     return;
   }
   int N = 200;

@@ -674,13 +674,13 @@ void ChainRPCServer::StartTimer()
           };
           MarshallDeputy md(cmd);
           MarshallDeputy cu_md(cu_cmd);
-          if (nextHop == 0) {
+          if (nextHop == 0) { // Carray accumulated results back to the leader
             auto f = proxy->async_AppendEntriesAccBack2LeaderChain(slot_id,
                                       ballot,
                                       cu_md,
                                       fuattr);
             Future::safe_release(f);
-          } else {
+          } else { // Continue propogating requests to all nodes
             auto f = proxy->async_AppendEntriesChain(slot_id,
                                       ballot,
                                       currentTerm,

@@ -66,9 +66,14 @@ void client_launch_workers(vector<Config::SiteInfo> &client_sites) {
                                             &failover_server_idx);
     workers.push_back(worker);
     auto th_ = std::thread(&ClientWorker::Work, worker);
+    core_id += 1;
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset);
+    for (int j=0; j<10; j++) {
+      core_id ++;
+      CPU_SET(core_id, &cpuset);
+    }
+    
     int rc = pthread_setaffinity_np(th_.native_handle(),
                                     sizeof(cpu_set_t), &cpuset);
     if (rc != 0) {
