@@ -189,7 +189,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
   {
     auto cu = make_shared<ControlUnit>();
     cu->SetUniqueID(slot_id);
-    cu->total_partitions_ = n;
+    cu->total_replicas_ = n;
     cu->acc_ack_ = 1; // The first ack is from the leader
     cu->SetPath(pathIdx, path);
     cu->AppendResponseForAppendEntries(0, 1, currentTerm, prevLogIndex + 1);
@@ -197,6 +197,7 @@ ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,
     auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
     int nextHop = cu->Increment2NextHop();
     Log_track("Leader sends a request, slot_id:%d, ControlUnit: %s", slot_id, cu->toString().c_str());
+    //Log_info("select path_id:%d, slot_id:%d", pathIdx, slot_id);
     auto &p = proxies[nextHop];
     auto follower_id = p.first;
     auto proxy = (ChainRPCProxy*) p.second;

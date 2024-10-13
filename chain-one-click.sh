@@ -10,11 +10,134 @@ servers3=(
 )
 
 Kill() {
-    for host in ${servers3[@]}
+    ./kill.sh
+    rm -rf *.log
+}
+
+experiment_raft_3() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+  
+  filename=experiment_raft_3
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
+  for i in "${conc[@]}"
     do
-        ssh $host "pkill deptran_server"
+      cmd="./chain_run3.sh $i"
+	    echo "Run $cmd"
+      Kill
+      eval $cmd
+      mkdir -p ./$filename/results_3_$i-$suffix
+      rm -rf ./$filename/results_3_$i-$suffix/*
+      mv *.log ./$filename/results_3_$i-$suffix
     done
 }
+
+experiment_raft_5() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_raft_5
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run5.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_5_$i-$suffix
+      rm -rf ./$filename/results_5_$i-$suffix/*
+      mv *.log ./$filename/results_5_$i-$suffix
+    done
+}
+
+experiment_single_path_3() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_single_path_3
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=1
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run3.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_3_$i-$suffix
+      rm -rf ./$filename/results_3_$i-$suffix/*
+      mv *.log ./$filename/results_3_$i-$suffix
+    done
+}
+
+
+experiment_single_path_5() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_single_path_5
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=1
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run5.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_5_$i-$suffix
+      rm -rf ./$filename/results_5_$i-$suffix/*
+      mv *.log ./$filename/results_5_$i-$suffix
+    done
+}
+
+experiment_chainrpc_3() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_chainrpc_3
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run3.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_3_$i-$suffix
+      rm -rf ./$filename/results_3_$i-$suffix/*
+      mv *.log ./$filename/results_3_$i-$suffix
+    done
+}
+
+
+experiment_chainrpc_5() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_chainrpc_5
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run5.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_5_$i-$suffix
+      rm -rf ./$filename/results_5_$i-$suffix/*
+      mv *.log ./$filename/results_5_$i-$suffix
+    done
+}
+
+
+# -----------------------------------------------------------------------------------------------
 
 experimenta() {
   conc=( 1 2 3 4 5 6 7 8 9 10 )
@@ -54,19 +177,6 @@ experimenta() {
       eval $cmd
       mkdir -p ./$filename/results_3_$i
       mv *.log ./$filename/results_3_$i
-    done
-
-  # baseline Raft
-  # 10: 33733.4
-  # 99%, 30%, 75% --> ok
-  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
-  for i in "${conc[@]}"
-    do
-      cmd="./chain_run3.sh $i"
-	    Kill
-      eval $cmd
-      mkdir -p ./$filename/results_3_disablechain_$i
-      mv *.log ./$filename/results_3_disablechain_$i
     done
 }
 
@@ -135,8 +245,18 @@ experimente() {
   echo "Port to Rolis."
 }
 
-experimenta
-experimentb
-experimentc
-experimentd
-experimente
+
+#experiment_raft_3 1
+#experiment_raft_5 1
+
+#experiment_single_path_3 1
+#experiment_single_path_5 1
+
+#experiment_chainrpc_3 1
+experiment_chainrpc_5 1
+ 
+# experimenta
+# experimentb
+# experimentc
+# experimentd
+# experimente

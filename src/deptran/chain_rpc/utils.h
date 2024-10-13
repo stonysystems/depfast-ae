@@ -46,7 +46,7 @@ namespace janus {
         
     public:
         // Necessary information to decode and encode in the control Unit.
-        int total_partitions_;
+        int total_replicas_;
         int acc_ack_;
         int acc_rej_;
         // Accumulated responses for AppendEntries each server has received.
@@ -58,7 +58,7 @@ namespace janus {
         uint64_t init_time; // The time when the control unit is initialized in ns.
 
         // Path for the current request.
-        // If total_partitions_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
+        // If total_replicas_ is 3, then path_ can be [0, 1, 2, 0] or [0, 2, 1, 0]
         // int is the loc_id.
         std::vector<int> path_; 
         // Debugging purpose, a random string to identify the control unit.
@@ -77,7 +77,7 @@ namespace janus {
         }
 
         ControlUnit() : Marshallable(MarshallDeputy::CONTROL_UNIT_CHAIN_RPC) {
-            total_partitions_ = 0;
+            total_replicas_ = 0;
             acc_ack_ = 0;
             acc_rej_ = 0;
             toIndex_ = 0;
@@ -93,7 +93,7 @@ namespace janus {
         }
         virtual ~ControlUnit() { }
         Marshal& ToMarshal(Marshal&m) const {
-            m << total_partitions_;
+            m << total_replicas_;
             m << acc_ack_;
             m << acc_rej_;
             m << pathIdx_;
@@ -131,7 +131,7 @@ namespace janus {
         };
 
         Marshal& FromMarshal(Marshal&m) {
-            m >> total_partitions_;
+            m >> total_replicas_;
             m >> acc_ack_;
             m >> acc_rej_;
             m >> pathIdx_;
@@ -194,7 +194,7 @@ namespace janus {
         }
 
         void SetTotalPartitions(int n) {
-            total_partitions_ = n;
+            total_replicas_ = n;
         }
 
         void SetPath(int pathIdx, vector<int> path) {
@@ -206,8 +206,8 @@ namespace janus {
 
         // Core function: return earlier or not
         bool RegisterEarlyTerminate() {
-            return acc_ack_ > 0.5 * total_partitions_ 
-                    || acc_rej_ > 0.5 * total_partitions_
+            return acc_ack_ > 0.5 * total_replicas_ 
+                    || acc_rej_ > 0.5 * total_replicas_
                     || IsTail();
         }
 
@@ -239,7 +239,7 @@ namespace janus {
             }
             oss << "nullptr, toIndex: " << toIndex_ ;
             oss << ", nextHop: " << path_[toIndex_] ;
-            oss << ", total_partitions: " << total_partitions_;
+            oss << ", total_partitions: " << total_replicas_;
             oss << ", acc_ack: " << acc_ack_ << ", acc_rej: " << acc_rej_;
             oss << ", return_early: " << return_leader_;
             oss << ", isRetry: " << isRetry;

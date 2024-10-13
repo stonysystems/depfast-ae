@@ -477,7 +477,7 @@ void ChainRPCServer::StartTimer()
                                      const function<void()> &cb) {
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
-        verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
+        verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_replicas_);
         Log_track("Received AppendEntriesAccBack2LeaderChain controlUnit:%s", cu_cmd_ptr->toString().c_str());
         if (IsLeader()) {
           // uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
@@ -498,17 +498,16 @@ void ChainRPCServer::StartTimer()
             }
             
             Log_track("Without retry, uuid_:%s ready:%d", cu_cmd_ptr->uuid_.c_str(), e->IsReady());
-            if (e->IsReady()) {
-              //commo->received_quorum_ok_cnt += 1;
-            } else {
-              //commo->received_quorum_fail_cnt += 1; 
-            }
+            // if (e->IsReady()) {
+            //   commo->received_quorum_ok_cnt += 1;
+            // } else {
+            //   commo->received_quorum_fail_cnt += 1; 
+            // }
 
             while (!e->IsReady()) { // A majority of acked replicas are ready.
               cu_cmd_ptr->isRetry = 1;
-              vector<int> hops ;
               int nextHop = -1;
-              for (int i=1; i<cu_cmd_ptr->total_partitions_; i++) {
+              for (int i=1; i<cu_cmd_ptr->total_replicas_; i++) {
                 if (ackedReplicas.find(i) == ackedReplicas.end()) {
                   nextHop = i;
                   break;
@@ -556,6 +555,45 @@ void ChainRPCServer::StartTimer()
                 retry_e->Wait();
               }
             }
+
+            // IsReady -> committed, async this request to other not-received replicas
+            {
+              vector<int> hops ;
+              int nextHop = -1;
+              for (int i=1; i<cu_cmd_ptr->total_replicas_; i++) {
+                if (ackedReplicas.find(i) == ackedReplicas.end()) {
+                  nextHop = i;
+                  hops.push_back(nextHop);
+                }
+              }
+
+              for (auto &nextHop: hops) {
+                int uniq_id_ = cu_cmd_ptr->uniq_id_;
+                cu_cmd_ptr->acc_rej_ = 1000; // an uniq tag
+                auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+                //commo->retry_rpc_cnt += 1;
+
+                FutureAttr fuattr;
+                fuattr.callback = [&] (Future* fu) {
+                  // Do nothing
+                };
+
+                Log_info("Sync a RPC to a hop: %d", nextHop);
+                MarshallDeputy cu_md(cu_cmd);
+                auto f = proxy->async_AppendEntriesChain(std::get<0>(data),
+                                            std::get<1>(data),
+                                            std::get<2>(data),
+                                            std::get<3>(data),
+                                            std::get<4>(data),
+                                            std::get<5>(data),
+                                            std::get<6>(data),
+                                            std::get<7>(data),
+                                            cu_md,
+                                            fuattr);
+                Future::safe_release(f);
+              }
+            }
+
             commo->data_append_map_.erase(cu_cmd_ptr->uniq_id_);
           }else {
             Log_info("Fail to update the event mapping");
@@ -582,8 +620,13 @@ void ChainRPCServer::StartTimer()
                                      const function<void()> &cb) {
         auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
         auto commo = (ChainRPCCommo *)(this->commo_);
-        verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_partitions_);
+        verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_replicas_);
         Log_track("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
+        
+        if (cu_cmd_ptr->acc_rej_==1000) {
+          cb();
+          return;
+        }
 
         Log_track("ChainRPC scheduler on append entries for "
                  "loc: %d, slot_id: %llu, PrevLogIndex: %d, lastLogIndex: %d, isLeader: %d",
@@ -624,7 +667,7 @@ void ChainRPCServer::StartTimer()
               cu_cmd_ptr->acc_ack_ += 1;
           }
           else {
-              Log_debug("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
+              Log_track("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
                   this->loc_id_, leaderCurrentTerm, leaderPrevLogIndex, currentTerm, lastLogIndex);          
               *followerAppendOK = 0;
               
