@@ -8,8 +8,6 @@ t=30
 msgsize=0
 # Concurrent per client
 n_conc=$1
-# If enable slowness on follower-1 (sudo apt install cpulimit)
-slowness=$2
 # Number of client processes
 nclients=20
 
@@ -17,12 +15,6 @@ leader=192.168.1.103
 p1=192.168.1.102
 p2=192.168.1.104
 
-slowness_cmd=""
-if [ "$slowness" == "slow" ]; then
-    slowness_cmd="cpulimit --exe deptran_server --limit 10"
-else
-    slowness_cmd="echo ''"
-fi
 cmd_="ulimit -n 10000"
 
 rm -f c*.log
@@ -42,10 +34,6 @@ do
   ssh $leader "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P $c > $c.log 2>&1 &" &
   sleep 0.1
 done
-
-sleep 0.4
-echo "run $slowness_cmd on $p2"
-ssh $p2 "$slowness_cmd &" &
 
 sleep_time=$((t + 10))
 sleep $sleep_time

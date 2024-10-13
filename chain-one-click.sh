@@ -185,10 +185,10 @@ experiment_chainrpc_slow_3() {
   filename=experiment_chainrpc_slow_3
   mkdir -p $filename
 
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
+   python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0 --enable-slowness=1
   for i in "${conc[@]}"
     do
-      cmd="./chain_run3.sh $i slow"
+      cmd="./chain_run3.sh $i"
       echo "Run $cmd"
 	    Kill
       eval $cmd
@@ -205,7 +205,7 @@ experiment_chainrpc_slow_5() {
   filename=experiment_chainrpc_slow_5
   mkdir -p $filename
 
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0 --enable-slowness=1
   for i in "${conc[@]}"
     do
       cmd="./chain_run5.sh $i slow"

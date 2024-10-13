@@ -19,12 +19,6 @@ p2=192.168.1.104
 p3=192.168.1.102
 p4=192.168.1.102
 
-slowness_cmd=""
-if [ "$slowness" == "slow" ]; then
-    slowness_cmd="cpulimit --exe deptran_server --limit 20"
-else
-    slowness_cmd="echo ''"
-fi
 cmd_="ulimit -n 10000"
 
 rm -f c*.log
@@ -48,11 +42,6 @@ do
   ssh $leader "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc_5.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P $c > $c.log 2>&1 &" &
   sleep 0.1
 done
-
-
-sleep 0.4
-echo "run $slowness_cmd on $p2"
-ssh $p2 "$slowness_cmd &" &
 
 sleep_time=$((t + 10))
 sleep $sleep_time

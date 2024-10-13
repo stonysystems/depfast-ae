@@ -578,7 +578,6 @@ void ChainRPCServer::StartTimer()
                   // Do nothing
                 };
 
-                Log_info("Sync a RPC to a hop: %d", nextHop);
                 MarshallDeputy cu_md(cu_cmd);
                 auto f = proxy->async_AppendEntriesChain(std::get<0>(data),
                                             std::get<1>(data),
@@ -665,6 +664,12 @@ void ChainRPCServer::StartTimer()
               
               cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, *followerAppendOK, *followerCurrentTerm, *followerLastLogIndex);
               cu_cmd_ptr->acc_ack_ += 1;
+
+#ifdef SLOWNESS_ENABLED
+              if (commo->loc_id_ == 1) {
+                Reactor::CreateSpEvent<NeverEvent>()->Wait(40 * 1000); // Add a slowness on p1
+              }
+#endif
           }
           else {
               Log_track("reject append loc: %d, leader term %d last idx %d, server term: %d last idx: %d",
