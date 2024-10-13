@@ -137,114 +137,88 @@ experiment_chainrpc_5() {
 }
 
 
-# -----------------------------------------------------------------------------------------------
-
-experimenta() {
+experiment_chainrpc_noorder_3() {
+  suffix=$1
   conc=( 1 2 3 4 5 6 7 8 9 10 )
-  conc=( 10 )
 
-  filename=experimenta
+  filename=experiment_chainrpc_noorder_3
   mkdir -p $filename
-  rm -rf $filename
 
-  # python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=1
-  # 92-95%
-  # 10: 26406.7 (sometimes: 23977.1 or 24707.7)
-
-  # chainRPC
-  # timeout: 5ms
-  # 10: 25612.9 (M 200*10000)
-  # 10: 16071.2 (M 2000)
-  # 10: 16263 (M 10000)
-
-  # timeout: 1ms
-  # 10: 18444.9 (M 10000)
-
-  # timeout: 100ms
-  # 10: 16922.5 (M 10000)
-
-  # timeout: 10000000ms
-  # 10: 16684.9 (M 10000)
-
-  # timeout: 10000000ms
-  # 10: 19081.1 (M 10*10000)
-  # 85-90%
-  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
-  for i in "${conc[@]}"
-    do
-      cmd="./chain_run3.sh $i"
-	    Kill
-      eval $cmd
-      mkdir -p ./$filename/results_3_$i
-      mv *.log ./$filename/results_3_$i
-    done
-}
-
-experimentb() {
-  conc=( 1 2 3 4 5 6 7 8 9 10 )
-  conc=( 10 )
-
-  filename=experimentb
-  mkdir -p $filename
-  rm -rf $filename
-
-  # chainRPC (without in-order enforcement, we retransmit rejected requests)
-  # 10: 12795.5
   python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=0 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i"
+      echo "Run $cmd"
 	    Kill
       eval $cmd
-      mkdir -p ./$filename/results_3_disableinorder_$i
-      mv *.log ./$filename/results_3_disableinorder_$i
+      mkdir -p ./$filename/results_3_$i-$suffix
+      rm -rf ./$filename/results_3_$i-$suffix/*
+      mv *.log ./$filename/results_3_$i-$suffix
     done
 }
 
-experimentc() {
-  echo "the same as experimenta with latency monitor."
-  # Do nothing here!
+
+experiment_chainrpc_noorder_5() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_chainrpc_noorder_5
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=0 --enable-single-path=0
+  for i in "${conc[@]}"
+    do
+      cmd="./chain_run5.sh $i"
+      echo "Run $cmd"
+	    Kill
+      eval $cmd
+      mkdir -p ./$filename/results_5_$i-$suffix
+      rm -rf ./$filename/results_5_$i-$suffix/*
+      mv *.log ./$filename/results_5_$i-$suffix
+    done
 }
 
-experimentd() {
-  echo "the same as experimenta, but with slowness. Put a slowness on one node, and then monitor performance changes."
-
+experiment_chainrpc_slow_3() {
+  suffix=$1
   conc=( 1 2 3 4 5 6 7 8 9 10 )
-  conc=( 10 )
 
-  filename=experimentd
+  filename=experiment_chainrpc_slow_3
   mkdir -p $filename
-  rm -rf $filename
 
-  # chainRPC
-  # 10: 3541.35
   python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
   for i in "${conc[@]}"
     do
       cmd="./chain_run3.sh $i slow"
+      echo "Run $cmd"
 	    Kill
       eval $cmd
-      mkdir -p ./$filename/results_3_$i
-      mv *.log ./$filename/results_3_$i
+      mkdir -p ./$filename/results_3_$i-$suffix
+      rm -rf ./$filename/results_3_$i-$suffix/*
+      mv *.log ./$filename/results_3_$i-$suffix
     done
+}
 
-  # baseline Raft - with slowness
-  # 10: 33500.2
-  python3 waf configure -J build --enable-chainrpc=0 --in-order-enforce=0 --enable-single-path=0
+experiment_chainrpc_slow_5() {
+  suffix=$1
+  conc=( 1 2 3 4 5 6 7 8 9 10 )
+
+  filename=experiment_chainrpc_slow_5
+  mkdir -p $filename
+
+  python3 waf configure -J build --enable-chainrpc=1 --in-order-enforce=1 --enable-single-path=0
   for i in "${conc[@]}"
     do
-      cmd="./chain_run3.sh $i slow"
+      cmd="./chain_run5.sh $i slow"
+      echo "Run $cmd"
 	    Kill
       eval $cmd
-      mkdir -p ./$filename/results_3_slowness_$i
-      mv *.log ./$filename/results_3_slowness_$i
+      mkdir -p ./$filename/results_5_$i-$suffix
+      rm -rf ./$filename/results_5_$i-$suffix/*
+      mv *.log ./$filename/results_5_$i-$suffix
     done
 }
 
-experimente() {
-  echo "Port to Rolis."
-}
-
+# -----------------------------------------------------------------------------------------------
 
 #experiment_raft_3 1
 #experiment_raft_5 1
@@ -253,10 +227,10 @@ experimente() {
 #experiment_single_path_5 1
 
 #experiment_chainrpc_3 1
-experiment_chainrpc_5 1
- 
-# experimenta
-# experimentb
-# experimentc
-# experimentd
-# experimente
+#experiment_chainrpc_5 1
+
+# experiment_chainrpc_noorder_3 1
+# experiment_chainrpc_noorder_5 1
+
+experiment_chainrpc_slow_3 1
+experiment_chainrpc_slow_5 1

@@ -2,6 +2,7 @@
 
 # Global result file
 output_file="results.log"
+filter_exp_name=$1
 
 # Clear the global result file if it exists
 > "$output_file"
@@ -10,6 +11,11 @@ output_file="results.log"
 for first_level_folder in experiment*/; do
     # Write the first-level folder name to the output file
     first_level_folder_name=$(basename "$first_level_folder")
+    
+    if [ "$filter_exp_name" != "$first_level_folder_name" ]; then
+        continue
+    fi
+
     echo "$first_level_folder_name" >> "$output_file"
     
     # Iterate through all subfolders in the first-level folder
