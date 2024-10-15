@@ -57,6 +57,7 @@ def options(opt):
     opt.add_option('--enable-chainrpc', dest='chainrpc', default=None)
     opt.add_option('--in-order-enforce', dest='inorderenforce', default=None)
     opt.add_option('--enable-single-path', dest='singlepath', default=None)
+    opt.add_option('--enable-slowness', dest='slowness', default=None)
     opt.parse_args()
 
 def configure(conf):
@@ -222,6 +223,9 @@ def _enable_chainrpc(conf):
     if Options.options.singlepath=="1":
         conf.env.append_value("CXXFLAGS", "-DSINGLE_PATH_ENABLED".split())
 
+    if Options.options.slowness=="1":
+        conf.env.append_value("CXXFLAGS", "-DSLOWNESS_ENABLED".split())
+
     #conf.env.append_value("CXXFLAGS", "-DCHAIN_DEBUG".split())
     
 
@@ -333,7 +337,7 @@ def _enable_debug(conf):
             conf.env.append_value("CXXFLAGS", "-Wall -pthread -O0 -DNDEBUG -g "
                 "-ggdb -DLOG_INFO -rdynamic -fno-omit-frame-pointer".split())
         else:
-            conf.env.append_value("CXXFLAGS", "-g -pthread -O2 -DNDEBUG  -DLOG_INFO".split())
+            conf.env.append_value("CXXFLAGS", "-g -pthread -fno-omit-frame-pointer -O2 -DNDEBUG  -DLOG_INFO".split())
 
 
 def _properly_split(args):

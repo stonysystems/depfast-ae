@@ -243,6 +243,7 @@ friend class ChainRPCProxy;
   void _initializePathResponseTime();
   void appendResponseTime(int par_id, int i, uint64_t latency) ;
   void _preAllocatePathsWithWeights();
+  double _getAvgLatForPath(int par_id, int cur_path_id);
   int getNextAvailablePath(int par_id) ;
   // According to the responsiveness of current path, update the weights of the paths
   void updatePathWeights(int par_id, uint64_t, int i, uint64_t response_time) ;

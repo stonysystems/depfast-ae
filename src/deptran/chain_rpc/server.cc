@@ -666,7 +666,7 @@ void ChainRPCServer::StartTimer()
               cu_cmd_ptr->acc_ack_ += 1;
 
 #ifdef SLOWNESS_ENABLED
-              if (commo->loc_id_ == 1) {
+              if (commo->loc_id_ == 2) {
                 Reactor::CreateSpEvent<NeverEvent>()->Wait(40 * 1000); // Add a slowness on p1
               }
 #endif

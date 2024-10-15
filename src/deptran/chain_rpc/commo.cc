@@ -536,12 +536,27 @@ std::vector<std::vector<int>> _generatePermutations(int n) {
         permutations.push_back(reversed);
     }
 
+    int maxPaths = 10;
+    if (permutations.size() > maxPaths) {
+      size_t halfSize = permutations.size() / 2;
+      std::vector<std::vector<int>> newPermutations;
+      for (size_t i = 0; i < maxPaths / 2; ++i) {
+        newPermutations.push_back(permutations[i]);
+      }
+
+      // Add 5 elements from the middle (halfSize + i)
+      for (size_t i = 0; i < maxPaths / 2; ++i) {
+        newPermutations.push_back(permutations[halfSize + i]);
+      }
+      permutations = std::move(newPermutations);
+    }
+
 #ifdef SINGLE_PATH_ENABLED
     permutations.resize(1);
 #endif
 
     for (int i = 0; i < permutations.size(); ++i) {
-        Log_info("Path %d: %s", i, _arrayToString(permutations[i]).c_str());
+      Log_info("Path %d: %s", i, _arrayToString(permutations[i]).c_str());
     }
 
     return permutations;
@@ -655,6 +670,23 @@ void ChainRPCCommo::updatePathWeights(int par_id, uint64_t slot_id, int cur_i, u
   }
 }
 
+double ChainRPCCommo::_getAvgLatForPath(int par_id, int cur_path_id) {
+  int N = 200;
+  vector<tuple<int, vector<uint64_t>>> response_times_paths = pathResponeTime_[par_id];
+  double tol = 0, cnt = 0, avg = 0;
+  for (int j=0; j<N; j++) { // # of data per path
+    tol += std::get<1>(response_times_paths[cur_path_id])[j];
+    if (std::get<1>(response_times_paths[cur_path_id])[j]>0)
+      cnt++;
+  }
+  if (cnt==0) {
+    avg = 1000 * 1000; // If there are no request to this path, go for this path
+  }else{
+    avg = (tol/cnt);
+  }
+  return avg;
+}
+
 // Keep latest 200 data for each path.
 // latency is in ns.
 void ChainRPCCommo::appendResponseTime(int par_id, int cur_path_i, uint64_t latency) {
@@ -662,10 +694,23 @@ void ChainRPCCommo::appendResponseTime(int par_id, int cur_path_i, uint64_t late
 
     int N = 200;
     auto& responseData = pathResponeTime_[par_id][cur_path_i];
+    int pathSize = pathResponeTime_[par_id].size();
 
     int availIndex = std::get<0>(responseData);
     std::get<1>(responseData)[availIndex] = latency;
     std::get<0>(responseData) = (availIndex+1) % N;
+
+#ifdef SINGLE_PATH_ENABLED
+
+#else
+    // We check its dual path's avg_lat, if this latency is much higer then we go with another path
+    int dual_path = pathSize - 1 - cur_path_i ;
+    if (dual_path != cur_path_i) {
+      if (latency > 2*_getAvgLatForPath(par_id, dual_path)) {
+        availablePath = dual_path ;
+      }
+    }
+#endif
 }
 
 } // namespace janus

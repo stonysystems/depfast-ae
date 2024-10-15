@@ -22,7 +22,9 @@ p4=192.168.1.102
 cmd_="ulimit -n 10000"
 
 rm -f c*.log
-ssh $leader "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc_5.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P localhost > localhost.log 2>&1 &" &
+perf="perf record -F 99 -g "
+perf=""
+ssh $leader "$cmd_; cd ~/depfast-ae && $perf ./build/deptran_server -f config/monolithic_chainrpc_5.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P localhost > localhost.log 2>&1 &" &
 sleep 0.4
 ssh $p1 "$cmd_; cd ~/depfast-ae && ./build/deptran_server -f config/monolithic_chainrpc_5.yml -f config/concurrent_$n_conc.yml -f config/chainrpc/msgsize_$msgsize.yml -d $t -P p1 > p1.log 2>&1 &" &
 sleep 0.4
@@ -46,4 +48,4 @@ done
 sleep_time=$((t + 10))
 sleep $sleep_time
 
-./kill.sh
+#./kill.sh
