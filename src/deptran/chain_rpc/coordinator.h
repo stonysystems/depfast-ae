@@ -69,6 +69,7 @@ class CoordinatorChainRPC : public Coordinator {
   void AppendEntries();
   void Commit();
   void LeaderLearn();
+  void Add();
 
   void Reset() override {}
   void Restart() override { verify(0); }

@@ -162,6 +162,100 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
 
 }
 
+
+#ifdef CHAIN_RPC_ENABLED
+shared_ptr<ChainRPCAddQuorumEvent>
+ChainRPCCommo::BroadcastAdd(parid_t par_id,
+                            slotid_t slot_id,
+                            uint64_t delta, shared_ptr<Marshallable> cmd) {
+  int pathIdx = getNextAvailablePath(par_id);
+  vector<int> path = std::get<0>(pathsWeights[par_id][pathIdx]);
+  
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+  auto e = Reactor::CreateSpEvent<ChainRPCAddQuorumEvent>(n, n);
+  auto proxies = rpc_par_proxies_[par_id];
+
+  WAN_WAIT;
+
+  {
+    auto cu = make_shared<ControlUnit>();
+    cu->SetUniqueID(slot_id);
+    cu->total_replicas_ = n;
+    cu->acc_ack_ = 1; // The first ack is from the leader
+    cu->SetPath(pathIdx, path);
+    cu->AppendResponseForAppendEntries(0, 1, -1, -1);
+
+    auto cu_m = dynamic_pointer_cast<Marshallable>(cu);
+    int nextHop = cu->Increment2NextHop();
+    auto &p = proxies[nextHop];
+
+    auto proxy = (ChainRPCProxy*) p.second;
+    FutureAttr fuattr;
+
+    fuattr.callback = [this, e] (Future* fu) {
+      uint64_t counter = 0;
+			
+			fu->get_reply() >> counter;
+      e->FeedResponse(1);
+    };
+    
+    MarshallDeputy md(cmd);
+	  verify(md.sp_data_ != nullptr);
+
+    MarshallDeputy cu_cmd(cu_m);
+
+    auto f = proxy->async_AddChain(slot_id,
+                              1,
+                              md,
+                              cu_cmd,
+                              fuattr);
+    Future::safe_release(f);
+
+    data_add_map_.emplace(cu->uniq_id_, std::make_tuple(slot_id,
+                  std::ref(md),
+                  e));
+    verify(!e->IsReady());
+
+    e->ongoingPickedPath = pathIdx;
+    e->uniq_id_ = cu->uniq_id_;
+  }
+  verify(!e->IsReady());
+  return e;
+}
+#else
+shared_ptr<ChainRPCAddQuorumEvent>
+ChainRPCCommo::BroadcastAdd(parid_t par_id,
+                            slotid_t slot_id,
+                            uint64_t delta, shared_ptr<Marshallable> cmd) {
+  int n = Config::GetConfig()->GetPartitionSize(par_id);
+  auto e = Reactor::CreateSpEvent<ChainRPCAddQuorumEvent>(n, n);
+  auto proxies = rpc_par_proxies_[par_id];
+
+  for (auto& p : proxies) {
+    auto proxy = (ChainRPCProxy*) p.second;
+    FutureAttr fuattr;
+
+    fuattr.callback = [this, e] (Future* fu) {
+      uint64_t counter = 0;
+			fu->get_reply() >> counter;
+      e->FeedResponse(1);
+    };
+    
+    MarshallDeputy md(cmd);
+	  verify(md.sp_data_ != nullptr);
+
+    auto f = proxy->async_Add(slot_id,
+                              1,
+                              md,
+                              fuattr);
+    Future::safe_release(f);
+  }
+  verify(!e->IsReady());
+  return e;
+}
+#endif
+
+
 #ifdef CHAIN_RPC_ENABLED
 shared_ptr<ChainRPCAppendQuorumEvent>
 ChainRPCCommo::BroadcastAppendEntries(parid_t par_id,

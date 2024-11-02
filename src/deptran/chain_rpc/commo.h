@@ -129,6 +129,26 @@ class ChainRPCAppendQuorumEvent: public QuorumEvent {
 };
 
 
+class ChainRPCAddQuorumEvent: public QuorumEvent {
+ public:
+    using QuorumEvent::QuorumEvent;
+
+    // A message between commo.cpp and coordinator.cc
+    int ongoingPickedPath = -1;
+    // uuid_ for a path (Debugging purpose)
+    //std::string uuid_ = "";
+    int uniq_id_ = -1;
+
+    void FeedResponse(bool appendOK) {
+        if (appendOK) {
+            VoteYes();
+        } else {
+            VoteNo();
+        }
+    }
+};
+
+
 
 class ChainRPCCommo : public Communicator {
 
@@ -211,6 +231,11 @@ friend class ChainRPCProxy;
                          uint64_t prevLogTerm,
                          uint64_t commitIndex,
                          shared_ptr<Marshallable> cmd);
+
+  shared_ptr<ChainRPCAddQuorumEvent>
+  BroadcastAdd(parid_t par_id,
+               slotid_t slot_id, uint64_t delta, shared_ptr<Marshallable> cmd);
+
   void BroadcastAppendEntries(parid_t par_id,
                               slotid_t slot_id,
 															i64 dep_id,
@@ -267,6 +292,13 @@ friend class ChainRPCProxy;
   >; 
   // Request mapping in ChainRPC for resend/just references
   unordered_map<int, AppendEntriesParametersTuple> data_append_map_{};
+
+  using AddParametersTuple = std::tuple<
+    uint64_t,                  // slot_id 0
+    MarshallDeputy, //  md
+    std::shared_ptr<ChainRPCAddQuorumEvent>
+  >; 
+  unordered_map<int, AddParametersTuple> data_add_map_{};
 
   void Statistics() const override;
 };

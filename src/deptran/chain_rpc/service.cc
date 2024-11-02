@@ -58,6 +58,49 @@ void ChainRPCServiceImpl::Vote2FPGA(const uint64_t& lst_log_idx,
                     std::bind(&rrr::DeferredReply::reply, defer));
 }
 
+void ChainRPCServiceImpl::Add(const uint64_t& slot,
+                              const uint64_t& delta,
+                              const MarshallDeputy& md_cmd,
+                              uint64_t *counter,
+                              rrr::DeferredReply* defer) {
+  Coroutine::CreateRun([&] () {
+    sched_->OnAdd(slot,
+                  delta,
+                  const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                  counter,
+                  std::bind(&rrr::DeferredReply::reply, defer));
+
+  });
+}
+
+void ChainRPCServiceImpl::AddChain(const uint64_t& slot,
+                              const uint64_t& delta,
+                              const MarshallDeputy& md_cmd,
+                              const MarshallDeputy& cu_cmd,
+                              uint64_t *counter,
+                              rrr::DeferredReply* defer) {
+  Coroutine::CreateRun([&] () {
+    sched_->OnAddChain(slot,
+                  delta,
+                  const_cast<MarshallDeputy&>(md_cmd).sp_data_,
+                  const_cast<MarshallDeputy&>(cu_cmd).sp_data_,
+                  counter,
+                  std::bind(&rrr::DeferredReply::reply, defer));
+
+  });
+}
+
+// Replicas return acculumated results to the leader.
+void ChainRPCServiceImpl::AddAccBack2LeaderChain(const uint64_t& slot, const MarshallDeputy& cu_cmd, rrr::DeferredReply* defer) {
+  Coroutine::CreateRun([&] () {
+    sched_->OnAddAccBack2LeaderChain(
+                                  slot,
+                                  const_cast<MarshallDeputy&>(cu_cmd).sp_data_,
+                                  std::bind(&rrr::DeferredReply::reply, defer));
+  });
+}
+
+
 void ChainRPCServiceImpl::AppendEntries(const uint64_t& slot,
                                         const ballot_t& ballot,
                                         const uint64_t& leaderCurrentTerm,

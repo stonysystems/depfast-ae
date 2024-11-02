@@ -204,12 +204,19 @@ namespace janus {
             }
         }
 
+#ifdef ADD_ENABLED
+        bool RegisterEarlyTerminate() {
+            return acc_ack_ == total_replicas_ 
+                    || IsTail();
+        }
+#else
         // Core function: return earlier or not
         bool RegisterEarlyTerminate() {
             return acc_ack_ > 0.5 * total_replicas_ 
                     || acc_rej_ > 0.5 * total_replicas_
                     || IsTail();
         }
+#endif
 
         int Increment2NextHop() {
             toIndex_++;

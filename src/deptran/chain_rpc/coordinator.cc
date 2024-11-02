@@ -59,6 +59,33 @@ void CoordinatorChainRPC::Submit(shared_ptr<Marshallable>& cmd,
   GotoNextPhase();
 }
 
+void CoordinatorChainRPC::Add() {
+    int delta = 1;
+    auto sp_quorum = commo()->BroadcastAdd(par_id_, slot_id_, delta, cmd_);
+    auto start = std::chrono::high_resolution_clock::now();
+    sp_quorum->Wait(1000*1000);
+		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+
+#ifdef CHAIN_RPC_ENABLED
+    // Skip first several seconds warmup time.
+    if (std::chrono::high_resolution_clock::now() - commo()->initializtion_time > std::chrono::seconds(5)) {
+      commo()->appendResponseTime(par_id_, sp_quorum->ongoingPickedPath, duration.count());
+      commo()->updatePathWeights(par_id_, slot_id_, sp_quorum->ongoingPickedPath, duration.count());
+    }
+#endif
+
+    if (sp_quorum->Yes()) {
+        committed_ = true;
+    }
+    else if (sp_quorum->No()) {
+        Log_info("failed to have a quorum for append entries, uniq_id_:%d", sp_quorum->uniq_id_);
+        verify(0);
+    }
+    else {
+        void(0);
+    }
+}
+
 // One coordinator instance per concurrency.
 void CoordinatorChainRPC::AppendEntries() {
     std::lock_guard<std::recursive_mutex> lock(mtx_); // This looks like unnecessary, especially when we have Wait() in the loop
@@ -160,7 +187,11 @@ void CoordinatorChainRPC::GotoNextPhase() {
       if (IsLeader()) {
         phase_++; // skip prepare phase for "leader"
         verify(phase_ % n_phase == Phase::ACCEPT);
+#ifdef ADD_ENABLED
+        Add();
+#else
         AppendEntries();
+#endif
         phase_++;
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
@@ -172,7 +203,12 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
+#ifdef ADD_ENABLED
+        commit_callback_();
+        GotoNextPhase();
+#else
         LeaderLearn();
+#endif
       } else {
         // verify(0);
         // Forward(cmd_,commit_callback_) ;
@@ -181,7 +217,10 @@ void CoordinatorChainRPC::GotoNextPhase() {
       break;
     case Phase::PREPARE:
       verify(phase_ % n_phase == Phase::ACCEPT);
-      AppendEntries();
+#ifdef ADD_ENABLED
+#else
+        AppendEntries();
+#endif
       break;
     case Phase::COMMIT:
       // do nothing.

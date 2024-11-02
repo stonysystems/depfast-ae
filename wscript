@@ -58,6 +58,8 @@ def options(opt):
     opt.add_option('--in-order-enforce', dest='inorderenforce', default=None)
     opt.add_option('--enable-single-path', dest='singlepath', default=None)
     opt.add_option('--enable-slowness', dest='slowness', default=None)
+    # Just debugging
+    opt.add_option('--enable-add', dest='add', default=None)
     opt.parse_args()
 
 def configure(conf):
@@ -225,6 +227,9 @@ def _enable_chainrpc(conf):
 
     if Options.options.slowness=="1":
         conf.env.append_value("CXXFLAGS", "-DSLOWNESS_ENABLED".split())
+
+    if Options.options.add=="1":
+        conf.env.append_value("CXXFLAGS", "-DADD_ENABLED".split())
 
     #conf.env.append_value("CXXFLAGS", "-DCHAIN_DEBUG".split())
     

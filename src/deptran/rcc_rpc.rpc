@@ -135,6 +135,21 @@ abstract service ChainRPC {
                ballot_t ballot,
 							 DepId dep_id,
                MarshallDeputy cmd);
+    
+  defer Add(uint64_t slot,
+            uint64_t delta,
+            MarshallDeputy cmd|
+            uint64_t counter);
+  
+  defer AddChain(uint64_t slot,
+            uint64_t delta,
+            MarshallDeputy cmd,
+            MarshallDeputy uc|
+            uint64_t counter);
+
+  // Return Acc results back to the leader.
+  defer AddAccBack2LeaderChain(uint64_t slot,
+                            MarshallDeputy cu_cmd);
 }
 
 

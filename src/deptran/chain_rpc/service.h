@@ -93,7 +93,24 @@ void AppendEntriesChain(const uint64_t& slot,
               const MarshallDeputy& cmd,
               rrr::DeferredReply* defer) override;
 
+    
+  void Add(const uint64_t& slot,
+           const uint64_t& delta,
+           const MarshallDeputy& cmd,
+           uint64_t *counter,
+           rrr::DeferredReply* defer);
 
+  void AddChain(const uint64_t& slot,
+           const uint64_t& delta,
+           const MarshallDeputy& cmd,
+           const MarshallDeputy& cu_cmd,
+           uint64_t *counter,
+           rrr::DeferredReply* defer);
+  
+  void AddAccBack2LeaderChain(const uint64_t& slot,
+                     const MarshallDeputy& cu_cmd, 
+                     rrr::DeferredReply* defer) override;
+  
   // Data structure for the in-order guarantee
   unordered_map<int, int> sequencer_tracker_;  // slot_id: status, 0: not received, 1: executed
   // atomic<int> sequencer_tracker_min_{0};

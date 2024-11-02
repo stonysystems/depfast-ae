@@ -604,6 +604,212 @@ void ChainRPCServer::StartTimer()
         return ;
     }
 
+
+    void ChainRPCServer::OnAdd(const uint64_t& slot_id,
+             const uint64_t delta,
+             shared_ptr<Marshallable> &cmd,
+             uint64_t *counter,
+             const function<void()> &cb) {
+      *counter = 1;
+      app_next_(*cmd); 
+      cb();
+    }
+
+    void ChainRPCServer::OnAddChain(const uint64_t& slot_id,
+             const uint64_t delta,
+             shared_ptr<Marshallable> &cmd,
+             shared_ptr<Marshallable> &cu_cmd,
+             uint64_t *counter,
+             const function<void()> &cb) {
+      auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
+      auto commo = (ChainRPCCommo *)(this->commo_);
+      verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_replicas_);
+      Log_track("Received controlUnit:%s", cu_cmd_ptr->toString().c_str());
+        
+      if (cu_cmd_ptr->acc_rej_==1000) {
+        cb();
+        return;
+      }
+      
+      {
+        *counter = 1;
+
+        cu_cmd_ptr->AppendResponseForAppendEntries(loc_id_, 1, -1, -1);
+        cu_cmd_ptr->acc_ack_ += 1;
+
+        app_next_(*cmd); 
+      }
+
+      // Skip retry entry's propogation
+      if (cu_cmd_ptr->isRetry) {
+        cb();
+        return ;
+      }
+
+      // Forward this request and accumulated results to the next hop.
+      // Note that the next hop can be the leader or next follower in the chain or both.
+      // We have to propogate requests to all replicas in the chain.
+      vector<int> hops ;
+      int firstHop = cu_cmd_ptr->Increment2NextHop(); // Jump to the next hop.
+      hops.push_back(firstHop);
+      int secondHop = firstHop; // If jump to the leader early.
+        
+      if (!cu_cmd_ptr->return_leader_ && cu_cmd_ptr->RegisterEarlyTerminate()) {
+        secondHop = 0;
+      }
+
+      if (secondHop != firstHop) {
+        hops.push_back(secondHop);
+      }
+
+      std::sort(hops.begin(), hops.end()); // Always try to send to the leader first.
+      for (int i=0; i<hops.size(); i++) {
+        int nextHop = hops[i];
+          
+        if (nextHop == 0) {
+          if (cu_cmd_ptr->return_leader_ == 1) { // If already returned, no further actions.
+            continue; 
+          }
+          cu_cmd_ptr->return_leader_ = 1;
+        }
+        Log_track("Jump to next hop: %d, ControlUnit: %s", nextHop, cu_cmd_ptr->toString().c_str());
+
+        auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+        FutureAttr fuattr;
+        fuattr.callback = [this] (Future* fu) { 
+          // Do nothing...
+        };
+        MarshallDeputy md(cmd);
+        MarshallDeputy cu_md(cu_cmd);
+        if (nextHop == 0) { // Carray accumulated results back to the leader
+          auto f = proxy->async_AddAccBack2LeaderChain(slot_id,
+                                      cu_md,
+                                      fuattr);
+            Future::safe_release(f);
+          } else { // Continue propogating requests to all nodes
+            auto f = proxy->async_AddChain(slot_id,
+                                      delta,
+                                      md,
+                                      cu_md,
+                                      fuattr);
+            Future::safe_release(f);
+          }
+        }
+        cb();
+    }
+
+    void ChainRPCServer::OnAddAccBack2LeaderChain(const uint64_t& slot,
+                                     shared_ptr<Marshallable> &cu_cmd,
+                                     const function<void()> &cb) {
+      
+      auto cu_cmd_ptr = dynamic_pointer_cast<ControlUnit>(cu_cmd);
+      auto commo = (ChainRPCCommo *)(this->commo_);
+      verify(commo->rpc_par_proxies_[partition_id_].size() == cu_cmd_ptr->total_replicas_);
+      Log_track("Received AppendEntriesAccBack2LeaderChain controlUnit:%s", cu_cmd_ptr->toString().c_str());
+      if (IsLeader()) {
+        // uint64_t end_in_ns = cu_cmd_ptr->GetNowInns();
+        // Log_track("Leader received back: %f ms, path_id: %d, uuid_:%s, ", (end_in_ns-cu_cmd_ptr->init_time)/1000.0/1000.0, cu_cmd_ptr->pathIdx_, cu_cmd_ptr->uuid_.c_str());
+
+        // If the leader receives an accumulated results from the followers
+        // We should feed a accumulated results back to the coordinator to make a final decision.
+          
+        auto data = commo->data_add_map_[cu_cmd_ptr->uniq_id_];
+        auto e = std::get<2>(data);
+        unordered_map<int, int> ackedReplicas;
+        if (e) {
+          for (int i=0; i<cu_cmd_ptr->appendOK_.size(); i++) {
+            if (cu_cmd_ptr->appendOK_[i] == 1) {
+              ackedReplicas[cu_cmd_ptr->local_ids_[i]] = 1;
+              e->FeedResponse(1);
+            }
+          }
+            
+          Log_track("Without retry, uuid_:%s ready:%d", cu_cmd_ptr->uuid_.c_str(), e->IsReady());
+          // if (e->IsReady()) {
+          //   commo->received_quorum_ok_cnt += 1;
+          // } else {
+          //   commo->received_quorum_fail_cnt += 1; 
+          // }
+
+          while (!e->IsReady()) { // A majority of acked replicas are ready.
+            cu_cmd_ptr->isRetry = 1;
+            int nextHop = -1;
+            for (int i=1; i<cu_cmd_ptr->total_replicas_; i++) {
+              if (ackedReplicas.find(i) == ackedReplicas.end()) {
+                 nextHop = i;
+                break;
+              }
+            }
+
+            if (nextHop >= 0) {
+              int uniq_id_ = cu_cmd_ptr->uniq_id_;
+              auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+              auto retry_e = Reactor::CreateSpEvent<QuorumEvent>(1, 1);
+              std::string uuid_ = cu_cmd_ptr->uuid_;
+              //commo->retry_rpc_cnt += 1;
+
+              FutureAttr fuattr;
+              fuattr.callback = [&e, nextHop, uuid_, uniq_id_, &retry_e,  &ackedReplicas] (Future* fu) {
+                retry_e->VoteYes();
+                e->FeedResponse(1);
+                ackedReplicas[nextHop] = 1;
+              };
+
+              Log_track("Retry a RPC to a hop: %d", nextHop);
+              MarshallDeputy cu_md(cu_cmd);
+              auto f = proxy->async_AddChain(std::get<0>(data), // slot_id
+                                            1, // delta
+                                            std::get<1>(data), // md
+                                            cu_md,
+                                            fuattr);
+                Future::safe_release(f);
+                retry_e->Wait();
+              }
+            }
+
+            // IsReady -> committed, async this request to other not-received replicas
+            {
+              vector<int> hops ;
+              int nextHop = -1;
+              for (int i=1; i<cu_cmd_ptr->total_replicas_; i++) {
+                if (ackedReplicas.find(i) == ackedReplicas.end()) {
+                  nextHop = i;
+                  hops.push_back(nextHop);
+                }
+              }
+
+              for (auto &nextHop: hops) {
+                int uniq_id_ = cu_cmd_ptr->uniq_id_;
+                cu_cmd_ptr->acc_rej_ = 1000; // an uniq tag
+                auto proxy = (ChainRPCProxy*)commo->rpc_par_proxies_[partition_id_][nextHop].second;
+                //commo->retry_rpc_cnt += 1;
+
+                FutureAttr fuattr;
+                fuattr.callback = [&] (Future* fu) {
+                  // Do nothing
+                };
+
+                MarshallDeputy cu_md(cu_cmd);
+                auto f = proxy->async_AddChain(std::get<0>(data),
+                                            1,
+                                            std::get<1>(data),
+                                            cu_md,
+                                            fuattr);
+                Future::safe_release(f);
+              }
+            }
+
+            commo->data_add_map_.erase(cu_cmd_ptr->uniq_id_);
+          }else {
+            Log_info("Fail to update the event mapping");
+          }
+        } else {
+          void(0);
+        }
+        cb();
+        return ;                                  
+    }
+
     void ChainRPCServer::OnAppendEntriesChain(const slotid_t slot_id,
                                      const ballot_t ballot,
                                      const uint64_t leaderCurrentTerm,
