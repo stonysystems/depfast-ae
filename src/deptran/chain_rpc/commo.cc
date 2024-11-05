@@ -228,7 +228,7 @@ ChainRPCCommo::BroadcastAdd(parid_t par_id,
                             slotid_t slot_id,
                             uint64_t delta, shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
-  auto e = Reactor::CreateSpEvent<ChainRPCAddQuorumEvent>(n, n);
+  auto e = Reactor::CreateSpEvent<ChainRPCAddQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
   for (auto& p : proxies) {

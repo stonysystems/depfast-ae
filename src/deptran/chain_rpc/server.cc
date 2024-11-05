@@ -611,7 +611,6 @@ void ChainRPCServer::StartTimer()
              uint64_t *counter,
              const function<void()> &cb) {
       *counter = 1;
-      app_next_(*cmd); 
       cb();
     }
 

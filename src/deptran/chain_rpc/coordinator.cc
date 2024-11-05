@@ -47,7 +47,13 @@ void CoordinatorChainRPC::Submit(shared_ptr<Marshallable>& cmd,
     Forward(cmd, func, exe_callback) ;
     return ;
   }
-  
+
+#ifdef ADD_ENABLED
+  in_submission_ = true;
+  cmd_ = cmd;
+  Add();
+  this->sch_->app_next_(*cmd);
+#else
 	std::lock_guard<std::recursive_mutex> lock(mtx_);
   verify(!in_submission_);
   verify(cmd_ == nullptr);
@@ -57,6 +63,7 @@ void CoordinatorChainRPC::Submit(shared_ptr<Marshallable>& cmd,
   verify(cmd_->kind_ != MarshallDeputy::UNKNOWN);
   commit_callback_ = func;
   GotoNextPhase();
+#endif
 }
 
 void CoordinatorChainRPC::Add() {
@@ -184,14 +191,10 @@ void CoordinatorChainRPC::GotoNextPhase() {
   phase_++;
   switch (current_phase) {
     case Phase::INIT_END:
-      if (IsLeader()) {
+    if (IsLeader()) {
         phase_++; // skip prepare phase for "leader"
         verify(phase_ % n_phase == Phase::ACCEPT);
-#ifdef ADD_ENABLED
-        Add();
-#else
         AppendEntries();
-#endif
         phase_++;
         verify(phase_ % n_phase == Phase::COMMIT);
       } else {
@@ -203,12 +206,7 @@ void CoordinatorChainRPC::GotoNextPhase() {
     case Phase::ACCEPT:
       verify(phase_ % n_phase == Phase::COMMIT);
       if (committed_) {
-#ifdef ADD_ENABLED
-        commit_callback_();
-        GotoNextPhase();
-#else
         LeaderLearn();
-#endif
       } else {
         // verify(0);
         // Forward(cmd_,commit_callback_) ;
