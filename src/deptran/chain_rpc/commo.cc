@@ -167,6 +167,7 @@ void ChainRPCCommo::SendAppendEntriesAgain(siteid_t site_id,
 shared_ptr<ChainRPCAddQuorumEvent>
 ChainRPCCommo::BroadcastAdd(parid_t par_id,
                             slotid_t slot_id,
+                            int leader_id,
                             uint64_t delta, shared_ptr<Marshallable> cmd) {
   int pathIdx = getNextAvailablePath(par_id);
   vector<int> path = std::get<0>(pathsWeights[par_id][pathIdx]);
@@ -226,13 +227,19 @@ ChainRPCCommo::BroadcastAdd(parid_t par_id,
 shared_ptr<ChainRPCAddQuorumEvent>
 ChainRPCCommo::BroadcastAdd(parid_t par_id,
                             slotid_t slot_id,
+                            int leader_id,
                             uint64_t delta, shared_ptr<Marshallable> cmd) {
   int n = Config::GetConfig()->GetPartitionSize(par_id);
   auto e = Reactor::CreateSpEvent<ChainRPCAddQuorumEvent>(n, n/2 + 1);
   auto proxies = rpc_par_proxies_[par_id];
 
+  e->FeedResponse(1);
+
   for (auto& p : proxies) {
     auto proxy = (ChainRPCProxy*) p.second;
+    auto id= p.first;
+    if(id==leader_id) continue;
+
     FutureAttr fuattr;
 
     fuattr.callback = [this, e] (Future* fu) {

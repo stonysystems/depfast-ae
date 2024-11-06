@@ -234,7 +234,7 @@ friend class ChainRPCProxy;
 
   shared_ptr<ChainRPCAddQuorumEvent>
   BroadcastAdd(parid_t par_id,
-               slotid_t slot_id, uint64_t delta, shared_ptr<Marshallable> cmd);
+               slotid_t slot_id, int leader_id, uint64_t delta, shared_ptr<Marshallable> cmd);
 
   void BroadcastAppendEntries(parid_t par_id,
                               slotid_t slot_id,

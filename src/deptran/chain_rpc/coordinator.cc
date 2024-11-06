@@ -68,10 +68,10 @@ void CoordinatorChainRPC::Submit(shared_ptr<Marshallable>& cmd,
 
 void CoordinatorChainRPC::Add() {
     int delta = 1;
-    auto sp_quorum = commo()->BroadcastAdd(par_id_, slot_id_, delta, cmd_);
-    auto start = std::chrono::high_resolution_clock::now();
-    sp_quorum->Wait(1000*1000);
-		std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
+    auto sp_quorum = commo()->BroadcastAdd(par_id_, slot_id_, this->sch_->site_id_, delta, cmd_);
+    //auto start = std::chrono::high_resolution_clock::now();
+    sp_quorum->Wait();
+		//std::chrono::duration<double, std::nano> duration = std::chrono::high_resolution_clock::now() - start; // in nanoseconds
 
 #ifdef CHAIN_RPC_ENABLED
     // Skip first several seconds warmup time.
